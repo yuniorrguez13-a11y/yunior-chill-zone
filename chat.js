@@ -64,18 +64,19 @@ sendBtn.addEventListener("click", async () => {
 
 // ===== LISTEN FOR MESSAGES =====
 onValue(ref(db, "messages"), (snapshot) => {
-  chatBox.innerHTML = "";
+  chatBox.innerHTML = ""; // clear old messages
   const data = snapshot.val();
-  if(!data) return;
+  if (!data) return;
 
+  // loop through messages
   Object.values(data).forEach(msg => {
     const msgDiv = document.createElement("div");
     msgDiv.style.display = "flex";
     msgDiv.style.alignItems = "center";
     msgDiv.style.marginBottom = "8px";
 
-    // profile pic
-    if(msg.pfpUrl){
+    // Profile picture
+    if (msg.pfpUrl) {
       const img = document.createElement("img");
       img.src = msg.pfpUrl;
       img.width = 40;
@@ -85,17 +86,18 @@ onValue(ref(db, "messages"), (snapshot) => {
       msgDiv.appendChild(img);
     }
 
-    // username + text
+    // Username + message text
     const text = document.createElement("span");
-    text.innerHTML = `<b>${msg.username}:</b> ${msg.text}`;
+    text.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
     msgDiv.appendChild(text);
 
     chatBox.appendChild(msgDiv);
   });
 
-  // auto scroll to bottom
+  // Scroll to bottom
   chatBox.scrollTop = chatBox.scrollHeight;
 });
+
 
 
 
