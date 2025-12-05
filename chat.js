@@ -35,24 +35,17 @@ sendBtn.addEventListener("click", async () => {
   const msg = input.value.trim();
   if (!msg) return;
 
+  // get username
   let username = usernameInput.value.trim() || "Anon";
-  let pfpUrl = localStorage.getItem("yc_pfp") || "";
 
-  // upload new profile pic only if a file is selected
-  if (pfpInput.files.length > 0) {
-    const file = pfpInput.files[0];
-    const fileRef = sRef(storage, `pfps/${Date.now()}_${file.name}`);
-    await uploadBytes(fileRef, file);
-    pfpUrl = await getDownloadURL(fileRef);
+  // get profile pic URL instead of uploading a file
+  let pfpUrl = pfpInput.value.trim() || localStorage.getItem("yc_pfp") || "";
 
-    // save uploaded pfp locally
-    localStorage.setItem("yc_pfp", pfpUrl);
-  }
-
-  // save username locally
+  // save locally
   localStorage.setItem("yc_username", username);
+  localStorage.setItem("yc_pfp", pfpUrl);
 
-  // push message to Firebase
+  // push to Firebase
   push(ref(db, "messages"), {
     text: msg,
     timestamp: Date.now(),
@@ -60,9 +53,9 @@ sendBtn.addEventListener("click", async () => {
     pfpUrl
   });
 
-  // clear input
   input.value = "";
 });
+
 
 // ===== LISTEN FOR MESSAGES =====
 onValue(ref(db, "messages"), (snapshot) => {
