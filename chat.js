@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebas
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
-// ===== FIREBASE CONFIG (yours) =====
+// ===== FIREBASE CONFIG =====
 const firebaseConfig = {
   apiKey: "AIzaSyCKEJtAl9qvD46tSJ2msJ3OjCCVQFfugd4",
   authDomain: "yunior-chill-zone.firebaseapp.com",
@@ -24,21 +24,33 @@ const sendBtn = document.getElementById("send-btn");
 const usernameInput = document.getElementById("username-input");
 const pfpInput = document.getElementById("pfp-input");
 
-// SEND MESSAGE FUNCTION
+// ===== Local Storage to remember username + pfp =====
+let currentUsername = localStorage.getItem("yc_username") || "";
+usernameInput.value = currentUsername;
+
+let currentPfpUrl = localStorage.getItem("yc_pfp") || "";
+
+// ===== SEND MESSAGE =====
 sendBtn.addEventListener("click", async () => {
   const msg = input.value.trim();
   if(!msg) return;
 
   let username = usernameInput.value.trim() || "Anon";
-  let pfpUrl = "";
+  let pfpUrl = currentPfpUrl;
 
-  // handle image upload if a file is selected
+  // upload new pfp if selected
   if(pfpInput.files.length > 0){
     const file = pfpInput.files[0];
     const fileRef = sRef(storage, `pfps/${Date.now()}_${file.name}`);
     await uploadBytes(fileRef, file);
     pfpUrl = await getDownloadURL(fileRef);
+
+    // save to localStorage
+    localStorage.setItem("yc_pfp", pfpUrl);
   }
+
+  // save username to localStorage
+  localStorage.setItem("yc_username", username);
 
   push(ref(db, "messages"), {
     text: msg,
@@ -50,15 +62,13 @@ sendBtn.addEventListener("click", async () => {
   input.value = "";
 });
 
-// LISTEN FOR MESSAGES
+// ===== LISTEN FOR MESSAGES =====
 onValue(ref(db, "messages"), (snapshot) => {
   chatBox.innerHTML = "";
   const data = snapshot.val();
   if(!data) return;
 
-  for(let id in data){
-    const msg = data[id];
-
+  Object.values(data).forEach(msg => {
     const msgDiv = document.createElement("div");
     msgDiv.style.display = "flex";
     msgDiv.style.alignItems = "center";
@@ -81,7 +91,11 @@ onValue(ref(db, "messages"), (snapshot) => {
     msgDiv.appendChild(text);
 
     chatBox.appendChild(msgDiv);
-  }
+  });
+
+  // auto scroll to bottom
+  chatBox.scrollTop = chatBox.scrollHeight;
 });
+
 
 
