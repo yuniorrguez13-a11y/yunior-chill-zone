@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
-import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
 // ===== FIREBASE CONFIG =====
 const firebaseConfig = {
@@ -12,11 +11,9 @@ const firebaseConfig = {
   messagingSenderId: "688679116808",
   appId: "1:688679116808:web:af337276fd7b53bcf5b1bd"
 };
-// ====================================
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const storage = getStorage(app);
 
 const chatBox = document.getElementById("chat-box");
 const input = document.getElementById("msg-input");
@@ -24,28 +21,24 @@ const sendBtn = document.getElementById("send-btn");
 const usernameInput = document.getElementById("username-input");
 const pfpInput = document.getElementById("pfp-input");
 
-// ===== Local Storage to remember username + pfp =====
+// ===== Local Storage for username + PFP =====
 let currentUsername = localStorage.getItem("yc_username") || "";
 usernameInput.value = currentUsername;
 
 let currentPfpUrl = localStorage.getItem("yc_pfp") || "";
+pfpInput.value = currentPfpUrl;
 
 // ===== SEND MESSAGE =====
-sendBtn.addEventListener("click", async () => {
+sendBtn.addEventListener("click", () => {
   const msg = input.value.trim();
   if (!msg) return;
 
-  // get username
   let username = usernameInput.value.trim() || "Anon";
+  let pfpUrl = pfpInput.value.trim() || "";
 
-  // get profile pic URL instead of uploading a file
-  let pfpUrl = pfpInput.value.trim() || localStorage.getItem("yc_pfp") || "";
-
-  // save locally
   localStorage.setItem("yc_username", username);
   localStorage.setItem("yc_pfp", pfpUrl);
 
-  // push to Firebase
   push(ref(db, "messages"), {
     text: msg,
     timestamp: Date.now(),
@@ -56,10 +49,9 @@ sendBtn.addEventListener("click", async () => {
   input.value = "";
 });
 
-
 // ===== LISTEN FOR MESSAGES =====
-onValue(ref(db, "messages"), (snapshot) => {
-  chatBox.innerHTML = ""; // keep this for displaying messages
+onValue(ref(db, "messages"), snapshot => {
+  chatBox.innerHTML = "";
   const data = snapshot.val();
   if (!data) return;
 
