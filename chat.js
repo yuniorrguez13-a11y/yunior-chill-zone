@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
-// ====== YOUR FIREBASE CONFIG ======
+// ===== FIREBASE CONFIG (yours) =====
 const firebaseConfig = {
   apiKey: "AIzaSyCKEJtAl9qvD46tSJ2msJ3OjCCVQFfugd4",
   authDomain: "yunior-chill-zone.firebaseapp.com",
@@ -9,38 +10,78 @@ const firebaseConfig = {
   projectId: "yunior-chill-zone",
   storageBucket: "yunior-chill-zone.firebasestorage.app",
   messagingSenderId: "688679116808",
-  appId: "1:688679116808:web:af337276fd7b53bcf5b1bd",
-  measurementId: "G-CT0EBC05GW"
+  appId: "1:688679116808:web:af337276fd7b53bcf5b1bd"
 };
 // ====================================
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 const chatBox = document.getElementById("chat-box");
 const input = document.getElementById("msg-input");
-const btn = document.getElementById("send-btn");
+const sendBtn = document.getElementById("send-btn");
+const usernameInput = document.getElementById("username-input");
+const pfpInput = document.getElementById("pfp-input");
 
-// Send message
-btn.addEventListener("click", () => {
+// SEND MESSAGE FUNCTION
+sendBtn.addEventListener("click", async () => {
   const msg = input.value.trim();
-  if (!msg) return;
+  if(!msg) return;
+
+  let username = usernameInput.value.trim() || "Anon";
+  let pfpUrl = "";
+
+  // handle image upload if a file is selected
+  if(pfpInput.files.length > 0){
+    const file = pfpInput.files[0];
+    const fileRef = sRef(storage, `pfps/${Date.now()}_${file.name}`);
+    await uploadBytes(fileRef, file);
+    pfpUrl = await getDownloadURL(fileRef);
+  }
+
   push(ref(db, "messages"), {
     text: msg,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    username,
+    pfpUrl
   });
+
   input.value = "";
 });
 
-// Listen for new messages
+// LISTEN FOR MESSAGES
 onValue(ref(db, "messages"), (snapshot) => {
   chatBox.innerHTML = "";
   const data = snapshot.val();
-  if (!data) return;
-  for (let id in data) {
-    const p = document.createElement("p");
-    p.textContent = data[id].text;
-    chatBox.appendChild(p);
+  if(!data) return;
+
+  for(let id in data){
+    const msg = data[id];
+
+    const msgDiv = document.createElement("div");
+    msgDiv.style.display = "flex";
+    msgDiv.style.alignItems = "center";
+    msgDiv.style.marginBottom = "8px";
+
+    // profile pic
+    if(msg.pfpUrl){
+      const img = document.createElement("img");
+      img.src = msg.pfpUrl;
+      img.width = 40;
+      img.height = 40;
+      img.style.borderRadius = "50%";
+      img.style.marginRight = "8px";
+      msgDiv.appendChild(img);
+    }
+
+    // username + text
+    const text = document.createElement("span");
+    text.innerHTML = `<b>${msg.username}:</b> ${msg.text}`;
+    msgDiv.appendChild(text);
+
+    chatBox.appendChild(msgDiv);
   }
 });
+
 
