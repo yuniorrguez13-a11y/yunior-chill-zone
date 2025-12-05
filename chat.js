@@ -33,25 +33,26 @@ let currentPfpUrl = localStorage.getItem("yc_pfp") || "";
 // ===== SEND MESSAGE =====
 sendBtn.addEventListener("click", async () => {
   const msg = input.value.trim();
-  if(!msg) return;
+  if (!msg) return;
 
   let username = usernameInput.value.trim() || "Anon";
-  let pfpUrl = currentPfpUrl;
+  let pfpUrl = localStorage.getItem("yc_pfp") || "";
 
-  // upload new pfp if selected
-  if(pfpInput.files.length > 0){
+  // upload new profile pic only if a file is selected
+  if (pfpInput.files.length > 0) {
     const file = pfpInput.files[0];
     const fileRef = sRef(storage, `pfps/${Date.now()}_${file.name}`);
     await uploadBytes(fileRef, file);
     pfpUrl = await getDownloadURL(fileRef);
 
-    // save to localStorage
+    // save uploaded pfp locally
     localStorage.setItem("yc_pfp", pfpUrl);
   }
 
-  // save username to localStorage
+  // save username locally
   localStorage.setItem("yc_username", username);
 
+  // push message to Firebase
   push(ref(db, "messages"), {
     text: msg,
     timestamp: Date.now(),
@@ -59,23 +60,22 @@ sendBtn.addEventListener("click", async () => {
     pfpUrl
   });
 
+  // clear input
   input.value = "";
 });
 
 // ===== LISTEN FOR MESSAGES =====
 onValue(ref(db, "messages"), (snapshot) => {
-  chatBox.innerHTML = ""; // clear old messages
+  chatBox.innerHTML = ""; // keep this for displaying messages
   const data = snapshot.val();
   if (!data) return;
 
-  // loop through messages
   Object.values(data).forEach(msg => {
     const msgDiv = document.createElement("div");
     msgDiv.style.display = "flex";
     msgDiv.style.alignItems = "center";
     msgDiv.style.marginBottom = "8px";
 
-    // Profile picture
     if (msg.pfpUrl) {
       const img = document.createElement("img");
       img.src = msg.pfpUrl;
@@ -86,7 +86,6 @@ onValue(ref(db, "messages"), (snapshot) => {
       msgDiv.appendChild(img);
     }
 
-    // Username + message text
     const text = document.createElement("span");
     text.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
     msgDiv.appendChild(text);
@@ -94,9 +93,5 @@ onValue(ref(db, "messages"), (snapshot) => {
     chatBox.appendChild(msgDiv);
   });
 
-  // Scroll to bottom
   chatBox.scrollTop = chatBox.scrollHeight;
 });
-
-
-
