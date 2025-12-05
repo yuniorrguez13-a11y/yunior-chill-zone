@@ -2,136 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yunior Chill Zone</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #1e1e2f;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-    }
-
-    h1 {
-      color: #ff6f61;
-      margin-bottom: 20px;
-    }
-
-    #messages {
-      width: 100%;
-      max-width: 600px;
-      height: 400px;
-      background: #2c2c3c;
-      padding: 10px;
-      overflow-y: auto;
-      border-radius: 10px;
-      margin-bottom: 10px;
-    }
-
-    #messages p {
-      margin: 5px 0;
-      padding: 5px 10px;
-      background: #3a3a5a;
-      border-radius: 5px;
-      word-wrap: break-word;
-    }
-
-    #chatInput {
-      display: flex;
-      width: 100%;
-      max-width: 600px;
-    }
-
-    #inputMsg {
-      flex: 1;
-      padding: 10px;
-      border-radius: 10px 0 0 10px;
-      border: none;
-      outline: none;
-      font-size: 16px;
-    }
-
-    #sendBtn {
-      padding: 10px 20px;
-      background: #ff6f61;
-      border: none;
-      border-radius: 0 10px 10px 0;
-      cursor: pointer;
-      font-size: 16px;
-      color: #fff;
-    }
-
-    #sendBtn:hover {
-      background: #ff4c3b;
-    }
-  </style>
+  <title>Yunior Chill Zone Chat</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Yunior Chill Zone</h1>
-  <div id="messages"></div>
-  <div id="chatInput">
-    <input type="text" id="inputMsg" placeholder="Type your message..." />
-    <button id="sendBtn">Send</button>
-  </div>
+  <h1>Yunior Chill Zone Chat 😎</h1>
 
-  <!-- Firebase JS SDK -->
-  <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-database.js"></script>
+  <div id="chat-box"></div>
 
-  <script>
-    // Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyCKEJtAl9qvD46tSJ2msJ3OjCCVQFfugd4",
-      authDomain: "yunior-chill-zone.firebaseapp.com",
-      databaseURL: "https://yunior-chill-zone-default-rtdb.firebaseio.com",
-      projectId: "yunior-chill-zone",
-      storageBucket: "yunior-chill-zone.firebasestorage.app",
-      messagingSenderId: "688679116808",
-      appId: "1:688679116808:web:af337276fd7b53bcf5b1bd"
-    };
+  <input type="text" id="msg-input" placeholder="Type your message..." />
+  <button id="send-btn">Send</button>
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const messagesRef = db.ref("messages");
-
-    const messagesDiv = document.getElementById("messages");
-    const input = document.getElementById("inputMsg");
-    const sendBtn = document.getElementById("sendBtn");
-
-    // Listen for new messages in real-time
-    messagesRef.on("value", (snapshot) => {
-      const data = snapshot.val();
-      messagesDiv.innerHTML = "";
-      if(data){
-        Object.values(data).forEach(msg => {
-          const p = document.createElement("p");
-          p.textContent = msg;
-          messagesDiv.appendChild(p);
-        });
-      }
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    });
-
-    // Send message
-    sendBtn.onclick = () => {
-      const text = input.value.trim();
-      if(text.length > 0){
-        messagesRef.push(text);
-        input.value = "";
-      }
-    };
-
-    // Enter key sends message
-    input.addEventListener("keydown", (e) => {
-      if(e.key === "Enter") sendBtn.click();
-    });
-  </script>
+  <script type="module" src="chat.js"></script>
 </body>
 </html>
+
