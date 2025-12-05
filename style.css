@@ -53,4 +53,13 @@ body {
   overflow-x: hidden; /* prevents horizontal scroll */
   font-family: monospace;
 }
+#chat-container {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background: rgba(0,0,0,0.5); /* optional translucent background */
+  border-radius: 10px;
+}
 
