@@ -31,16 +31,26 @@ body {
   border: none;
   color: #fff;
 }
+/* MATRIX BACKGROUND */
 canvas#matrix {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1; /* behind chat elements */
+  width: 100vw;
+  height: 100vh;
+  z-index: 0; /* behind everything */
 }
 
-#chat-box, input, button, h1 {
-  position: relative; /* make them appear above the canvas */
+/* CHAT AND UI ON TOP */
+body, #chat-box, input, button, h1 {
+  position: relative; /* ensures they appear above canvas */
   z-index: 1;
 }
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* prevents horizontal scroll */
+  font-family: monospace;
+}
+
