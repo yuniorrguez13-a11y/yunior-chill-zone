@@ -76,3 +76,20 @@ canvas#matrix {
 }
 body { max-width: 100vw; overflow-x: hidden; }
 }
+#gaming-link {
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  text-decoration: none;
+  display: inline-block;
+  padding: 10px 20px;
+  border: 2px solid white;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  transition: 0.3s ease;
+}
+
+#gaming-link:hover {
+  background-color: white;
+  color: black;
+}
