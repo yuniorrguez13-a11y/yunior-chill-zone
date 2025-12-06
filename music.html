@@ -3,31 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <title>Yunior Chill Zone Music</title>
+  <link rel="stylesheet" href="style.css">
   <style>
-    body {
-      background-color: #111;
-      color: #0F0;
-      font-family: monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    /* Music container on top of matrix */
+    #music-container {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 50px auto;
       padding: 20px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 10px;
+      color: #fff;
+      text-align: center;
     }
-    <iframe 
-    width="560" 
-    height="315" 
-    src="https://www.youtube.com/watch?v=AL8chWFuM-s&list=PLJNeO1p-8YtULYmt-jkFg2BmNltcnYu-N" 
-    frameborder="0" 
-    allow="autoplay; encrypted-media" 
-    allowfullscreen>
-</iframe> 
-    width="560" 
-    height="315" 
-    src="https://www.youtube.com/embed?listType=playlist&list=PLAYLIST_ID&controls=1&loop=1" 
-    frameborder="0" 
-    allow="autoplay; encrypted-media" 
-    allowfullscreen>
-  </iframe>
 
+    iframe {
+      margin-top: 20px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- MATRIX BACKGROUND -->
+  <canvas id="matrix"></canvas>
+
+  <!-- MUSIC CONTENT -->
+  <div id="music-container">
+    <h1>🎵 Yunior Chill Zone Music Room</h1>
+    <p>Enjoy your playlist:</p>
+
+    <!-- Embedded playlist -->
+    <iframe width="560" height="315" 
+        src="https://www.youtube.com/embed/AL8chWFuM-s?list=PLJNeO1p-8YtULYmt-jkFg2BmNltcnYu-N" 
+        title="YouTube video player" 
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+        allowfullscreen>
+    </iframe>
+  </div>
+
+  <script src="matrix.js"></script>
 </body>
 </html>
+
