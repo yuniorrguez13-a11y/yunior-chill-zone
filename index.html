@@ -1,63 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Yunior Chill Zone Chat</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="icon" type="image/png" href="favicon.png">
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/png" href="favicon.png" />
 </head>
+
 <body>
+  <!-- MATRIX BACKGROUND -->
+  <canvas id="matrix"></canvas>
 
-  <!-- INTRO OVERLAY -->
-  <div id="intro-overlay">
-    <video id="intro-video" src="video.mov" preload="auto"></video>
-    <button id="start-btn">Click to Start</button>
-  </div>
+  <!-- CHAT CONTAINER -->
+  <div id="chat-container">
+    <h1>𝔜𝔲𝔫𝔦𝔬𝔯𝔰 𝔠𝔥𝔦𝔩𝔩 𝔷𝔬𝔫𝔢</h1>
 
-  <!-- MAIN SITE -->
-  <div id="main-site" style="display:none;">
-    <!-- MATRIX BACKGROUND -->
-    <canvas id="matrix"></canvas>
+    <!-- ADMIN ZONE BUTTON -->
+<button id="admin-zone-btn">𝔄𝔡𝔪𝔦𝔫’𝔰 𝔃𝔬𝔫𝔢</button>
 
-    <!-- CHAT CONTAINER -->
-    <div id="chat-container">
-      <h1>𝔜𝔲𝔫𝔦𝔬𝔯𝔰 𝔠𝔥𝔦𝔩𝔩 𝔷𝔬𝔫𝔢</h1>
+    <a href="music.html" target="_blank" id="music-link">Music Room</a>
+    <a href="gaming.html" target="_blank" id="gaming-link">Gaming Zone</a>
+    <a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link">
+      Zoom Voice Chat
+    </a>
 
-      <a href="music.html" target="_blank" id="music-link">Music Room</a>
-      <a href="gaming.html" target="_blank" id="gaming-link">Gaming Zone</a>
-      <a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link">Zoom Voice Chat</a>
+    <!-- USER PROFILE -->
+    <input
+      type="text"
+      id="username-input"
+      placeholder="Enter your username"
+    />
+    <input
+      type="text"
+      id="pfp-input"
+      placeholder="Enter PFP URL"
+    />
 
-      <!-- USER PROFILE -->
-      <input type="text" id="username-input" placeholder="Enter your username" />
-      <input type="text" id="pfp-input" placeholder="Enter PFP URL" />
+    <!-- CHAT BOX -->
+    <div id="chat-box"></div>
 
-      <!-- CHAT BOX -->
-      <div id="chat-box"></div>
-
-      <!-- MESSAGE INPUT -->
-      <input type="text" id="msg-input" placeholder="Type your message..." />
-      <button id="send-btn">Send</button>
-    </div>
+    <!-- MESSAGE INPUT -->
+    <input
+      type="text"
+      id="msg-input"
+      placeholder="Type your message..."
+    />
+    <button id="send-btn">Send</button>
   </div>
 
   <!-- SCRIPTS -->
   <script src="matrix.js"></script>
   <script type="module" src="chat.js"></script>
-
-  <!-- INTRO SCRIPT -->
-  <script>
-    const overlay = document.getElementById("intro-overlay");
-    const video = document.getElementById("intro-video");
-    const startBtn = document.getElementById("start-btn");
-    const mainSite = document.getElementById("main-site");
-
-    startBtn.addEventListener("click", () => {
-      overlay.style.display = "none";
-      mainSite.style.display = "block";
-      video.play();
-    });
-  </script>
-
 </body>
 </html>
