@@ -84,34 +84,63 @@ onValue(ref(db, "messages"), snapshot => {
 let isAdmin = false;
 const ADMIN_PASSWORD = "lolislol";
 
+// Admin button click
 document.getElementById("admin-zone-btn").addEventListener("click", () => {
   const pass = prompt("Enter admin password:");
-
   if (pass === ADMIN_PASSWORD) {
     isAdmin = true;
     alert("Admin mode activated 👑");
-    enableAdminControls();
+    addDeleteButtonsToAll();
   } else {
     alert("Wrong password 💀");
   }
 });
 
-function enableAdminControls() {
+// Add delete button to all existing messages
+function addDeleteButtonsToAll() {
   const messages = document.querySelectorAll(".chat-message");
-  messages.forEach(addDeleteButton);
+  messages.forEach((msg) => addDeleteButton(msg));
 }
 
-function addDeleteButton(messageEl) {
-  if (messageEl.querySelector(".delete-btn")) return;
+// Add delete button to a single message
+function addDeleteButton(msgEl) {
+  // Already has one? skip
+  if (msgEl.querySelector(".delete-btn")) return;
 
   const delBtn = document.createElement("button");
   delBtn.textContent = "X";
   delBtn.className = "delete-btn";
-
+  delBtn.style.marginLeft = "10px";
   delBtn.onclick = () => {
-    messageEl.remove();
+    msgEl.remove();
   };
 
-  messageEl.appendChild(delBtn);
+  msgEl.appendChild(delBtn);
 }
 
+// Example function when sending messages
+function sendMessage(username, message) {
+  const chatBox = document.getElementById("chat-box");
+
+  const msgEl = document.createElement("div");
+  msgEl.className = "chat-message";
+  msgEl.textContent = `${username}: ${message}`;
+
+  chatBox.appendChild(msgEl);
+
+  // Add delete button if admin
+  if (isAdmin) addDeleteButton(msgEl);
+
+  // Scroll to bottom
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Hook your existing send button
+document.getElementById("send-btn").addEventListener("click", () => {
+  const username = document.getElementById("username-input").value || "Anon";
+  const message = document.getElementById("msg-input").value;
+  if (!message) return;
+
+  sendMessage(username, message);
+  document.getElementById("msg-input").value = "";
+});
