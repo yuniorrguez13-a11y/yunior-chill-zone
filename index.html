@@ -18,7 +18,7 @@
     <h1>𝔜𝔲𝔫𝔦𝔬𝔯𝔰 𝔠𝔥𝔦𝔩𝔩 𝔷𝔬𝔫𝔢</h1>
 
     <!-- ADMIN ZONE BUTTON -->
-<button id="admin-zone-btn">𝔄𝔡𝔪𝔦𝔫’𝔰 𝔃𝔬𝔫𝔢</button>
+    <button id="admin-zone-btn">𝔄𝔡𝔪𝔦𝔫’𝔰 𝔃𝔬𝔫𝔢</button>
 
     <a href="music.html" target="_blank" id="music-link">Music Room</a>
     <a href="gaming.html" target="_blank" id="gaming-link">Gaming Zone</a>
@@ -27,31 +27,20 @@
     </a>
 
     <!-- USER PROFILE -->
-    <input
-      type="text"
-      id="username-input"
-      placeholder="Enter your username"
-    />
-    <input
-      type="text"
-      id="pfp-input"
-      placeholder="Enter PFP URL"
-    />
+    <input type="text" id="username-input" placeholder="Enter your username" />
+    <input type="text" id="pfp-input" placeholder="Enter PFP URL" />
 
     <!-- CHAT BOX -->
     <div id="chat-box"></div>
 
     <!-- MESSAGE INPUT -->
-    <input
-      type="text"
-      id="msg-input"
-      placeholder="Type your message..."
-    />
+    <input type="text" id="msg-input" placeholder="Type your message..." />
     <button id="send-btn">Send</button>
   </div>
 
   <!-- SCRIPTS -->
   <script src="matrix.js"></script>
+  <!-- FIXED: use chat.js directly, remove any reference to chat.obf.js -->
   <script type="module" src="chat.js"></script>
 </body>
 </html>
