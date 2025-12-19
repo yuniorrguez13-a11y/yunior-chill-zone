@@ -84,11 +84,8 @@ onValue(ref(db, "messages"), snapshot => {
 let isAdmin = false;
 const ADMIN_PASSWORD = "lolislol";
 
-const adminBtn = document.getElementById("admin-zone-btn");
-const chatBox = document.getElementById("chat-box");
-const sendBtn = document.getElementById("send-btn");
-
-adminBtn.addEventListener("click", () => {
+// Admin button click
+document.getElementById("admin-zone-btn").addEventListener("click", () => {
   const pass = prompt("Enter admin password:");
   if (pass === ADMIN_PASSWORD) {
     isAdmin = true;
@@ -101,40 +98,45 @@ adminBtn.addEventListener("click", () => {
 
 // Add delete button to all existing messages
 function addDeleteButtonsToAll() {
-  const messages = chatBox.querySelectorAll(".chat-message");
-  messages.forEach(addDeleteButton);
+  const messages = document.querySelectorAll(".chat-message");
+  messages.forEach((msg) => addDeleteButton(msg));
 }
 
-// Create delete button
+// Add delete button to a single message
 function addDeleteButton(msgEl) {
+  // Already has one? skip
   if (msgEl.querySelector(".delete-btn")) return;
 
   const delBtn = document.createElement("button");
   delBtn.textContent = "X";
   delBtn.className = "delete-btn";
-  delBtn.onclick = () => msgEl.remove();
+  delBtn.style.marginLeft = "10px";
+  delBtn.onclick = () => {
+    msgEl.remove();
+  };
 
   msgEl.appendChild(delBtn);
 }
 
-// Send message function
+// Example function when sending messages
 function sendMessage(username, message) {
+  const chatBox = document.getElementById("chat-box");
+
   const msgEl = document.createElement("div");
   msgEl.className = "chat-message";
-
-  const textEl = document.createElement("span");
-  textEl.textContent = `${username}: ${message}`;
-
-  msgEl.appendChild(textEl);
-
-  if (isAdmin) addDeleteButton(msgEl);
+  msgEl.textContent = `${username}: ${message}`;
 
   chatBox.appendChild(msgEl);
+
+  // Add delete button if admin
+  if (isAdmin) addDeleteButton(msgEl);
+
+  // Scroll to bottom
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Hook send button
-sendBtn.addEventListener("click", () => {
+// Hook your existing send button
+document.getElementById("send-btn").addEventListener("click", () => {
   const username = document.getElementById("username-input").value || "Anon";
   const message = document.getElementById("msg-input").value;
   if (!message) return;
@@ -142,4 +144,3 @@ sendBtn.addEventListener("click", () => {
   sendMessage(username, message);
   document.getElementById("msg-input").value = "";
 });
-
