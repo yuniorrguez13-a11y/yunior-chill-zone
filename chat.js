@@ -80,38 +80,3 @@ onValue(ref(db, "messages"), snapshot => {
 
   chatBox.scrollTop = chatBox.scrollHeight;
 });
-
-let isAdmin = false;
-const ADMIN_PASSWORD = "lolislol";
-
-document.getElementById("admin-zone-btn").addEventListener("click", () => {
-  const pass = prompt("Enter admin password:");
-
-  if (pass === ADMIN_PASSWORD) {
-    isAdmin = true;
-    alert("Admin mode activated 👑");
-    enableAdminControls();
-  } else {
-    alert("Wrong password 💀");
-  }
-});
-
-function enableAdminControls() {
-  const messages = document.querySelectorAll(".chat-message");
-  messages.forEach(addDeleteButton);
-}
-
-function addDeleteButton(messageEl) {
-  if (messageEl.querySelector(".delete-btn")) return;
-
-  const delBtn = document.createElement("button");
-  delBtn.textContent = "X";
-  delBtn.className = "delete-btn";
-
-  delBtn.onclick = () => {
-    messageEl.remove();
-  };
-
-  messageEl.appendChild(delBtn);
-}
-
