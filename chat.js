@@ -2,14 +2,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebas
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
 // ===== FIREBASE CONFIG =====
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyCKEJtAl9qvD46tSJ2msJ3OjCCVQFfugd4",
-  authDomain: "yunior-chill-zone.firebaseapp.com",
-  databaseURL: "https://yunior-chill-zone-default-rtdb.firebaseio.com",
-  projectId: "yunior-chill-zone",
-  storageBucket: "yunior-chill-zone.firebasestorage.app",
-  messagingSenderId: "688679116808",
-  appId: "1:688679116808:web:af337276fd7b53bcf5b1bd"
+  apiKey: "AIzaSyAdbajdKncmGkL5XV2WaXofWHpcbcOBWaE",
+  authDomain: "yunior-chill-z0ne.firebaseapp.com",
+  databaseURL: "https://yunior-chill-z0ne-default-rtdb.firebaseio.com",
+  projectId: "yunior-chill-z0ne",
+  storageBucket: "yunior-chill-z0ne.firebasestorage.app",
+  messagingSenderId: "947317840264",
+  appId: "1:947317840264:web:150402d90e493bc256c23d",
+  measurementId: "G-T2EM26F6YP"
 };
 
 const app = initializeApp(firebaseConfig);
