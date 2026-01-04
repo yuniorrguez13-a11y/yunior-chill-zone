@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="style.css?v=3">
+  <!-- Google reCAPTCHA script -->
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
   <!-- MATRIX BACKGROUND -->
@@ -15,24 +17,41 @@
   <!-- CHAT CONTAINER -->
   <div id="chat-container">
     <h1>Yuniors Chill Zone</h1>
-<a href="music.html" target="_blank" id="music-link">Music Room</a>
-<a href="gaming.html" target="_blank" id="gaming-link">Gaming Zone</a>
-<a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link">Zoom Voice Chat</a>
+    <a href="music.html" target="_blank" id="music-link">Music Room</a>
+    <a href="gaming.html" target="_blank" id="gaming-link">Gaming Zone</a>
+    <a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link">Zoom Voice Chat</a>
 
     <!-- USER PROFILE -->
     <input type="text" id="username-input" placeholder="Enter your username" />
     <input type="text" id="pfp-input" placeholder="Enter PFP URL" />
+
+    <!-- reCAPTCHA -->
+    <div class="g-recaptcha" data-sitekey="6LcKcT8sAAAAADYJQVlBpMIxs1LY0cNnHG2DqyDG"></div>
 
     <!-- CHAT BOX -->
     <div id="chat-box"></div>
 
     <!-- MESSAGE INPUT -->
     <input type="text" id="msg-input" placeholder="Type your message..." />
-    <button id="send-btn">Send</button>
+    <button id="send-btn" disabled>Send</button>
   </div>
 
   <!-- SCRIPTS -->
   <script src="matrix.js"></script>
   <script type="module" src="chat.js"></script>
+
+  <!-- Enable chat only after reCAPTCHA -->
+  <script>
+    function enableChat() {
+      document.getElementById('send-btn').disabled = false;
+    }
+
+    // Attach callback to reCAPTCHA
+    window.onload = function() {
+      // Google reCAPTCHA automatically looks for `data-callback="enableChat"` if you set it
+      const recaptcha = document.querySelector('.g-recaptcha');
+      if (recaptcha) recaptcha.setAttribute('data-callback', 'enableChat');
+    };
+  </script>
 </body>
 </html>
