@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
 
 // ===== FIREBASE CONFIG =====
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAdbajdKncmGkL5XV2WaXofWHpcbcOBWaE",
   authDomain: "yunior-chill-z0ne.firebaseapp.com",
@@ -16,12 +16,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 const chatBox = document.getElementById("chat-box");
 const input = document.getElementById("msg-input");
 const sendBtn = document.getElementById("send-btn");
 const usernameInput = document.getElementById("username-input");
 const pfpInput = document.getElementById("pfp-input");
+const imageUpload = document.getElementById("image-upload"); // NEW
 
 // ===== Local Storage for username + PFP =====
 let currentUsername = localStorage.getItem("yc_username") || "";
@@ -31,9 +33,11 @@ let currentPfpUrl = localStorage.getItem("yc_pfp") || "";
 pfpInput.value = currentPfpUrl;
 
 // ===== SEND MESSAGE =====
-sendBtn.addEventListener("click", () => {
+sendBtn.addEventListener("click", async () => {
   const msg = input.value.trim();
-  if (!msg) return;
+  const file = imageUpload.files[0];
+
+  if (!msg && !file) return; // require text or image
 
   let username = usernameInput.value.trim() || "Anon";
   let pfpUrl = pfpInput.value.trim() || "";
@@ -41,14 +45,25 @@ sendBtn.addEventListener("click", () => {
   localStorage.setItem("yc_username", username);
   localStorage.setItem("yc_pfp", pfpUrl);
 
+  let imageUrl = "";
+
+  // upload image if selected
+  if (file) {
+    const fileRef = sRef(storage, `chat-images/${Date.now()}_${file.name}`);
+    await uploadBytes(fileRef, file);
+    imageUrl = await getDownloadURL(fileRef);
+  }
+
   push(ref(db, "messages"), {
     text: msg,
     timestamp: Date.now(),
     username,
-    pfpUrl
+    pfpUrl,
+    imageUrl // NEW
   });
 
   input.value = "";
+  imageUpload.value = ""; // reset file input
 });
 
 // ===== LISTEN FOR MESSAGES =====
@@ -62,6 +77,21 @@ onValue(ref(db, "messages"), snapshot => {
     msgDiv.style.display = "flex";
     msgDiv.style.alignItems = "center";
     msgDiv.style.marginBottom = "8px";
+    msgDiv.style.flexDirection = "column"; // stack text + image
+
+    // display uploaded image first if exists
+    if (msg.imageUrl) {
+      const img = document.createElement("img");
+      img.src = msg.imageUrl;
+      img.width = 150;
+      img.style.borderRadius = "10px";
+      img.style.marginBottom = "4px";
+      msgDiv.appendChild(img);
+    }
+
+    const contentDiv = document.createElement("div");
+    contentDiv.style.display = "flex";
+    contentDiv.style.alignItems = "center";
 
     if (msg.pfpUrl) {
       const img = document.createElement("img");
@@ -70,13 +100,14 @@ onValue(ref(db, "messages"), snapshot => {
       img.height = 40;
       img.style.borderRadius = "50%";
       img.style.marginRight = "8px";
-      msgDiv.appendChild(img);
+      contentDiv.appendChild(img);
     }
 
     const text = document.createElement("span");
     text.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
-    msgDiv.appendChild(text);
+    contentDiv.appendChild(text);
 
+    msgDiv.appendChild(contentDiv);
     chatBox.appendChild(msgDiv);
   });
 
