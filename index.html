@@ -1,58 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yunior Chill Zone Chat</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yunior Studios</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
-  <link rel="stylesheet" href="style.css">
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="style.css?v=3">
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: #ecf0f1;
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+        }
 
-  <!-- Google reCAPTCHA -->
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+        .message {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 50px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 600px;
+            animation: fadeIn 2s ease-in-out;
+        }
 
-  <!-- Google AdSense -->
-  <script async
-    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1722989486934018"
-    crossorigin="anonymous"></script>
+        h1 {
+            font-size: 3em;
+            color: #e74c3c;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        p {
+            font-size: 1.2em;
+            line-height: 1.6;
+            color: #ecf0f1;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
 </head>
 <body>
-  <!-- MATRIX BACKGROUND -->
-  <canvas id="matrix"></canvas>
-
-  <!-- CHAT CONTAINER -->
-  <div id="chat-container">
-    <h1>Yuniors Chill Zone</h1>
-    <a href="music.html" target="_blank" id="music-link">Music Room</a>
-    <a href="gaming.html" target="_blank" id="gaming-link">Gaming Zone</a>
-    <a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link">Zoom Voice Chat</a>
-
-   <!-- USER PROFILE -->
-<input type="text" id="username-input" placeholder="Enter your username" />
-<input type="text" id="pfp-input" placeholder="Enter PFP URL" />
-<input type="file" id="image-upload" accept="image/*" /> <!-- NEW -->
-
-    <!-- reCAPTCHA -->
-    <div class="g-recaptcha" data-sitekey="6LeDcT8sAAAAAMCoKugfi8XabWIt9_eNp-QBuEkG" data-callback="enableChat"></div>
-
-    <!-- CHAT BOX -->
-    <div id="chat-box"></div>
-
-    <!-- MESSAGE INPUT -->
-    <input type="text" id="msg-input" placeholder="Type your message..." />
-    <button id="send-btn" disabled>Send</button>
-  </div>
-
-  <!-- SCRIPTS -->
-  <script src="matrix.js"></script>
-  <script type="module" src="chat.js"></script>
-
-  <!-- Enable chat only after reCAPTCHA -->
-  <script>
-    function enableChat() {
-      document.getElementById('send-btn').disabled = false;
-    }
-  </script>
+    <div class="message">
+        <h1>Yunior Studios</h1>
+        <p>It breaks our hearts to say goodbye, but we have decided to take the website down. It hasn't been the same, and with so few visitors, continuing just feels empty. We will always cherish the memories we made here, and this goodbye is as heavy as it is final.</p>
+    </div>
 </body>
 </html>
