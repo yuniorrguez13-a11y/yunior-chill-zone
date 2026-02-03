@@ -109,6 +109,49 @@ onValue(ref(db, "messages"), snapshot => {
 
     msgDiv.appendChild(contentDiv);
     chatBox.appendChild(msgDiv);
+    const safeModeToggle = document.getElementById("safe-mode-toggle");
+
+let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
+if (safeModeToggle) {
+  safeModeToggle.checked = safeModeEnabled;
+  safeModeToggle.addEventListener("change", () => {
+    safeModeEnabled = safeModeToggle.checked;
+    localStorage.setItem("yc_safe_mode", safeModeEnabled);
+    renderMessages();
+ const blockedWords = [
+  "fuck",
+  "shit",
+  "bitch",
+  "asshole",
+  "bastard",
+  "dick",
+  "pussy",
+  "cunt",
+  "slut",
+  "whore",
+  "nigger",
+  "nigga",
+  "fag",
+  "faggot",
+  "kike",
+  "spic",
+  "chink"
+];
+
+const shouldHideMessage = (text = "") => {
+  if (!safeModeEnabled) return false;
+  const normalized = text.toLowerCase();
+  return blockedWords.some(word => normalized.includes(word));
+cachedMessages.forEach(msg => {
+  if (shouldHideMessage(msg.text)) {
+    return;
+  }
+  // render message...
+});
+
+};
+ });
+}
   });
 
   chatBox.scrollTop = chatBox.scrollHeight;
