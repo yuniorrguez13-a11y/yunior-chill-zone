@@ -8,50 +8,75 @@
     body {
       margin: 0;
       padding: 0;
-      font-family: monospace;
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
       background: url('https://raw.githubusercontent.com/yuniorrguez13-a11y/videox/refs/heads/main/image_2025-12-06_120452898.png') no-repeat center center fixed;
       background-size: cover;
       color: #fff;
+      min-height: 100vh;
+    }
+
+    .page {
+      min-height: 100vh;
+      backdrop-filter: blur(4px);
+      background: linear-gradient(120deg, rgba(3, 8, 20, 0.85), rgba(8, 12, 28, 0.65));
       display: flex;
       flex-direction: column;
       align-items: center;
+      padding: 40px 20px 60px;
+      box-sizing: border-box;
+    }
+
+    header {
+      width: min(1100px, 92%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
     }
 
     h1 {
-      margin-top: 40px;
-      font-size: 48px;
-      text-shadow: 2px 2px #000;
+      margin: 0;
+      font-size: clamp(32px, 5vw, 52px);
+      text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.6);
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      color: #b9c5ff;
+      font-size: 16px;
     }
 
     .games-container {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      width: 90%;
-      max-width: 1200px;
-      margin: 40px 0;
+      gap: 22px;
+      width: min(1200px, 92%);
+      margin: 40px 0 0;
     }
 
     .game-slot {
-      background: rgba(0, 0, 0, 0.7);
-      border: 2px solid #0F0;
-      border-radius: 10px;
-      padding: 20px;
+      background: rgba(8, 12, 24, 0.7);
+      border: 1px solid rgba(88, 255, 130, 0.4);
+      border-radius: 18px;
+      padding: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      transition: transform 0.2s, background 0.2s;
-      min-height: 200px;
+      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+      min-height: 210px;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
     }
 
     .game-slot:hover {
-      transform: scale(1.05);
-      background: rgba(0, 0, 0, 0.9);
+      transform: translateY(-6px);
+      background: rgba(5, 8, 18, 0.9);
+      box-shadow: 0 18px 35px rgba(0, 0, 0, 0.45);
     }
 
     .game-slot h2 {
-      margin: 0 0 10px 0;
+      margin: 0 0 8px 0;
       font-size: 22px;
       text-align: center;
     }
@@ -59,46 +84,85 @@
     .game-slot p {
       font-size: 16px;
       text-align: center;
-      color: #0F0;
+      color: #b8ffcf;
+      margin: 0;
     }
 
-    a {
-      color: #0F0;
+    .action-link {
+      color: #0f0;
       text-decoration: none;
-      font-weight: bold;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(88, 255, 130, 0.6);
+      background: rgba(2, 20, 8, 0.6);
+      transition: 0.2s ease;
+      display: inline-block;
+      margin-top: 8px;
+    }
+
+    .action-link:hover {
+      background: #0f0;
+      color: #07120b;
+    }
+
+    .home-link {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .home-link:hover {
+      background: #fff;
+      color: #111;
     }
   </style>
 </head>
 <body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>Da Gaming Zone</h1>
+        <p class="subtitle">Pick a game and start playing instantly.</p>
+      </div>
+      <a class="home-link" href="index.html">Back to Chat</a>
+    </header>
 
-  <h1>Da Gaming Zone</h1>
+    <div class="games-container">
+      <div class="game-slot">
+        <h2>Snake Game</h2>
+        <p>Classic arcade vibes.</p>
+        <a class="action-link" href="snake.html" target="_blank">Play Now</a>
+      </div>
 
-  <div class="games-container">
-  <div class="game-slot">
-    <h2>Snake Game</h2>
-    <p><a href="snake.html" target="_blank">Play Now</a></p>
+      <div class="game-slot">
+        <h2>Doom HTML</h2>
+        <p>Retro chaos unlocked.</p>
+        <a class="action-link" href="doom/Titlescreen.html" target="_blank">Play Now</a>
+      </div>
+
+      <div class="game-slot">
+        <h2>Minecraft HTML</h2>
+        <p>Blocky creative mode.</p>
+        <a class="action-link" href="minecraft.html" target="_blank">Play Now</a>
+      </div>
+
+      <div class="game-slot">
+        <h2>Flappy Bird</h2>
+        <p>Tap. Glide. Repeat.</p>
+        <a class="action-link" href="https://yuniorschillzone.xyz/flappybird/index.html" target="_blank">Play Now</a>
+      </div>
+
+      <div class="game-slot">
+        <h2>Subway Surfers</h2>
+        <p>Endless runner rush.</p>
+        <a class="action-link" href="https://yuniorschillzone.xyz/subway%20surfying/index.html" target="_blank">Play Now</a>
+      </div>
+    </div>
   </div>
-
-  <div class="game-slot">
-    <h2>Doom HTML</h2>
-    <p><a href="doom/Titlescreen.html" target="_blank">Play Now</a></p>
-  </div>
-
-  <div class="game-slot">
-    <h2>Minecraft HTML</h2>
-    <p><a href="minecraft.html" target="_blank">Play Now</a></p>
-  </div>
-
-  <div class="game-slot">
-    <h2>Flappy bird</h2>
-    <p><a href="https://yuniorschillzone.xyz/flappybird/index.html" target="_blank">Play Now</a></p>
-  </div>
-
-   <div class="game-slot">
-    <h2>Subway surfers</h2>
-    <p><a href="https://yuniorschillzone.xyz/subway%20surfying/index.html" target="_blank">Play Now</a></p>
-  </div>
-</div>
-
 </body>
 </html>
