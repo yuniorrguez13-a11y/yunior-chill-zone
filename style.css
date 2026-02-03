@@ -150,3 +150,24 @@ body { max-width: 100vw; overflow-x: hidden; }
 .nav-link#zoom-link {
   font-size: 16px;
 }
+.chat-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 14px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #d6dcff;
+}
+
+.toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: #8a5bff;
+}
+
