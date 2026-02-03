@@ -11,7 +11,7 @@
   <!-- MATRIX BACKGROUND -->
   <canvas id="matrix"></canvas>
 
-  <!-- CHAT CONTAINER -->
+  <!-- CHAT CONTROLS -->
   <div class="chat-controls">
     <label class="toggle">
       <input type="checkbox" id="safe-mode-toggle">
@@ -19,6 +19,7 @@
     </label>
   </div>
 
+  <!-- CHAT CONTAINER -->
   <div id="chat-container">
     <div class="chat-header">
       <div>
@@ -51,6 +52,9 @@
 
   <!-- SCRIPTS -->
   <script src="matrix.js"></script>
-  <script type="module" src="chat.js"></script>
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/supabase.min.js"></script>
+  <!-- Your chat logic -->
+  <script src="chat.js"></script>
 </body>
 </html>
