@@ -1,88 +1,98 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
-import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-storage.js";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-// ===== FIREBASE CONFIG =====
-const firebaseConfig = {
-  apiKey: "AIzaSyAdbajdKncmGkL5XV2WaXofWHpcbcOBWaE",
-  authDomain: "yunior-chill-z0ne.firebaseapp.com",
-  databaseURL: "https://yunior-chill-z0ne-default-rtdb.firebaseio.com",
-  projectId: "yunior-chill-z0ne",
-  storageBucket: "yunior-chill-z0ne.firebasestorage.app",
-  messagingSenderId: "947317840264",
-  appId: "1:947317840264:web:150402d90e493bc256c23d",
-  measurementId: "G-T2EM26F6YP"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const storage = getStorage(app);
+// ===== Supabase Config =====
+const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
+const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const chatBox = document.getElementById("chat-box");
 const input = document.getElementById("msg-input");
 const sendBtn = document.getElementById("send-btn");
 const usernameInput = document.getElementById("username-input");
 const pfpInput = document.getElementById("pfp-input");
-const imageUpload = document.getElementById("image-upload"); // NEW
+const imageUpload = document.getElementById("image-upload");
+const safeModeToggle = document.getElementById("safe-mode-toggle");
 
-// ===== Local Storage for username + PFP =====
+// ===== Local Storage =====
 let currentUsername = localStorage.getItem("yc_username") || "";
 usernameInput.value = currentUsername;
 
 let currentPfpUrl = localStorage.getItem("yc_pfp") || "";
 pfpInput.value = currentPfpUrl;
 
-// ===== SEND MESSAGE =====
+let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
+safeModeToggle.checked = safeModeEnabled;
+
+// ===== Safe Mode Filter =====
+const blockedWords = [
+  "fuck","shit","bitch","asshole","bastard","dick","pussy","cunt","slut","whore",
+  "nigger","nigga","fag","faggot","kike","spic","chink"
+];
+
+const shouldHideMessage = (text = "") => {
+  if (!safeModeEnabled) return false;
+  const normalized = text.toLowerCase();
+  return blockedWords.some(word => normalized.includes(word));
+};
+
+safeModeToggle.addEventListener("change", () => {
+  safeModeEnabled = safeModeToggle.checked;
+  localStorage.setItem("yc_safe_mode", safeModeEnabled);
+  renderMessages();
+});
+
+// ===== Send Message =====
 sendBtn.addEventListener("click", async () => {
   const msg = input.value.trim();
   const file = imageUpload.files[0];
+  if (!msg && !file) return;
 
-  if (!msg && !file) return; // require text or image
-
-  let username = usernameInput.value.trim() || "Anon";
-  let pfpUrl = pfpInput.value.trim() || "";
+  const username = usernameInput.value.trim() || "Anon";
+  const pfpUrl = pfpInput.value.trim() || "";
 
   localStorage.setItem("yc_username", username);
   localStorage.setItem("yc_pfp", pfpUrl);
 
   let imageUrl = "";
-
-  // upload image if selected
   if (file) {
-    const fileRef = sRef(storage, `chat-images/${Date.now()}_${file.name}`);
-    await uploadBytes(fileRef, file);
-    imageUrl = await getDownloadURL(fileRef);
+    const { data, error } = await supabase.storage
+      .from("chat-images")
+      .upload(`public/${Date.now()}_${file.name}`, file);
+    if (!error) {
+      const { publicUrl } = supabase.storage
+        .from("chat-images")
+        .getPublicUrl(data.path);
+      imageUrl = publicUrl;
+    }
   }
 
-  push(ref(db, "messages"), {
-    text: msg,
-    timestamp: Date.now(),
-    username,
-    pfpUrl,
-    imageUrl // NEW
-  });
+  await supabase.from("messages").insert([
+    { username, pfp_url: pfpUrl, text: msg, image_url: imageUrl, timestamp: Date.now() }
+  ]);
 
   input.value = "";
-  imageUpload.value = ""; // reset file input
+  imageUpload.value = "";
 });
 
-// ===== LISTEN FOR MESSAGES =====
-onValue(ref(db, "messages"), snapshot => {
-  chatBox.innerHTML = "";
-  const data = snapshot.val();
-  if (!data) return;
+// ===== Render Messages =====
+async function renderMessages() {
+  const { data } = await supabase.from("messages")
+    .select("*")
+    .order("timestamp", { ascending: true });
 
-  Object.values(data).forEach(msg => {
+  chatBox.innerHTML = "";
+
+  data.forEach(msg => {
+    if (shouldHideMessage(msg.text)) return;
+
     const msgDiv = document.createElement("div");
     msgDiv.style.display = "flex";
-    msgDiv.style.alignItems = "center";
+    msgDiv.style.flexDirection = "column";
     msgDiv.style.marginBottom = "8px";
-    msgDiv.style.flexDirection = "column"; // stack text + image
 
-    // display uploaded image first if exists
-    if (msg.imageUrl) {
+    if (msg.image_url) {
       const img = document.createElement("img");
-      img.src = msg.imageUrl;
+      img.src = msg.image_url;
       img.width = 150;
       img.style.borderRadius = "10px";
       img.style.marginBottom = "4px";
@@ -93,14 +103,14 @@ onValue(ref(db, "messages"), snapshot => {
     contentDiv.style.display = "flex";
     contentDiv.style.alignItems = "center";
 
-    if (msg.pfpUrl) {
-      const img = document.createElement("img");
-      img.src = msg.pfpUrl;
-      img.width = 40;
-      img.height = 40;
-      img.style.borderRadius = "50%";
-      img.style.marginRight = "8px";
-      contentDiv.appendChild(img);
+    if (msg.pfp_url) {
+      const pfpImg = document.createElement("img");
+      pfpImg.src = msg.pfp_url;
+      pfpImg.width = 40;
+      pfpImg.height = 40;
+      pfpImg.style.borderRadius = "50%";
+      pfpImg.style.marginRight = "8px";
+      contentDiv.appendChild(pfpImg);
     }
 
     const text = document.createElement("span");
@@ -109,50 +119,18 @@ onValue(ref(db, "messages"), snapshot => {
 
     msgDiv.appendChild(contentDiv);
     chatBox.appendChild(msgDiv);
-    const safeModeToggle = document.getElementById("safe-mode-toggle");
-
-let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
-if (safeModeToggle) {
-  safeModeToggle.checked = safeModeEnabled;
-  safeModeToggle.addEventListener("change", () => {
-    safeModeEnabled = safeModeToggle.checked;
-    localStorage.setItem("yc_safe_mode", safeModeEnabled);
-    renderMessages();
- const blockedWords = [
-  "fuck",
-  "shit",
-  "bitch",
-  "asshole",
-  "bastard",
-  "dick",
-  "pussy",
-  "cunt",
-  "slut",
-  "whore",
-  "nigger",
-  "nigga",
-  "fag",
-  "faggot",
-  "kike",
-  "spic",
-  "chink"
-];
-
-const shouldHideMessage = (text = "") => {
-  if (!safeModeEnabled) return false;
-  const normalized = text.toLowerCase();
-  return blockedWords.some(word => normalized.includes(word));
-cachedMessages.forEach(msg => {
-  if (shouldHideMessage(msg.text)) {
-    return;
-  }
-  // render message...
-});
-
-};
- });
-}
   });
 
   chatBox.scrollTop = chatBox.scrollHeight;
-});
+}
+
+// ===== Realtime Subscription =====
+supabase
+  .channel("public:messages")
+  .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload) => {
+    renderMessages();
+  })
+  .subscribe();
+
+// ===== Initial Render =====
+renderMessages();
