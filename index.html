@@ -1,41 +1,38 @@
 <!DOCTYPE html>
-<html lang="en"><head>
+<html lang="en">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yunior Chill Zone Chat</title>
-
+  <title>Yuniors Chill Zone Chat</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="style.css?v=3">
-
-  <!-- Google AdSense -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1722989486934018" crossorigin="anonymous"></script>
-<style type="text/css" id="operaUserStyle"></style></head>
+</head>
 <body>
   <!-- MATRIX BACKGROUND -->
   <canvas id="matrix"></canvas>
 
   <!-- CHAT CONTAINER -->
- <div class="chat-controls">
-  <label class="toggle">
-    <input type="checkbox" id="safe-mode-toggle">
-    <span>Safe mode (messages with profanity will not be shown)</span>
-  </label>
- </div>
- <div id="chat-container">
+  <div class="chat-controls">
+    <label class="toggle">
+      <input type="checkbox" id="safe-mode-toggle">
+      <span>Safe mode (messages with profanity will not be shown)</span>
+    </label>
+  </div>
+
+  <div id="chat-container">
     <div class="chat-header">
       <div>
         <h1>Yuniors Chill Zone</h1>
         <p class="subtitle">Hang out, drop a message, and jump into the vibes.</p>
       </div>
       <div class="nav-links">
-        <a href="music.html" target="_blank" id="music-link" class="nav-link">Music Room</a>
-        <a href="gaming.html" target="_blank" id="gaming-link" class="nav-link">Gaming Zone</a>
-        <a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link" class="nav-link">Zoom Voice Chat</a>
+        <a href="music.html" target="_blank" class="nav-link">Music Room</a>
+        <a href="gaming.html" target="_blank" class="nav-link">Gaming Zone</a>
+        <a href="https://zoom.us/j/4498564941" target="_blank" class="nav-link">Zoom Voice Chat</a>
       </div>
     </div>
 
-   <!-- USER PROFILE -->
+    <!-- USER PROFILE -->
     <div class="profile-fields">
       <input type="text" id="username-input" placeholder="Enter your username">
       <input type="text" id="pfp-input" placeholder="Enter PFP URL">
@@ -55,4 +52,5 @@
   <!-- SCRIPTS -->
   <script src="matrix.js"></script>
   <script type="module" src="chat.js"></script>
-</body></html>
+</body>
+</html>
