@@ -7,7 +7,7 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: monospace;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
   overflow-x: hidden;
   background-color: #1a1a1a;
   color: #fff;
@@ -30,95 +30,123 @@ canvas#matrix {
 #chat-container {
   position: relative;
   z-index: 1;
-  max-width: 800px;
+  max-width: 920px;
   width: 90%;
-  margin: 20px auto;
-  padding: 20px;
-  background: rgba(0,0,0,0.5);
-  border-radius: 10px;
+  margin: 32px auto 40px;
+  padding: 28px;
+  background: rgba(10, 12, 20, 0.7);
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: #c7d0ff;
+  font-size: 16px;
+}
+
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 /* CHAT BOX */
 #chat-box {
   width: 100%;
   height: 400px;
-  background: #111;
-  border: 2px solid #555;
+  background: rgba(5, 8, 15, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
   overflow-y: scroll;
   padding: 10px;
   margin-bottom: 10px;
 }
 
 /* INPUTS & BUTTON */
-#msg-input, #username-input, #pfp-input {
-  width: calc(100% - 20px);
-  padding: 10px;
-  margin-bottom: 8px;
+.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+#msg-input,
+#username-input,
+#pfp-input,
+#image-upload {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 22, 30, 0.85);
+  color: #fff;
+  font-size: 14px;
+  box-sizing: border-box;
 }
 
 #send-btn {
-  padding: 10px 20px;
+  padding: 12px 20px;
   cursor: pointer;
-  background-color: #555;
+  background: linear-gradient(120deg, #4c6fff, #8a5bff);
   border: none;
   color: #fff;
-}
-#music-link {
-  color: white;
-  font-size: 28px;
-  font-weight: bold;
-  text-decoration: none;
-  display: inline-block;
-  padding: 10px 20px;
-  border: 2px solid white;
   border-radius: 10px;
-  margin-bottom: 20px;
-  transition: 0.3s ease;
+  font-weight: 600;
+  min-width: 120px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-#music-link:hover {
+#send-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(76, 111, 255, 0.35);
+}
+
+.message-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  transition: 0.3s ease;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.nav-link:hover {
   background-color: white;
   color: black;
 }
+
 body { max-width: 100vw; overflow-x: hidden; }
-}
-#gaming-link {
-  color: white;
-  font-size: 28px;
-  font-weight: bold;
-  text-decoration: none;
-  display: inline-block;
-  padding: 10px 20px;
-  border: 2px solid white;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  transition: 0.3s ease;
-}
-
-#gaming-link:hover {
-  background-color: white;
-  color: black;
-}
-#zoom-link {
-  color: white;
-  font-size: 28px;
-  font-weight: bold;
-  text-decoration: none;
-  display: inline-block;
-  padding: 10px 20px;
-  border: 2px solid white;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  transition: 0.3s ease;
-}
-
-#zoom-link:hover {
-  background-color: white;
-  color: black;
-}
 #chat-container h1 {
   font-family: "yuniorrguez13-a11y", serif;
+  font-size: clamp(28px, 4vw, 42px);
+  margin: 0;
 }
 
-
-
+.nav-link#music-link,
+.nav-link#gaming-link,
+.nav-link#zoom-link {
+  font-size: 16px;
+}
