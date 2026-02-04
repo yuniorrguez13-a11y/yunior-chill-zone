@@ -1,3 +1,5 @@
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/supabase.min.js"></script>
+<script>
 window.addEventListener("load", () => {
   // ===== Supabase Config =====
   const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
@@ -55,25 +57,36 @@ window.addEventListener("load", () => {
     localStorage.setItem("yc_username", username);
     localStorage.setItem("yc_pfp", pfpUrl);
 
-    // Upload image if attached
     let imageUrl = "";
+
     if (file) {
+      // Upload message image to Supabase storage
       const { data, error } = await supabase.storage
         .from("chat-images")
         .upload(`public/${Date.now()}_${file.name}`, file);
+
       if (!error) {
         const { publicUrl } = supabase.storage
           .from("chat-images")
           .getPublicUrl(data.path);
         imageUrl = publicUrl;
+      } else {
+        console.error("Storage upload error:", error.message);
       }
     }
 
-    const { error } = await supabase.from("messages").insert([
-      { username, pfp_url: pfpUrl, text: msg, image_url: imageUrl, timestamp: Date.now() }
-    ]);
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .insert([
+          { username, pfp_url: pfpUrl, text: msg, image_url: imageUrl, timestamp: Date.now() }
+        ]);
 
-    if (error) console.error(error);
+      if (error) throw error;
+      console.log("Message sent:", data);
+    } catch (err) {
+      console.error("Insert failed:", err.message);
+    }
 
     input.value = "";
     imageUpload.value = "";
@@ -81,66 +94,70 @@ window.addEventListener("load", () => {
 
   // ===== Render Messages =====
   async function renderMessages() {
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .order("id", { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .order("id", { ascending: true });
 
-    if (error) {
-      console.error(error);
-      return;
+      if (error) throw error;
+
+      chatBox.innerHTML = "";
+
+      data.forEach(msg => {
+        if (shouldHideMessage(msg.text)) return;
+
+        const msgDiv = document.createElement("div");
+        msgDiv.style.display = "flex";
+        msgDiv.style.alignItems = "center";
+        msgDiv.style.marginBottom = "8px";
+
+        // Profile picture
+        if (msg.pfp_url) {
+          const pfpImg = document.createElement("img");
+          pfpImg.src = msg.pfp_url;
+          pfpImg.width = 40;
+          pfpImg.height = 40;
+          pfpImg.style.borderRadius = "50%";
+          pfpImg.style.marginRight = "8px";
+          msgDiv.appendChild(pfpImg);
+        }
+
+        // Username + Text
+        const textDiv = document.createElement("div");
+        textDiv.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
+        msgDiv.appendChild(textDiv);
+
+        // Optional message image
+        if (msg.image_url) {
+          const img = document.createElement("img");
+          img.src = msg.image_url;
+          img.width = 150;
+          img.style.borderRadius = "10px";
+          img.style.marginLeft = "8px";
+          msgDiv.appendChild(img);
+        }
+
+        chatBox.appendChild(msgDiv);
+      });
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (err) {
+      console.error("Fetch messages failed:", err.message);
     }
-
-    chatBox.innerHTML = "";
-
-    data.forEach(msg => {
-      if (shouldHideMessage(msg.text)) return;
-
-      const msgDiv = document.createElement("div");
-      msgDiv.style.display = "flex";
-      msgDiv.style.alignItems = "center";
-      msgDiv.style.marginBottom = "8px";
-
-      // ===== Profile Picture =====
-      if (msg.pfp_url) {
-        const pfpImg = document.createElement("img");
-        pfpImg.src = msg.pfp_url; // exactly as stored
-        pfpImg.width = 40;
-        pfpImg.height = 40;
-        pfpImg.style.borderRadius = "50%";
-        pfpImg.style.marginRight = "8px";
-        msgDiv.appendChild(pfpImg);
-      }
-
-      // ===== Username + Text =====
-      const textDiv = document.createElement("div");
-      textDiv.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
-      msgDiv.appendChild(textDiv);
-
-      // ===== Optional Message Image =====
-      if (msg.image_url) {
-        const img = document.createElement("img");
-        img.src = msg.image_url;
-        img.width = 150;
-        img.style.borderRadius = "10px";
-        img.style.marginLeft = "8px";
-        msgDiv.appendChild(img);
-      }
-
-      chatBox.appendChild(msgDiv);
-    });
-
-    chatBox.scrollTop = chatBox.scrollHeight;
   }
 
   // ===== Realtime Subscription =====
   supabase
-    .channel("messages")
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
-      renderMessages();
-    })
+    .channel("public:messages")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "messages" },
+      () => renderMessages()
+    )
     .subscribe();
 
   // ===== Initial Render =====
   renderMessages();
 });
+</script>
