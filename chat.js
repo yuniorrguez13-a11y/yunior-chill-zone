@@ -7,7 +7,7 @@ window.addEventListener("load", () => {
   const input = document.getElementById("msg-input");
   const sendBtn = document.getElementById("send-btn");
   const usernameInput = document.getElementById("username-input");
-  const pfpInput = document.getElementById("pfp-input"); // restored
+  const pfpInput = document.getElementById("pfp-input");
   const safeModeToggle = document.getElementById("safe-mode-toggle");
 
   const emailInput = document.getElementById("email-input");
@@ -18,6 +18,7 @@ window.addEventListener("load", () => {
 
   let currentUser = null;
 
+  // ===== Auth functions =====
   async function checkAuth() {
     const { data: { user } } = await supabase.auth.getUser();
     currentUser = user;
@@ -69,6 +70,7 @@ window.addEventListener("load", () => {
     updateUI();
   };
 
+  // ===== Safe mode =====
   let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
   safeModeToggle.checked = safeModeEnabled;
 
@@ -91,7 +93,7 @@ window.addEventListener("load", () => {
     if (!msg) return;
 
     const username = usernameInput.value.trim() || "User";
-    const pfpUrl = pfpInput.value.trim() || ""; // grab the URL
+    const pfpUrl = pfpInput.value.trim() || "";
 
     const { error } = await supabase.from("messages").insert([
       { user_id: currentUser.id, username, pfp_url: pfpUrl, text: msg }
@@ -101,7 +103,7 @@ window.addEventListener("load", () => {
     input.value = "";
   });
 
-  // ===== Render Messages =====
+  // ===== Render Messages (safe) =====
   async function renderMessages() {
     const { data, error } = await supabase
       .from("messages")
@@ -117,7 +119,7 @@ window.addEventListener("load", () => {
       msgDiv.style.display = "flex";
       msgDiv.style.marginBottom = "10px";
 
-      // Show PFP if URL exists
+      // PFP
       if (msg.pfp_url) {
         const pfp = document.createElement("img");
         pfp.src = msg.pfp_url;
@@ -128,17 +130,24 @@ window.addEventListener("load", () => {
         msgDiv.appendChild(pfp);
       }
 
+      // Content: bold username + safe text
       const content = document.createElement("div");
-      const text = document.createElement("div");
-      text.innerHTML = `<b>${msg.username}:</b> ${msg.text}`;
-      content.appendChild(text);
+      const name = document.createElement("b");
+      name.textContent = msg.username + ":";
+      const messageText = document.createElement("span");
+      messageText.textContent = msg.text;
+
+      content.appendChild(name);
+      content.appendChild(messageText);
       msgDiv.appendChild(content);
+
       chatBox.appendChild(msgDiv);
     });
 
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
+  // ===== Realtime updates =====
   supabase
     .channel("messages")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, renderMessages)
