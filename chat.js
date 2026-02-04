@@ -3,7 +3,6 @@ window.addEventListener("load", () => {
   const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
   const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  console.log("Supabase loaded:", supabase);
 
   // ===== DOM Elements =====
   const chatBox = document.getElementById("chat-box");
@@ -14,6 +13,9 @@ window.addEventListener("load", () => {
   const imageUpload = document.getElementById("image-upload");
   const safeModeToggle = document.getElementById("safe-mode-toggle");
 
+  const emailInput = document.getElementById("email-input");
+  const passwordInput = document.getElementById("password-input");
+  const signupBtn = document.getElementById("signup-btn");
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
 
@@ -31,48 +33,68 @@ window.addEventListener("load", () => {
       sendBtn.disabled = true;
       input.disabled = true;
       input.placeholder = "Login to chat";
-      loginBtn.style.display = "block";
+      signupBtn.style.display = "inline";
+      loginBtn.style.display = "inline";
       logoutBtn.style.display = "none";
     } else {
       sendBtn.disabled = false;
       input.disabled = false;
-      input.placeholder = "Type message...";
+      input.placeholder = "Type your message...";
+      signupBtn.style.display = "none";
       loginBtn.style.display = "none";
-      logoutBtn.style.display = "block";
-
-      // Autofill from OAuth (Discord/Google)
-      const meta = currentUser.user_metadata || {};
-      if (meta.full_name) usernameInput.value = meta.full_name;
-      if (meta.avatar_url) pfpInput.value = meta.avatar_url;
+      logoutBtn.style.display = "inline";
     }
   }
 
-  // ===== Login / Logout =====
-  loginBtn.addEventListener("click", () => {
-    supabase.auth.signInWithOAuth({ provider: "discord" });
-  });
+  // ===== Signup =====
+  signupBtn.onclick = async () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
 
-  logoutBtn.addEventListener("click", async () => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (error) alert(error.message);
+    else alert("Check your email to confirm your account!");
+  };
+
+  // ===== Login =====
+  loginBtn.onclick = async () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) alert(error.message);
+    else {
+      currentUser = data.user;
+      updateUI();
+    }
+  };
+
+  // ===== Logout =====
+  logoutBtn.onclick = async () => {
     await supabase.auth.signOut();
     currentUser = null;
     updateUI();
-  });
+  };
 
-  // ===== Local Storage =====
-  let currentUsername = localStorage.getItem("yc_username") || "";
-  usernameInput.value = currentUsername;
-  let currentPfpUrl = localStorage.getItem("yc_pfp") || "";
-  pfpInput.value = currentPfpUrl;
+  // ===== Safe Mode Filter =====
   let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
   safeModeToggle.checked = safeModeEnabled;
 
-  // ===== Safe Mode Filter =====
   const blockedWords = ["fuck","shit","bitch","asshole","bastard","dick","pussy","cunt","slut","whore"];
   const shouldHideMessage = (text = "") => {
     if (!safeModeEnabled) return false;
     const normalized = text.toLowerCase();
     return blockedWords.some(word => normalized.includes(word));
   };
+
   safeModeToggle.addEventListener("change", () => {
     safeModeEnabled = safeModeToggle.checked;
     localStorage.setItem("yc_safe_mode", safeModeEnabled);
@@ -87,11 +109,8 @@ window.addEventListener("load", () => {
     const file = imageUpload.files[0];
     if (!msg && !file) return;
 
-    const username = usernameInput.value.trim() || "Anon";
+    const username = usernameInput.value.trim() || "User";
     const pfpUrl = pfpInput.value.trim() || "";
-
-    localStorage.setItem("yc_username", username);
-    localStorage.setItem("yc_pfp", pfpUrl);
 
     let imageUrl = "";
     if (file) {
@@ -162,7 +181,7 @@ window.addEventListener("load", () => {
       }
 
       const text = document.createElement("div");
-      text.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
+      text.innerHTML = `<b>${msg.username}:</b> ${msg.text}`;
       content.appendChild(text);
 
       msgDiv.appendChild(content);
@@ -182,7 +201,7 @@ window.addEventListener("load", () => {
     )
     .subscribe();
 
-  // ===== Initial =====
+  // ===== Init =====
   checkAuth();
   renderMessages();
 });
