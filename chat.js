@@ -1,11 +1,8 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/supabase.min.js"></script>
-<script>
 window.addEventListener("load", () => {
   // ===== Supabase Config =====
   const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
   const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
   console.log("Supabase loaded:", supabase);
 
   // ===== DOM Elements =====
@@ -17,28 +14,21 @@ window.addEventListener("load", () => {
   const imageUpload = document.getElementById("image-upload");
   const safeModeToggle = document.getElementById("safe-mode-toggle");
 
-  // ===== Local Storage & Safe Mode =====
+  // ===== Local Storage =====
   let currentUsername = localStorage.getItem("yc_username") || "";
   usernameInput.value = currentUsername;
-
   let currentPfpUrl = localStorage.getItem("yc_pfp") || "";
   pfpInput.value = currentPfpUrl;
-
   let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
   safeModeToggle.checked = safeModeEnabled;
 
   // ===== Safe Mode Filter =====
-  const blockedWords = [
-    "fuck","shit","bitch","asshole","bastard","dick","pussy","cunt","slut","whore",
-    "nigger","nigga","fag","faggot","kike","spic","chink"
-  ];
-
+  const blockedWords = ["fuck","shit","bitch","asshole","bastard","dick","pussy","cunt","slut","whore"];
   const shouldHideMessage = (text = "") => {
     if (!safeModeEnabled) return false;
     const normalized = text.toLowerCase();
     return blockedWords.some(word => normalized.includes(word));
   };
-
   safeModeToggle.addEventListener("change", () => {
     safeModeEnabled = safeModeToggle.checked;
     localStorage.setItem("yc_safe_mode", safeModeEnabled);
@@ -52,41 +42,29 @@ window.addEventListener("load", () => {
     if (!msg && !file) return;
 
     const username = usernameInput.value.trim() || "Anon";
-    let pfpUrl = pfpInput.value.trim() || "";
-
+    const pfpUrl = pfpInput.value.trim() || "";
     localStorage.setItem("yc_username", username);
     localStorage.setItem("yc_pfp", pfpUrl);
 
     let imageUrl = "";
-
     if (file) {
-      // Upload message image to Supabase storage
       const { data, error } = await supabase.storage
         .from("chat-images")
         .upload(`public/${Date.now()}_${file.name}`, file);
-
-      if (!error) {
-        const { publicUrl } = supabase.storage
+      if (error) {
+        console.error(error);
+      } else {
+        const { data: pub } = supabase.storage
           .from("chat-images")
           .getPublicUrl(data.path);
-        imageUrl = publicUrl;
-      } else {
-        console.error("Storage upload error:", error.message);
+        imageUrl = pub.publicUrl;
       }
     }
 
-    try {
-      const { data, error } = await supabase
-        .from("messages")
-        .insert([
-          { username, pfp_url: pfpUrl, text: msg, image_url: imageUrl, timestamp: Date.now() }
-        ]);
-
-      if (error) throw error;
-      console.log("Message sent:", data);
-    } catch (err) {
-      console.error("Insert failed:", err.message);
-    }
+    const { error } = await supabase.from("messages").insert([
+      { username, pfp_url: pfpUrl, text: msg, image_url: imageUrl }
+    ]);
+    if (error) console.error(error);
 
     input.value = "";
     imageUpload.value = "";
@@ -94,62 +72,63 @@ window.addEventListener("load", () => {
 
   // ===== Render Messages =====
   async function renderMessages() {
-    try {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .order("id", { ascending: true });
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .order("id", { ascending: true });
 
-      if (error) throw error;
-
-      chatBox.innerHTML = "";
-
-      data.forEach(msg => {
-        if (shouldHideMessage(msg.text)) return;
-
-        const msgDiv = document.createElement("div");
-        msgDiv.style.display = "flex";
-        msgDiv.style.alignItems = "center";
-        msgDiv.style.marginBottom = "8px";
-
-        // Profile picture
-        if (msg.pfp_url) {
-          const pfpImg = document.createElement("img");
-          pfpImg.src = msg.pfp_url;
-          pfpImg.width = 40;
-          pfpImg.height = 40;
-          pfpImg.style.borderRadius = "50%";
-          pfpImg.style.marginRight = "8px";
-          msgDiv.appendChild(pfpImg);
-        }
-
-        // Username + Text
-        const textDiv = document.createElement("div");
-        textDiv.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
-        msgDiv.appendChild(textDiv);
-
-        // Optional message image
-        if (msg.image_url) {
-          const img = document.createElement("img");
-          img.src = msg.image_url;
-          img.width = 150;
-          img.style.borderRadius = "10px";
-          img.style.marginLeft = "8px";
-          msgDiv.appendChild(img);
-        }
-
-        chatBox.appendChild(msgDiv);
-      });
-
-      chatBox.scrollTop = chatBox.scrollHeight;
-    } catch (err) {
-      console.error("Fetch messages failed:", err.message);
+    if (error) {
+      console.error(error);
+      return;
     }
+
+    chatBox.innerHTML = "";
+
+    data.forEach(msg => {
+      if (shouldHideMessage(msg.text)) return;
+
+      const msgDiv = document.createElement("div");
+      msgDiv.style.display = "flex";
+      msgDiv.style.alignItems = "flex-start";
+      msgDiv.style.marginBottom = "10px";
+
+      // PFP
+      if (msg.pfp_url) {
+        const pfp = document.createElement("img");
+        pfp.src = msg.pfp_url;
+        pfp.width = 40;
+        pfp.height = 40;
+        pfp.style.borderRadius = "50%";
+        pfp.style.marginRight = "10px";
+        msgDiv.appendChild(pfp);
+      }
+
+      // Text + Image
+      const content = document.createElement("div");
+
+      if (msg.image_url) {
+        const img = document.createElement("img");
+        img.src = msg.image_url;
+        img.width = 150;
+        img.style.display = "block";
+        img.style.marginBottom = "5px";
+        content.appendChild(img);
+      }
+
+      const text = document.createElement("div");
+      text.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
+      content.appendChild(text);
+
+      msgDiv.appendChild(content);
+      chatBox.appendChild(msgDiv);
+    });
+
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // ===== Realtime Subscription =====
+  // ===== Realtime =====
   supabase
-    .channel("public:messages")
+    .channel("messages")
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "messages" },
@@ -157,7 +136,6 @@ window.addEventListener("load", () => {
     )
     .subscribe();
 
-  // ===== Initial Render =====
+  // ===== Initial =====
   renderMessages();
 });
-</script>
