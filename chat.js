@@ -14,6 +14,50 @@ window.addEventListener("load", () => {
   const imageUpload = document.getElementById("image-upload");
   const safeModeToggle = document.getElementById("safe-mode-toggle");
 
+  const loginBtn = document.getElementById("login-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  // ===== Auth State =====
+  let currentUser = null;
+
+  async function checkAuth() {
+    const { data: { user } } = await supabase.auth.getUser();
+    currentUser = user;
+    updateUI();
+  }
+
+  function updateUI() {
+    if (!currentUser) {
+      sendBtn.disabled = true;
+      input.disabled = true;
+      input.placeholder = "Login to chat";
+      loginBtn.style.display = "block";
+      logoutBtn.style.display = "none";
+    } else {
+      sendBtn.disabled = false;
+      input.disabled = false;
+      input.placeholder = "Type message...";
+      loginBtn.style.display = "none";
+      logoutBtn.style.display = "block";
+
+      // Autofill from OAuth (Discord/Google)
+      const meta = currentUser.user_metadata || {};
+      if (meta.full_name) usernameInput.value = meta.full_name;
+      if (meta.avatar_url) pfpInput.value = meta.avatar_url;
+    }
+  }
+
+  // ===== Login / Logout =====
+  loginBtn.addEventListener("click", () => {
+    supabase.auth.signInWithOAuth({ provider: "discord" });
+  });
+
+  logoutBtn.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    currentUser = null;
+    updateUI();
+  });
+
   // ===== Local Storage =====
   let currentUsername = localStorage.getItem("yc_username") || "";
   usernameInput.value = currentUsername;
@@ -37,12 +81,15 @@ window.addEventListener("load", () => {
 
   // ===== Send Message =====
   sendBtn.addEventListener("click", async () => {
+    if (!currentUser) return;
+
     const msg = input.value.trim();
     const file = imageUpload.files[0];
     if (!msg && !file) return;
 
     const username = usernameInput.value.trim() || "Anon";
     const pfpUrl = pfpInput.value.trim() || "";
+
     localStorage.setItem("yc_username", username);
     localStorage.setItem("yc_pfp", pfpUrl);
 
@@ -51,9 +98,8 @@ window.addEventListener("load", () => {
       const { data, error } = await supabase.storage
         .from("chat-images")
         .upload(`public/${Date.now()}_${file.name}`, file);
-      if (error) {
-        console.error(error);
-      } else {
+
+      if (!error) {
         const { data: pub } = supabase.storage
           .from("chat-images")
           .getPublicUrl(data.path);
@@ -62,8 +108,15 @@ window.addEventListener("load", () => {
     }
 
     const { error } = await supabase.from("messages").insert([
-      { username, pfp_url: pfpUrl, text: msg, image_url: imageUrl }
+      {
+        user_id: currentUser.id,
+        username,
+        pfp_url: pfpUrl,
+        text: msg,
+        image_url: imageUrl
+      }
     ]);
+
     if (error) console.error(error);
 
     input.value = "";
@@ -77,10 +130,7 @@ window.addEventListener("load", () => {
       .select("*")
       .order("id", { ascending: true });
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+    if (error) return;
 
     chatBox.innerHTML = "";
 
@@ -89,10 +139,8 @@ window.addEventListener("load", () => {
 
       const msgDiv = document.createElement("div");
       msgDiv.style.display = "flex";
-      msgDiv.style.alignItems = "flex-start";
       msgDiv.style.marginBottom = "10px";
 
-      // PFP
       if (msg.pfp_url) {
         const pfp = document.createElement("img");
         pfp.src = msg.pfp_url;
@@ -103,7 +151,6 @@ window.addEventListener("load", () => {
         msgDiv.appendChild(pfp);
       }
 
-      // Text + Image
       const content = document.createElement("div");
 
       if (msg.image_url) {
@@ -111,7 +158,6 @@ window.addEventListener("load", () => {
         img.src = msg.image_url;
         img.width = 150;
         img.style.display = "block";
-        img.style.marginBottom = "5px";
         content.appendChild(img);
       }
 
@@ -137,5 +183,6 @@ window.addEventListener("load", () => {
     .subscribe();
 
   // ===== Initial =====
+  checkAuth();
   renderMessages();
 });
