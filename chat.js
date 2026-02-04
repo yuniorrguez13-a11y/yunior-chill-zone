@@ -65,8 +65,21 @@ window.addEventListener("load", () => {
     if (!msg && !file) return;
 
     const username = usernameInput.value.trim() || "Anon";
-    const pfpUrl = pfpInput.value.trim() || "";
-
+    // When the user enters a PFP URL, just save it as-is
+const pfpUrl = pfpInput.value.trim(); 
+// OR if uploading to storage, get public URL
+if (file) {
+  const { data, error } = await supabase.storage
+    .from("chat-images")
+    .upload(`public/${Date.now()}_${file.name}`, file);
+  if (!error) {
+    const { publicUrl } = supabase
+      .storage
+      .from("chat-images")
+      .getPublicUrl(data.path);
+    pfpUrl = publicUrl; // <-- this one goes into your table
+  }
+}
     localStorage.setItem("yc_username", username);
     localStorage.setItem("yc_pfp", pfpUrl);
 
