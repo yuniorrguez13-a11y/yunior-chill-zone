@@ -7,6 +7,7 @@ window.addEventListener("load", () => {
   const input = document.getElementById("msg-input");
   const sendBtn = document.getElementById("send-btn");
   const usernameInput = document.getElementById("username-input");
+  const pfpInput = document.getElementById("pfp-input"); // restored
   const safeModeToggle = document.getElementById("safe-mode-toggle");
 
   const emailInput = document.getElementById("email-input");
@@ -83,21 +84,24 @@ window.addEventListener("load", () => {
     renderMessages();
   });
 
+  // ===== Send Message =====
   sendBtn.addEventListener("click", async () => {
     if (!currentUser) return;
     const msg = input.value.trim();
     if (!msg) return;
 
     const username = usernameInput.value.trim() || "User";
+    const pfpUrl = pfpInput.value.trim() || ""; // grab the URL
 
     const { error } = await supabase.from("messages").insert([
-      { user_id: currentUser.id, username, text: msg }
+      { user_id: currentUser.id, username, pfp_url: pfpUrl, text: msg }
     ]);
 
     if (error) console.error(error);
     input.value = "";
   });
 
+  // ===== Render Messages =====
   async function renderMessages() {
     const { data, error } = await supabase
       .from("messages")
@@ -112,6 +116,17 @@ window.addEventListener("load", () => {
       const msgDiv = document.createElement("div");
       msgDiv.style.display = "flex";
       msgDiv.style.marginBottom = "10px";
+
+      // Show PFP if URL exists
+      if (msg.pfp_url) {
+        const pfp = document.createElement("img");
+        pfp.src = msg.pfp_url;
+        pfp.width = 40;
+        pfp.height = 40;
+        pfp.style.borderRadius = "50%";
+        pfp.style.marginRight = "10px";
+        msgDiv.appendChild(pfp);
+      }
 
       const content = document.createElement("div");
       const text = document.createElement("div");
