@@ -10,6 +10,13 @@ window.addEventListener("load", () => {
 
   console.log("Supabase loaded:", supabase);
 
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+  const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
   // ===== DOM Elements =====
   const chatBox = document.getElementById("chat-box");
   const input = document.getElementById("msg-input");
@@ -19,7 +26,7 @@ window.addEventListener("load", () => {
   const imageUpload = document.getElementById("image-upload");
   const safeModeToggle = document.getElementById("safe-mode-toggle");
 
-  // ===== Local Storage =====
+  // ===== Local Storage & Safe Mode =====
   let currentUsername = localStorage.getItem("yc_username") || "";
   usernameInput.value = currentUsername;
 
@@ -28,6 +35,11 @@ window.addEventListener("load", () => {
 
   let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
   safeModeToggle.checked = safeModeEnabled;
+
+  // ===== Simple Test =====
+  supabase.from('messages').select('*').then(console.log);
+</script>
+
 
   // ===== Safe Mode Filter =====
   const blockedWords = [
