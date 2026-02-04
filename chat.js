@@ -9,7 +9,7 @@ window.addEventListener("load", () => {
   const input = document.getElementById("msg-input");
   const sendBtn = document.getElementById("send-btn");
   const usernameInput = document.getElementById("username-input");
-  const pfpInput = document.getElementById("pfp-input");
+  const pfpFileInput = document.getElementById("pfp-file-input");
   const imageUpload = document.getElementById("image-upload");
   const safeModeToggle = document.getElementById("safe-mode-toggle");
 
@@ -21,10 +21,13 @@ window.addEventListener("load", () => {
 
   // ===== Auth State =====
   let currentUser = null;
+  let currentPfpUrl = localStorage.getItem("yc_pfp") || "";
 
   async function checkAuth() {
     const { data: { user } } = await supabase.auth.getUser();
     currentUser = user;
+    if (user && user.user_metadata?.avatar_url) currentPfpUrl = user.user_metadata.avatar_url;
+    usernameInput.value = user?.email?.split("@")[0] || "";
     updateUI();
   }
 
@@ -50,12 +53,7 @@ window.addEventListener("load", () => {
   signupBtn.onclick = async () => {
     const email = emailInput.value;
     const password = passwordInput.value;
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password
-    });
-
+    const { error } = await supabase.auth.signUp({ email, password });
     if (error) alert(error.message);
     else alert("Check your email to confirm your account!");
   };
@@ -64,15 +62,12 @@ window.addEventListener("load", () => {
   loginBtn.onclick = async () => {
     const email = emailInput.value;
     const password = passwordInput.value;
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) alert(error.message);
     else {
       currentUser = data.user;
+      if (currentUser.user_metadata?.avatar_url) currentPfpUrl = currentUser.user_metadata.avatar_url;
+      usernameInput.value = currentUser.email.split("@")[0];
       updateUI();
     }
   };
@@ -84,7 +79,7 @@ window.addEventListener("load", () => {
     updateUI();
   };
 
-  // ===== Safe Mode Filter =====
+  // ===== Safe Mode =====
   let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
   safeModeToggle.checked = safeModeEnabled;
 
@@ -101,23 +96,41 @@ window.addEventListener("load", () => {
     renderMessages();
   });
 
+  // ===== Upload PFP =====
+  async function uploadPfp(file) {
+    if (!file || !currentUser) return "";
+    const { data, error } = await supabase.storage
+      .from("pfp-images")
+      .upload(`public/${currentUser.id}_${Date.now()}_${file.name}`, file);
+    if (error) return "";
+    const { data: pub } = supabase.storage
+      .from("pfp-images")
+      .getPublicUrl(data.path);
+    // Save to user metadata
+    await supabase.auth.updateUser({ data: { avatar_url: pub.publicUrl } });
+    currentPfpUrl = pub.publicUrl;
+    localStorage.setItem("yc_pfp", currentPfpUrl);
+    return pub.publicUrl;
+  }
+
   // ===== Send Message =====
   sendBtn.addEventListener("click", async () => {
     if (!currentUser) return;
 
+    // Upload PFP if user selected
+    if (pfpFileInput.files[0]) {
+      await uploadPfp(pfpFileInput.files[0]);
+    }
+
     const msg = input.value.trim();
     const file = imageUpload.files[0];
     if (!msg && !file) return;
-
-    const username = usernameInput.value.trim() || "User";
-    const pfpUrl = pfpInput.value.trim() || "";
 
     let imageUrl = "";
     if (file) {
       const { data, error } = await supabase.storage
         .from("chat-images")
         .upload(`public/${Date.now()}_${file.name}`, file);
-
       if (!error) {
         const { data: pub } = supabase.storage
           .from("chat-images")
@@ -126,17 +139,17 @@ window.addEventListener("load", () => {
       }
     }
 
-    const { error } = await supabase.from("messages").insert([
+    const username = usernameInput.value.trim() || "User";
+
+    await supabase.from("messages").insert([
       {
         user_id: currentUser.id,
         username,
-        pfp_url: pfpUrl,
+        pfp_url: currentPfpUrl,
         text: msg,
         image_url: imageUrl
       }
     ]);
-
-    if (error) console.error(error);
 
     input.value = "";
     imageUpload.value = "";
@@ -148,11 +161,9 @@ window.addEventListener("load", () => {
       .from("messages")
       .select("*")
       .order("id", { ascending: true });
-
     if (error) return;
 
     chatBox.innerHTML = "";
-
     data.forEach(msg => {
       if (shouldHideMessage(msg.text)) return;
 
@@ -160,6 +171,7 @@ window.addEventListener("load", () => {
       msgDiv.style.display = "flex";
       msgDiv.style.marginBottom = "10px";
 
+      // PFP
       if (msg.pfp_url) {
         const pfp = document.createElement("img");
         pfp.src = msg.pfp_url;
@@ -177,6 +189,7 @@ window.addEventListener("load", () => {
         img.src = msg.image_url;
         img.width = 150;
         img.style.display = "block";
+        img.style.marginBottom = "5px";
         content.appendChild(img);
       }
 
@@ -194,11 +207,7 @@ window.addEventListener("load", () => {
   // ===== Realtime =====
   supabase
     .channel("messages")
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "messages" },
-      () => renderMessages()
-    )
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, renderMessages)
     .subscribe();
 
   // ===== Init =====
