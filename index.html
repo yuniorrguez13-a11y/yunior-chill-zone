@@ -26,6 +26,7 @@
         <h1>Yuniors Chill Zone</h1>
         <p class="subtitle">Hang out, drop a message, and jump into the vibes.</p>
       </div>
+
       <div class="nav-links">
         <a href="music.html" target="_blank" class="nav-link">Music Room</a>
         <a href="gaming.html" target="_blank" class="nav-link">Gaming Zone</a>
@@ -33,10 +34,16 @@
       </div>
     </div>
 
+    <!-- AUTH BOX -->
+    <div id="auth-box" style="margin: 10px 0;">
+      <button id="login-btn">Login with Discord</button>
+      <button id="logout-btn" style="display:none;">Logout</button>
+    </div>
+
     <!-- USER PROFILE -->
     <div class="profile-fields">
-      <input type="text" id="username-input" placeholder="Enter your username">
-      <input type="text" id="pfp-input" placeholder="Enter PFP URL">
+      <input type="text" id="username-input" placeholder="Username (auto from Discord)">
+      <input type="text" id="pfp-input" placeholder="PFP URL (auto from Discord)">
       <input type="file" id="image-upload" accept="image/*">
     </div>
 
@@ -45,14 +52,14 @@
 
     <!-- MESSAGE INPUT -->
     <div class="message-actions">
-      <input type="text" id="msg-input" placeholder="Type your message...">
-      <button id="send-btn">Send</button>
+      <input type="text" id="msg-input" placeholder="Type your message..." disabled>
+      <button id="send-btn" disabled>Send</button>
     </div>
   </div>
 
   <!-- SCRIPTS -->
   <script src="matrix.js"></script>
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="chat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="chat.js"></script>
 </body>
 </html>
