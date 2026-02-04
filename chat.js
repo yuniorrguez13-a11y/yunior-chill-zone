@@ -1,10 +1,10 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/supabase.min.js"></script>
-<script>
 window.addEventListener("load", () => {
   // ===== Supabase Config =====
   const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
   const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  console.log("Supabase loaded:", supabase);
 
   // ===== DOM Elements =====
   const chatBox = document.getElementById("chat-box");
@@ -27,8 +27,10 @@ window.addEventListener("load", () => {
 
   // ===== Safe Mode Filter =====
   const blockedWords = [
-    "fuck","shit","bitch","asshole","bastard","dick","pussy","cunt","slut","whore"
+    "fuck","shit","bitch","asshole","bastard","dick","pussy","cunt","slut","whore",
+    "nigger","nigga","fag","faggot","kike","spic","chink"
   ];
+
   const shouldHideMessage = (text = "") => {
     if (!safeModeEnabled) return false;
     const normalized = text.toLowerCase();
@@ -43,7 +45,7 @@ window.addEventListener("load", () => {
 
   // ===== Send Message =====
   sendBtn.addEventListener("click", async () => {
-    let msg = input.value.trim();
+    const msg = input.value.trim();
     const file = imageUpload.files[0];
     if (!msg && !file) return;
 
@@ -53,7 +55,7 @@ window.addEventListener("load", () => {
     localStorage.setItem("yc_username", username);
     localStorage.setItem("yc_pfp", pfpUrl);
 
-    // Upload image if any
+    // Upload image if attached
     let imageUrl = "";
     if (file) {
       const { data, error } = await supabase.storage
@@ -99,9 +101,10 @@ window.addEventListener("load", () => {
       msgDiv.style.alignItems = "center";
       msgDiv.style.marginBottom = "8px";
 
+      // ===== Profile Picture =====
       if (msg.pfp_url) {
         const pfpImg = document.createElement("img");
-        pfpImg.src = msg.pfp_url;
+        pfpImg.src = msg.pfp_url; // exactly as stored
         pfpImg.width = 40;
         pfpImg.height = 40;
         pfpImg.style.borderRadius = "50%";
@@ -109,10 +112,12 @@ window.addEventListener("load", () => {
         msgDiv.appendChild(pfpImg);
       }
 
+      // ===== Username + Text =====
       const textDiv = document.createElement("div");
       textDiv.innerHTML = `<b>${msg.username || "Anon"}:</b> ${msg.text}`;
       msgDiv.appendChild(textDiv);
 
+      // ===== Optional Message Image =====
       if (msg.image_url) {
         const img = document.createElement("img");
         img.src = msg.image_url;
