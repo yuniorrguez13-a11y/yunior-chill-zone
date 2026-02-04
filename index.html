@@ -36,14 +36,17 @@
 
     <!-- AUTH BOX -->
     <div id="auth-box" style="margin: 10px 0;">
-      <button id="login-btn">Login with Discord</button>
+      <input type="email" id="email-input" placeholder="Email">
+      <input type="password" id="password-input" placeholder="Password">
+      <button id="signup-btn">Sign up</button>
+      <button id="login-btn">Login</button>
       <button id="logout-btn" style="display:none;">Logout</button>
     </div>
 
     <!-- USER PROFILE -->
     <div class="profile-fields">
-      <input type="text" id="username-input" placeholder="Username (auto from Discord)">
-      <input type="text" id="pfp-input" placeholder="PFP URL (auto from Discord)">
+      <input type="text" id="username-input" placeholder="Username">
+      <input type="text" id="pfp-input" placeholder="PFP URL">
       <input type="file" id="image-upload" accept="image/*">
     </div>
 
@@ -52,7 +55,7 @@
 
     <!-- MESSAGE INPUT -->
     <div class="message-actions">
-      <input type="text" id="msg-input" placeholder="Type your message..." disabled>
+      <input type="text" id="msg-input" placeholder="Login to chat" disabled>
       <button id="send-btn" disabled>Send</button>
     </div>
   </div>
