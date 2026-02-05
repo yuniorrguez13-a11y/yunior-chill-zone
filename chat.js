@@ -18,7 +18,7 @@ window.addEventListener("load", () => {
 
   let currentUser = null;
 
-  // ===== Auth functions =====
+  // ===== Auth =====
   async function checkAuth() {
     const { data: { user } } = await supabase.auth.getUser();
     currentUser = user;
@@ -103,7 +103,7 @@ window.addEventListener("load", () => {
     input.value = "";
   });
 
-  // ===== Render Messages (safe) =====
+  // ===== Render Messages (XSS SAFE) =====
   async function renderMessages() {
     const { data, error } = await supabase
       .from("messages")
@@ -112,6 +112,7 @@ window.addEventListener("load", () => {
     if (error) return;
 
     chatBox.innerHTML = "";
+
     data.forEach(msg => {
       if (shouldHideMessage(msg.text)) return;
 
@@ -130,24 +131,25 @@ window.addEventListener("load", () => {
         msgDiv.appendChild(pfp);
       }
 
-      // Content: bold username + safe text
+      // Text (no innerHTML anywhere)
       const content = document.createElement("div");
+
       const name = document.createElement("b");
-      name.textContent = msg.username + ":";
+      name.textContent = msg.username + ": ";
+
       const messageText = document.createElement("span");
       messageText.textContent = msg.text;
 
       content.appendChild(name);
       content.appendChild(messageText);
       msgDiv.appendChild(content);
-
       chatBox.appendChild(msgDiv);
     });
 
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // ===== Realtime updates =====
+  // ===== Realtime =====
   supabase
     .channel("messages")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, renderMessages)
