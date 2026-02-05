@@ -82,6 +82,14 @@ canvas#matrix {
   margin: 18px 0;
 }
 
+#auth-box,
+.room-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
 #msg-input,
 #username-input,
 #pfp-input,
@@ -94,6 +102,35 @@ canvas#matrix {
   color: #fff;
   font-size: 14px;
   box-sizing: border-box;
+}
+
+.ui-button {
+  padding: 12px 18px;
+  cursor: pointer;
+  background: linear-gradient(120deg, rgba(76, 111, 255, 0.9), rgba(138, 91, 255, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.ui-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(76, 111, 255, 0.35);
+  filter: brightness(1.08);
+}
+
+.ui-button:active {
+  transform: translateY(0);
+}
+
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+  filter: none;
 }
 
 #send-btn {
@@ -170,4 +207,3 @@ body { max-width: 100vw; overflow-x: hidden; }
   height: 18px;
   accent-color: #8a5bff;
 }
-
