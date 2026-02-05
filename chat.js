@@ -16,7 +16,12 @@ window.addEventListener("load", () => {
   const loginBtn = document.getElementById("login-btn");
   const logoutBtn = document.getElementById("logout-btn");
 
+  const roomInput = document.getElementById("room-input");
+  const joinRoomBtn = document.getElementById("join-room-btn");
+  const currentRoomLabel = document.getElementById("current-room-label");
+
   let currentUser = null;
+  let currentRoom = "global";
 
   // ===== Auth =====
   async function checkAuth() {
@@ -70,6 +75,14 @@ window.addEventListener("load", () => {
     updateUI();
   };
 
+  // ===== Rooms =====
+  joinRoomBtn.onclick = () => {
+    const val = roomInput.value.trim();
+    currentRoom = val || "global";
+    currentRoomLabel.textContent = "Current room: " + currentRoom;
+    renderMessages();
+  };
+
   // ===== Safe mode =====
   let safeModeEnabled = localStorage.getItem("yc_safe_mode") === "true";
   safeModeToggle.checked = safeModeEnabled;
@@ -96,18 +109,25 @@ window.addEventListener("load", () => {
     const pfpUrl = pfpInput.value.trim() || "";
 
     const { error } = await supabase.from("messages").insert([
-      { user_id: currentUser.id, username, pfp_url: pfpUrl, text: msg }
+      { 
+        room_id: currentRoom,
+        user_id: currentUser.id,
+        username,
+        pfp_url: pfpUrl,
+        text: msg 
+      }
     ]);
 
     if (error) console.error(error);
     input.value = "";
   });
 
-  // ===== Render Messages (XSS SAFE) =====
+  // ===== Render Messages =====
   async function renderMessages() {
     const { data, error } = await supabase
       .from("messages")
       .select("*")
+      .eq("room_id", currentRoom)
       .order("id", { ascending: true });
     if (error) return;
 
@@ -120,7 +140,6 @@ window.addEventListener("load", () => {
       msgDiv.style.display = "flex";
       msgDiv.style.marginBottom = "10px";
 
-      // PFP
       if (msg.pfp_url) {
         const pfp = document.createElement("img");
         pfp.src = msg.pfp_url;
@@ -131,7 +150,6 @@ window.addEventListener("load", () => {
         msgDiv.appendChild(pfp);
       }
 
-      // Text (no innerHTML anywhere)
       const content = document.createElement("div");
 
       const name = document.createElement("b");
@@ -149,10 +167,14 @@ window.addEventListener("load", () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // ===== Realtime =====
+  // ===== Realtime (per room) =====
   supabase
     .channel("messages")
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, renderMessages)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
+      if (payload.new.room_id === currentRoom) {
+        renderMessages();
+      }
+    })
     .subscribe();
 
   checkAuth();
