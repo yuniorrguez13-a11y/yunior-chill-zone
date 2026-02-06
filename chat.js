@@ -124,25 +124,42 @@ window.addEventListener("load", () => {
 
   // ===== Render Messages =====
   async function renderMessages() {
-    const { data, error } = await supabase
+    // Get all messages in the current room
+    const { data: messages, error: msgError } = await supabase
       .from("messages")
       .select("*")
       .eq("room_id", currentRoom)
       .order("id", { ascending: true });
-    if (error) return;
+    if (msgError) return console.error(msgError);
 
     chatBox.innerHTML = "";
 
-    data.forEach(msg => {
+    // Fetch all user tags at once for efficiency
+    const userIds = [...new Set(messages.map(msg => msg.user_id))];
+    const { data: usersData, error: userError } = await supabase
+      .from("users")
+      .select("id, username, pfp_url, \"tag-id\"")
+      .in("id", userIds);
+    if (userError) return console.error(userError);
+
+    const usersMap = {};
+    usersData.forEach(u => {
+      usersMap[u.id] = u;
+    });
+
+    // Render each message
+    messages.forEach(msg => {
       if (shouldHideMessage(msg.text)) return;
+
+      const user = usersMap[msg.user_id] || { username: msg.username, pfp_url: "", "tag-id": "" };
 
       const msgDiv = document.createElement("div");
       msgDiv.style.display = "flex";
       msgDiv.style.marginBottom = "10px";
 
-      if (msg.pfp_url) {
+      if (user.pfp_url) {
         const pfp = document.createElement("img");
-        pfp.src = msg.pfp_url;
+        pfp.src = user.pfp_url;
         pfp.width = 40;
         pfp.height = 40;
         pfp.style.borderRadius = "50%";
@@ -153,7 +170,8 @@ window.addEventListener("load", () => {
       const content = document.createElement("div");
 
       const name = document.createElement("b");
-      name.textContent = msg.username + ": ";
+      // Show tag if it exists
+      name.textContent = user.username + (user["tag-id"] ? ` [${user["tag-id"]}]` : "") + ": ";
 
       const messageText = document.createElement("span");
       messageText.textContent = msg.text;
