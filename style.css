@@ -4,6 +4,7 @@
   font-weight: normal;
   font-style: normal;
 }
+
 body {
   margin: 0;
   padding: 0;
@@ -14,6 +15,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  max-width: 100vw;
 }
 
 /* MATRIX */
@@ -41,6 +43,7 @@ canvas#matrix {
   backdrop-filter: blur(6px);
 }
 
+/* CHAT HEADER & NAV */
 .chat-header {
   display: flex;
   justify-content: space-between;
@@ -62,6 +65,48 @@ canvas#matrix {
   gap: 12px;
 }
 
+.nav-links a {
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  transition: 0.3s ease;
+  background: rgba(0, 0, 0, 0.35);
+  color: white;
+}
+
+.nav-links a:hover {
+  background-color: white;
+  color: black;
+}
+
+/* SPECIFIC VIDEOZONE LINK */
+#videozone-link {
+  border-color: #ff4a4a;
+  background: rgba(255, 74, 74, 0.3);
+}
+
+#videozone-link:hover {
+  background: #ff4a4a;
+  color: #fff;
+  border-color: #ff2c2c;
+}
+
+/* VIDEOZONE WARNINGS */
+.videozone-warnings {
+  margin: 20px 0;
+  padding: 14px 18px;
+  border-left: 5px solid #ff4a4a;
+  background: rgba(255, 74, 74, 0.15);
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #fff;
+}
+
 /* CHAT BOX */
 #chat-box {
   width: 100%;
@@ -74,7 +119,7 @@ canvas#matrix {
   margin-bottom: 10px;
 }
 
-/* INPUTS & BUTTON */
+/* INPUTS & BUTTONS */
 .profile-fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -157,36 +202,14 @@ canvas#matrix {
   flex-wrap: wrap;
 }
 
-.nav-link {
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  text-decoration: none;
-  display: inline-block;
-  padding: 10px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 999px;
-  transition: 0.3s ease;
-  background: rgba(0, 0, 0, 0.35);
-}
-
-.nav-link:hover {
-  background-color: white;
-  color: black;
-}
-
-body { max-width: 100vw; overflow-x: hidden; }
+/* CHAT HEADER FONT */
 #chat-container h1 {
   font-family: "yuniorrguez13-a11y", serif;
   font-size: clamp(28px, 4vw, 42px);
   margin: 0;
 }
 
-.nav-link#music-link,
-.nav-link#gaming-link,
-.nav-link#zoom-link {
-  font-size: 16px;
-}
+/* CHAT CONTROLS */
 .chat-controls {
   display: flex;
   align-items: center;
