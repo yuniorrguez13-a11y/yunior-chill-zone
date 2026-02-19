@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Yunior Video Zone</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <h1>Yunior Video Zone</h1>
+    <div id="auth-section">
+      <input type="email" id="email-input" placeholder="Email">
+      <input type="password" id="password-input" placeholder="Password">
+      <button id="signup-btn">Sign Up</button>
+      <button id="login-btn">Login</button>
+      <button id="logout-btn" style="display:none;">Logout</button>
+      <span id="user-label"></span>
+    </div>
+  </header>
+
+  <section id="upload-section">
+    <h2>Upload Video</h2>
+    <input type="text" id="title" placeholder="Video title">
+    <select id="type">
+      <option value="normal">Normal Video</option>
+      <option value="doomscroller">Doomscroller</option>
+    </select>
+    <input type="file" id="file">
+    <button id="upload-btn">Upload</button>
+  </section>
+
+  <section id="normal-videos">
+    <h2>Normal Videos</h2>
+    <div id="normal-video-container"></div>
+  </section>
+
+  <section id="doomscroll-feed" style="height: 100vh; overflow-y: scroll;">
+    <h2>Doomscroller Feed</h2>
+    <div id="doomscroll-container"></div>
+  </section>
+
+  <script src="video.js"></script>
+</body>
+</html>
