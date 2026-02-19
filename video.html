@@ -1,45 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Yunior Video Zone</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Yunior Video Zone — Full</title>
+
+  <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="video.css">
+
+  <!-- App logic -->
+  <script defer src="video.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Yunior Video Zone</h1>
-    <div id="auth-section">
-      <input type="email" id="email-input" placeholder="Email">
-      <input type="password" id="password-input" placeholder="Password">
-      <button id="signup-btn">Sign Up</button>
-      <button id="login-btn">Login</button>
-      <button id="logout-btn" style="display:none;">Logout</button>
-      <span id="user-label"></span>
+  <div class="app-shell">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="hamburger" class="hamburger" aria-label="Toggle sidebar">☰</button>
+        <a class="logo" href="index.html">Yunior<span class="accent">Video</span></a>
+      </div>
+
+      <div class="topbar-center">
+        <form id="search-form" class="search-form" onsubmit="return false;">
+          <input id="search-input" type="search" placeholder="Search videos" aria-label="Search videos">
+          <button id="search-btn" type="submit">Search</button>
+        </form>
+      </div>
+
+      <div class="topbar-right" id="auth-section">
+        <span id="user-label" class="user-label"></span>
+        <input type="email" id="email-input" class="auth-input" placeholder="Email" />
+        <input type="password" id="password-input" class="auth-input" placeholder="Password" />
+        <button id="signup-btn" class="auth-btn">Sign up</button>
+        <button id="login-btn" class="auth-btn">Login</button>
+        <button id="logout-btn" class="auth-btn" style="display:none;">Logout</button>
+      </div>
+    </header>
+
+    <!-- LAYOUT -->
+    <div class="layout">
+
+      <!-- SIDEBAR -->
+      <nav class="sidebar" id="sidebar">
+        <ul>
+          <li class="nav-item active" data-view="home">Home</li>
+          <li class="nav-item" data-view="feed">Feed</li>
+          <li class="nav-item" data-view="history">History</li>
+          <li class="nav-item" data-view="channels">Channels</li>
+          <li class="nav-item" data-view="upload">Upload</li>
+        </ul>
+        <div class="sidebar-footer">
+          <small>Built with Supabase</small>
+        </div>
+      </nav>
+
+      <!-- MAIN -->
+      <main class="main-content">
+
+        <!-- LEFT COLUMN -->
+        <section class="left-column">
+
+          <!-- UPLOAD CARD (collapses to small on other views) -->
+          <div class="card upload-card" id="upload-section" aria-labelledby="upload-heading">
+            <h3 id="upload-heading">Upload a video</h3>
+            <div class="upload-row">
+              <input type="text" id="title" placeholder="Title" class="input" />
+              <select id="type" class="select">
+                <option value="normal">Normal (16:9)</option>
+                <option value="doomscroller">Doomscroller (vertical)</option>
+              </select>
+            </div>
+            <div class="upload-row">
+              <input type="file" id="file" accept="video/*" />
+              <button id="upload-btn" class="primary-btn" disabled>Upload</button>
+            </div>
+            <p class="muted small">Max file size depends on your Supabase plan. Log in to upload.</p>
+          </div>
+
+          <!-- FEED / GRID container -->
+          <section class="card" id="feed-card">
+            <div class="feed-controls">
+              <div class="feed-title">
+                <h3 id="feed-title">Home</h3>
+                <small id="feed-subtitle" class="muted">Latest videos</small>
+              </div>
+              <div class="feed-actions">
+                <button id="sort-new" class="chip active">Newest</button>
+                <button id="sort-pop" class="chip">Most viewed</button>
+              </div>
+            </div>
+
+            <div id="video-grid" class="video-grid" aria-live="polite"></div>
+
+            <!-- sentinel for infinite-loading -->
+            <div id="loading-sentinel" class="loading-sentinel">Loading more…</div>
+          </section>
+
+        </section>
+
+        <!-- RIGHT COLUMN -->
+        <aside class="right-column">
+
+          <div class="card channels-card">
+            <h4>Channels</h4>
+            <div id="channels-list" class="channels-list">
+              <!-- populated by JS -->
+            </div>
+            <button id="view-all-channels" class="link-button">View all channels</button>
+          </div>
+
+          <div class="card doom-card">
+            <h4>Doomscroll Preview</h4>
+            <div id="doomscroll-container" class="doom-list"></div>
+            <a class="link-button" href="doomscroll.html">Open full Doomscroll feed</a>
+          </div>
+
+          <div class="card history-card">
+            <h4>Recently watched</h4>
+            <div id="mini-history"></div>
+            <button id="clear-history" class="link-button small">Clear local history</button>
+          </div>
+        </aside>
+
+      </main>
     </div>
-  </header>
 
-  <section id="upload-section">
-    <h2>Upload Video</h2>
-    <input type="text" id="title" placeholder="Video title">
-    <select id="type">
-      <option value="normal">Normal Video</option>
-      <option value="doomscroller">Doomscroller</option>
-    </select>
-    <input type="file" id="file">
-    <button id="upload-btn">Upload</button>
-  </section>
+    <!-- FOOTER -->
+    <footer class="footer">
+      <small>© Yunior Chill Zone</small>
+    </footer>
+  </div>
 
-  <section id="normal-videos">
-    <h2>Normal Videos</h2>
-    <div id="normal-video-container"></div>
-  </section>
+  <!-- VIDEO MODAL (hidden until open) -->
+  <div id="video-modal" class="video-modal" aria-hidden="true">
+    <div class="video-modal-backdrop" id="video-modal-backdrop"></div>
+    <div class="video-modal-content" role="dialog" aria-modal="true">
+      <button id="close-modal" class="modal-close">✕</button>
+      <div id="player-wrap">
+        <video id="player" controls playsinline></video>
+      </div>
+      <div class="video-info">
+        <h2 id="player-title"></h2>
+        <div class="meta-row">
+          <button id="subscribe-btn" class="chip">Subscribe</button>
+          <span id="player-uploader" class="muted"></span>
+          <span id="player-views" class="muted"></span>
+        </div>
+        <p id="player-desc" class="muted small"></p>
+      </div>
+    </div>
+  </div>
 
-  <section id="doomscroll-feed" style="height: 100vh; overflow-y: scroll;">
-    <h2>Doomscroller Feed</h2>
-    <div id="doomscroll-container"></div>
-  </section>
-
-  <script src="video.js"></script>
 </body>
 </html>
