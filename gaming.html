@@ -3,164 +3,290 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Da Gaming Zone</title>
+  <title>Da Gaming Zone — Yuniors Chill Zone</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Orbitron:wght@700;900&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --crimson: #e8162a;
+      --crimson-glow: rgba(232, 22, 42, 0.35);
+      --cyan: #00d4ff;
+      --cyan-glow: rgba(0, 212, 255, 0.3);
+      --bg-deep: #06060a;
+      --text-muted: #7a7a8e;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--crimson); }
+
     body {
-      margin: 0;
-      padding: 0;
-      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-      background: url('https://raw.githubusercontent.com/yuniorrguez13-a11y/videox/refs/heads/main/image_2025-12-06_120452898.png') no-repeat center center fixed;
-      background-size: cover;
-      color: #fff;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: #f0f0f5;
       min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .bg-layer {
+      position: fixed;
+      inset: 0;
+      background-image: url('https://raw.githubusercontent.com/yuniorrguez13-a11y/videox/refs/heads/main/image_2025-12-06_120452898.png');
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.18) saturate(0.5);
+      z-index: 0;
+    }
+
+    .bg-layer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -45deg, transparent, transparent 24px,
+        rgba(232, 22, 42, 0.04) 24px, rgba(232, 22, 42, 0.04) 48px
+      );
     }
 
     .page {
+      position: relative;
+      z-index: 1;
       min-height: 100vh;
-      backdrop-filter: blur(4px);
-      background: linear-gradient(120deg, rgba(3, 8, 20, 0.85), rgba(8, 12, 28, 0.65));
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px 20px 60px;
-      box-sizing: border-box;
+      background: linear-gradient(160deg, rgba(6,4,8,0.6) 0%, rgba(6,8,18,0.4) 100%);
+      padding: 44px 20px 80px;
     }
 
     header {
-      width: min(1100px, 92%);
+      width: min(1200px, 92%);
+      margin: 0 auto 48px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 20px;
       flex-wrap: wrap;
+      padding-bottom: 24px;
+      border-bottom: 1px solid rgba(232, 22, 42, 0.22);
     }
 
-    h1 {
-      margin: 0;
-      font-size: clamp(32px, 5vw, 52px);
-      text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.6);
+    .header-left h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(28px, 5vw, 50px);
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #fff 40%, var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
-    .subtitle {
-      margin: 10px 0 0;
-      color: #b9c5ff;
-      font-size: 16px;
-    }
-
-    .games-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 22px;
-      width: min(1200px, 92%);
-      margin: 40px 0 0;
-    }
-
-    .game-slot {
-      background: rgba(8, 12, 24, 0.7);
-      border: 1px solid rgba(88, 255, 130, 0.4);
-      border-radius: 18px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
-      min-height: 210px;
-      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
-    }
-
-    .game-slot:hover {
-      transform: translateY(-6px);
-      background: rgba(5, 8, 18, 0.9);
-      box-shadow: 0 18px 35px rgba(0, 0, 0, 0.45);
-    }
-
-    .game-slot h2 {
-      margin: 0 0 8px 0;
-      font-size: 22px;
-      text-align: center;
-    }
-
-    .game-slot p {
-      font-size: 16px;
-      text-align: center;
-      color: #b8ffcf;
-      margin: 0;
-    }
-
-    .action-link {
-      color: #0f0;
-      text-decoration: none;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 999px;
-      border: 1px solid rgba(88, 255, 130, 0.6);
-      background: rgba(2, 20, 8, 0.6);
-      transition: 0.2s ease;
+    .header-left .tag {
       display: inline-block;
-      margin-top: 8px;
-    }
-
-    .action-link:hover {
-      background: #0f0;
-      color: #07120b;
+      margin-top: 10px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      border: 1px solid rgba(0, 212, 255, 0.4);
+      padding: 3px 10px;
+      border-radius: 2px;
     }
 
     .home-link {
-      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #b0b0c8;
       text-decoration: none;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      background: rgba(0, 0, 0, 0.35);
+      padding: 10px 20px;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 3px;
+      background: rgba(255,255,255,0.04);
+      transition: all 0.2s;
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
     }
 
     .home-link:hover {
-      background: #fff;
-      color: #111;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border-color: rgba(255,255,255,0.35);
+    }
+
+    .section-label {
+      width: min(1200px, 92%);
+      margin: 0 auto 18px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(0, 212, 255, 0.3), transparent);
+    }
+
+    .games-container {
+      width: min(1200px, 92%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 18px;
+    }
+
+    .game-slot {
+      background: rgba(8, 10, 18, 0.82);
+      border: 1px solid rgba(0, 212, 255, 0.1);
+      border-top: 2px solid var(--cyan);
+      border-radius: 2px 14px 14px 14px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      min-height: 180px;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-slot::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 50px;
+      background: linear-gradient(180deg, rgba(0, 212, 255, 0.05), transparent);
+      pointer-events: none;
+    }
+
+    .game-slot:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.55), 0 0 28px rgba(0, 212, 255, 0.1);
+      border-color: rgba(0, 212, 255, 0.35);
+    }
+
+    .game-slot-top { width: 100%; }
+
+    .game-slot .game-num {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+      opacity: 0.7;
+    }
+
+    .game-slot h2 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      color: white;
+    }
+
+    .game-slot p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .action-link {
+      display: inline-block;
+      margin-top: 18px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      text-decoration: none;
+      padding: 8px 18px;
+      border: 1px solid rgba(0, 212, 255, 0.4);
+      border-radius: 3px;
+      background: rgba(0, 212, 255, 0.07);
+      transition: all 0.2s ease;
+      clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
+    }
+
+    .action-link:hover {
+      background: var(--cyan);
+      color: #020d10;
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px var(--cyan-glow);
     }
   </style>
 </head>
 <body>
+  <div class="bg-layer"></div>
   <div class="page">
     <header>
-      <div>
+      <div class="header-left">
         <h1>Da Gaming Zone</h1>
-        <p class="subtitle">Pick a game and start playing instantly.</p>
+        <span class="tag">▶ 5 Games Available</span>
       </div>
-      <a class="home-link" href="index.html">Back to Chat</a>
+      <a class="home-link" href="index.html">← Back to Chat</a>
     </header>
+
+    <div class="section-label">Select Your Game</div>
 
     <div class="games-container">
       <div class="game-slot">
-        <h2>Snake Game</h2>
-        <p>Classic arcade vibes.</p>
-        <a class="action-link" href="snake.html" target="_blank">Play Now</a>
+        <div class="game-slot-top">
+          <div class="game-num">// 01</div>
+          <h2>Snake Game</h2>
+          <p>Classic arcade vibes. Eat, grow, survive.</p>
+        </div>
+        <a class="action-link" href="snake.html" target="_blank">Play Now →</a>
       </div>
 
       <div class="game-slot">
-        <h2>Doom HTML</h2>
-        <p>Retro chaos unlocked.</p>
-        <a class="action-link" href="doom/Titlescreen.html" target="_blank">Play Now</a>
+        <div class="game-slot-top">
+          <div class="game-num">// 02</div>
+          <h2>Doom HTML</h2>
+          <p>Retro chaos, fully unlocked.</p>
+        </div>
+        <a class="action-link" href="doom/Titlescreen.html" target="_blank">Play Now →</a>
       </div>
 
       <div class="game-slot">
-        <h2>Minecraft HTML</h2>
-        <p>Blocky creative mode.</p>
-        <a class="action-link" href="minecraft.html" target="_blank">Play Now</a>
+        <div class="game-slot-top">
+          <div class="game-num">// 03</div>
+          <h2>Minecraft HTML</h2>
+          <p>Blocky creative mode, right in your browser.</p>
+        </div>
+        <a class="action-link" href="minecraft.html" target="_blank">Play Now →</a>
       </div>
 
       <div class="game-slot">
-        <h2>Flappy Bird</h2>
-        <p>Tap. Glide. Repeat.</p>
-        <a class="action-link" href="https://yuniorschillzone.xyz/flappybird/index.html" target="_blank">Play Now</a>
+        <div class="game-slot-top">
+          <div class="game-num">// 04</div>
+          <h2>Flappy Bird</h2>
+          <p>Tap. Glide. Don't hit the pipes.</p>
+        </div>
+        <a class="action-link" href="https://yuniorschillzone.xyz/flappybird/index.html" target="_blank">Play Now →</a>
       </div>
 
       <div class="game-slot">
-        <h2>Subway Surfers</h2>
-        <p>Endless runner rush.</p>
-        <a class="action-link" href="https://yuniorschillzone.xyz/subway%20surfying/index.html" target="_blank">Play Now</a>
+        <div class="game-slot-top">
+          <div class="game-num">// 05</div>
+          <h2>Subway Surfers</h2>
+          <p>Endless runner rush, no install needed.</p>
+        </div>
+        <a class="action-link" href="https://yuniorschillzone.xyz/subway%20surfying/index.html" target="_blank">Play Now →</a>
       </div>
     </div>
   </div>
