@@ -834,7 +834,9 @@ async function init() {
 
 function setUser(user) {
   currentUser = user
-  const initial = user.email[0].toUpperCase()
+  const { data: prof } = await db.from('profiles').select('username').eq('id', user.id).single()
+  currentUser.username = prof?.username || user.email.split('@')[0]
+  const initial = currentUser.username[0].toUpperCase()
   document.getElementById('userAvatar').textContent = initial
   document.getElementById('userMenu').style.display = 'block'
   document.getElementById('authButtons').style.display = 'none'
@@ -1325,12 +1327,12 @@ async function loadLiked() {
 // PROFILE
 async function loadProfile() {
   if (!currentUser) return
-  const initial = currentUser.email[0].toUpperCase()
+  const initial = (currentUser.username || currentUser.email)[0].toUpperCase()
   document.getElementById('profileAvatar').textContent = initial
-  document.getElementById('profileEmail').textContent = currentUser.email
+  document.getElementById('profileEmail').textContent = ''
 
   const { data: profile } = await db.from('profiles').select('username').eq('id', currentUser.id).single()
-  document.getElementById('profileName').textContent = profile?.username || currentUser.email.split('@')[0]
+  document.getElementById('profileName').textContent = currentUser.username || profile?.username
 
   const { data: videos } = await db.from('videos')
     .select('*, profiles(username)')
