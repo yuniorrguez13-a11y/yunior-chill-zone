@@ -9,5 +9,5 @@ reloadBtn.addEventListener('click', () => {
 
 // Optional: alert if iframe fails
 iframe.addEventListener('error', () => {
-  alert("Oops! YuniorVideoZone couldn't load. Check your internet or try again later.");
+  alert("Oops! YuniorVideoZone couldn't load. Check your internet or try again later >:D");
 });
