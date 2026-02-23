@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yuniors Chill Zone Chat</title>
+  <title>Yuniors Chill Zone</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
   <canvas id="matrix"></canvas>
 
-  <!-- CHAT CONTROLS -->
   <div class="chat-controls">
     <label class="toggle">
       <input type="checkbox" id="safe-mode-toggle">
-      <span>Safe mode (messages with profanity will not be shown)</span>
+      <span>Safe Mode — filter profanity</span>
     </label>
   </div>
 
@@ -22,49 +21,46 @@
     <div class="chat-header">
       <div>
         <h1>Yuniors Chill Zone</h1>
-        <p class="subtitle">Hang out, drop a message, and jump into the vibes.</p>
+        <p class="subtitle">Hang out · Drop a message · Vibe out</p>
       </div>
       <div class="nav-links">
-        <a href="music.html" target="_blank" id="music-link">Music Room</a>
-        <a href="gaming.html" target="_blank" id="gaming-link">Gaming Zone</a>
-        <a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link">Zoom Voice Chat</a>
-        <!-- NEW YuniorVideoZone LINK -->
-        <a href="video.html" target="_blank" id="videozone-link" class="videozone-link">YuniorVideoZone</a>
+        <a href="music.html" target="_blank" id="music-link">🎵 Music Room</a>
+        <a href="gaming.html" target="_blank" id="gaming-link">🎮 Gaming Zone</a>
+        <a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link">📞 Voice Chat</a>
+        <a href="video.html" target="_blank" id="videozone-link">📺 VideoZone</a>
       </div>
     </div>
 
-    <!-- WARNINGS FOR YUNIORVIDEOZONE -->
     <div class="videozone-warnings">
-      <p>⚠ Login and signup for YuniorVideoZone are separate from YuniorsChillZone. Your ChillZone credentials will NOT work here.</p>
-      <p>⚠ YuniorVideoZone is currently in BETA. The uploaded videos and shorts are for testing functionality; some things may be broken or behave unexpectedly.</p>
+      <p>⚠ VideoZone login is <strong>separate</strong> from ChillZone — your credentials won't transfer.</p>
+      <p>⚠ VideoZone is in <strong>BETA</strong> — some features may be unstable or incomplete.</p>
     </div>
 
-    <!-- AUTH BOX -->
-    <div id="auth-box" style="margin: 10px 0;">
-      <input type="email" id="email-input" placeholder="Email">
+    <div id="auth-box">
+      <input type="email" id="email-input" placeholder="Email address">
       <input type="password" id="password-input" placeholder="Password">
-      <button id="signup-btn" class="ui-button">Sign up</button>
+      <button id="signup-btn" class="ui-button">Sign Up</button>
       <button id="login-btn" class="ui-button">Login</button>
       <button id="logout-btn" class="ui-button" style="display:none;">Logout</button>
     </div>
 
-    <!-- ROOM CONTROLS -->
+    <div class="section-divider"></div>
+
     <div class="room-controls">
-      <input type="text" id="room-input" placeholder="Room code (default: global)">
-      <button id="join-room-btn" class="ui-button">Join room</button>
+      <input type="text" id="room-input" placeholder="Room code (default: global)" style="flex:1; min-width: 180px;">
+      <button id="join-room-btn" class="ui-button">Join Room</button>
       <span id="current-room-label">Current room: global</span>
     </div>
 
-    <!-- USER PROFILE -->
     <div class="profile-fields">
-      <input type="text" id="username-input" placeholder="Username">
-      <input type="text" id="pfp-input" placeholder="PFP URL (optional)">
+      <input type="text" id="username-input" placeholder="Your username">
+      <input type="text" id="pfp-input" placeholder="Profile picture URL (optional)">
     </div>
 
     <div id="chat-box"></div>
 
     <div class="message-actions">
-      <input type="text" id="msg-input" placeholder="Login to chat" disabled>
+      <input type="text" id="msg-input" placeholder="Login to chat" disabled style="flex:1;">
       <button id="send-btn" disabled>Send</button>
     </div>
   </div>
