@@ -2,170 +2,268 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Music Room</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Room — Yuniors Chill Zone</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Orbitron:wght@700;900&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --crimson: #e8162a;
+      --crimson-glow: rgba(232, 22, 42, 0.35);
+      --bg-deep: #06060a;
+      --text-muted: #7a7a8e;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--crimson); }
+
     body {
-      margin: 0;
-      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: #f0f0f5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .bg-layer {
+      position: fixed;
+      inset: 0;
       background-image: url("https://raw.githubusercontent.com/yuniorrguez13-a11y/videox/refs/heads/main/stranger_things_3-wallpaper-3840x2160.jpg");
       background-size: cover;
       background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
-      color: #fff;
-      min-height: 100vh;
+      filter: brightness(0.2) saturate(0.5);
+      z-index: 0;
+    }
+
+    .bg-layer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -45deg, transparent, transparent 24px,
+        rgba(232, 22, 42, 0.04) 24px, rgba(232, 22, 42, 0.04) 48px
+      );
     }
 
     .page {
+      position: relative;
+      z-index: 1;
       min-height: 100vh;
-      backdrop-filter: blur(4px);
-      background: linear-gradient(120deg, rgba(3, 6, 18, 0.8), rgba(10, 12, 28, 0.6));
-      padding: 40px 20px 60px;
-      box-sizing: border-box;
+      background: linear-gradient(160deg, rgba(6,4,8,0.55) 0%, rgba(10,4,6,0.35) 100%);
+      padding: 44px 20px 80px;
     }
 
     header {
-      width: min(1200px, 92%);
-      margin: 0 auto;
+      width: min(1340px, 92%);
+      margin: 0 auto 48px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 20px;
       flex-wrap: wrap;
+      padding-bottom: 24px;
+      border-bottom: 1px solid rgba(232, 22, 42, 0.22);
     }
 
-    h1 {
-      text-align: left;
+    .header-left h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(28px, 5vw, 50px);
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #fff 40%, #ff6070);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-left .tag {
+      display: inline-block;
+      margin-top: 10px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--crimson);
+      border: 1px solid rgba(232, 22, 42, 0.5);
+      padding: 3px 10px;
+      border-radius: 2px;
+    }
+
+    .home-link {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #b0b0c8;
+      text-decoration: none;
+      padding: 10px 20px;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 3px;
+      background: rgba(255,255,255,0.04);
+      transition: all 0.2s;
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+    }
+
+    .home-link:hover {
+      background: rgba(255,255,255,0.1);
       color: white;
-      font-size: clamp(32px, 5vw, 52px);
-      margin: 0;
-      font-weight: 800;
-      text-shadow: 0px 0px 12px black;
+      border-color: rgba(255,255,255,0.35);
     }
 
-    .subtitle {
-      margin: 10px 0 0;
-      color: #cbd3ff;
-      font-size: 16px;
+    .section-label {
+      width: min(1340px, 92%);
+      margin: 0 auto 18px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(232,22,42,0.3), transparent);
     }
 
     .playlist-grid {
-      width: min(1400px, 92%);
-      margin: 40px auto 0;
+      width: min(1340px, 92%);
+      margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 25px;
+      grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+      gap: 18px;
     }
 
     .playlist-item {
-      backdrop-filter: blur(6px);
-      background: rgba(10, 12, 24, 0.7);
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.2);
-      padding: 12px;
-      box-shadow: 0 16px 35px rgba(0,0,0,0.4);
-      text-align: center;
-      transition: 0.3s;
+      background: rgba(10, 8, 14, 0.82);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-top: 2px solid var(--crimson);
+      border-radius: 2px 12px 12px 12px;
+      padding: 14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .playlist-item::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 50px;
+      background: linear-gradient(180deg, rgba(232,22,42,0.05), transparent);
+      pointer-events: none;
     }
 
     .playlist-item:hover {
-      transform: translateY(-6px);
-      border-color: white;
+      transform: translateY(-5px);
+      box-shadow: 0 18px 42px rgba(0,0,0,0.6), 0 0 28px rgba(232,22,42,0.1);
+    }
+
+    .playlist-num {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--crimson);
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      opacity: 0.75;
     }
 
     iframe {
       width: 100%;
-      height: 250px;
-      border-radius: 12px;
+      height: 215px;
+      border-radius: 6px;
       border: none;
+      display: block;
     }
 
-    .coming-soon {
-      color: white;
-      font-size: 26px;
-      font-weight: bold;
-      text-shadow: 0px 0px 8px black;
-      padding: 80px 0;
+    .coming-soon-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 215px;
+      gap: 12px;
     }
 
-    .home-link {
-      color: #fff;
-      text-decoration: none;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      background: rgba(0, 0, 0, 0.35);
-    }
-
-    .home-link:hover {
-      background: #fff;
-      color: #111;
+    .cs-line { width: 36px; height: 2px; background: var(--crimson); opacity: 0.35; }
+    .cs-icon { font-size: 34px; opacity: 0.3; }
+    .cs-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-muted);
     }
   </style>
 </head>
 <body>
+  <div class="bg-layer"></div>
   <div class="page">
     <header>
-      <div>
+      <div class="header-left">
         <h1>Music Room</h1>
-        <p class="subtitle">Press play and let the playlists roll.</p>
+        <span class="tag">▶ Playlists Active</span>
       </div>
-      <a class="home-link" href="index.html">Back to Chat</a>
+      <a class="home-link" href="index.html">← Back to Chat</a>
     </header>
 
+    <div class="section-label">Active Playlists</div>
+
     <div class="playlist-grid">
-      <!-- PLAYLIST 1 -->
       <div class="playlist-item">
-        <iframe src="https://www.youtube.com/embed/videoseries?list=PLJNeO1p-8YtULYmt-jkFg2BmNltcnYu-N"
-        allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div class="playlist-num">// 01</div>
+        <iframe src="https://www.youtube.com/embed/videoseries?list=PLJNeO1p-8YtULYmt-jkFg2BmNltcnYu-N" allow="autoplay; encrypted-media" allowfullscreen></iframe>
       </div>
-
-      <!-- PLAYLIST 2 -->
       <div class="playlist-item">
-        <iframe 
-          src="https://www.youtube.com/embed/videoseries?list=PLJNeO1p-8YtUEpfB6aO6DS2F4eR_oTJUh" 
-          allow="autoplay; encrypted-media"
-          allowfullscreen>
-        </iframe>
+        <div class="playlist-num">// 02</div>
+        <iframe src="https://www.youtube.com/embed/videoseries?list=PLJNeO1p-8YtUEpfB6aO6DS2F4eR_oTJUh" allow="autoplay; encrypted-media" allowfullscreen></iframe>
       </div>
-
-      <!-- PLAYLIST 3 -->
       <div class="playlist-item">
-        <iframe
-          src="https://www.youtube.com/embed/videoseries?si=xG9_sOEP8OMLdwZM&amp;list=PLJNeO1p-8YtXaSgm56BCwSDuFHtEumilJ"
-          title="YouTube video player"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen>
-        </iframe>
+        <div class="playlist-num">// 03</div>
+        <iframe src="https://www.youtube.com/embed/videoseries?si=xG9_sOEP8OMLdwZM&amp;list=PLJNeO1p-8YtXaSgm56BCwSDuFHtEumilJ" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       </div>
-
-      <!-- PLAYLIST 4 -->
       <div class="playlist-item">
-        <iframe
-          src="https://www.youtube.com/embed/videoseries?si=s7BC8rZIuKTu5elb&amp;list=PLJNeO1p-8YtU5zOHH3tSAP7VKmDzsbTH8"
-          title="YouTube video player"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen>
-        </iframe>
+        <div class="playlist-num">// 04</div>
+        <iframe src="https://www.youtube.com/embed/videoseries?si=s7BC8rZIuKTu5elb&amp;list=PLJNeO1p-8YtU5zOHH3tSAP7VKmDzsbTH8" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       </div>
-
-      <!-- PLAYLIST 5 -->
       <div class="playlist-item">
-        <div class="coming-soon">COMING SOON...</div>
+        <div class="playlist-num">// 05</div>
+        <div class="coming-soon-card">
+          <div class="cs-line"></div>
+          <div class="cs-icon">🎵</div>
+          <div class="cs-text">Coming Soon</div>
+          <div class="cs-line"></div>
+        </div>
       </div>
-
-      <!-- PLAYLIST 6 -->
       <div class="playlist-item">
-        <div class="coming-soon">COMING SOON...</div>
+        <div class="playlist-num">// 06</div>
+        <div class="coming-soon-card">
+          <div class="cs-line"></div>
+          <div class="cs-icon">🎵</div>
+          <div class="cs-text">Coming Soon</div>
+          <div class="cs-line"></div>
+        </div>
       </div>
-
-      <!-- PLAYLIST 7 -->
       <div class="playlist-item">
-        <div class="coming-soon">COMING SOON...</div>
+        <div class="playlist-num">// 07</div>
+        <div class="coming-soon-card">
+          <div class="cs-line"></div>
+          <div class="cs-icon">🎵</div>
+          <div class="cs-text">Coming Soon</div>
+          <div class="cs-line"></div>
+        </div>
       </div>
     </div>
   </div>
