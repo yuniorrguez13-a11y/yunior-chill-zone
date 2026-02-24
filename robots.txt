@@ -1,0 +1,8 @@
+# YuniorsChillZone — yuniorschillzone.xyz
+# Hey Google. Hey Bing. Index this or catch these hands. 🤜
+#dayumnmayonaise
+
+User-agent: *
+Allow: /
+
+Sitemap: https://yuniorschillzone.xyz/sitemap.xml
