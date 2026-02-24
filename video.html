@@ -589,15 +589,55 @@
     });
   }
 
+  function getCategoryAffinities() {
+    // Count categories from watch history
+    var counts = {};
+    watchHistory.forEach(function(v) {
+      if (v.category) counts[v.category] = (counts[v.category] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function applyAffinityBoost(videos) {
+    var affinities = getCategoryAffinities();
+    var total = Object.values(affinities).reduce(function(s, n) { return s + n; }, 0);
+    if (total === 0) return videos;
+
+    // Score each video with a boost based on category affinity
+    var scored = videos.map(function(v) {
+      var affinity = affinities[v.category] || 0;
+      var boost = affinity / total; // 0.0 to 1.0
+      return { v: v, boost: boost };
+    });
+
+    // Sort by combined score + boost, with slight randomness
+    scored.sort(function(a, b) {
+      var scoreA = (a.v.score || 0) + (a.boost * 2) + (Math.random() * 0.3);
+      var scoreB = (b.v.score || 0) + (b.boost * 2) + (Math.random() * 0.3);
+      return scoreB - scoreA;
+    });
+
+    return scored.map(function(s) { return s.v; });
+  }
+
   function loadHome() {
     var grid = $('home-video-grid');
     grid.innerHTML = '<div class="loading" style="grid-column:1/-1"><div class="spinner"></div> Loading...</div>';
-    var q = _sb.from('videos').select('*, profiles(username, avatar_url)').eq('is_short', false).order('created_at', { ascending: false });
-    if (currentCategory !== 'All') q = q.eq('category', currentCategory);
-    q.then(function(r) {
-      if (!r.data || !r.data.length) {
+
+    // Use the algorithm function from Supabase
+    _sb.rpc('get_feed', { p_category: currentCategory, p_limit: 30 }).then(function(r) {
+      if (r.error || !r.data || !r.data.length) {
         grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🎬</div><p>No videos yet!</p></div>';
-      } else { grid.innerHTML = r.data.map(videoCard).join(''); bindCards(grid); }
+        return;
+      }
+      // Map to expected shape
+      var videos = r.data.map(function(v) {
+        return Object.assign({}, v, { profiles: { username: v.username, avatar_url: v.avatar_url } });
+      });
+      // Apply watch-history category affinity boost + slight shuffle
+      videos = applyAffinityBoost(videos);
+      grid.innerHTML = videos.map(videoCard).join('');
+      bindCards(grid);
     });
     _sb.from('videos').select('*, profiles(username, avatar_url)').eq('is_short', true).order('created_at', { ascending: false }).limit(8).then(function(r) {
       var sec = $('home-shorts-section');
