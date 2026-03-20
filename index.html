@@ -10,7 +10,7 @@
     });
   </script> 
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Yuniors Chill Zone</title>
   <link rel="icon" type="image/png" href="favicon.png">
 
@@ -57,7 +57,6 @@
       min-height: 100vh;
     }
 
-    /* MATRIX CANVAS */
     canvas#matrix {
       position: fixed;
       top: 0; left: 0;
@@ -66,7 +65,6 @@
       opacity: 0.25;
     }
 
-    /* DIAGONAL STRIPE ACCENT */
     body::before {
       content: '';
       position: fixed;
@@ -88,9 +86,9 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin: 20px 0 0;
-      padding: 10px 20px;
-      width: 92%;
+      margin: 16px 0 0;
+      padding: 8px 16px;
+      width: 96%;
       max-width: 960px;
     }
 
@@ -99,11 +97,11 @@
       position: relative;
       z-index: 1;
       max-width: 960px;
-      width: 92%;
-      margin: 16px auto 60px;
-      padding: 32px;
+      width: 96%;
+      margin: 12px auto 40px;
+      padding: 20px;
       background: var(--bg-panel);
-      border-radius: 4px 20px 20px 20px;
+      border-radius: 4px 16px 16px 16px;
       box-shadow:
         0 0 0 1px var(--border-red),
         0 0 50px rgba(232, 22, 42, 0.1),
@@ -118,29 +116,28 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    /* CHAT HEADER */
     .chat-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 20px;
+      gap: 14px;
       flex-wrap: wrap;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     #chat-container h1 {
       font-family: "yuniorrguez13-a11y", 'Orbitron', serif;
-      font-size: clamp(26px, 4vw, 42px);
+      font-size: clamp(22px, 5vw, 42px);
       color: white;
       text-shadow: 0 0 40px rgba(232, 22, 42, 0.6), 0 0 80px rgba(232, 22, 42, 0.25);
       letter-spacing: 1px;
     }
 
     .subtitle {
-      margin: 7px 0 0;
+      margin: 5px 0 0;
       color: var(--text-muted);
       font-family: 'Rajdhani', sans-serif;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       letter-spacing: 2px;
       text-transform: uppercase;
@@ -150,50 +147,55 @@
     .nav-links {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
     }
 
-    .nav-links a {
+    .nav-links a,
+    .nav-links button.nav-btn {
       font-family: 'Rajdhani', sans-serif;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 1px;
       text-transform: uppercase;
       text-decoration: none;
-      padding: 9px 16px;
+      padding: 8px 13px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 3px;
       background: rgba(255, 255, 255, 0.04);
       color: #b0b0c8;
       transition: all 0.2s ease;
       clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .nav-links a:hover {
+    .nav-links a:hover,
+    .nav-links button.nav-btn:hover {
       background: rgba(255, 255, 255, 0.1);
       color: white;
       border-color: rgba(255, 255, 255, 0.35);
       transform: translateY(-1px);
     }
 
-    /* VIDEOZONE LINK */
-    #videozone-link {
+    /* cZEROde — RED */
+    #czerode-btn {
       border-color: var(--crimson) !important;
       background: rgba(232, 22, 42, 0.12) !important;
       color: #ff7080 !important;
     }
 
-    #videozone-link:hover {
+    #czerode-btn:hover,
+    #czerode-btn:active {
       background: var(--crimson) !important;
       color: white !important;
       box-shadow: 0 0 20px var(--crimson-glow);
     }
 
     /* WARNINGS */
-    .videozone-warnings {
-      margin: 0 0 20px;
-      padding: 12px 16px;
+    .czerode-warnings {
+      margin: 0 0 16px;
+      padding: 10px 14px;
       border-left: 3px solid var(--crimson);
       background: rgba(232, 22, 42, 0.07);
       border-radius: 0 6px 6px 0;
@@ -202,57 +204,138 @@
       color: #908090;
     }
 
-    .videozone-warnings p { margin: 0; }
-    .videozone-warnings p + p { margin-top: 5px; }
+    .czerode-warnings p { margin: 0; }
+    .czerode-warnings p + p { margin-top: 5px; }
 
     /* DIVIDER */
     .section-divider {
       height: 1px;
       background: linear-gradient(90deg, var(--crimson), transparent);
-      margin: 16px 0;
+      margin: 14px 0;
       opacity: 0.3;
+    }
+
+    /* CZERODE MODAL OVERLAY */
+    #czerode-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(6px);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    #czerode-overlay.open {
+      display: flex;
+    }
+
+    .czerode-modal {
+      width: 100%;
+      max-width: 1100px;
+      height: 90vh;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-red);
+      border-top: 3px solid var(--crimson);
+      border-radius: 4px 16px 16px 16px;
+      box-shadow: 0 0 60px rgba(232, 22, 42, 0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .czerode-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-red);
+      background: rgba(232, 22, 42, 0.07);
+      flex-shrink: 0;
+    }
+
+    .czerode-modal-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #ff7080;
+    }
+
+    #czerode-close {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #aaa;
+      font-size: 18px;
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #czerode-close:hover,
+    #czerode-close:active {
+      background: var(--crimson);
+      color: white;
+      border-color: var(--crimson);
+    }
+
+    #czerode-frame {
+      width: 100%;
+      flex: 1;
+      border: none;
     }
 
     /* CHAT BOX */
     #chat-box {
       width: 100%;
-      height: 380px;
+      height: 340px;
       background: rgba(4, 4, 8, 0.92);
       border: 1px solid var(--border-subtle);
       border-radius: 6px;
       overflow-y: scroll;
-      padding: 14px;
-      margin-bottom: 14px;
+      padding: 12px;
+      margin-bottom: 12px;
     }
 
     /* INPUT GROUPS */
     .profile-fields {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 10px;
-      margin: 12px 0;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px;
+      margin: 10px 0;
     }
 
     #auth-box,
     .room-controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
-      margin: 10px 0;
+      margin: 8px 0;
     }
 
-    /* ALL INPUTS */
+    /* ALL INPUTS — font-size 16px prevents iOS auto-zoom */
     #msg-input, #username-input, #pfp-input, #image-upload,
     #email-input, #password-input, #room-input {
-      padding: 11px 14px;
+      padding: 11px 13px;
       border-radius: 4px;
       border: 1px solid rgba(255, 255, 255, 0.09);
       background: rgba(18, 18, 28, 0.92);
       color: #eee;
-      font-size: 14px;
+      font-size: 16px;
       font-family: 'Inter', sans-serif;
       transition: border-color 0.2s, box-shadow 0.2s;
+      min-width: 0;
     }
 
     #msg-input:focus, #username-input:focus, #pfp-input:focus,
@@ -267,7 +350,7 @@
 
     /* BUTTONS */
     .ui-button {
-      padding: 11px 18px;
+      padding: 11px 16px;
       cursor: pointer;
       background: rgba(232, 22, 42, 0.12);
       border: 1px solid var(--crimson);
@@ -281,27 +364,16 @@
       transition: all 0.2s ease;
       clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
       white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .ui-button:hover {
-      background: var(--crimson);
-      color: white;
-      box-shadow: 0 0 18px var(--crimson-glow);
-      transform: translateY(-1px);
-    }
-
-    .ui-button:active { transform: translateY(0); }
-
-    .ui-button:disabled {
-      cursor: not-allowed;
-      opacity: 0.35;
-      box-shadow: none;
-      transform: none;
-    }
+    .ui-button:hover { background: var(--crimson); color: white; box-shadow: 0 0 18px var(--crimson-glow); }
+    .ui-button:active { background: var(--crimson); color: white; transform: scale(0.97); }
+    .ui-button:disabled { cursor: not-allowed; opacity: 0.35; box-shadow: none; transform: none; }
 
     /* SEND BUTTON */
     #send-btn {
-      padding: 11px 24px;
+      padding: 11px 22px;
       cursor: pointer;
       background: var(--crimson);
       border: none;
@@ -312,17 +384,15 @@
       font-size: 14px;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      min-width: 110px;
+      min-width: 90px;
       transition: all 0.2s ease;
       clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
     }
 
-    #send-btn:hover {
-      background: #ff1e34;
-      box-shadow: 0 0 24px var(--crimson-glow);
-      transform: translateY(-1px);
-    }
-
+    #send-btn:hover { background: #ff1e34; box-shadow: 0 0 24px var(--crimson-glow); }
+    #send-btn:active { transform: scale(0.97); }
     #send-btn:disabled {
       background: #2a1016;
       cursor: not-allowed;
@@ -331,24 +401,21 @@
       opacity: 0.5;
     }
 
-    /* MESSAGE ROW */
     .message-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
-      flex-wrap: wrap;
     }
 
-    /* ROOM LABEL */
     #current-room-label {
       font-family: 'Rajdhani', sans-serif;
-      font-size: 13px;
+      font-size: 12px;
       letter-spacing: 1.5px;
       text-transform: uppercase;
       color: var(--text-muted);
+      white-space: nowrap;
     }
 
-    /* TOGGLE */
     .toggle {
       display: flex;
       align-items: center;
@@ -361,18 +428,113 @@
       color: var(--text-muted);
       cursor: pointer;
       user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .toggle input {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       accent-color: var(--crimson);
       cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 600px) {
+      #chat-container {
+        width: 100%;
+        margin: 8px 0 0;
+        padding: 14px 12px 20px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+
+      .chat-controls {
+        width: 100%;
+        padding: 8px 12px;
+        margin-top: 10px;
+      }
+
+      .chat-header {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .nav-links {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+      }
+
+      .nav-links a,
+      .nav-links button.nav-btn {
+        text-align: center;
+        padding: 10px 6px;
+        font-size: 11px;
+        clip-path: none;
+        border-radius: 4px;
+      }
+
+      #auth-box {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      #auth-box #email-input,
+      #auth-box #password-input {
+        grid-column: span 2;
+      }
+
+      .room-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      #room-input { width: 100%; }
+      #current-room-label { text-align: center; }
+
+      .profile-fields {
+        grid-template-columns: 1fr;
+      }
+
+      #chat-box {
+        height: 260px;
+      }
+
+      .czerode-modal {
+        height: 92vh;
+        border-radius: 0 10px 10px 10px;
+      }
+
+      #czerode-overlay {
+        padding: 6px;
+      }
     }
   </style>
 </head>
 <body>
   <canvas id="matrix"></canvas>
+
+  <!-- CZERODE OVERLAY -->
+  <div id="czerode-overlay">
+    <div class="czerode-modal">
+      <div class="czerode-modal-header">
+        <span class="czerode-modal-title">⚡ cZEROde</span>
+        <button id="czerode-close" title="Close">✕</button>
+      </div>
+      <iframe
+        id="czerode-frame"
+        src=""
+        allow="accelerometer; camera; encrypted-media; fullscreen; gyroscope; microphone"
+        loading="lazy"
+      ></iframe>
+    </div>
+  </div>
 
   <div class="chat-controls">
     <label class="toggle">
@@ -388,20 +550,21 @@
         <p class="subtitle">Hang out · Drop a message · Vibe out</p>
       </div>
       <div class="nav-links">
-        <a href="music.html" target="_blank" id="music-link">🎵 Music Room</a>
-        <a href="gaming.html" target="_blank" id="gaming-link">🎮 Gaming Zone</a>
-        <a href="https://zoom.us/j/4498564941" target="_blank" id="zoom-link">📞 Voice Chat</a>
-        <a href="video.html" target="_blank" id="videozone-link">📺 VideoZone</a>
+        <a href="music.html" target="_blank">🎵 Music Room</a>
+        <a href="gaming.html" target="_blank">🎮 Gaming Zone</a>
+        <a href="https://zoom.us/j/4498564941" target="_blank">📞 Voice Chat</a>
+        <a href="video.html" target="_blank">📺 VideoZone</a>
+        <button class="nav-btn" id="czerode-btn">⚡ cZEROde</button>
       </div>
     </div>
 
-    <div class="videozone-warnings">
-      <p>⚠ VideoZone is in <strong>BETA</strong> — some features may be unstable or incomplete.</p>
+    <div class="czerode-warnings">
+      <p>⚠ <strong>cZEROde</strong> is in <strong>BETA</strong> — some features may be unstable or incomplete.</p>
     </div>
 
     <div id="auth-box">
-      <input type="email" id="email-input" placeholder="Email address">
-      <input type="password" id="password-input" placeholder="Password">
+      <input type="email" id="email-input" placeholder="Email address" autocomplete="email">
+      <input type="password" id="password-input" placeholder="Password" autocomplete="current-password">
       <button id="signup-btn" class="ui-button">Sign Up</button>
       <button id="login-btn" class="ui-button">Login</button>
       <button id="logout-btn" class="ui-button" style="display:none;">Logout</button>
@@ -410,13 +573,13 @@
     <div class="section-divider"></div>
 
     <div class="room-controls">
-      <input type="text" id="room-input" placeholder="Room code (default: global)" style="flex:1; min-width: 180px;">
+      <input type="text" id="room-input" placeholder="Room code (default: global)" style="flex:1; min-width:140px;">
       <button id="join-room-btn" class="ui-button">Join Room</button>
       <span id="current-room-label">Current room: global</span>
     </div>
 
     <div class="profile-fields">
-      <input type="text" id="username-input" placeholder="Your username">
+      <input type="text" id="username-input" placeholder="Your username" autocomplete="nickname">
       <input type="text" id="pfp-input" placeholder="Profile picture URL (optional)">
     </div>
 
@@ -432,26 +595,49 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
+    // ===== cZEROde overlay =====
+    const overlay = document.getElementById("czerode-overlay");
+    const frame   = document.getElementById("czerode-frame");
+
+    document.getElementById("czerode-btn").addEventListener("click", () => {
+      frame.src = "https://yuniorrguez13-a11y.github.io/cZEROdeWEB/";
+      overlay.classList.add("open");
+      document.body.style.overflow = "hidden";
+    });
+
+    document.getElementById("czerode-close").addEventListener("click", () => {
+      overlay.classList.remove("open");
+      frame.src = "";
+      document.body.style.overflow = "";
+    });
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove("open");
+        frame.src = "";
+        document.body.style.overflow = "";
+      }
+    });
+
+    // ===== Chat =====
     window.addEventListener("load", () => {
       const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
       const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      const chatBox = document.getElementById("chat-box");
-      const input = document.getElementById("msg-input");
-      const sendBtn = document.getElementById("send-btn");
-      const usernameInput = document.getElementById("username-input");
-      const pfpInput = document.getElementById("pfp-input");
+      const chatBox        = document.getElementById("chat-box");
+      const input          = document.getElementById("msg-input");
+      const sendBtn        = document.getElementById("send-btn");
+      const usernameInput  = document.getElementById("username-input");
+      const pfpInput       = document.getElementById("pfp-input");
       const safeModeToggle = document.getElementById("safe-mode-toggle");
-
-      const emailInput = document.getElementById("email-input");
-      const passwordInput = document.getElementById("password-input");
-      const signupBtn = document.getElementById("signup-btn");
-      const loginBtn = document.getElementById("login-btn");
-      const logoutBtn = document.getElementById("logout-btn");
-
-      const roomInput = document.getElementById("room-input");
-      const joinRoomBtn = document.getElementById("join-room-btn");
+      const emailInput     = document.getElementById("email-input");
+      const passwordInput  = document.getElementById("password-input");
+      const signupBtn      = document.getElementById("signup-btn");
+      const loginBtn       = document.getElementById("login-btn");
+      const logoutBtn      = document.getElementById("logout-btn");
+      const roomInput      = document.getElementById("room-input");
+      const joinRoomBtn    = document.getElementById("join-room-btn");
       const currentRoomLabel = document.getElementById("current-room-label");
 
       let currentUser = null;
@@ -461,12 +647,9 @@
         try {
           const url = new URL(urlString);
           return url.protocol === "http:" || url.protocol === "https:";
-        } catch (e) {
-          return false;
-        }
+        } catch (e) { return false; }
       }
 
-      // ===== Auth =====
       async function checkAuth() {
         const { data: { user } } = await supabase.auth.getUser();
         currentUser = user;
@@ -492,24 +675,14 @@
         }
       }
 
-      // ===== Logic =====
       async function sendMessage() {
-        const text = input.value.trim();
+        const text     = input.value.trim();
         const username = usernameInput.value.trim() || "Anonymous";
-        const pfp_url = pfpInput.value.trim();
-
+        const pfp_url  = pfpInput.value.trim();
         if (!text) return;
-
         const { error } = await supabase.from("messages").insert([
-          { 
-            text, 
-            username, 
-            pfp_url, 
-            room_id: currentRoom,
-            user_id: currentUser?.id 
-          }
+          { text, username, pfp_url, room_id: currentRoom, user_id: currentUser?.id }
         ]);
-
         if (error) alert(error.message);
         else input.value = "";
       }
@@ -522,14 +695,12 @@
 
       async function renderMessages() {
         const { data, error } = await supabase
-          .from("messages")
-          .select("*")
+          .from("messages").select("*")
           .eq("room_id", currentRoom)
           .order("id", { ascending: true });
         if (error) return;
 
         chatBox.innerHTML = "";
-
         data.forEach(msg => {
           if (shouldHideMessage(msg.text)) return;
 
@@ -540,10 +711,10 @@
           if (msg.pfp_url && isValidImageUrl(msg.pfp_url)) {
             const pfp = document.createElement("img");
             pfp.src = msg.pfp_url;
-            pfp.width = 40;
-            pfp.height = 40;
+            pfp.width = 36; pfp.height = 36;
             pfp.style.borderRadius = "50%";
             pfp.style.marginRight = "10px";
+            pfp.style.flexShrink = "0";
             pfp.onerror = () => pfp.style.display = 'none';
             msgDiv.appendChild(pfp);
           }
@@ -551,10 +722,8 @@
           const content = document.createElement("div");
           const name = document.createElement("b");
           name.textContent = msg.username + ": ";
-
           const messageText = document.createElement("span");
           messageText.textContent = msg.text;
-
           content.appendChild(name);
           content.appendChild(messageText);
           msgDiv.appendChild(content);
@@ -564,22 +733,17 @@
         chatBox.scrollTop = chatBox.scrollHeight;
       }
 
-      // ===== Listeners =====
       sendBtn.addEventListener("click", sendMessage);
       input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
 
       signupBtn.addEventListener("click", async () => {
-        const email = emailInput.value;
-        const password = passwordInput.value;
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
         if (error) alert(error.message);
         else alert("Check email for confirmation!");
       });
 
       loginBtn.addEventListener("click", async () => {
-        const email = emailInput.value;
-        const password = passwordInput.value;
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
         if (error) alert(error.message);
         else checkAuth();
       });
@@ -596,7 +760,6 @@
         renderMessages();
       });
 
-      // Realtime
       supabase
         .channel("messages")
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
