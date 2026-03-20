@@ -3,17 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>bro what are you doing</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+  <title>Hey, hold on — Yuniors Chill Zone</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --red: #ff1a1a;
+      --accent: #e8162a;
       --yellow: #ffe600;
-      --bg: #0a0000;
-      --text: #f0f0f0;
+      --bg: #06060a;
+      --panel: rgba(10,10,18,0.92);
+      --border: rgba(255,255,255,0.07);
+      --text: #f0f0f5;
+      --muted: #6a6a7e;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin:0; padding:0; box-sizing:border-box; }
 
     body {
       background: var(--bg);
@@ -21,121 +24,324 @@
       font-family: 'Space Mono', monospace;
       min-height: 100vh;
       overflow-x: hidden;
-      cursor: not-allowed;
     }
 
-    /* FLASHING RED BORDER */
-    body::after {
-      content: '';
-      position: fixed; inset: 0;
-      border: 6px solid var(--red);
-      pointer-events: none;
-      z-index: 9999;
-      animation: borderFlash 0.5s step-end infinite;
-    }
-
-    @keyframes borderFlash {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
-
-    /* SCANLINES */
+    /* GRID BG */
     body::before {
       content: '';
       position: fixed; inset: 0;
-      background: repeating-linear-gradient(
-        0deg, transparent, transparent 2px,
-        rgba(255,0,0,0.03) 2px, rgba(255,0,0,0.03) 4px
-      );
-      pointer-events: none;
-      z-index: 0;
+      background-image:
+        linear-gradient(rgba(232,22,42,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232,22,42,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
     }
 
+    /* ===== SETTINGS BUTTON ===== */
+    #settings-btn {
+      position: fixed;
+      top: 18px; right: 18px;
+      z-index: 200;
+      background: rgba(10,10,18,0.9);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      color: var(--muted);
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 17px;
+      transition: all 0.2s;
+      backdrop-filter: blur(8px);
+    }
+    #settings-btn:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+
+    /* ===== SETTINGS PANEL ===== */
+    #settings-panel {
+      position: fixed;
+      top: 66px; right: 18px;
+      z-index: 200;
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 18px 20px;
+      width: 260px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+      display: none;
+      animation: dropIn 0.2s ease;
+    }
+
+    #settings-panel.open { display: block; }
+
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .settings-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 14px;
+    }
+
+    .setting-row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .setting-info strong {
+      display: block; font-family: 'Rajdhani', sans-serif;
+      font-size: 13px; font-weight: 700; color: #ddd;
+    }
+    .setting-info span {
+      font-size: 10px; color: var(--muted); line-height: 1.5;
+      font-family: 'Rajdhani', sans-serif; font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .switch {
+      position: relative; width: 38px; height: 22px; flex-shrink: 0; margin-left: 12px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0.1);
+      border-radius: 22px; cursor: pointer; transition: 0.2s;
+    }
+    .slider::before {
+      content: ''; position: absolute;
+      width: 16px; height: 16px; left: 3px; top: 3px;
+      background: #777; border-radius: 50%; transition: 0.2s;
+    }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(16px); background: white; }
+
+    /* ===== PAGE ===== */
     .page {
       position: relative; z-index: 1;
       min-height: 100vh;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      padding: 40px 20px;
+      padding: 60px 20px 40px;
       text-align: center;
     }
 
-    /* SIREN LIGHTS */
-    .siren {
-      position: fixed; top: 0; left: 0; right: 0;
-      height: 8px;
-      background: linear-gradient(90deg, var(--red) 50%, #1a00ff 50%);
-      animation: sirenSpin 0.3s linear infinite;
-      z-index: 100;
-    }
+    /* ===== FRIENDLY MODE ===== */
+    #mode-friendly { display: flex; flex-direction: column; align-items: center; }
+    #mode-aggressive { display: none; flex-direction: column; align-items: center; }
 
-    @keyframes sirenSpin {
-      0% { background: linear-gradient(90deg, var(--red) 50%, #0044ff 50%); }
-      50% { background: linear-gradient(90deg, #0044ff 50%, var(--red) 50%); }
-      100% { background: linear-gradient(90deg, var(--red) 50%, #0044ff 50%); }
-    }
-
-    /* BIG EMOJI */
+    /* Big emoji */
     .big-emoji {
-      font-size: clamp(80px, 15vw, 140px);
+      font-size: clamp(64px, 12vw, 110px);
       margin-bottom: 16px;
-      animation: shake 0.4s ease infinite;
       display: block;
     }
 
-    @keyframes shake {
-      0%, 100% { transform: translateX(0) rotate(0deg); }
-      20% { transform: translateX(-8px) rotate(-3deg); }
-      40% { transform: translateX(8px) rotate(3deg); }
-      60% { transform: translateX(-6px) rotate(-2deg); }
-      80% { transform: translateX(6px) rotate(2deg); }
+    /* FRIENDLY — headline */
+    .friendly-headline {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(36px, 8vw, 80px);
+      color: #fff;
+      line-height: 1;
+      margin-bottom: 8px;
+      text-shadow: 0 0 40px rgba(232,22,42,0.4);
     }
 
-    /* HEADLINE */
-    .headline {
+    .friendly-sub {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(14px, 2.5vw, 20px);
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 40px;
+      text-transform: uppercase;
+    }
+
+    /* INFO CARD */
+    .info-card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-left: 4px solid var(--accent);
+      border-radius: 4px 10px 10px 4px;
+      padding: 28px 32px;
+      max-width: 640px;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    .info-card-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 16px;
+    }
+
+    .reason {
+      display: flex; gap: 14px; margin-bottom: 14px;
+      font-size: 13px; line-height: 1.75;
+      animation: fadeSlide 0.4s ease both;
+    }
+
+    .reason:nth-child(2) { animation-delay: 0.05s; }
+    .reason:nth-child(3) { animation-delay: 0.1s; }
+    .reason:nth-child(4) { animation-delay: 0.15s; }
+
+    @keyframes fadeSlide {
+      from { opacity:0; transform:translateX(-16px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+
+    .reason-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .reason-text { color: #b0b0c8; }
+    .reason-text strong { color: #fff; }
+
+    /* REPO CARD */
+    .repo-card {
+      background: rgba(232,22,42,0.06);
+      border: 1px solid rgba(232,22,42,0.25);
+      border-radius: 8px;
+      padding: 24px 28px;
+      max-width: 640px;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 28px;
+    }
+
+    .repo-card-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 14px;
+    }
+
+    .repo-links {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .repo-link {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 5px;
+      text-decoration: none;
+      color: #ccc;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .repo-link:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .repo-link-icon { font-size: 22px; flex-shrink: 0; }
+    .repo-link-info strong { display: block; font-size: 13px; color: #eee; margin-bottom: 2px; }
+    .repo-link-info span { font-size: 11px; color: var(--muted); font-family: 'Rajdhani', sans-serif; letter-spacing: 0.5px; }
+
+    /* BUTTONS */
+    .btn-go-back {
+      display: inline-block;
+      padding: 14px 36px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 4px;
+      color: #888;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      background: transparent;
+      margin-top: 4px;
+    }
+    .btn-go-back:hover { background: rgba(255,255,255,0.07); color: #ddd; border-color: rgba(255,255,255,0.3); }
+
+    /* ===========================
+       AGGRESSIVE MODE (old style)
+       =========================== */
+
+    /* FLASHING BORDER */
+    #mode-aggressive.visible body-border,
+    .agg-border {
+      position: fixed; inset: 0;
+      border: 6px solid var(--accent);
+      pointer-events: none; z-index: 9999;
+      animation: borderFlash 0.5s step-end infinite;
+    }
+
+    @keyframes borderFlash {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* SIREN */
+    .agg-siren {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 8px; z-index: 300;
+      animation: sirenSpin 0.3s linear infinite;
+    }
+
+    @keyframes sirenSpin {
+      0%   { background: linear-gradient(90deg, var(--accent) 50%, #0044ff 50%); }
+      50%  { background: linear-gradient(90deg, #0044ff 50%, var(--accent) 50%); }
+      100% { background: linear-gradient(90deg, var(--accent) 50%, #0044ff 50%); }
+    }
+
+    /* AGG HEADLINE */
+    .agg-headline {
       font-family: 'Bebas Neue', sans-serif;
       font-size: clamp(50px, 12vw, 130px);
-      color: var(--red);
-      line-height: 0.9;
-      margin-bottom: 8px;
+      color: var(--accent);
+      line-height: 0.9; margin-bottom: 8px;
       text-shadow: 4px 4px 0 #7a0000, 8px 8px 0 #3a0000;
       animation: glitch 3s ease infinite;
     }
 
     @keyframes glitch {
-      0%, 90%, 100% { text-shadow: 4px 4px 0 #7a0000, 8px 8px 0 #3a0000; transform: translate(0); }
-      92% { text-shadow: -4px 4px 0 #0044ff, 4px -4px 0 var(--red); transform: translate(3px, -2px); }
-      94% { text-shadow: 4px -4px 0 #0044ff, -4px 4px 0 var(--red); transform: translate(-3px, 2px); }
-      96% { text-shadow: 4px 4px 0 #7a0000; transform: translate(0); }
+      0%,90%,100% { text-shadow:4px 4px 0 #7a0000,8px 8px 0 #3a0000; transform:translate(0); }
+      92% { text-shadow:-4px 4px 0 #0044ff,4px -4px 0 var(--accent); transform:translate(3px,-2px); }
+      94% { text-shadow:4px -4px 0 #0044ff,-4px 4px 0 var(--accent); transform:translate(-3px,2px); }
+      96% { text-shadow:4px 4px 0 #7a0000; transform:translate(0); }
     }
 
-    .sub-headline {
+    .agg-sub {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(20px, 4vw, 42px);
-      color: var(--yellow);
-      letter-spacing: 0.05em;
-      margin-bottom: 48px;
+      font-size: clamp(20px,4vw,42px);
+      color: var(--yellow); letter-spacing:.05em; margin-bottom: 48px;
     }
 
-    /* CHARGES LIST */
+    .shake { animation: shake 0.4s ease infinite; }
+    @keyframes shake {
+      0%,100% { transform:translateX(0) rotate(0deg); }
+      20% { transform:translateX(-8px) rotate(-3deg); }
+      40% { transform:translateX(8px) rotate(3deg); }
+      60% { transform:translateX(-6px) rotate(-2deg); }
+      80% { transform:translateX(6px) rotate(2deg); }
+    }
+
+    /* CHARGES */
     .charges {
       background: rgba(255,26,26,0.07);
       border: 2px solid rgba(255,26,26,0.3);
-      border-left: 6px solid var(--red);
-      border-radius: 4px;
-      padding: 32px 40px;
-      max-width: 680px;
-      width: 100%;
-      margin-bottom: 40px;
-      text-align: left;
+      border-left: 6px solid var(--accent);
+      border-radius: 4px; padding: 32px 40px;
+      max-width: 680px; width: 100%;
+      margin-bottom: 40px; text-align: left;
     }
 
     .charges-title {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 22px;
-      color: var(--red);
-      letter-spacing: 0.15em;
-      margin-bottom: 20px;
+      font-size: 22px; color: var(--accent);
+      letter-spacing: .15em; margin-bottom: 20px;
       display: flex; align-items: center; gap: 10px;
     }
 
@@ -143,40 +349,22 @@
       display: flex; align-items: flex-start;
       gap: 14px; margin-bottom: 16px;
       font-size: 13px; line-height: 1.7;
-      animation: fadeSlide 0.5s ease both;
-    }
-
-    .charge:nth-child(2) { animation-delay: 0.1s; }
-    .charge:nth-child(3) { animation-delay: 0.2s; }
-    .charge:nth-child(4) { animation-delay: 0.3s; }
-    .charge:nth-child(5) { animation-delay: 0.4s; }
-    .charge:nth-child(6) { animation-delay: 0.5s; }
-    .charge:nth-child(7) { animation-delay: 0.6s; }
-    .charge:nth-child(8) { animation-delay: 0.7s; }
-
-    @keyframes fadeSlide {
-      from { opacity: 0; transform: translateX(-20px); }
-      to { opacity: 1; transform: translateX(0); }
     }
 
     .charge-num {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 22px; color: var(--red);
-      flex-shrink: 0; width: 28px; line-height: 1;
-      margin-top: 2px;
+      font-size: 22px; color: var(--accent);
+      flex-shrink: 0; width: 28px; line-height: 1; margin-top: 2px;
     }
 
     .charge-text { color: #ccc; }
     .charge-text strong { color: white; }
     .charge-text .highlight { color: var(--yellow); font-style: italic; }
 
-    /* KNUCKLE WARNING */
+    /* KNUCKLE */
     .knuckle-box {
-      background: var(--red);
-      border-radius: 6px;
-      padding: 24px 32px;
-      max-width: 680px;
-      width: 100%;
+      background: var(--accent); border-radius: 6px;
+      padding: 24px 32px; max-width: 680px; width: 100%;
       margin-bottom: 40px;
       animation: pulse 1s ease infinite;
       position: relative; overflow: hidden;
@@ -185,24 +373,21 @@
     .knuckle-box::before {
       content: '👊👊👊👊👊👊👊👊👊👊👊👊👊👊👊👊';
       position: absolute; top: 0; left: -100%;
-      font-size: 20px; opacity: 0.1;
-      white-space: nowrap;
+      font-size: 20px; opacity: 0.1; white-space: nowrap;
       animation: marchFists 3s linear infinite;
     }
 
-    @keyframes marchFists {
-      to { left: 100%; }
-    }
+    @keyframes marchFists { to { left: 100%; } }
 
     @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255,26,26,0.7); }
-      50% { box-shadow: 0 0 0 16px rgba(255,26,26,0); }
+      0%,100% { box-shadow:0 0 0 0 rgba(255,26,26,0.7); }
+      50%      { box-shadow:0 0 0 16px rgba(255,26,26,0); }
     }
 
     .knuckle-title {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 28px; color: white;
-      letter-spacing: 0.1em; margin-bottom: 8px;
+      letter-spacing:.1em; margin-bottom: 8px;
     }
 
     .knuckle-text {
@@ -211,176 +396,261 @@
     }
 
     /* COUNTDOWN */
-    .countdown-section {
-      margin-bottom: 40px;
-    }
+    .countdown-section { margin-bottom: 40px; }
 
     .countdown-label {
       font-size: 11px; color: #555;
-      letter-spacing: 0.2em; text-transform: uppercase;
-      margin-bottom: 8px;
+      letter-spacing:.2em; text-transform:uppercase; margin-bottom: 8px;
     }
 
     .countdown {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(40px, 8vw, 80px);
-      color: var(--red);
-      letter-spacing: 0.05em;
+      font-size: clamp(40px,8vw,80px);
+      color: var(--accent); letter-spacing:.05em;
       text-shadow: 0 0 30px rgba(255,26,26,0.5);
     }
 
-    .countdown-sub {
-      font-size: 11px; color: #444;
-      letter-spacing: 0.1em; margin-top: 4px;
-    }
+    .countdown-sub { font-size: 11px; color: #444; letter-spacing:.1em; margin-top: 4px; }
 
-    /* GO BACK BUTTON */
-    .go-back {
-      display: inline-block;
-      padding: 16px 48px;
-      background: transparent;
-      border: 2px solid var(--yellow);
-      border-radius: 4px;
-      color: var(--yellow);
+    .go-back-agg {
+      display: inline-block; padding: 16px 48px;
+      background: transparent; border: 2px solid var(--yellow);
+      border-radius: 4px; color: var(--yellow);
       font-family: 'Space Mono', monospace;
       font-size: 14px; font-weight: 700;
-      letter-spacing: 0.1em;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-transform: uppercase;
-      margin-bottom: 16px;
+      letter-spacing:.1em; text-decoration: none;
+      cursor: pointer; transition: all 0.2s;
+      text-transform: uppercase; margin-bottom: 16px;
     }
 
-    .go-back:hover {
-      background: var(--yellow);
-      color: #000;
-      box-shadow: 0 0 30px rgba(255,230,0,0.4);
-    }
+    .go-back-agg:hover { background: var(--yellow); color: #000; box-shadow: 0 0 30px rgba(255,230,0,0.4); }
 
-    .footer-shame {
-      font-size: 11px; color: #333;
-      letter-spacing: 0.15em; margin-top: 16px;
-    }
+    .footer-shame { font-size: 11px; color: #333; letter-spacing:.15em; margin-top: 16px; }
 
-    /* WATERMARK */
     .watermark {
       position: fixed; bottom: 20px; right: 20px;
       font-family: 'Bebas Neue', sans-serif;
       font-size: 11px; color: #1a0000;
-      letter-spacing: 0.2em;
-      pointer-events: none;
+      letter-spacing:.2em; pointer-events: none; z-index: 1;
+    }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 560px) {
+      .info-card, .repo-card, .charges, .knuckle-box { padding: 18px 16px; }
+      .charges { padding: 20px 16px; }
     }
   </style>
 </head>
 <body>
 
-<div class="siren"></div>
+<!-- SETTINGS BUTTON -->
+<button id="settings-btn" title="Settings">⚙️</button>
 
-<div class="page">
-
-  <span class="big-emoji">🚨</span>
-
-  <div class="headline">CAUGHT.</div>
-  <div class="sub-headline">You tried to save yuniorschillzone.xyz without permission</div>
-
-  <div class="charges">
-    <div class="charges-title">⚖️ Official Charges Filed Against You</div>
-
-    <div class="charge">
-      <div class="charge-num">1</div>
-      <div class="charge-text">
-        <strong>Grand Theft Website.</strong> You pressed Ctrl+S on someone else's property like it was yours. 
-        It is not yours. It will never be yours. <span class="highlight">Carry that.</span>
-      </div>
+<div id="settings-panel">
+  <div class="settings-title">⚙ Page Settings</div>
+  <div class="setting-row">
+    <div class="setting-info">
+      <strong>Aggressive Mode</strong>
+      <span>Switch to the old "you're under arrest" version for a laugh</span>
     </div>
-
-    <div class="charge">
-      <div class="charge-num">2</div>
-      <div class="charge-text">
-        <strong>Disrespect in the First Degree.</strong> Yunior spent actual time building this. 
-        You spent 0.3 seconds trying to steal it. 
-        <span class="highlight">The audacity is criminal.</span>
-      </div>
-    </div>
-
-    <div class="charge">
-      <div class="charge-num">3</div>
-      <div class="charge-text">
-        <strong>Attempted Cloning of a Superior Website.</strong> Even if you saved it, 
-        you don't have the Supabase keys, the database, the storage buckets, or the algorithm. 
-        You'd have a broken HTML file that loads nothing. <span class="highlight">Congratulations on your empty shell.</span>
-      </div>
-    </div>
-
-    <div class="charge">
-      <div class="charge-num">4</div>
-      <div class="charge-text">
-        <strong>Delusion.</strong> You genuinely thought you could just... take this. 
-        Like a website is a sandwich you can grab off a counter. 
-        <span class="highlight">Sir this is a Wendy's and also you're under arrest.</span>
-      </div>
-    </div>
-
-    <div class="charge">
-      <div class="charge-num">5</div>
-      <div class="charge-text">
-        <strong>Wasting Everyone's Time.</strong> Yours, mine, and Yunior's. 
-        What were you going to do with it? Show your friends? 
-        <span class="highlight">They wouldn't be impressed either.</span>
-      </div>
-    </div>
-
-    <div class="charge">
-      <div class="charge-num">6</div>
-      <div class="charge-text">
-        <strong>Being Fundamentally Cooked.</strong> A real developer builds their own stuff. 
-        You tried to download someone else's vibe. 
-        <span class="highlight">That's not how vibes work bro.</span>
-      </div>
-    </div>
-
-    <div class="charge">
-      <div class="charge-num">7</div>
-      <div class="charge-text">
-        <strong>Copyright Violation (Probably).</strong> This site has a custom font, 
-        original code, and a full video platform with a recommendation algorithm. 
-        <span class="highlight">Good luck recreating that with your Ctrl+S.</span>
-      </div>
-    </div>
+    <label class="switch">
+      <input type="checkbox" id="mode-toggle">
+      <span class="slider"></span>
+    </label>
   </div>
-
-  <div class="knuckle-box">
-    <div class="knuckle-title">👊 A Personal Message From Yunior 👊</div>
-    <div class="knuckle-text">
-      If I ever find out who you are — and I will find out — 
-      I am personally breaking every single one of your knuckles. 
-      One. By. One. Slowly. While making eye contact. 
-      No hard feelings, it's just business. 
-      You pressed Ctrl+S on the wrong website homie. 
-      <br><br>
-      <strong style="color:white">This is your only warning. The next one comes with fists.</strong>
-    </div>
-  </div>
-
-  <div class="countdown-section">
-    <div class="countdown-label">Time until Yunior finds you</div>
-    <div class="countdown" id="countdown">00:00:00</div>
-    <div class="countdown-sub" id="countdown-sub">calculating your IP address...</div>
-  </div>
-
-  <a class="go-back" href="javascript:history.back()">← Go back and never do this again</a>
-
-  <div class="footer-shame">
-    This page exists because of YOU. You specifically. You know what you did.
-  </div>
-
 </div>
 
-<div class="watermark">YUNIORSCHILLZONE.XYZ — DO NOT STEAL</div>
+<!-- ===================== FRIENDLY MODE ===================== -->
+<div class="page" id="friendly-page">
+  <div id="mode-friendly">
+
+    <span class="big-emoji">✋</span>
+
+    <div class="friendly-headline">Hold Up</div>
+    <div class="friendly-sub">Ctrl+S isn't the way to go here</div>
+
+    <div class="info-card">
+      <div class="info-card-title">💡 Why you shouldn't save it this way</div>
+
+      <div class="reason">
+        <span class="reason-icon">🧩</span>
+        <div class="reason-text">
+          <strong>It'll be broken.</strong> Ctrl+S saves a static snapshot of the page — but the chat, auth, and real-time features all depend on Supabase, which you won't have credentials for. You'll just get an empty shell.
+        </div>
+      </div>
+
+      <div class="reason">
+        <span class="reason-icon">🎨</span>
+        <div class="reason-text">
+          <strong>It's unpolished.</strong> Browser-saved HTML loses relative paths, fonts may not load, and external scripts often break. The file you'd get is a mess compared to the actual source.
+        </div>
+      </div>
+
+      <div class="reason">
+        <span class="reason-icon">🔧</span>
+        <div class="reason-text">
+          <strong>It's way harder to edit.</strong> The repo gives you the clean, commented, organized source. Editing a browser-dumped file is a nightmare.
+        </div>
+      </div>
+
+      <div class="reason">
+        <span class="reason-icon">⚡</span>
+        <div class="reason-text">
+          <strong>There's a better way.</strong> The project is open source. You can get the actual working files — including a personalization tool — straight from GitHub.
+        </div>
+      </div>
+    </div>
+
+    <div class="repo-card">
+      <div class="repo-card-title">🔗 Get the real files here</div>
+      <div class="repo-links">
+
+        <a class="repo-link" href="https://github.com/yuniorrguez13-a11y/yuniorschillzone" target="_blank">
+          <span class="repo-link-icon">📦</span>
+          <div class="repo-link-info">
+            <strong>GitHub Repository</strong>
+            <span>Full source code — clone it, fork it, make it yours</span>
+          </div>
+        </a>
+
+        <a class="repo-link" href="https://github.com/yuniorrguez13-a11y/yunior-chill-zone/blob/main/personalize.html" target="_blank">
+          <span class="repo-link-icon">🎨</span>
+          <div class="repo-link-info">
+            <strong>personalize.html — Visual Site Builder</strong>
+            <span>Change name, colors, fonts, tools — download your own index.html</span>
+          </div>
+        </a>
+
+        <a class="repo-link" href="https://github.com/yuniorrguez13-a11y/yunior-chill-zone/blob/main/index.html" target="_blank">
+          <span class="repo-link-icon">📄</span>
+          <div class="repo-link-info">
+            <strong>index.html — Raw Source File</strong>
+            <span>The real deal, ready to manually edit</span>
+          </div>
+        </a>
+
+      </div>
+    </div>
+
+    <a class="btn-go-back" href="javascript:history.back()">← Go back</a>
+
+  </div>
+</div>
+
+<!-- ===================== AGGRESSIVE MODE ===================== -->
+<div class="page" id="aggressive-page" style="display:none;">
+  <div class="agg-siren" id="agg-siren"></div>
+  <div class="agg-border" id="agg-border" style="position:fixed;inset:0;border:6px solid var(--accent);pointer-events:none;z-index:9999;animation:borderFlash 0.5s step-end infinite; display:none;"></div>
+
+  <div id="mode-aggressive" style="display:none;">
+
+    <span class="big-emoji shake">🚨</span>
+
+    <div class="agg-headline" id="agg-headline">CAUGHT.</div>
+    <div class="agg-sub">You tried to save yuniorschillzone.xyz without permission</div>
+
+    <div class="charges">
+      <div class="charges-title">⚖️ Official Charges Filed Against You</div>
+
+      <div class="charge">
+        <div class="charge-num">1</div>
+        <div class="charge-text"><strong>Grand Theft Website.</strong> You pressed Ctrl+S on someone else's property like it was yours. It is not yours. It will never be yours. <span class="highlight">Carry that.</span></div>
+      </div>
+      <div class="charge">
+        <div class="charge-num">2</div>
+        <div class="charge-text"><strong>Disrespect in the First Degree.</strong> Yunior spent actual time building this. You spent 0.3 seconds trying to steal it. <span class="highlight">The audacity is criminal.</span></div>
+      </div>
+      <div class="charge">
+        <div class="charge-num">3</div>
+        <div class="charge-text"><strong>Attempted Cloning of a Superior Website.</strong> Even if you saved it, you don't have the Supabase keys, the database, the storage buckets, or the algorithm. You'd have a broken HTML file that loads nothing. <span class="highlight">Congratulations on your empty shell.</span></div>
+      </div>
+      <div class="charge">
+        <div class="charge-num">4</div>
+        <div class="charge-text"><strong>Delusion.</strong> You genuinely thought you could just... take this. Like a website is a sandwich you can grab off a counter. <span class="highlight">Sir this is a Wendy's and also you're under arrest.</span></div>
+      </div>
+      <div class="charge">
+        <div class="charge-num">5</div>
+        <div class="charge-text"><strong>Wasting Everyone's Time.</strong> Yours, mine, and Yunior's. What were you going to do with it? Show your friends? <span class="highlight">They wouldn't be impressed either.</span></div>
+      </div>
+      <div class="charge">
+        <div class="charge-num">6</div>
+        <div class="charge-text"><strong>Being Fundamentally Cooked.</strong> A real developer builds their own stuff. You tried to download someone else's vibe. <span class="highlight">That's not how vibes work bro.</span></div>
+      </div>
+      <div class="charge">
+        <div class="charge-num">7</div>
+        <div class="charge-text"><strong>Copyright Violation (Probably).</strong> This site has a custom font, original code, and a full video platform with a recommendation algorithm. <span class="highlight">Good luck recreating that with your Ctrl+S.</span></div>
+      </div>
+    </div>
+
+    <div class="knuckle-box">
+      <div class="knuckle-title">👊 A Personal Message From Yunior 👊</div>
+      <div class="knuckle-text">
+        If I ever find out who you are — and I will find out — I am personally breaking every single one of your knuckles. One. By. One. Slowly. While making eye contact. No hard feelings, it's just business. You pressed Ctrl+S on the wrong website homie.
+        <br><br>
+        <strong style="color:white">This is your only warning. The next one comes with fists.</strong>
+      </div>
+    </div>
+
+    <div class="countdown-section">
+      <div class="countdown-label">Time until Yunior finds you</div>
+      <div class="countdown" id="countdown">00:00:00</div>
+      <div class="countdown-sub" id="countdown-sub">calculating your IP address...</div>
+    </div>
+
+    <a class="go-back-agg" href="javascript:history.back()">← Go back and never do this again</a>
+    <div class="footer-shame">This page exists because of YOU. You specifically. You know what you did.</div>
+
+  </div>
+</div>
+
+<div class="watermark">YUNIORSCHILLZONE.XYZ</div>
 
 <script>
-  // Fake countdown that resets to make them panic
+  // ===== SETTINGS PANEL =====
+  const settingsBtn   = document.getElementById('settings-btn');
+  const settingsPanel = document.getElementById('settings-panel');
+  const modeToggle    = document.getElementById('mode-toggle');
+  const friendlyPage  = document.getElementById('friendly-page');
+  const aggressivePage = document.getElementById('aggressive-page');
+  const aggMode       = document.getElementById('mode-aggressive');
+  const aggBorder     = document.getElementById('agg-border');
+  const aggSiren      = document.getElementById('agg-siren');
+
+  settingsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    settingsPanel.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!settingsPanel.contains(e.target) && e.target !== settingsBtn) {
+      settingsPanel.classList.remove('open');
+    }
+  });
+
+  modeToggle.addEventListener('change', () => {
+    if (modeToggle.checked) {
+      // Switch to aggressive
+      friendlyPage.style.display = 'none';
+      aggressivePage.style.display = 'block';
+      aggMode.style.display = 'flex';
+      aggBorder.style.display = 'block';
+      document.body.style.cursor = 'not-allowed';
+      startCountdown();
+    } else {
+      // Back to friendly
+      friendlyPage.style.display = 'block';
+      aggressivePage.style.display = 'none';
+      aggMode.style.display = 'none';
+      aggBorder.style.display = 'none';
+      document.body.style.cursor = '';
+      stopCountdown();
+    }
+  });
+
+  // ===== COUNTDOWN (aggressive mode only) =====
+  var countdownInterval = null;
+  var msgInterval = null;
+
   var msgs = [
     'calculating your IP address...',
     'cross-referencing with ISP records...',
@@ -393,46 +663,46 @@
     'seriously. go.',
     'WHY ARE YOU STILL HERE',
   ];
-  var msgIdx = 0;
-  var sub = document.getElementById('countdown-sub');
-  var cd = document.getElementById('countdown');
 
-  // Random starting time to make it feel real
+  var msgIdx = 0;
   var secs = Math.floor(Math.random() * 180) + 60;
 
-  setInterval(function() {
-    secs--;
-    if (secs <= 0) secs = Math.floor(Math.random() * 60) + 10; // resets randomly to keep them scared
-    var m = Math.floor(secs / 60);
-    var s = secs % 60;
-    cd.textContent = '00:' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-  }, 1000);
+  function startCountdown() {
+    var cd = document.getElementById('countdown');
+    var sub = document.getElementById('countdown-sub');
 
-  setInterval(function() {
-    msgIdx = (msgIdx + 1) % msgs.length;
-    sub.textContent = msgs[msgIdx];
-  }, 2000);
+    countdownInterval = setInterval(function() {
+      secs--;
+      if (secs <= 0) secs = Math.floor(Math.random() * 60) + 10;
+      var m = Math.floor(secs / 60);
+      var s = secs % 60;
+      cd.textContent = '00:' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }, 1000);
 
-  // If they try Ctrl+S AGAIN on this page, extra mockery
+    msgInterval = setInterval(function() {
+      msgIdx = (msgIdx + 1) % msgs.length;
+      sub.textContent = msgs[msgIdx];
+    }, 2000);
+  }
+
+  function stopCountdown() {
+    clearInterval(countdownInterval);
+    clearInterval(msgInterval);
+  }
+
+  // ===== CTRL+S EASTER EGG IN AGGRESSIVE MODE =====
   document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
-      document.querySelector('.headline').textContent = 'BRO.';
-      document.querySelector('.sub-headline').textContent = 'You just did it AGAIN on the punishment page. Unbelievable.';
+      if (modeToggle.checked) {
+        document.getElementById('agg-headline').textContent = 'BRO.';
+        document.querySelector('.agg-sub').textContent = 'You just did it AGAIN on the punishment page. Unbelievable.';
+      }
     }
   });
 
-  // Shake the page briefly on load
-  document.body.style.animation = 'none';
-  setTimeout(function() {
-    var shakes = 0;
-    var interval = setInterval(function() {
-      document.body.style.transform = shakes % 2 === 0 ? 'translateX(6px)' : 'translateX(-6px)';
-      shakes++;
-      if (shakes > 8) { clearInterval(interval); document.body.style.transform = ''; }
-    }, 60);
-  }, 300);
+  // ===== PAGE SHAKE ON LOAD (aggressive mode only, if user arrives in agg mode) =====
+  // By default we start in friendly mode, so no shake needed
 </script>
-
 </body>
 </html>
