@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        window.location.href = 'https://yuniorschillzone.xyz/nosaving.html';
+      }
+    });
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Piano Room — Yuniors Chill Zone</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap');
+
+    @font-face {
+      font-family: "yuniorrguez13-a11y";
+      src: url("fonts/SoulsideBetrayed-3lazX.ttf") format("truetype");
+      font-weight: normal; font-style: normal;
+    }
+
+    :root {
+      --crimson: #e8162a; --crimson-dark: #9e0e1c;
+      --crimson-glow: rgba(232,22,42,0.35);
+      --cyan: #00d4ff; --cyan-glow: rgba(0,212,255,0.3);
+      --bg-deep: #06060a; --bg-panel: rgba(8,8,14,0.88);
+      --bg-card: rgba(12,12,20,0.75);
+      --border-subtle: rgba(255,255,255,0.07);
+      --border-red: rgba(232,22,42,0.4);
+      --text-primary: #f0f0f5; --text-muted: #7a7a8e;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--crimson); border-radius: 2px; }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background-color: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      overflow-x: hidden;
+    }
+
+    canvas#matrix {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 0; opacity: 0.25;
+    }
+
+    .panel {
+      position: relative; z-index: 1;
+      width: 96%; max-width: 1100px;
+      margin: 24px auto; padding: 24px;
+      background: var(--bg-panel);
+      border-radius: 4px 16px 16px 16px;
+      box-shadow: 0 0 0 1px var(--border-red), 0 0 50px rgba(232,22,42,0.1), 0 28px 70px rgba(0,0,0,0.65);
+      border-top: 3px solid var(--crimson);
+      backdrop-filter: blur(14px);
+    }
+
+    h1 {
+      font-family: "yuniorrguez13-a11y", 'Orbitron', serif;
+      font-size: clamp(20px, 4vw, 34px);
+      color: white;
+      text-shadow: 0 0 40px rgba(232,22,42,0.6), 0 0 80px rgba(232,22,42,0.25);
+    }
+
+    .subtitle {
+      color: var(--text-muted); font-family: 'Rajdhani', sans-serif;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase; margin-top: 4px;
+    }
+
+    .divider {
+      height: 1px; background: linear-gradient(90deg, var(--crimson), transparent);
+      margin: 16px 0; opacity: 0.3;
+    }
+
+    .btn {
+      font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      padding: 8px 16px; cursor: pointer; transition: all 0.2s;
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 3px;
+      background: rgba(255,255,255,0.04); color: #b0b0c8;
+      clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+      text-decoration: none; display: inline-block; -webkit-tap-highlight-color: transparent;
+    }
+    .btn:hover { background: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.35); }
+    .btn-red { border-color: var(--crimson) !important; background: rgba(232,22,42,0.12) !important; color: #ff7080 !important; }
+    .btn-red:hover { background: var(--crimson) !important; color: white !important; box-shadow: 0 0 20px var(--crimson-glow); }
+    .btn-cyan { border-color: var(--cyan) !important; background: rgba(0,212,255,0.08) !important; color: var(--cyan) !important; }
+    .btn-cyan:hover { background: rgba(0,212,255,0.18) !important; box-shadow: 0 0 20px var(--cyan-glow); }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+    input[type="text"], input[type="email"], input[type="password"], select {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; padding: 8px 12px;
+      color: var(--text-primary); font-family: 'Inter', sans-serif;
+      font-size: 13px; outline: none; transition: border-color 0.2s;
+    }
+    input:focus, select:focus { border-color: var(--crimson); }
+    select option { background: #0e0e18; }
+
+    /* ===== SCREENS ===== */
+    .screen { display: none; }
+    .screen.active { display: block; }
+    #piano-screen.screen.active { display: flex; flex-direction: column; }
+
+    /* ===== AUTH ===== */
+    #auth-screen .fields { display: flex; flex-direction: column; gap: 10px; max-width: 340px; margin: 20px 0; }
+    #auth-screen .actions { display: flex; gap: 8px; }
+
+    /* ===== LOBBY ===== */
+    .lobby-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+    .lobby-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .lobby-user { font-size: 12px; color: var(--cyan); font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; }
+
+    .create-form {
+      margin-top: 16px; padding: 16px; background: var(--bg-card);
+      border-radius: 8px; border: 1px solid var(--border-red);
+      display: none; animation: slideDown 0.2s ease;
+    }
+    .create-form.open { display: block; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+    .create-form-label { font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 1px; font-size: 12px; color: var(--crimson); margin-bottom: 12px; }
+    .create-form-fields { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .create-form-fields input, .create-form-fields select { flex: 1; min-width: 150px; }
+
+    .room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+    .room-card {
+      padding: 16px; background: var(--bg-card);
+      border: 1px solid var(--border-subtle); border-radius: 8px;
+      cursor: pointer; transition: all 0.2s; animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .room-card:hover { border-color: var(--border-red); box-shadow: 0 0 20px rgba(232,22,42,0.1); transform: translateY(-2px); }
+    .room-card-name { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 1px; color: white; }
+    .room-card-host { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .room-vibe {
+      display: inline-block; padding: 2px 9px; border-radius: 10px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; margin-top: 8px;
+    }
+    .vibe-chill    { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.3); }
+    .vibe-jazz     { background: rgba(255,140,0,0.1); color: #ff8c00; border: 1px solid rgba(255,140,0,0.3); }
+    .vibe-classical{ background: rgba(168,85,247,0.1); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); }
+    .vibe-lofi     { background: rgba(0,255,136,0.1); color: #00ff88; border: 1px solid rgba(0,255,136,0.3); }
+    .vibe-chaotic  { background: rgba(232,22,42,0.1); color: var(--crimson); border: 1px solid var(--border-red); }
+    .empty-state { color: var(--text-muted); font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; font-size: 13px; margin-top: 12px; }
+
+    /* ===== PIANO ROOM ===== */
+    .room-topbar { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+    .room-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+    .room-meta-badge {
+      padding: 2px 10px; border-radius: 10px; font-size: 10px;
+      font-family: 'Rajdhani', sans-serif; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    .players-strip { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; min-height: 30px; }
+    .player-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 11px; font-family: 'Rajdhani', sans-serif;
+      font-weight: 700; letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+    .player-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ===== CONTROLS BAR ===== */
+    .controls-bar {
+      display: flex; align-items: center; gap: 16px;
+      flex-wrap: wrap; padding: 8px 0; margin-bottom: 4px;
+    }
+    .ctrl-group { display: flex; align-items: center; gap: 8px; }
+    .ctrl-label { font-size: 11px; color: var(--text-muted); font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; font-weight: 700; }
+    input[type="range"] { width: 90px; accent-color: var(--crimson); cursor: pointer; }
+    .ctrl-value { font-size: 12px; color: var(--cyan); font-family: 'Orbitron', sans-serif; min-width: 36px; }
+
+    .sustain-toggle {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; color: var(--text-muted);
+      font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 1px;
+      cursor: pointer;
+    }
+    .sustain-toggle input { accent-color: var(--crimson); cursor: pointer; }
+
+    /* ===== PIANO KEYBOARD ===== */
+    .piano-scroll {
+      overflow-x: auto; overflow-y: hidden;
+      padding: 12px 0 20px; margin: 4px 0;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .piano-keyboard {
+      display: flex; position: relative;
+      user-select: none; -webkit-user-select: none;
+      height: 148px; /* white key height + padding */
+    }
+
+    .octave-group { position: relative; display: flex; flex-shrink: 0; }
+
+    /* WHITE KEY */
+    .key.white {
+      width: 32px; height: 138px;
+      background: linear-gradient(180deg, #d8d8e8 0%, #ffffff 30%, #f8f8ff 100%);
+      border: 1px solid rgba(0,0,0,0.25);
+      border-bottom: 4px solid rgba(0,0,0,0.15);
+      border-radius: 0 0 5px 5px;
+      cursor: pointer; position: relative; z-index: 1;
+      transition: background 0.04s;
+      box-shadow: 2px 0 3px rgba(0,0,0,0.3), inset 0 -2px 6px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+    .key.white:hover { background: linear-gradient(180deg, #c8c8d8 0%, #eeeeff 100%); }
+    .key.white.pressed {
+      background: linear-gradient(180deg, #b0b0cc 0%, #d8d8ee 100%) !important;
+      box-shadow: 1px 0 2px rgba(0,0,0,0.3), inset 0 2px 6px rgba(0,0,0,0.2) !important;
+      border-bottom-width: 2px !important;
+      transform: translateY(2px);
+    }
+    /* Middle C marker */
+    .key.white.middle-c::after {
+      content: 'C4'; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+      font-size: 7px; font-family: 'Orbitron', sans-serif; color: var(--crimson); opacity: 0.6;
+      pointer-events: none;
+    }
+
+    /* BLACK KEY */
+    .key.black {
+      width: 21px; height: 87px;
+      background: linear-gradient(180deg, #1e1e30 0%, #0a0a18 60%, #111124 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 4px solid rgba(0,0,0,0.9);
+      border-radius: 0 0 4px 4px;
+      position: absolute; top: 0; z-index: 2;
+      cursor: pointer;
+      box-shadow: 3px 5px 10px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08);
+      transition: background 0.04s;
+    }
+    .key.black:hover { background: linear-gradient(180deg, #2e2e44 0%, #181828 100%); }
+    .key.black.pressed {
+      background: linear-gradient(180deg, #3e3e58 0%, #252538 100%) !important;
+      box-shadow: 1px 2px 5px rgba(0,0,0,0.8) !important;
+      border-bottom-width: 2px !important;
+      transform: translateY(2px);
+    }
+
+    /* KEY LABEL (keyboard shortcut) */
+    .key-label {
+      position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+      font-size: 8px; font-family: 'Rajdhani', sans-serif; font-weight: 700;
+      pointer-events: none; white-space: nowrap; line-height: 1;
+    }
+    .key.white .key-label { color: rgba(0,0,0,0.3); }
+    .key.black .key-label { color: rgba(255,255,255,0.3); font-size: 7px; bottom: 4px; }
+
+    /* GLOW HIGHLIGHT (other players) */
+    .key.lit { transition: background 0.05s, box-shadow 0.05s; }
+
+    /* NOTE DISPLAY */
+    .note-display {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 4px; min-height: 22px;
+    }
+    .note-name {
+      font-family: 'Orbitron', sans-serif; font-size: 13px;
+      color: var(--cyan); letter-spacing: 2px; min-width: 50px;
+    }
+    .note-hint-text {
+      font-size: 11px; color: var(--text-muted);
+      font-family: 'Rajdhani', sans-serif; letter-spacing: 1px;
+    }
+
+    /* ===== LOADING OVERLAY ===== */
+    #loading-overlay {
+      position: fixed; inset: 0; background: rgba(6,6,10,0.96);
+      z-index: 999; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+    }
+    #loading-overlay.hidden { display: none; }
+    .loading-title {
+      font-family: "yuniorrguez13-a11y", 'Orbitron', serif;
+      font-size: 32px; color: white;
+      text-shadow: 0 0 40px rgba(232,22,42,0.7);
+    }
+    .loading-msg {
+      font-family: 'Orbitron', sans-serif; font-size: 11px;
+      color: var(--crimson); letter-spacing: 3px; text-transform: uppercase;
+      animation: blink 1.4s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+    .loading-bar { width: 220px; height: 2px; background: rgba(232,22,42,0.2); border-radius: 1px; overflow: hidden; }
+    .loading-bar-inner { height: 100%; background: var(--crimson); border-radius: 1px; animation: sweep 1.8s ease-in-out infinite; }
+    @keyframes sweep { 0%{width:0;margin-left:0} 50%{width:70%;margin-left:15%} 100%{width:0;margin-left:100%} }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed; bottom: 20px; right: 20px; z-index: 900;
+      background: var(--bg-card); border: 1px solid var(--border-red);
+      border-left: 3px solid var(--crimson); padding: 10px 16px;
+      border-radius: 4px; font-size: 12px; font-family: 'Rajdhani', sans-serif;
+      letter-spacing: 1px; opacity: 0; transition: opacity 0.3s;
+      max-width: 300px;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+  <div class="loading-title">🎹 Piano Room</div>
+  <div class="loading-msg" id="loading-msg">Initializing...</div>
+  <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ===================== AUTH SCREEN ===================== -->
+<div class="panel screen" id="auth-screen">
+  <h1>🎹 Piano Room</h1>
+  <p class="subtitle">Real-time multiplayer piano · Yuniors Chill Zone</p>
+  <div class="divider"></div>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">Sign in to join or create a room.</p>
+  <div class="fields">
+    <input type="email"    id="auth-email"    placeholder="Email address"  autocomplete="email">
+    <input type="password" id="auth-password" placeholder="Password"        autocomplete="current-password">
+  </div>
+  <div class="actions">
+    <button class="btn btn-red" id="auth-login">Login</button>
+    <button class="btn"         id="auth-signup">Sign Up</button>
+  </div>
+  <p style="margin-top:14px;font-size:11px;color:var(--text-muted);">Same account as the main chat.</p>
+</div>
+
+<!-- ===================== LOBBY SCREEN ===================== -->
+<div class="panel screen" id="lobby-screen">
+  <div class="lobby-header">
+    <div>
+      <h1>🎹 Piano Lobby</h1>
+      <p class="subtitle">Pick a room and start playing</p>
+    </div>
+    <div class="lobby-actions">
+      <span class="lobby-user" id="lobby-user"></span>
+      <button class="btn btn-cyan" id="toggle-create-btn">＋ Create Room</button>
+      <a href="index.html" class="btn">← Back</a>
+    </div>
+  </div>
+
+  <div class="create-form" id="create-form">
+    <div class="create-form-label">⚡ NEW ROOM</div>
+    <div class="create-form-fields">
+      <input type="text" id="new-room-name" placeholder="Room name…" style="min-width:180px;">
+      <select id="new-room-vibe">
+        <option value="chill">🌊 Chill</option>
+        <option value="jazz">🎷 Jazz</option>
+        <option value="classical">🎻 Classical</option>
+        <option value="lofi">☁️ Lo-Fi</option>
+        <option value="chaotic">💥 Chaotic</option>
+      </select>
+      <button class="btn btn-red" id="create-room-btn">Create</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div id="room-grid" class="room-grid">
+    <p class="empty-state">Loading rooms…</p>
+  </div>
+</div>
+
+<!-- ===================== PIANO SCREEN ===================== -->
+<div class="panel screen" id="piano-screen">
+  <div class="room-topbar">
+    <div>
+      <h1 id="room-title">🎹 Room</h1>
+      <div class="room-meta">
+        <span id="room-vibe-badge" class="room-meta-badge room-vibe vibe-chill">Chill</span>
+        <span class="subtitle" id="room-player-count">0 players</span>
+      </div>
+    </div>
+    <button class="btn btn-red" id="leave-btn">Leave Room</button>
+  </div>
+
+  <!-- Player list -->
+  <div id="players-strip" class="players-strip"></div>
+  <div class="divider"></div>
+
+  <!-- Controls -->
+  <div class="controls-bar">
+    <div class="ctrl-group">
+      <span class="ctrl-label">🔊 VOL</span>
+      <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="0.8">
+      <span class="ctrl-value" id="vol-value">80%</span>
+    </div>
+    <label class="sustain-toggle">
+      <input type="checkbox" id="sustain-toggle"> SUSTAIN
+    </label>
+    <div class="ctrl-group" style="margin-left:auto;">
+      <span class="ctrl-label" id="audio-status" style="color:var(--text-muted);">⏳ Audio ready</span>
+    </div>
+  </div>
+
+  <!-- Keyboard -->
+  <div class="piano-scroll" id="piano-scroll">
+    <div class="piano-keyboard" id="piano-keyboard"></div>
+  </div>
+
+  <!-- Note display -->
+  <div class="note-display">
+    <span class="note-name" id="note-display">—</span>
+    <span class="note-hint-text">Hover or play a key · Keyboard shortcuts shown on each key · Uppercase = black key</span>
+  </div>
+</div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script src="matrix.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script type="module">
+
+// ─────────────────────────────────────────────
+// SUPABASE
+// ─────────────────────────────────────────────
+const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
+const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const NOTE_NAMES  = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const WHITE_NOTES = ['C','D','E','F','G','A','B'];
+
+// Full key map from the uploaded XLSX layout
+const KEY_MAP = {
+  '1':'C1','!':'C#1','2':'D1','@':'D#1','3':'E1','4':'F1','$':'F#1','5':'G1','%':'G#1','6':'A1','^':'A#1','7':'B1',
+  '8':'C2','*':'C#2','9':'D2','(':'D#2','0':'E2','q':'F2','Q':'F#2','w':'G2','W':'G#2','e':'A2','E':'A#2','r':'B2',
+  't':'C3','T':'C#3','y':'D3','Y':'D#3','u':'E3','i':'F3','I':'F#3','o':'G3','O':'G#3','p':'A3','P':'A#3','a':'B3',
+  's':'C4','S':'C#4','d':'D4','D':'D#4','f':'E4','g':'F4','G':'F#4','h':'G4','H':'G#4','j':'A4','J':'A#4','k':'B4',
+  'l':'C5','L':'C#5','z':'D5','Z':'D#5','x':'E5','c':'F5','C':'F#5','v':'G5','V':'G#5','b':'A5','B':'A#5','n':'B5',
+  'm':'C6'
+};
+const NOTE_TO_KEY = Object.fromEntries(Object.entries(KEY_MAP).map(([k,v])=>[v,k]));
+
+// Black key pixel offsets within an octave group (white key = 32px)
+// Positions: C#=22, D#=54, F#=118, G#=150, A#=182
+const BLACK_OFFSETS = { 'C#':22, 'D#':54, 'F#':118, 'G#':150, 'A#':182 };
+
+const PLAYER_COLORS = ['#e8162a','#00d4ff','#00ff88','#ff8c00','#a855f7','#ffd700','#ff69b4','#00ced1'];
+const VIBE_LABELS = { chill:'🌊 Chill Vibes', jazz:'🎷 Jazz Session', classical:'🎻 Classical Hall', lofi:'☁️ Lo-Fi Beats', chaotic:'💥 Total Chaos' };
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let currentUser   = null;
+let myUsername    = 'Player';
+let myColor       = PLAYER_COLORS[0];
+let myColorIdx    = 0;
+
+let currentRoom   = null;
+let channel       = null;
+let players       = {};   // uid → { username, color }
+
+let audioCtx      = null;
+let masterGain    = null;
+let Synthetizer   = null;
+let synth         = null;
+let useFallback   = false;
+let fallbackBufs  = {};   // midiNote → AudioBufferSourceNode
+
+let volume        = 0.8;
+let sustainOn     = false;
+let heldKeys      = new Set();   // notes currently pressed by keyboard
+let sustainedKeys = new Set();   // notes held open by sustain
+
+// ─────────────────────────────────────────────
+// DOM REFS
+// ─────────────────────────────────────────────
+const $auth    = document.getElementById('auth-screen');
+const $lobby   = document.getElementById('lobby-screen');
+const $piano   = document.getElementById('piano-screen');
+const $loading = document.getElementById('loading-overlay');
+const $loadMsg = document.getElementById('loading-msg');
+const $toast   = document.getElementById('toast');
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+function showScreen(id) {
+  [$auth,$lobby,$piano].forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+let _toastTimer;
+function toast(msg, ms=2800) {
+  $toast.textContent = msg;
+  $toast.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>$toast.classList.remove('show'), ms);
+}
+
+function setLoadMsg(msg) { $loadMsg.textContent = msg; }
+function showLoading()   { $loading.classList.remove('hidden'); }
+function hideLoading()   { $loading.classList.add('hidden'); }
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function genId() {
+  return Math.random().toString(36).slice(2,8).toUpperCase();
+}
+
+function noteToMidi(note) {
+  const m = note.match(/([A-G]#?)(\d+)/);
+  if(!m) return -1;
+  return (parseInt(m[2])+1)*12 + NOTE_NAMES.indexOf(m[1]);
+}
+
+function midiToFreq(midi) {
+  return 440 * Math.pow(2, (midi-69)/12);
+}
+
+// ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
+document.getElementById('auth-login').addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-password').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error) { toast('⚠ ' + error.message); return; }
+  await afterAuth();
+});
+
+document.getElementById('auth-signup').addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-password').value;
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  if(error) { toast('⚠ ' + error.message); return; }
+  toast('📧 Check your email for a confirmation link!');
+});
+
+async function afterAuth() {
+  const { data:{user} } = await sb.auth.getUser();
+  if(!user) { showScreen('auth-screen'); return; }
+  currentUser = user;
+  myUsername  = user.email.split('@')[0];
+  myColor     = PLAYER_COLORS[myColorIdx % PLAYER_COLORS.length];
+  document.getElementById('lobby-user').textContent = myUsername;
+  showScreen('lobby-screen');
+  loadRooms();
+}
+
+// ─────────────────────────────────────────────
+// AUDIO ENGINE
+// ─────────────────────────────────────────────
+async function initAudio() {
+  if(audioCtx) return;
+  audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = volume;
+  masterGain.connect(audioCtx.destination);
+
+  // Try SpessaSynth + SF2
+  try {
+    setLoadMsg('Loading SpessaSynth engine…');
+    const mod = await import('https://cdn.jsdelivr.net/npm/spessasynth_lib/src/spessasynth_lib.js');
+    Synthetizer = mod.Synthetizer;
+    setLoadMsg('Fetching acoustic_piano.sf2…');
+    const res = await fetch('acoustic_piano.sf2');
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    setLoadMsg('Initializing synthesizer…');
+    synth = new Synthetizer(masterGain, buf);
+    document.getElementById('audio-status').textContent = '🎹 Acoustic Piano SF2';
+    document.getElementById('audio-status').style.color = 'var(--cyan)';
+    console.log('[Piano] SpessaSynth ready');
+  } catch(err) {
+    console.warn('[Piano] SF2/SpessaSynth failed, using fallback oscillator:', err);
+    useFallback = true;
+    document.getElementById('audio-status').textContent = '🎵 Synth (fallback)';
+    document.getElementById('audio-status').style.color = '#ff8c00';
+  }
+}
+
+function resumeAudio() {
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playNote(midiNote) {
+  resumeAudio();
+  if(!useFallback && synth) {
+    try { synth.noteOn(0, midiNote, Math.round(volume * 110)); } catch(e){}
+  } else {
+    playFallback(midiNote);
+  }
+}
+
+function stopNote(midiNote) {
+  if(!useFallback && synth) {
+    try { synth.noteOff(0, midiNote, 0); } catch(e){}
+  } else {
+    stopFallback(midiNote);
+  }
+}
+
+// Fallback: piano-ish oscillator synth
+function playFallback(midi) {
+  if(fallbackBufs[midi]) return;
+  const freq = midiToFreq(midi);
+
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0, audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(volume * 0.55, audioCtx.currentTime + 0.007);
+  gain.gain.exponentialRampToValueAtTime(volume * 0.22, audioCtx.currentTime + 0.25);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 5);
+  gain.connect(masterGain);
+
+  const osc = audioCtx.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  osc.connect(gain);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 5);
+
+  // Second harmonic
+  const g2  = audioCtx.createGain();
+  g2.gain.setValueAtTime(volume * 0.12, audioCtx.currentTime);
+  g2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+  g2.connect(masterGain);
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.value = freq * 2;
+  osc2.connect(g2);
+  osc2.start();
+  osc2.stop(audioCtx.currentTime + 1.5);
+
+  fallbackBufs[midi] = { gain, osc };
+  osc.onended = () => delete fallbackBufs[midi];
+}
+
+function stopFallback(midi) {
+  if(!fallbackBufs[midi]) return;
+  const { gain } = fallbackBufs[midi];
+  try {
+    gain.gain.cancelScheduledValues(audioCtx.currentTime);
+    gain.gain.setValueAtTime(gain.gain.value, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+  } catch(e){}
+  delete fallbackBufs[midi];
+}
+
+// Volume slider
+document.getElementById('vol-slider').addEventListener('input', function() {
+  volume = parseFloat(this.value);
+  document.getElementById('vol-value').textContent = Math.round(volume * 100) + '%';
+  if(masterGain) masterGain.gain.value = volume;
+});
+
+// Sustain toggle
+document.getElementById('sustain-toggle').addEventListener('change', function() {
+  sustainOn = this.checked;
+  if(!sustainOn) {
+    sustainedKeys.forEach(note => {
+      if(!heldKeys.has(note)) {
+        stopNote(noteToMidi(note));
+        unhighlightKey(note, myColor);
+      }
+    });
+    sustainedKeys.clear();
+  }
+});
+
+// ─────────────────────────────────────────────
+// KEYBOARD BUILDER
+// ─────────────────────────────────────────────
+function buildKeyboard() {
+  const kb = document.getElementById('piano-keyboard');
+  kb.innerHTML = '';
+
+  for(let oct = 1; oct <= 6; oct++) {
+    const group = document.createElement('div');
+    group.className = 'octave-group';
+
+    const notesInOct = oct < 6
+      ? NOTE_NAMES.map(n => `${n}${oct}`)
+      : ['C6'];
+
+    const whites = notesInOct.filter(n => !n.includes('#'));
+    const blacks = notesInOct.filter(n => n.includes('#'));
+
+    // White keys first (they define the group width)
+    whites.forEach(note => group.appendChild(buildKey(note, false)));
+
+    // Black keys overlay
+    blacks.forEach(note => {
+      const baseName = note.replace(/\d+/,'');
+      const offset   = BLACK_OFFSETS[baseName];
+      if(offset == null) return;
+      const el = buildKey(note, true);
+      el.style.left = offset + 'px';
+      group.appendChild(el);
+    });
+
+    kb.appendChild(group);
+  }
+
+  // Scroll to middle C on load
+  requestAnimationFrame(() => {
+    const c4 = document.querySelector('.key[data-note="C4"]');
+    const scroll = document.getElementById('piano-scroll');
+    if(c4 && scroll) {
+      const keyLeft = c4.getBoundingClientRect().left + scroll.scrollLeft - scroll.getBoundingClientRect().left;
+      scroll.scrollLeft = keyLeft - scroll.clientWidth / 2 + 16;
+    }
+  });
+}
+
+function buildKey(note, isBlack) {
+  const el    = document.createElement('div');
+  const midi  = noteToMidi(note);
+  const short = NOTE_TO_KEY[note] || '';
+
+  el.className  = `key ${isBlack?'black':'white'}`;
+  el.dataset.note = note;
+  el.dataset.midi = midi;
+
+  if(note === 'C4') el.classList.add('middle-c');
+
+  // Label
+  if(short) {
+    const lbl = document.createElement('span');
+    lbl.className   = 'key-label';
+    lbl.textContent = short;
+    el.appendChild(lbl);
+  }
+
+  // Title tooltip
+  el.title = `${note} (${short || '–'})`;
+
+  // Mouse events
+  el.addEventListener('mousedown',  e => { e.preventDefault(); onNoteOn(note, midi, true); });
+  el.addEventListener('mouseup',    ()  => onNoteOff(note, midi, true));
+  el.addEventListener('mouseleave', ()  => onNoteOff(note, midi, false));
+  el.addEventListener('mouseenter', e => {
+    document.getElementById('note-display').textContent = note;
+    if(e.buttons === 1) onNoteOn(note, midi, true);
+  });
+
+  // Touch events
+  el.addEventListener('touchstart', e => { e.preventDefault(); onNoteOn(note, midi, true); },  { passive:false });
+  el.addEventListener('touchend',   e => { e.preventDefault(); onNoteOff(note, midi, true); }, { passive:false });
+
+  return el;
+}
+
+// ─────────────────────────────────────────────
+// NOTE ON / OFF
+// ─────────────────────────────────────────────
+function onNoteOn(note, midi, shouldBroadcast) {
+  playNote(midi);
+  highlightKey(note, myColor);
+  sustainedKeys.add(note);
+
+  if(shouldBroadcast && channel) {
+    channel.send({ type:'broadcast', event:'note_on',
+      payload:{ note, midi, username:myUsername, color:myColor, uid:currentUser.id } });
+  }
+}
+
+function onNoteOff(note, midi, shouldBroadcast) {
+  heldKeys.delete(note);
+  if(!sustainOn) {
+    stopNote(midi);
+    unhighlightKey(note, myColor);
+    sustainedKeys.delete(note);
+  }
+
+  if(shouldBroadcast && channel) {
+    channel.send({ type:'broadcast', event:'note_off',
+      payload:{ note, midi, uid:currentUser.id } });
+  }
+}
+
+function highlightKey(note, color) {
+  const el = document.querySelector(`.key[data-note="${note}"]`);
+  if(!el) return;
+  el.style.background  = color;
+  el.style.boxShadow   = `0 0 16px ${color}99, 0 0 6px ${color}66`;
+  el.classList.add('pressed');
+}
+
+function unhighlightKey(note, color) {
+  const el = document.querySelector(`.key[data-note="${note}"]`);
+  if(!el) return;
+  el.style.background = '';
+  el.style.boxShadow  = '';
+  el.classList.remove('pressed');
+}
+
+// ─────────────────────────────────────────────
+// KEYBOARD SHORTCUTS
+// ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if(!$piano.classList.contains('active')) return;
+  if(e.target.tagName === 'INPUT') return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+
+  const note = KEY_MAP[e.key];
+  if(note && !heldKeys.has(note)) {
+    e.preventDefault();
+    heldKeys.add(note);
+    onNoteOn(note, noteToMidi(note), true);
+    document.getElementById('note-display').textContent = note;
+  }
+});
+
+document.addEventListener('keyup', e => {
+  if(!$piano.classList.contains('active')) return;
+  const note = KEY_MAP[e.key];
+  if(note) {
+    heldKeys.delete(note);
+    onNoteOff(note, noteToMidi(note), true);
+  }
+});
+
+// ─────────────────────────────────────────────
+// ROOMS
+// ─────────────────────────────────────────────
+async function loadRooms() {
+  const grid = document.getElementById('room-grid');
+  grid.innerHTML = '<p class="empty-state">Loading rooms…</p>';
+
+  const { data, error } = await sb.from('piano_rooms')
+    .select('*').order('created_at', { ascending: false }).limit(30);
+
+  if(error || !data || data.length === 0) {
+    grid.innerHTML = '<p class="empty-state">No rooms yet — create one above! 🎹</p>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  data.forEach(room => {
+    const card = document.createElement('div');
+    card.className = 'room-card';
+    card.innerHTML = `
+      <div class="room-card-name">${esc(room.name)}</div>
+      <div class="room-card-host">by ${esc(room.host_username)}</div>
+      <span class="room-vibe vibe-${room.vibe}">${room.vibe}</span>
+    `;
+    card.addEventListener('click', () => enterRoom(room));
+    grid.appendChild(card);
+  });
+}
+
+// Listen for new rooms in lobby
+sb.channel('piano_rooms_rt')
+  .on('postgres_changes', { event:'*', schema:'public', table:'piano_rooms' }, () => {
+    if($lobby.classList.contains('active')) loadRooms();
+  })
+  .subscribe();
+
+document.getElementById('toggle-create-btn').addEventListener('click', () => {
+  document.getElementById('create-form').classList.toggle('open');
+});
+
+document.getElementById('create-room-btn').addEventListener('click', async () => {
+  const name = document.getElementById('new-room-name').value.trim() || `${myUsername}'s Room`;
+  const vibe = document.getElementById('new-room-vibe').value;
+  const id   = genId();
+
+  const { error } = await sb.from('piano_rooms').insert([{
+    id, name, host_username: myUsername, vibe, is_private: false
+  }]);
+
+  if(error) { toast('⚠ ' + error.message); return; }
+  document.getElementById('create-form').classList.remove('open');
+  enterRoom({ id, name, host_username: myUsername, vibe });
+});
+
+// ─────────────────────────────────────────────
+// ENTER ROOM
+// ─────────────────────────────────────────────
+async function enterRoom(room) {
+  if(!audioCtx) {
+    showLoading();
+    setLoadMsg('Initializing audio…');
+    await initAudio();
+    hideLoading();
+  }
+
+  currentRoom = room;
+  myColor     = PLAYER_COLORS[myColorIdx % PLAYER_COLORS.length];
+  myColorIdx++;
+
+  // Setup UI
+  document.getElementById('room-title').textContent = `🎹 ${room.name}`;
+  const vbadge = document.getElementById('room-vibe-badge');
+  vbadge.textContent  = room.vibe;
+  vbadge.className    = `room-meta-badge room-vibe vibe-${room.vibe}`;
+
+  buildKeyboard();
+  showScreen('piano-screen');
+  subscribeRoom(room.id);
+  toast(`🎹 Joined "${room.name}"`);
+}
+
+// ─────────────────────────────────────────────
+// REALTIME — PRESENCE + BROADCAST
+// ─────────────────────────────────────────────
+function subscribeRoom(roomId) {
+  if(channel) sb.removeChannel(channel);
+  players = {};
+
+  channel = sb.channel(`piano:${roomId}`, {
+    config: { presence: { key: currentUser.id } }
+  });
+
+  // Presence sync → update player chips
+  channel.on('presence', { event:'sync' }, () => {
+    const state = channel.presenceState();
+    players = {};
+    Object.values(state).forEach(presences => {
+      presences.forEach(p => {
+        players[p.uid] = { username: p.username, color: p.color };
+      });
+    });
+    renderPlayers();
+  });
+
+  // Another player pressed a key
+  channel.on('broadcast', { event:'note_on' }, ({ payload }) => {
+    if(payload.uid === currentUser.id) return;
+    playNote(payload.midi);
+    highlightKey(payload.note, payload.color);
+    // Auto-release after 4s safety net
+    setTimeout(() => {
+      if(players[payload.uid]) unhighlightKey(payload.note, payload.color);
+    }, 4000);
+  });
+
+  // Another player released a key
+  channel.on('broadcast', { event:'note_off' }, ({ payload }) => {
+    if(payload.uid === currentUser.id) return;
+    const p = players[payload.uid];
+    stopNote(payload.midi);
+    if(p) unhighlightKey(payload.note, p.color);
+  });
+
+  // Subscribe and announce presence
+  channel.subscribe(async status => {
+    if(status !== 'SUBSCRIBED') return;
+    await channel.track({ uid: currentUser.id, username: myUsername, color: myColor });
+  });
+}
+
+function renderPlayers() {
+  const strip = document.getElementById('players-strip');
+  strip.innerHTML = '';
+
+  const count = Object.keys(players).length;
+  document.getElementById('room-player-count').textContent =
+    `${count} player${count !== 1 ? 's' : ''} in room`;
+
+  Object.values(players).forEach(p => {
+    const chip = document.createElement('div');
+    chip.className  = 'player-chip';
+    chip.style.background = `${p.color}14`;
+    chip.style.border     = `1px solid ${p.color}44`;
+    chip.innerHTML = `
+      <div class="player-dot" style="background:${p.color}"></div>
+      <span style="color:${p.color}">${esc(p.username)}</span>
+    `;
+    strip.appendChild(chip);
+  });
+}
+
+// Leave room
+document.getElementById('leave-btn').addEventListener('click', async () => {
+  if(channel) {
+    await channel.untrack();
+    sb.removeChannel(channel);
+    channel = null;
+  }
+  heldKeys.clear();
+  sustainedKeys.clear();
+  currentRoom = null;
+  showScreen('lobby-screen');
+  loadRooms();
+});
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+showLoading();
+setLoadMsg('Checking session…');
+
+await new Promise(r => setTimeout(r, 250)); // let matrix.js start
+
+const { data:{ user } } = await sb.auth.getUser();
+hideLoading();
+
+if(user) {
+  currentUser = user;
+  myUsername  = user.email.split('@')[0];
+  myColor     = PLAYER_COLORS[0];
+  document.getElementById('lobby-user').textContent = myUsername;
+  showScreen('lobby-screen');
+  loadRooms();
+} else {
+  showScreen('auth-screen');
+}
+
+</script>
+</body>
+</html>
