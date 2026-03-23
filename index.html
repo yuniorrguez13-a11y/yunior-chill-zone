@@ -178,6 +178,19 @@
       transform: translateY(-1px);
     }
 
+    /* Piano Room — CYAN */
+    #piano-btn {
+      border-color: var(--cyan) !important;
+      background: rgba(0, 212, 255, 0.08) !important;
+      color: #60e0ff !important;
+    }
+    #piano-btn:hover {
+      background: rgba(0, 212, 255, 0.2) !important;
+      color: white !important;
+      box-shadow: 0 0 20px var(--cyan-glow);
+      border-color: var(--cyan) !important;
+    }
+
     /* cZEROde — RED */
     #czerode-btn {
       border-color: var(--crimson) !important;
@@ -605,6 +618,18 @@
       }
     }
   </style>
+  <!-- Twemoji: replaces all emojis with Apple-style consistent images across every OS/browser -->
+  <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
+  <style>
+    /* Make twemoji images inline and sized correctly everywhere */
+    img.emoji {
+      height: 1.1em;
+      width: 1.1em;
+      vertical-align: -0.15em;
+      display: inline-block;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
   <canvas id="matrix"></canvas>
@@ -643,6 +668,7 @@
         <a href="gaming.html" target="_blank">🎮 Gaming Zone</a>
         <a href="https://zoom.us/j/4498564941" target="_blank">📞 Voice Chat</a>
         <a href="video.html" target="_blank">📺 VideoZone</a>
+        <a href="piano.html" target="_blank" id="piano-btn">🎹 Piano Room</a>
         <button class="nav-btn" id="czerode-btn">⚡ cZEROde</button>
       </div>
     </div>
@@ -922,7 +948,21 @@
 
       checkAuth();
       renderMessages();
+
+      // Re-parse emojis after messages render
+      const origRender = renderMessages;
     });
+
+    // Parse entire document with Twemoji on load (consistent emojis on all OS)
+    twemoji.parse(document.body, { folder: 'svg', ext: '.svg' });
+
+    // Also re-parse whenever new chat messages arrive (MutationObserver)
+    const chatBoxEl = document.getElementById('chat-box');
+    if (chatBoxEl) {
+      new MutationObserver(() => {
+        twemoji.parse(chatBoxEl, { folder: 'svg', ext: '.svg' });
+      }).observe(chatBoxEl, { childList: true, subtree: true });
+    }
   </script>
 </body>
 </html>
