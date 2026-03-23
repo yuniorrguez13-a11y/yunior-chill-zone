@@ -483,6 +483,13 @@ let sustainOn     = false;
 let heldKeys      = new Set();   // notes currently pressed by keyboard
 let sustainedKeys = new Set();   // notes held open by sustain
 
+// ── Performance: cache key DOM elements at build time ──
+let keyElementCache = new Map();  // note → DOM element
+// ── Per-note highlight tracking: note → Map(uid → color) ──
+let keyHighlights   = new Map();
+// ── Broadcast dedup: prevent double-sending same note ──
+let pendingBroadcasts = new Set();
+
 // ─────────────────────────────────────────────
 // DOM REFS
 // ─────────────────────────────────────────────
@@ -616,7 +623,9 @@ function stopNote(midiNote) {
 
 // Fallback: piano-ish oscillator synth
 function playFallback(midi) {
-  if(fallbackBufs[midi]) return;
+  // If this note is already playing, stop it cleanly first to avoid node pile-up
+  if(fallbackBufs[midi]) stopFallback(midi);
+
   const freq = midiToFreq(midi);
 
   const gain = audioCtx.createGain();
@@ -645,19 +654,27 @@ function playFallback(midi) {
   osc2.start();
   osc2.stop(audioCtx.currentTime + 1.5);
 
-  fallbackBufs[midi] = { gain, osc };
-  osc.onended = () => delete fallbackBufs[midi];
+  fallbackBufs[midi] = { gain, osc, osc2, g2 };
+  osc.onended = () => { if(fallbackBufs[midi]) delete fallbackBufs[midi]; };
 }
 
 function stopFallback(midi) {
   if(!fallbackBufs[midi]) return;
-  const { gain } = fallbackBufs[midi];
+  const { gain, osc, osc2, g2 } = fallbackBufs[midi];
+  delete fallbackBufs[midi]; // delete first so re-entrant calls are safe
   try {
-    gain.gain.cancelScheduledValues(audioCtx.currentTime);
-    gain.gain.setValueAtTime(gain.gain.value, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+    const t = audioCtx.currentTime;
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(gain.gain.value, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    if(g2) {
+      g2.gain.cancelScheduledValues(t);
+      g2.gain.setValueAtTime(Math.max(g2.gain.value, 0.001), t);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    }
+    // Disconnect after fade to free the nodes
+    setTimeout(() => { try { osc.disconnect(); gain.disconnect(); if(osc2) { osc2.disconnect(); g2.disconnect(); } } catch(e){} }, 200);
   } catch(e){}
-  delete fallbackBufs[midi];
 }
 
 // Volume slider
@@ -674,7 +691,7 @@ document.getElementById('sustain-toggle').addEventListener('change', function() 
     sustainedKeys.forEach(note => {
       if(!heldKeys.has(note)) {
         stopNote(noteToMidi(note));
-        unhighlightKey(note, myColor);
+        unhighlightKey(note, currentUser?.id || 'local');
       }
     });
     sustainedKeys.clear();
@@ -687,6 +704,8 @@ document.getElementById('sustain-toggle').addEventListener('change', function() 
 function buildKeyboard() {
   const kb = document.getElementById('piano-keyboard');
   kb.innerHTML = '';
+  keyElementCache.clear();
+  keyHighlights.clear();
 
   for(let oct = 1; oct <= 6; oct++) {
     const group = document.createElement('div');
@@ -735,6 +754,9 @@ function buildKey(note, isBlack) {
   el.dataset.note = note;
   el.dataset.midi = midi;
 
+  // Cache for O(1) highlight lookups
+  keyElementCache.set(note, el);
+
   if(note === 'C4') el.classList.add('middle-c');
 
   // Label
@@ -751,7 +773,11 @@ function buildKey(note, isBlack) {
   // Mouse events
   el.addEventListener('mousedown',  e => { e.preventDefault(); onNoteOn(note, midi, true); });
   el.addEventListener('mouseup',    ()  => onNoteOff(note, midi, true));
-  el.addEventListener('mouseleave', ()  => onNoteOff(note, midi, false));
+  el.addEventListener('mouseleave', ()  => {
+    // Only stop if we are actually the ones holding this key (mouse drag)
+    const uid = currentUser?.id || 'local';
+    if(keyHighlights.get(note)?.has(uid)) onNoteOff(note, midi, false);
+  });
   el.addEventListener('mouseenter', e => {
     document.getElementById('note-display').textContent = note;
     if(e.buttons === 1) onNoteOn(note, midi, true);
@@ -768,44 +794,84 @@ function buildKey(note, isBlack) {
 // NOTE ON / OFF
 // ─────────────────────────────────────────────
 function onNoteOn(note, midi, shouldBroadcast) {
+  const uid = currentUser?.id || 'local';
   playNote(midi);
-  highlightKey(note, myColor);
+  highlightKey(note, myColor, uid);
   sustainedKeys.add(note);
 
-  if(shouldBroadcast && channel) {
+  // Dedup: only broadcast if we haven't already sent note_on for this note
+  if(shouldBroadcast && channel && !pendingBroadcasts.has(note)) {
+    pendingBroadcasts.add(note);
     channel.send({ type:'broadcast', event:'note_on',
-      payload:{ note, midi, username:myUsername, color:myColor, uid:currentUser.id } });
+      payload:{ note, midi, username:myUsername, color:myColor, uid } });
   }
 }
 
 function onNoteOff(note, midi, shouldBroadcast) {
+  const uid = currentUser?.id || 'local';
   heldKeys.delete(note);
   if(!sustainOn) {
     stopNote(midi);
-    unhighlightKey(note, myColor);
+    unhighlightKey(note, uid);
     sustainedKeys.delete(note);
   }
 
-  if(shouldBroadcast && channel) {
+  // Only broadcast if we had previously sent note_on
+  if(shouldBroadcast && channel && pendingBroadcasts.has(note)) {
+    pendingBroadcasts.delete(note);
     channel.send({ type:'broadcast', event:'note_off',
-      payload:{ note, midi, uid:currentUser.id } });
+      payload:{ note, midi, uid } });
   }
 }
 
-function highlightKey(note, color) {
-  const el = document.querySelector(`.key[data-note="${note}"]`);
+// ── highlightKey / unhighlightKey now track per-uid so multiple
+//    players can each own a color on the same key simultaneously ──
+
+function highlightKey(note, color, uid) {
+  const el = keyElementCache.get(note);
   if(!el) return;
-  el.style.background  = color;
-  el.style.boxShadow   = `0 0 16px ${color}99, 0 0 6px ${color}66`;
-  el.classList.add('pressed');
+  if(!keyHighlights.has(note)) keyHighlights.set(note, new Map());
+  keyHighlights.get(note).set(uid, color);
+  renderKeyHighlight(note, el);
 }
 
-function unhighlightKey(note, color) {
-  const el = document.querySelector(`.key[data-note="${note}"]`);
+function unhighlightKey(note, uid) {
+  const el = keyElementCache.get(note);
   if(!el) return;
-  el.style.background = '';
-  el.style.boxShadow  = '';
-  el.classList.remove('pressed');
+  const map = keyHighlights.get(note);
+  if(map) {
+    map.delete(uid);
+    if(map.size === 0) keyHighlights.delete(note);
+  }
+  renderKeyHighlight(note, el);
+}
+
+function renderKeyHighlight(note, el) {
+  const map = keyHighlights.get(note);
+  if(!map || map.size === 0) {
+    // Fully released — restore default appearance
+    el.style.background = '';
+    el.style.boxShadow  = '';
+    el.style.outline    = '';
+    el.classList.remove('pressed', 'lit');
+    return;
+  }
+
+  const colors = [...map.values()];
+  el.classList.add('pressed', 'lit');
+
+  if(colors.length === 1) {
+    // Single player — solid color glow
+    const c = colors[0];
+    el.style.background = c;
+    el.style.boxShadow  = `0 0 18px ${c}bb, 0 0 7px ${c}77`;
+    el.style.outline    = `2px solid ${c}`;
+  } else {
+    // Multiple players — diagonal gradient of all their colors
+    el.style.background = `linear-gradient(135deg, ${colors.join(', ')})`;
+    el.style.boxShadow  = colors.map(c => `0 0 12px ${c}99`).join(', ');
+    el.style.outline    = `2px solid ${colors[colors.length - 1]}`;
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -942,19 +1008,16 @@ function subscribeRoom(roomId) {
   channel.on('broadcast', { event:'note_on' }, ({ payload }) => {
     if(payload.uid === currentUser.id) return;
     playNote(payload.midi);
-    highlightKey(payload.note, payload.color);
-    // Auto-release after 4s safety net
-    setTimeout(() => {
-      if(players[payload.uid]) unhighlightKey(payload.note, payload.color);
-    }, 4000);
+    highlightKey(payload.note, payload.color, payload.uid);
+    // Safety net: auto-release after 4s if we miss the note_off
+    setTimeout(() => unhighlightKey(payload.note, payload.uid), 4000);
   });
 
   // Another player released a key
   channel.on('broadcast', { event:'note_off' }, ({ payload }) => {
     if(payload.uid === currentUser.id) return;
-    const p = players[payload.uid];
     stopNote(payload.midi);
-    if(p) unhighlightKey(payload.note, p.color);
+    unhighlightKey(payload.note, payload.uid);
   });
 
   // Subscribe and announce presence
@@ -994,6 +1057,7 @@ document.getElementById('leave-btn').addEventListener('click', async () => {
   }
   heldKeys.clear();
   sustainedKeys.clear();
+  pendingBroadcasts.clear();
   currentRoom = null;
   showScreen('lobby-screen');
   loadRooms();
