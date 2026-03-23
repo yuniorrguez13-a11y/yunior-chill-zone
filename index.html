@@ -192,6 +192,32 @@
       box-shadow: 0 0 20px var(--crimson-glow);
     }
 
+    /* OWNER BADGE */
+    .owner-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 7px;
+      margin-left: 7px;
+      border-radius: 3px;
+      background: linear-gradient(135deg, rgba(232,22,42,0.22), rgba(232,22,42,0.10));
+      border: 1px solid rgba(232,22,42,0.55);
+      color: var(--crimson);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      vertical-align: middle;
+      box-shadow: 0 0 8px rgba(232,22,42,0.25);
+      position: relative;
+      top: -1px;
+    }
+    .owner-badge::before {
+      content: '⚡';
+      font-size: 8px;
+    }
+
     /* WARNINGS */
     .czerode-warnings {
       margin: 0 0 16px;
@@ -653,7 +679,15 @@
       async function checkAuth() {
         const { data: { user } } = await supabase.auth.getUser();
         currentUser = user;
-        usernameInput.value = user?.email?.split("@")[0] || "";
+        const isOwner = user?.email === "yunior133@icloud.com";
+        usernameInput.value = isOwner ? "yunior" : (user?.email?.split("@")[0] || "");
+        usernameInput.disabled = isOwner;
+        if (isOwner) usernameInput.title = "Username locked for owner account";
+        if (isOwner) {
+          pfpInput.value = "https://lh3.googleusercontent.com/pw/AP1GczPnZLNLOUPZuJRtLB3kV3z4G_rA6bU8rjAvye0otK0Z5SAb0bxpU9PU2vMjUHq_YKTwOVe9TixkZO5zrjHxCXWRvUqG-WxEo912Hcc2BkVurPjzVFxJN60DSs4gf-xMLlA4_Kh7eDp5KH9aBghlfSll=w720-h720-s-no-gm";
+          pfpInput.disabled = true;
+          pfpInput.title = "Profile picture locked for owner account";
+        }
         updateUI();
       }
 
@@ -721,7 +755,17 @@
 
           const content = document.createElement("div");
           const name = document.createElement("b");
-          name.textContent = msg.username + ": ";
+          name.textContent = msg.username + ":";
+
+          // Owner badge
+          if (msg.is_owner) {
+            const badge = document.createElement("span");
+            badge.className = "owner-badge";
+            badge.textContent = "OWNER";
+            name.appendChild(badge);
+          }
+
+          name.appendChild(document.createTextNode(" "));
           const messageText = document.createElement("span");
           messageText.textContent = msg.text;
           content.appendChild(name);
