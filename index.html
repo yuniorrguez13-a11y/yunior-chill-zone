@@ -218,6 +218,69 @@
       font-size: 8px;
     }
 
+    /* ADMIN BADGE */
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 7px;
+      margin-left: 7px;
+      border-radius: 3px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(0,212,255,0.07));
+      border: 1px solid rgba(0,212,255,0.5);
+      color: var(--cyan);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      vertical-align: middle;
+      box-shadow: 0 0 8px rgba(0,212,255,0.18);
+      position: relative;
+      top: -1px;
+    }
+    .admin-badge::before { content: '🛡'; font-size: 8px; }
+
+    /* MOD BADGE */
+    .mod-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 7px;
+      margin-left: 7px;
+      border-radius: 3px;
+      background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.06));
+      border: 1px solid rgba(0,255,136,0.45);
+      color: #00ff88;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      vertical-align: middle;
+      box-shadow: 0 0 8px rgba(0,255,136,0.15);
+      position: relative;
+      top: -1px;
+    }
+    .mod-badge::before { content: '🔧'; font-size: 8px; }
+
+    /* ANNOUNCE BANNER */
+    #announce-banner {
+      display: none;
+      margin: 0 0 12px;
+      padding: 10px 14px;
+      border-left: 3px solid var(--cyan);
+      background: rgba(0,212,255,0.06);
+      border-radius: 0 6px 6px 0;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #7ad4e8;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    #announce-banner strong { color: var(--cyan); }
+
     /* WARNINGS */
     .czerode-warnings {
       margin: 0 0 16px;
@@ -598,6 +661,10 @@
 
     <div class="section-divider"></div>
 
+    <div id="announce-banner">
+      📣 <strong>ANNOUNCE</strong> — This is the official announcements room. Only <strong>Owner</strong>, <strong>Admins</strong> and <strong>Mods</strong> can post here. Everyone else can read.
+    </div>
+
     <div class="room-controls">
       <input type="text" id="room-input" placeholder="Room code (default: global)" style="flex:1; min-width:140px;">
       <button id="join-room-btn" class="ui-button">Join Room</button>
@@ -668,6 +735,7 @@
 
       let currentUser = null;
       let currentRoom = "global";
+      let myRole      = null; // 'owner' | 'admin' | 'mod' | null
 
       function isValidImageUrl(urlString) {
         try {
@@ -676,10 +744,29 @@
         } catch (e) { return false; }
       }
 
+      async function fetchRole(uid) {
+        if (!uid) return null;
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", uid)
+          .maybeSingle();
+        return data?.role || null;
+      }
+
+      function canPostInAnnounce() {
+        return ["owner","admin","mod"].includes(myRole);
+      }
+
       async function checkAuth() {
         const { data: { user } } = await supabase.auth.getUser();
         currentUser = user;
-        const isOwner = user?.email === "yunior133@icloud.com";
+
+        // Fetch role from DB, then override to 'owner' for the owner email
+        myRole = await fetchRole(user?.id);
+        if (user?.email === "yunior133@icloud.com") myRole = "owner";
+
+        const isOwner = myRole === "owner";
         usernameInput.value = isOwner ? "yunior" : (user?.email?.split("@")[0] || "");
         usernameInput.disabled = isOwner;
         if (isOwner) usernameInput.title = "Username locked for owner account";
@@ -692,21 +779,32 @@
       }
 
       function updateUI() {
+        const inAnnounce = currentRoom === "announce";
+        const privileged = canPostInAnnounce();
+
         if (currentUser) {
-          input.disabled = false;
-          input.placeholder = "Type a message...";
-          sendBtn.disabled = false;
+          // In announce: only privileged roles can type
+          const blocked = inAnnounce && !privileged;
+          input.disabled = blocked;
+          input.placeholder = blocked
+            ? "📣 Read-only — only Owner, Admin & Mod can post here"
+            : "Type a message...";
+          sendBtn.disabled = blocked;
           signupBtn.style.display = "none";
           loginBtn.style.display = "none";
           logoutBtn.style.display = "inline-block";
         } else {
           input.disabled = true;
-          input.placeholder = "Login to chat";
+          input.placeholder = inAnnounce ? "📣 Read-only — only Owner, Admin & Mod can post here" : "Login to chat";
           sendBtn.disabled = true;
           signupBtn.style.display = "inline-block";
           loginBtn.style.display = "inline-block";
           logoutBtn.style.display = "none";
         }
+
+        // Show/hide the announce banner
+        const banner = document.getElementById("announce-banner");
+        banner.style.display = inAnnounce ? "block" : "none";
       }
 
       async function sendMessage() {
@@ -757,11 +855,21 @@
           const name = document.createElement("b");
           name.textContent = msg.username + ":";
 
-          // Owner badge
+          // Role badges — owner wins, then admin, then mod
           if (msg.is_owner) {
             const badge = document.createElement("span");
             badge.className = "owner-badge";
             badge.textContent = "OWNER";
+            name.appendChild(badge);
+          } else if (msg.role === "admin") {
+            const badge = document.createElement("span");
+            badge.className = "admin-badge";
+            badge.textContent = "ADMIN";
+            name.appendChild(badge);
+          } else if (msg.role === "mod") {
+            const badge = document.createElement("span");
+            badge.className = "mod-badge";
+            badge.textContent = "MOD";
             name.appendChild(badge);
           }
 
@@ -801,6 +909,7 @@
       joinRoomBtn.addEventListener("click", () => {
         currentRoom = roomInput.value.trim() || "global";
         currentRoomLabel.textContent = `Current room: ${currentRoom}`;
+        updateUI();
         renderMessages();
       });
 
