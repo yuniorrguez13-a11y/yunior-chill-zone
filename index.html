@@ -414,7 +414,7 @@
     }
 
     /* ALL INPUTS — font-size 16px prevents iOS auto-zoom */
-    #msg-input, #username-input, #pfp-input, #image-upload,
+    #msg-input, #username-input, #pfp-input, #pfp-frame-input, #image-upload,
     #email-input, #password-input, #room-input {
       padding: 11px 13px;
       border-radius: 4px;
@@ -427,7 +427,7 @@
       min-width: 0;
     }
 
-    #msg-input:focus, #username-input:focus, #pfp-input:focus,
+    #msg-input:focus, #username-input:focus, #pfp-input:focus, #pfp-frame-input:focus,
     #email-input:focus, #password-input:focus, #room-input:focus {
       outline: none;
       border-color: var(--crimson);
@@ -526,6 +526,34 @@
       accent-color: var(--crimson);
       cursor: pointer;
       flex-shrink: 0;
+    }
+
+    /* ── PFP SQUARE WRAPPER ── */
+    /* The avatar image is square; an optional frame image sits on top as an overlay */
+    .pfp-wrap {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+
+    .pfp-wrap img.pfp-avatar {
+      width: 36px;
+      height: 36px;
+      object-fit: cover;
+      display: block;
+      /* square — no border-radius */
+    }
+
+    /* Frame/outline overlay — stretches slightly beyond the avatar so the border wraps it */
+    .pfp-wrap img.pfp-frame {
+      position: absolute;
+      inset: -4px;
+      width: calc(100% + 8px);
+      height: calc(100% + 8px);
+      object-fit: fill; /* stretch to exactly cover the square */
+      pointer-events: none;
     }
 
     /* ===== MOBILE ===== */
@@ -674,6 +702,8 @@
     <div class="profile-fields">
       <input type="text" id="username-input" placeholder="Your username" autocomplete="nickname">
       <input type="text" id="pfp-input" placeholder="Profile picture URL (optional)">
+      <!-- NEW: frame/outline image URL — packed alongside pfp_url as  pfpUrl||frameUrl -->
+      <input type="text" id="pfp-frame-input" placeholder="PFP frame / outline image URL (optional)">
     </div>
 
     <div id="chat-box"></div>
@@ -718,20 +748,24 @@
       const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
       const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      const chatBox        = document.getElementById("chat-box");
-      const input          = document.getElementById("msg-input");
-      const sendBtn        = document.getElementById("send-btn");
-      const usernameInput  = document.getElementById("username-input");
-      const pfpInput       = document.getElementById("pfp-input");
-      const safeModeToggle = document.getElementById("safe-mode-toggle");
-      const emailInput     = document.getElementById("email-input");
-      const passwordInput  = document.getElementById("password-input");
-      const signupBtn      = document.getElementById("signup-btn");
-      const loginBtn       = document.getElementById("login-btn");
-      const logoutBtn      = document.getElementById("logout-btn");
-      const roomInput      = document.getElementById("room-input");
-      const joinRoomBtn    = document.getElementById("join-room-btn");
+      const chatBox          = document.getElementById("chat-box");
+      const input            = document.getElementById("msg-input");
+      const sendBtn          = document.getElementById("send-btn");
+      const usernameInput    = document.getElementById("username-input");
+      const pfpInput         = document.getElementById("pfp-input");
+      const pfpFrameInput    = document.getElementById("pfp-frame-input"); // NEW
+      const safeModeToggle   = document.getElementById("safe-mode-toggle");
+      const emailInput       = document.getElementById("email-input");
+      const passwordInput    = document.getElementById("password-input");
+      const signupBtn        = document.getElementById("signup-btn");
+      const loginBtn         = document.getElementById("login-btn");
+      const logoutBtn        = document.getElementById("logout-btn");
+      const roomInput        = document.getElementById("room-input");
+      const joinRoomBtn      = document.getElementById("join-room-btn");
       const currentRoomLabel = document.getElementById("current-room-label");
+
+      // Separator used to pack pfp + frame into a single pfp_url column
+      const PFP_SEP = "||";
 
       let currentUser = null;
       let currentRoom = "global";
@@ -742,6 +776,17 @@
           const url = new URL(urlString);
           return url.protocol === "http:" || url.protocol === "https:";
         } catch (e) { return false; }
+      }
+
+      // Unpack "pfpUrl||frameUrl" stored in the pfp_url column
+      function parsePfpUrl(raw) {
+        if (!raw) return { avatarUrl: "", frameUrl: "" };
+        const idx = raw.indexOf(PFP_SEP);
+        if (idx === -1) return { avatarUrl: raw, frameUrl: "" };
+        return {
+          avatarUrl: raw.slice(0, idx),
+          frameUrl:  raw.slice(idx + PFP_SEP.length)
+        };
       }
 
       async function fetchRole(uid) {
@@ -762,7 +807,6 @@
         const { data: { user } } = await supabase.auth.getUser();
         currentUser = user;
 
-        // Fetch role from DB, then override to 'owner' for the owner email
         myRole = await fetchRole(user?.id);
         if (user?.email === "yunior133@icloud.com") myRole = "owner";
 
@@ -774,6 +818,7 @@
           pfpInput.value = "https://raw.githubusercontent.com/yuniorrguez13-a11y/Ultraviolet/main/s_69c294687dd88191b93c319c34a84b84_Precise_Starlight_Fast_2-ezgif.com-optimize.gif";
           pfpInput.disabled = true;
           pfpInput.title = "Profile picture locked for owner account";
+          // Frame/outline is NOT locked for the owner — they can still set one
         }
         updateUI();
       }
@@ -783,7 +828,6 @@
         const privileged = canPostInAnnounce();
 
         if (currentUser) {
-          // In announce: only privileged roles can type
           const blocked = inAnnounce && !privileged;
           input.disabled = blocked;
           input.placeholder = blocked
@@ -802,7 +846,6 @@
           logoutBtn.style.display = "none";
         }
 
-        // Show/hide the announce banner
         const banner = document.getElementById("announce-banner");
         banner.style.display = inAnnounce ? "block" : "none";
       }
@@ -810,7 +853,14 @@
       async function sendMessage() {
         const text     = input.value.trim();
         const username = usernameInput.value.trim() || "Anonymous";
-        const pfp_url  = pfpInput.value.trim();
+        const avatarRaw = pfpInput.value.trim();
+        const frameRaw  = pfpFrameInput.value.trim();
+
+        // Pack both URLs into the single pfp_url column, separated by PFP_SEP
+        // If neither is set the column stays empty; if only avatar, no separator needed
+        let pfp_url = avatarRaw;
+        if (frameRaw) pfp_url = avatarRaw + PFP_SEP + frameRaw;
+
         if (!text) return;
         const { error } = await supabase.from("messages").insert([
           { text, username, pfp_url, room_id: currentRoom, user_id: currentUser?.id }
@@ -840,22 +890,37 @@
           msgDiv.style.display = "flex";
           msgDiv.style.marginBottom = "10px";
 
-          if (msg.pfp_url && isValidImageUrl(msg.pfp_url)) {
+          // ── Build square PFP with optional frame overlay ──
+          const { avatarUrl, frameUrl } = parsePfpUrl(msg.pfp_url);
+
+          if (avatarUrl && isValidImageUrl(avatarUrl)) {
+            const wrap = document.createElement("div");
+            wrap.className = "pfp-wrap";
+
             const pfp = document.createElement("img");
-            pfp.src = msg.pfp_url;
-            pfp.width = 36; pfp.height = 36;
-            pfp.style.borderRadius = "50%";
-            pfp.style.marginRight = "10px";
-            pfp.style.flexShrink = "0";
-            pfp.onerror = () => pfp.style.display = 'none';
-            msgDiv.appendChild(pfp);
+            pfp.className = "pfp-avatar";
+            pfp.src = avatarUrl;
+            pfp.alt = "";
+            pfp.onerror = () => { wrap.style.display = "none"; };
+            wrap.appendChild(pfp);
+
+            if (frameUrl && isValidImageUrl(frameUrl)) {
+              const frameImg = document.createElement("img");
+              frameImg.className = "pfp-frame";
+              frameImg.src = frameUrl;
+              frameImg.alt = "";
+              frameImg.onerror = () => { frameImg.style.display = "none"; };
+              wrap.appendChild(frameImg);
+            }
+
+            msgDiv.appendChild(wrap);
           }
 
           const content = document.createElement("div");
           const name = document.createElement("b");
           name.textContent = msg.username + ":";
 
-          // Role badges — owner wins, then admin, then mod
+          // Role badges
           if (msg.is_owner) {
             const badge = document.createElement("span");
             badge.className = "owner-badge";
