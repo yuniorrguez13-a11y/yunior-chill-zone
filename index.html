@@ -1,978 +1,755 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <script>
-    document.addEventListener('keydown', function(e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        window.location.href = 'https://yuniorschillzone.xyz/nosaving.html';
-      }
-    });
-  </script> 
+  <script>document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s')e.preventDefault();});</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Yuniors Chill Zone</title>
   <link rel="icon" type="image/png" href="favicon.png">
-
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap');
-
-    @font-face {
-      font-family: "yuniorrguez13-a11y";
-      src: url("fonts/SoulsideBetrayed-3lazX.ttf") format("truetype");
-      font-weight: normal;
-      font-style: normal;
-    }
-
+    /* ═══ TOKENS ═══ */
     :root {
+      --bg:      #06060a;
+      --bg2:     #0c0c16;
+      --bg3:     #111120;
+      --border:  rgba(255,255,255,0.07);
+      --bdr:     rgba(232,22,42,0.25);
+      --bdc:     rgba(0,212,255,0.2);
       --crimson: #e8162a;
-      --crimson-dark: #9e0e1c;
-      --crimson-glow: rgba(232, 22, 42, 0.35);
-      --cyan: #00d4ff;
-      --cyan-glow: rgba(0, 212, 255, 0.3);
-      --bg-deep: #06060a;
-      --bg-panel: rgba(8, 8, 14, 0.88);
-      --bg-card: rgba(12, 12, 20, 0.75);
-      --border-subtle: rgba(255, 255, 255, 0.07);
-      --border-red: rgba(232, 22, 42, 0.4);
-      --text-primary: #f0f0f5;
-      --text-muted: #7a7a8e;
+      --cglow:   rgba(232,22,42,0.4);
+      --cyan:    #00d4ff;
+      --cyglow:  rgba(0,212,255,0.3);
+      --text:    #eeeef8;
+      --text2:   #7878a0;
+      --text3:   #333348;
+      --hh:      58px;
+      --pw:      300px;
+      --r:       10px;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* ═══ RESET ═══ */
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html{height:100%;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+    a{text-decoration:none;color:inherit;}
+    ::-webkit-scrollbar{width:3px;}
+    ::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px;}
 
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--crimson); border-radius: 2px; }
+    /* ═══ CANVAS ═══ */
+    canvas#matrix{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;opacity:.11;pointer-events:none;}
 
-    body {
-      font-family: "Inter", system-ui, sans-serif;
-      overflow-x: hidden;
-      background-color: var(--bg-deep);
-      color: var(--text-primary);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      max-width: 100vw;
-      min-height: 100vh;
+    /* ═══ HEADER ═══ */
+    header{
+      position:fixed;top:0;left:0;right:0;height:var(--hh);z-index:200;
+      display:flex;align-items:center;gap:10px;padding:0 14px;
+      background:rgba(6,6,10,0.94);border-bottom:1px solid var(--border);
+      backdrop-filter:blur(22px);
     }
 
-    canvas#matrix {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      z-index: 0;
-      opacity: 0.25;
+    .logo{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+    .logo-icon{
+      width:32px;height:32px;background:var(--crimson);border-radius:8px;
+      display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;
+      font-weight:800;font-size:17px;color:#fff;box-shadow:0 0 16px var(--cglow);flex-shrink:0;
+    }
+    .logo-name{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;white-space:nowrap;}
+    .logo-name em{color:var(--crimson);font-style:normal;}
+
+    .room-pill{
+      display:flex;align-items:center;gap:7px;padding:5px 11px;
+      background:var(--bg3);border:1px solid var(--border);border-radius:20px;
+      cursor:pointer;transition:border-color .18s;flex-shrink:0;
+    }
+    .room-pill:hover{border-color:var(--bdr);}
+    .rdot{width:7px;height:7px;background:#22c55e;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px #22c55e;animation:pdot 2s infinite;}
+    @keyframes pdot{0%,100%{opacity:1}50%{opacity:.45}}
+    .room-name{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .room-chev{color:var(--text3);font-size:10px;}
+
+    .hspacer{flex:1;}
+
+    .hnav{display:flex;align-items:center;gap:4px;}
+    .nbtn{
+      display:flex;align-items:center;gap:5px;padding:7px 11px;
+      background:transparent;border:1px solid var(--border);border-radius:8px;
+      color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+      cursor:pointer;transition:all .18s;white-space:nowrap;
+    }
+    .nbtn:hover{background:var(--bg3);color:var(--text);border-color:rgba(255,255,255,.15);}
+    .nbtn.cz{border-color:var(--bdr);color:#ff6070;background:rgba(232,22,42,.06);}
+    .nbtn.cz:hover{background:var(--crimson);color:#fff;}
+    .nbtn.qm{border-color:var(--bdc);color:var(--cyan);background:rgba(0,212,255,.05);}
+    .nbtn.qm:hover{background:var(--cyan);color:#030d12;}
+
+    .safe-tog{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0;}
+    .safe-tog input{accent-color:var(--crimson);}
+
+    .sign-btn{
+      padding:7px 15px;background:var(--crimson);border:none;border-radius:8px;
+      color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+      cursor:pointer;transition:all .18s;white-space:nowrap;
+    }
+    .sign-btn:hover{background:#ff1e34;box-shadow:0 0 16px var(--cglow);}
+
+    .ava-btn{
+      width:34px;height:34px;border-radius:50%;border:2px solid var(--border);
+      overflow:hidden;cursor:pointer;transition:border-color .2s;background:var(--bg3);
+      display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;
+      flex-shrink:0;
+    }
+    .ava-btn img{width:100%;height:100%;object-fit:cover;}
+    .ava-btn:hover{border-color:var(--crimson);}
+
+    .mob-menu{
+      display:none;width:34px;height:34px;background:var(--bg3);border:1px solid var(--border);
+      border-radius:8px;cursor:pointer;color:var(--text2);align-items:center;justify-content:center;font-size:16px;
+    }
+    @media(max-width:640px){
+      .hnav,.logo-name,.safe-tog{display:none;}
+      .mob-menu{display:flex;}
     }
 
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0; left: 0;
-      width: 260px; height: 100vh;
-      background: repeating-linear-gradient(
-        -45deg,
-        transparent, transparent 20px,
-        rgba(232, 22, 42, 0.04) 20px, rgba(232, 22, 42, 0.04) 40px
-      );
-      pointer-events: none;
-      z-index: 0;
+    /* ═══ MAIN ═══ */
+    main{position:relative;z-index:1;padding-top:var(--hh);min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+
+    .chat-wrap{width:100%;max-width:820px;padding:16px 16px 0;display:flex;flex-direction:column;flex:1;}
+
+    /* Announce banner */
+    #announce-banner{
+      display:none;padding:10px 14px;margin-bottom:10px;
+      background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);
+      border-left:3px solid var(--cyan);border-radius:0 8px 8px 0;
+      font-size:13px;color:rgba(0,212,255,.85);line-height:1.5;
+    }
+    #announce-banner strong{color:var(--cyan);}
+
+    /* ═══ CHAT BOX ═══ */
+    #chat-box{
+      flex:1;min-height:420px;
+      max-height:calc(100vh - var(--hh) - 88px);
+      overflow-y:auto;padding:6px 0;display:flex;flex-direction:column;gap:1px;
     }
 
-    /* CHAT CONTROLS BAR */
-    .chat-controls {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 16px 0 0;
-      padding: 8px 16px;
-      width: 96%;
-      max-width: 960px;
+    .msg{display:flex;align-items:flex-start;gap:10px;padding:6px 8px;border-radius:8px;transition:background .15s;}
+    .msg:hover{background:rgba(255,255,255,.025);}
+
+    .msg-ava{
+      width:36px;height:36px;border-radius:7px;flex-shrink:0;overflow:hidden;
+      background:var(--bg3);display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:14px;color:var(--text2);position:relative;align-self:flex-start;
     }
+    .msg-ava img.pava{width:100%;height:100%;object-fit:cover;}
+    .msg-ava img.pfr{position:absolute;inset:-5px;width:calc(100% + 10px);height:calc(100% + 10px);object-fit:fill;pointer-events:none;}
 
-    /* CHAT CONTAINER */
-    #chat-container {
-      position: relative;
-      z-index: 1;
-      max-width: 960px;
-      width: 96%;
-      margin: 12px auto 40px;
-      padding: 20px;
-      background: var(--bg-panel);
-      border-radius: 4px 16px 16px 16px;
-      box-shadow:
-        0 0 0 1px var(--border-red),
-        0 0 50px rgba(232, 22, 42, 0.1),
-        0 28px 70px rgba(0, 0, 0, 0.65);
-      border-top: 3px solid var(--crimson);
-      backdrop-filter: blur(14px);
-      animation: slideUp 0.45s ease both;
+    .msg-body{flex:1;min-width:0;}
+    .msg-head{display:flex;align-items:baseline;gap:7px;margin-bottom:3px;flex-wrap:wrap;}
+    .msg-user{font-weight:600;font-size:14px;color:var(--text);}
+    .msg-user.own{color:var(--crimson);}
+    .msg-user.adm{color:var(--cyan);}
+    .msg-user.mod{color:#00ff88;}
+
+    .mbadge{
+      display:inline-flex;align-items:center;gap:2px;padding:1px 6px;border-radius:3px;
+      font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;
     }
+    .bown{background:rgba(232,22,42,.15);border:1px solid rgba(232,22,42,.4);color:var(--crimson);}
+    .badm{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.35);color:var(--cyan);}
+    .bmod{background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:#00ff88;}
 
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .msg-time{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;}
+    .msg-text{font-size:14px;line-height:1.55;color:var(--text);word-break:break-word;}
+    .msg-sys{text-align:center;font-size:12px;color:var(--text3);padding:10px;font-family:'JetBrains Mono',monospace;}
+
+    /* ═══ INPUT ═══ */
+    .input-area{position:sticky;bottom:0;padding:10px 0 18px;background:linear-gradient(transparent,var(--bg) 38%);}
+    .input-bar{
+      display:flex;align-items:center;gap:8px;padding:8px 8px 8px 14px;
+      background:var(--bg2);border:1px solid var(--border);border-radius:14px;transition:border-color .2s;
     }
-
-    .chat-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 14px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
+    .input-bar:focus-within{border-color:var(--bdr);box-shadow:0 0 0 1px rgba(232,22,42,.08);}
+    #msg-input{
+      flex:1;background:transparent;border:none;outline:none;color:var(--text);
+      font-family:'DM Sans',sans-serif;font-size:14px;resize:none;max-height:80px;line-height:1.5;
     }
-
-    #chat-container h1 {
-      font-family: "yuniorrguez13-a11y", 'Orbitron', serif;
-      font-size: clamp(22px, 5vw, 42px);
-      color: white;
-      text-shadow: 0 0 40px rgba(232, 22, 42, 0.6), 0 0 80px rgba(232, 22, 42, 0.25);
-      letter-spacing: 1px;
+    #msg-input::placeholder{color:var(--text3);}
+    #msg-input:disabled{cursor:not-allowed;}
+    #send-btn{
+      width:36px;height:36px;background:var(--crimson);border:none;border-radius:9px;
+      color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
+      font-size:15px;transition:all .18s;flex-shrink:0;
     }
+    #send-btn:hover{background:#ff1e34;box-shadow:0 0 14px var(--cglow);}
+    #send-btn:disabled{background:var(--bg3);cursor:not-allowed;box-shadow:none;}
 
-    .subtitle {
-      margin: 5px 0 0;
-      color: var(--text-muted);
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 2px;
-      text-transform: uppercase;
+    /* ═══ PROFILE PANEL ═══ */
+    .poverlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);}
+    .poverlay.open{display:flex;justify-content:flex-end;}
+    .ppanel{
+      width:var(--pw);max-width:100vw;height:100%;background:var(--bg2);
+      border-left:1px solid var(--border);display:flex;flex-direction:column;
+      animation:sRight .22s ease;
     }
+    @keyframes sRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
+    .phd{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .phd-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;}
+    .pclose{width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;}
+    .pclose:hover{border-color:var(--crimson);color:var(--crimson);}
+    .pbody{flex:1;overflow-y:auto;padding:20px;}
 
-    /* NAV LINKS */
-    .nav-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
+    /* PFP upload */
+    .pfp-zone{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px;}
+    .pfp-ring{
+      width:88px;height:88px;border-radius:50%;background:var(--bg3);border:2px dashed var(--border);
+      overflow:hidden;cursor:pointer;position:relative;transition:border-color .2s;
+      display:flex;align-items:center;justify-content:center;
     }
-
-    .nav-links a,
-    .nav-links button.nav-btn {
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      text-decoration: none;
-      padding: 8px 13px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 3px;
-      background: rgba(255, 255, 255, 0.04);
-      color: #b0b0c8;
-      transition: all 0.2s ease;
-      clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
+    .pfp-ring:hover{border-color:var(--crimson);}
+    .pfp-ring:hover .pfp-hover-ov{opacity:1;}
+    #pfpImg{width:100%;height:100%;object-fit:cover;display:none;}
+    .pfp-init{font-size:30px;}
+    .pfp-hover-ov{
+      position:absolute;inset:0;background:rgba(0,0,0,.65);border-radius:50%;
+      display:flex;align-items:center;justify-content:center;font-size:20px;opacity:0;transition:opacity .2s;
     }
+    .pfp-hint{font-size:12px;color:var(--text2);text-align:center;line-height:1.5;}
+    .pfp-hint small{color:var(--text3);display:block;}
+    #pfpProgress{display:none;font-size:12px;color:var(--cyan);font-family:'JetBrains Mono',monospace;}
 
-    .nav-links a:hover,
-    .nav-links button.nav-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
-      border-color: rgba(255, 255, 255, 0.35);
-      transform: translateY(-1px);
+    /* Form */
+    .fg{margin-bottom:14px;}
+    .fl{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+    .fi{
+      width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);
+      border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;transition:border-color .2s;outline:none;
     }
+    .fi:focus{border-color:var(--bdr);}
+    .fi::placeholder{color:var(--text3);}
+    .fi:disabled{opacity:.5;cursor:not-allowed;}
 
-    /* cZEROde — RED */
-    #czerode-btn {
-      border-color: var(--crimson) !important;
-      background: rgba(232, 22, 42, 0.12) !important;
-      color: #ff7080 !important;
+    .pfoot{padding:14px 20px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+    .btn-p{width:100%;padding:11px;background:var(--crimson);border:none;border-radius:9px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .18s;}
+    .btn-p:hover{background:#ff1e34;}
+    .btn-s{width:100%;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;transition:all .18s;}
+    .btn-s:hover{color:var(--text);border-color:rgba(255,255,255,.2);}
+    .btn-d{width:100%;padding:10px;background:rgba(232,22,42,.08);border:1px solid rgba(232,22,42,.25);border-radius:9px;color:#ff6070;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;transition:all .18s;}
+    .btn-d:hover{background:var(--crimson);color:#fff;}
+
+    /* ═══ AUTH MODAL ═══ */
+    .moverlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;}
+    .moverlay.open{display:flex;}
+    .auth-box{
+      width:100%;max-width:360px;background:var(--bg2);
+      border:1px solid var(--border);border-top:2px solid var(--crimson);
+      border-radius:4px 16px 16px 16px;padding:28px;
+      animation:fsin .22s ease;
     }
+    @keyframes fsin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+    .auth-logo{text-align:center;margin-bottom:20px;font-family:'Syne',sans-serif;font-size:19px;font-weight:800;}
+    .auth-logo em{color:var(--crimson);font-style:normal;}
+    .auth-tabs{display:flex;gap:4px;background:var(--bg3);padding:4px;border-radius:10px;margin-bottom:18px;}
+    .atab{flex:1;text-align:center;padding:8px;border-radius:7px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text2);transition:all .15s;}
+    .atab.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.4);}
+    .aform{display:none;}
+    .aform.active{display:block;}
+    .aerr{color:var(--crimson);font-size:13px;margin-bottom:10px;display:none;padding:8px 10px;background:rgba(232,22,42,.08);border-radius:6px;}
 
-    #czerode-btn:hover,
-    #czerode-btn:active {
-      background: var(--crimson) !important;
-      color: white !important;
-      box-shadow: 0 0 20px var(--crimson-glow);
+    /* ═══ ROOM MODAL ═══ */
+    .room-box{
+      width:100%;max-width:330px;background:var(--bg2);border:1px solid var(--border);
+      border-radius:16px;padding:24px;animation:fsin .22s ease;
     }
-
-    /* OWNER BADGE */
-    .owner-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      padding: 1px 7px;
-      margin-left: 7px;
-      border-radius: 3px;
-      background: linear-gradient(135deg, rgba(232,22,42,0.22), rgba(232,22,42,0.10));
-      border: 1px solid rgba(232,22,42,0.55);
-      color: var(--crimson);
-      font-family: 'Orbitron', sans-serif;
-      font-size: 8px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      vertical-align: middle;
-      box-shadow: 0 0 8px rgba(232,22,42,0.25);
-      position: relative;
-      top: -1px;
+    .rm-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;margin-bottom:14px;}
+    .rm-rooms{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+    .rtag{
+      padding:6px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;
+      cursor:pointer;font-size:12px;color:var(--text2);transition:all .15s;font-family:'JetBrains Mono',monospace;
     }
-    .owner-badge::before {
-      content: '⚡';
-      font-size: 8px;
+    .rtag:hover{border-color:var(--crimson);color:var(--text);}
+
+    /* ═══ MOBILE NAV DRAWER ═══ */
+    .mob-nav-ov{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);}
+    .mob-nav-ov.open{display:block;}
+    .mob-drawer{
+      position:fixed;bottom:0;left:0;right:0;z-index:350;
+      background:var(--bg2);border-top:1px solid var(--border);
+      padding:12px 16px calc(env(safe-area-inset-bottom) + 14px);
+      display:none;flex-direction:column;gap:8px;animation:sup .2s ease;
     }
+    @keyframes sup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .mob-drawer.open{display:flex;}
+    .mob-drawer-safe{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;}
+    .mob-link{display:flex;align-items:center;gap:12px;padding:13px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--text);font-size:14px;font-weight:500;transition:all .15s;}
+    .mob-link:hover,.mob-link:active{border-color:rgba(255,255,255,.2);}
 
-    /* ADMIN BADGE */
-    .admin-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      padding: 1px 7px;
-      margin-left: 7px;
-      border-radius: 3px;
-      background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(0,212,255,0.07));
-      border: 1px solid rgba(0,212,255,0.5);
-      color: var(--cyan);
-      font-family: 'Orbitron', sans-serif;
-      font-size: 8px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      vertical-align: middle;
-      box-shadow: 0 0 8px rgba(0,212,255,0.18);
-      position: relative;
-      top: -1px;
+    /* ═══ TOAST ═══ */
+    .toast{
+      position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
+      background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+      padding:10px 20px;font-size:14px;z-index:9999;opacity:0;transition:all .25s;
+      pointer-events:none;white-space:nowrap;box-shadow:0 4px 22px rgba(0,0,0,.5);
     }
-    .admin-badge::before { content: '🛡'; font-size: 8px; }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    .toast.ok{border-color:#22c55e;color:#22c55e;}
+    .toast.err{border-color:var(--crimson);color:var(--crimson);}
 
-    /* MOD BADGE */
-    .mod-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      padding: 1px 7px;
-      margin-left: 7px;
-      border-radius: 3px;
-      background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.06));
-      border: 1px solid rgba(0,255,136,0.45);
-      color: #00ff88;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 8px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      vertical-align: middle;
-      box-shadow: 0 0 8px rgba(0,255,136,0.15);
-      position: relative;
-      top: -1px;
-    }
-    .mod-badge::before { content: '🔧'; font-size: 8px; }
+    /* ═══ CZERODE OVERLAY ═══ */
+    #czov{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);flex-direction:column;align-items:center;justify-content:center;padding:12px;}
+    #czov.open{display:flex;}
+    .czmod{width:100%;max-width:1100px;height:90vh;background:var(--bg2);border:1px solid var(--bdr);border-top:2px solid var(--crimson);border-radius:4px 16px 16px 16px;box-shadow:0 0 60px rgba(232,22,42,.15);display:flex;flex-direction:column;overflow:hidden;}
+    .czhead{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bdr);background:rgba(232,22,42,.06);}
+    .cztitle{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:#ff6070;}
+    .ovclose{background:none;border:1px solid var(--border);color:var(--text2);font-size:15px;width:30px;height:30px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+    .ovclose:hover{background:var(--crimson);color:#fff;border-color:var(--crimson);}
+    #czframe{width:100%;flex:1;border:none;}
 
-    /* ANNOUNCE BANNER */
-    #announce-banner {
-      display: none;
-      margin: 0 0 12px;
-      padding: 10px 14px;
-      border-left: 3px solid var(--cyan);
-      background: rgba(0,212,255,0.06);
-      border-radius: 0 6px 6px 0;
-      font-size: 12px;
-      line-height: 1.6;
-      color: #7ad4e8;
-      font-family: 'Rajdhani', sans-serif;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-    }
-    #announce-banner strong { color: var(--cyan); }
+    /* ═══ QMAGES OVERLAY ═══ */
+    #qmov{display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);flex-direction:column;align-items:center;justify-content:center;padding:12px;}
+    #qmov.open{display:flex;}
+    .qmmod{width:100%;max-width:1300px;height:92vh;background:var(--bg2);border:1px solid var(--bdc);border-top:2px solid var(--cyan);border-radius:4px 16px 16px 16px;box-shadow:0 0 60px rgba(0,212,255,.1);display:flex;flex-direction:column;overflow:hidden;}
+    .qmhead{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bdc);background:rgba(0,212,255,.04);}
+    .qmtitle{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--cyan);}
+    .ovclose.cyan:hover{background:var(--cyan);color:#030d12;border-color:var(--cyan);}
+    #qmframe{width:100%;flex:1;border:none;}
 
-    /* WARNINGS */
-    .czerode-warnings {
-      margin: 0 0 16px;
-      padding: 10px 14px;
-      border-left: 3px solid var(--crimson);
-      background: rgba(232, 22, 42, 0.07);
-      border-radius: 0 6px 6px 0;
-      font-size: 13px;
-      line-height: 1.6;
-      color: #908090;
-    }
-
-    .czerode-warnings p { margin: 0; }
-    .czerode-warnings p + p { margin-top: 5px; }
-
-    /* DIVIDER */
-    .section-divider {
-      height: 1px;
-      background: linear-gradient(90deg, var(--crimson), transparent);
-      margin: 14px 0;
-      opacity: 0.3;
-    }
-
-    /* CZERODE MODAL OVERLAY */
-    #czerode-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(6px);
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
-    }
-
-    #czerode-overlay.open {
-      display: flex;
-    }
-
-    .czerode-modal {
-      width: 100%;
-      max-width: 1100px;
-      height: 90vh;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-red);
-      border-top: 3px solid var(--crimson);
-      border-radius: 4px 16px 16px 16px;
-      box-shadow: 0 0 60px rgba(232, 22, 42, 0.2);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .czerode-modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border-red);
-      background: rgba(232, 22, 42, 0.07);
-      flex-shrink: 0;
-    }
-
-    .czerode-modal-title {
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #ff7080;
-    }
-
-    #czerode-close {
-      background: none;
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #aaa;
-      font-size: 18px;
-      width: 32px;
-      height: 32px;
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    #czerode-close:hover,
-    #czerode-close:active {
-      background: var(--crimson);
-      color: white;
-      border-color: var(--crimson);
-    }
-
-    #czerode-frame {
-      width: 100%;
-      flex: 1;
-      border: none;
-    }
-
-    /* CHAT BOX */
-    #chat-box {
-      width: 100%;
-      height: 340px;
-      background: rgba(4, 4, 8, 0.92);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      overflow-y: scroll;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    /* INPUT GROUPS */
-    .profile-fields {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 8px;
-      margin: 10px 0;
-    }
-
-    #auth-box,
-    .room-controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      margin: 8px 0;
-    }
-
-    /* ALL INPUTS — font-size 16px prevents iOS auto-zoom */
-    #msg-input, #username-input, #pfp-input, #pfp-frame-input, #image-upload,
-    #email-input, #password-input, #room-input {
-      padding: 11px 13px;
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.09);
-      background: rgba(18, 18, 28, 0.92);
-      color: #eee;
-      font-size: 16px;
-      font-family: 'Inter', sans-serif;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      min-width: 0;
-    }
-
-    #msg-input:focus, #username-input:focus, #pfp-input:focus, #pfp-frame-input:focus,
-    #email-input:focus, #password-input:focus, #room-input:focus {
-      outline: none;
-      border-color: var(--crimson);
-      box-shadow: 0 0 0 2px var(--crimson-glow);
-    }
-
-    #msg-input { width: 100%; }
-    #msg-input:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    /* BUTTONS */
-    .ui-button {
-      padding: 11px 16px;
-      cursor: pointer;
-      background: rgba(232, 22, 42, 0.12);
-      border: 1px solid var(--crimson);
-      color: #ff7080;
-      border-radius: 3px;
-      font-family: 'Rajdhani', sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      transition: all 0.2s ease;
-      clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
-      white-space: nowrap;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .ui-button:hover { background: var(--crimson); color: white; box-shadow: 0 0 18px var(--crimson-glow); }
-    .ui-button:active { background: var(--crimson); color: white; transform: scale(0.97); }
-    .ui-button:disabled { cursor: not-allowed; opacity: 0.35; box-shadow: none; transform: none; }
-
-    /* SEND BUTTON */
-    #send-btn {
-      padding: 11px 22px;
-      cursor: pointer;
-      background: var(--crimson);
-      border: none;
-      color: #fff;
-      border-radius: 4px;
-      font-family: 'Rajdhani', sans-serif;
-      font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      min-width: 90px;
-      transition: all 0.2s ease;
-      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
-      -webkit-tap-highlight-color: transparent;
-      flex-shrink: 0;
-    }
-
-    #send-btn:hover { background: #ff1e34; box-shadow: 0 0 24px var(--crimson-glow); }
-    #send-btn:active { transform: scale(0.97); }
-    #send-btn:disabled {
-      background: #2a1016;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
-      opacity: 0.5;
-    }
-
-    .message-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    #current-room-label {
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 12px;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      white-space: nowrap;
-    }
-
-    .toggle {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      cursor: pointer;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .toggle input {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--crimson);
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    /* ── PFP SQUARE WRAPPER ── */
-    .pfp-wrap {
-      position: relative;
-      width: 52px;
-      height: 52px;
-      margin-right: 12px;
-      flex-shrink: 0;
-      align-self: flex-start;
-    }
-
-    .pfp-wrap img.pfp-avatar {
-      width: 52px;
-      height: 52px;
-      object-fit: cover;
-      display: block;
-      border-radius: 4px; /* subtle smoothing — still clearly square */
-    }
-
-    /* Frame/outline overlay — extends 6px on all sides so it wraps the avatar */
-    .pfp-wrap img.pfp-frame {
-      position: absolute;
-      inset: -6px;
-      width: calc(100% + 12px);
-      height: calc(100% + 12px);
-      object-fit: fill;
-      pointer-events: none;
-    }
-
-    /* ===== MOBILE ===== */
-    @media (max-width: 600px) {
-      #chat-container {
-        width: 100%;
-        margin: 8px 0 0;
-        padding: 14px 12px 20px;
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-      }
-
-      .chat-controls {
-        width: 100%;
-        padding: 8px 12px;
-        margin-top: 10px;
-      }
-
-      .chat-header {
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-
-      .nav-links {
-        width: 100%;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 7px;
-      }
-
-      .nav-links a,
-      .nav-links button.nav-btn {
-        text-align: center;
-        padding: 10px 6px;
-        font-size: 11px;
-        clip-path: none;
-        border-radius: 4px;
-      }
-
-      #auth-box {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-      }
-
-      #auth-box #email-input,
-      #auth-box #password-input {
-        grid-column: span 2;
-      }
-
-      .room-controls {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-      }
-
-      #room-input { width: 100%; }
-      #current-room-label { text-align: center; }
-
-      .profile-fields {
-        grid-template-columns: 1fr;
-      }
-
-      #chat-box {
-        height: 260px;
-      }
-
-      .czerode-modal {
-        height: 92vh;
-        border-radius: 0 10px 10px 10px;
-      }
-
-      #czerode-overlay {
-        padding: 6px;
-      }
+    /* ═══ RESPONSIVE ═══ */
+    @media(max-width:640px){
+      .chat-wrap{padding:10px 8px 0;}
+      #chat-box{min-height:300px;max-height:calc(100vh - var(--hh) - 80px);}
+      .msg{padding:5px 4px;gap:8px;}
+      .msg-ava{width:32px;height:32px;}
+      .msg-text,.msg-user{font-size:13px;}
+      .czmod,.qmmod{height:93vh;border-radius:0 12px 12px 12px;}
+      #czov,#qmov{padding:5px;}
     }
   </style>
 </head>
 <body>
-  <canvas id="matrix"></canvas>
+<canvas id="matrix"></canvas>
 
-  <!-- CZERODE OVERLAY -->
-  <div id="czerode-overlay">
-    <div class="czerode-modal">
-      <div class="czerode-modal-header">
-        <span class="czerode-modal-title">⚡ cZEROde</span>
-        <button id="czerode-close" title="Close">✕</button>
+<!-- ── CZERODE ── -->
+<div id="czov">
+  <div class="czmod">
+    <div class="czhead">
+      <span class="cztitle">⚡ cZEROde — BETA</span>
+      <button class="ovclose" id="czclose">✕</button>
+    </div>
+    <iframe id="czframe" src="" allow="accelerometer; camera; encrypted-media; fullscreen; gyroscope; microphone" loading="lazy"></iframe>
+  </div>
+</div>
+
+<!-- ── QMAGES ── -->
+<div id="qmov">
+  <div class="qmmod">
+    <div class="qmhead">
+      <span class="qmtitle">🖼️ Qmages — Image Board</span>
+      <button class="ovclose cyan" id="qmclose">✕</button>
+    </div>
+    <iframe id="qmframe" src="" loading="lazy"></iframe>
+  </div>
+</div>
+
+<!-- ── AUTH MODAL ── -->
+<div class="moverlay" id="auth-ov">
+  <div class="auth-box">
+    <div class="auth-logo">Yuniors <em>Chill Zone</em></div>
+    <div class="auth-tabs">
+      <div class="atab active" id="ltab">Sign In</div>
+      <div class="atab" id="stab">Sign Up</div>
+    </div>
+    <div class="aerr" id="aerr"></div>
+    <div class="aform active" id="lform">
+      <div class="fg"><label class="fl">Email</label><input type="email" class="fi" id="lemail" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="fg"><label class="fl">Password</label><input type="password" class="fi" id="lpass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn-p" id="loginBtn" style="margin-top:4px">Sign In</button>
+    </div>
+    <div class="aform" id="sform">
+      <div class="fg"><label class="fl">Email</label><input type="email" class="fi" id="semail" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="fg"><label class="fl">Password</label><input type="password" class="fi" id="spass" placeholder="Min. 6 characters" autocomplete="new-password"></div>
+      <button class="btn-p" id="signupBtn" style="margin-top:4px">Create Account</button>
+    </div>
+    <button class="btn-s" id="auth-cancel" style="margin-top:9px">Cancel</button>
+  </div>
+</div>
+
+<!-- ── ROOM MODAL ── -->
+<div class="moverlay" id="room-ov">
+  <div class="room-box">
+    <div class="rm-title">Switch Room</div>
+    <div class="rm-rooms">
+      <span class="rtag" data-r="global"># global</span>
+      <span class="rtag" data-r="announce"># announce</span>
+      <span class="rtag" data-r="gaming"># gaming</span>
+      <span class="rtag" data-r="music"># music</span>
+      <span class="rtag" data-r="random"># random</span>
+      <span class="rtag" data-r="offtopic"># offtopic</span>
+    </div>
+    <div class="fg"><label class="fl">Custom Room Code</label><input type="text" class="fi" id="roomInput" placeholder="enter-code"></div>
+    <button class="btn-p" id="joinRoomBtn">Join Room</button>
+    <button class="btn-s" id="room-cancel" style="margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- ── PROFILE PANEL ── -->
+<div class="poverlay" id="prof-ov">
+  <div class="ppanel">
+    <div class="phd">
+      <span class="phd-title">Your Profile</span>
+      <button class="pclose" id="prof-close">✕</button>
+    </div>
+    <div class="pbody">
+      <div class="pfp-zone">
+        <div class="pfp-ring" id="pfpRing" title="Click to upload photo">
+          <img id="pfpImg" alt="">
+          <div class="pfp-init" id="pfpInit">👤</div>
+          <div class="pfp-hover-ov">📷</div>
+          <input type="file" id="pfpFile" accept="image/*" style="display:none">
+        </div>
+        <div class="pfp-hint">Click to upload a profile picture<small>JPG, PNG, GIF · Max 5 MB</small></div>
+        <div id="pfpProgress">Uploading...</div>
       </div>
-      <iframe
-        id="czerode-frame"
-        src=""
-        allow="accelerometer; camera; encrypted-media; fullscreen; gyroscope; microphone"
-        loading="lazy"
-      ></iframe>
+      <div class="fg"><label class="fl">Username</label><input type="text" class="fi" id="uname" placeholder="yourcoolname" autocomplete="nickname"></div>
+      <div class="fg">
+        <label class="fl">PFP Frame URL <span style="color:var(--text3);font-weight:400;text-transform:none">(optional)</span></label>
+        <input type="text" class="fi" id="frameUrl" placeholder="https://...frame overlay image">
+      </div>
+    </div>
+    <div class="pfoot">
+      <button class="btn-p" id="saveProf">Save Changes</button>
+      <button class="btn-d" id="logoutBtn">Sign Out</button>
     </div>
   </div>
+</div>
 
-  <div class="chat-controls">
-    <label class="toggle">
-      <input type="checkbox" id="safe-mode-toggle">
-      <span>Safe Mode — filter profanity</span>
+<!-- ── MOBILE DRAWER ── -->
+<div class="mob-nav-ov" id="mob-ov"></div>
+<div class="mob-drawer" id="mob-drawer">
+  <div class="mob-drawer-safe">
+    <input type="checkbox" id="safeMobToggle" style="accent-color:var(--crimson);">
+    <span style="font-size:13px;color:var(--text2)">Safe Mode — filter profanity</span>
+  </div>
+  <a class="mob-link" href="music.html" target="_blank">🎵  Music Room</a>
+  <a class="mob-link" href="gaming.html" target="_blank">🎮  Gaming Zone</a>
+  <a class="mob-link" href="video.html" target="_blank">📺  VideoZone</a>
+  <a class="mob-link" href="https://zoom.us/j/4498564941" target="_blank">📞  Voice Chat</a>
+  <div class="mob-link" id="mob-cz">⚡  cZEROde</div>
+  <div class="mob-link" id="mob-qm">🖼️  Qmages</div>
+</div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">Y</div>
+    <span class="logo-name">Yuniors <em>Chill Zone</em></span>
+  </div>
+
+  <div class="room-pill" id="roomPill">
+    <div class="rdot"></div>
+    <span class="room-name" id="roomLabel">global</span>
+    <span class="room-chev">▼</span>
+  </div>
+
+  <div class="hspacer"></div>
+
+  <div class="hnav">
+    <label class="safe-tog" title="Filter profanity">
+      <input type="checkbox" id="safeMode">
+      <span>Safe Mode</span>
     </label>
+    <a class="nbtn" href="music.html" target="_blank">🎵 Music</a>
+    <a class="nbtn" href="gaming.html" target="_blank">🎮 Gaming</a>
+    <a class="nbtn" href="video.html" target="_blank">📺 Video</a>
+    <button class="nbtn cz" id="czBtn">⚡ cZEROde</button>
+    <button class="nbtn qm" id="qmBtn">🖼️ Qmages</button>
   </div>
 
-  <div id="chat-container">
-    <div class="chat-header">
-      <div>
-        <h1>Yuniors Chill Zone</h1>
-        <p class="subtitle">Hang out · Drop a message · Vibe out</p>
-      </div>
-      <div class="nav-links">
-        <a href="music.html" target="_blank">🎵 Music Room</a>
-        <a href="gaming.html" target="_blank">🎮 Gaming Zone</a>
-        <a href="https://zoom.us/j/4498564941" target="_blank">📞 Voice Chat</a>
-        <a href="video.html" target="_blank">📺 VideoZone</a>
-        <button class="nav-btn" id="czerode-btn">⚡ cZEROde</button>
-      </div>
-    </div>
+  <button class="mob-menu" id="mob-btn">☰</button>
+  <button class="sign-btn" id="signBtn">Sign In</button>
+  <div class="ava-btn" id="avaBtn" style="display:none">?</div>
+</header>
 
-    <div class="czerode-warnings">
-      <p>⚠ <strong>cZEROde</strong> is in <strong>BETA</strong> — some features may be unstable or incomplete.</p>
-    </div>
-
-    <div id="auth-box">
-      <input type="email" id="email-input" placeholder="Email address" autocomplete="email">
-      <input type="password" id="password-input" placeholder="Password" autocomplete="current-password">
-      <button id="signup-btn" class="ui-button">Sign Up</button>
-      <button id="login-btn" class="ui-button">Login</button>
-      <button id="logout-btn" class="ui-button" style="display:none;">Logout</button>
-    </div>
-
-    <div class="section-divider"></div>
-
+<!-- ── MAIN ── -->
+<main>
+  <div class="chat-wrap">
     <div id="announce-banner">
-      📣 <strong>ANNOUNCE</strong> — This is the official announcements room. Only <strong>Owner</strong>, <strong>Admins</strong> and <strong>Mods</strong> can post here. Everyone else can read.
+      📣 <strong>ANNOUNCE</strong> — This is the official announcements channel.
+      Only <strong>Owner</strong>, <strong>Admins</strong> and <strong>Mods</strong> can post here.
     </div>
-
-    <div class="room-controls">
-      <input type="text" id="room-input" placeholder="Room code (default: global)" style="flex:1; min-width:140px;">
-      <button id="join-room-btn" class="ui-button">Join Room</button>
-      <span id="current-room-label">Current room: global</span>
+    <div id="chat-box">
+      <div class="msg-sys">Loading messages...</div>
     </div>
-
-    <div class="profile-fields">
-      <input type="text" id="username-input" placeholder="Your username" autocomplete="nickname">
-      <input type="text" id="pfp-input" placeholder="Profile picture URL (optional)">
-      <!-- NEW: frame/outline image URL — packed alongside pfp_url as  pfpUrl||frameUrl -->
-      <input type="text" id="pfp-frame-input" placeholder="PFP frame / outline image URL (optional)">
-    </div>
-
-    <div id="chat-box"></div>
-
-    <div class="message-actions">
-      <input type="text" id="msg-input" placeholder="Login to chat" disabled style="flex:1;">
-      <button id="send-btn" disabled>Send</button>
+    <div class="input-area">
+      <div class="input-bar">
+        <textarea id="msg-input" rows="1" placeholder="Sign in to chat..." disabled></textarea>
+        <button id="send-btn" disabled>➤</button>
+      </div>
     </div>
   </div>
+</main>
 
-  <script src="matrix.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<div class="toast" id="toast"></div>
 
-  <script>
-    // ===== cZEROde overlay =====
-    const overlay = document.getElementById("czerode-overlay");
-    const frame   = document.getElementById("czerode-frame");
+<script src="matrix.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+'use strict';
 
-    document.getElementById("czerode-btn").addEventListener("click", () => {
-      frame.src = "https://yuniorrguez13-a11y.github.io/cZEROdeWEB/";
-      overlay.classList.add("open");
-      document.body.style.overflow = "hidden";
-    });
+const SUPABASE_URL = 'https://heohcnhgclcnmssjklom.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    document.getElementById("czerode-close").addEventListener("click", () => {
-      overlay.classList.remove("open");
-      frame.src = "";
-      document.body.style.overflow = "";
-    });
+let currentUser = null, myRole = null, currentRoom = 'global';
+let pfpUrl   = localStorage.getItem('pfp_url')   || '';
+let pfpFrame = localStorage.getItem('pfp_frame') || '';
+let username = localStorage.getItem('username')  || '';
 
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) {
-        overlay.classList.remove("open");
-        frame.src = "";
-        document.body.style.overflow = "";
-      }
-    });
+const $  = id => document.getElementById(id);
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-    // ===== Chat =====
-    window.addEventListener("load", () => {
-      const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
-      const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
-      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+function isUrl(s){try{const u=new URL(s);return u.protocol==='http:'||u.protocol==='https:';}catch{return false;}}
+function init1(s){return(s||'?')[0].toUpperCase();}
+function ago(d){const s=(Date.now()-new Date(d))/1000;if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m';if(s<86400)return Math.floor(s/3600)+'h';return new Date(d).toLocaleDateString(undefined,{month:'short',day:'numeric'});}
 
-      const chatBox          = document.getElementById("chat-box");
-      const input            = document.getElementById("msg-input");
-      const sendBtn          = document.getElementById("send-btn");
-      const usernameInput    = document.getElementById("username-input");
-      const pfpInput         = document.getElementById("pfp-input");
-      const pfpFrameInput    = document.getElementById("pfp-frame-input"); // NEW
-      const safeModeToggle   = document.getElementById("safe-mode-toggle");
-      const emailInput       = document.getElementById("email-input");
-      const passwordInput    = document.getElementById("password-input");
-      const signupBtn        = document.getElementById("signup-btn");
-      const loginBtn         = document.getElementById("login-btn");
-      const logoutBtn        = document.getElementById("logout-btn");
-      const roomInput        = document.getElementById("room-input");
-      const joinRoomBtn      = document.getElementById("join-room-btn");
-      const currentRoomLabel = document.getElementById("current-room-label");
+/* ── TOAST ── */
+function toast(msg,type){const t=$('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');setTimeout(()=>t.className='toast',2700);}
 
+/* ── ROLE ── */
+async function fetchRole(uid){if(!uid)return null;const{data}=await sb.from('user_roles').select('role').eq('user_id',uid).maybeSingle();return data?.role||null;}
+const canAnnounce=()=>['owner','admin','mod'].includes(myRole);
 
+/* ── HEADER AVATAR ── */
+function updateAva(){
+  const a=$('avaBtn'),s=$('signBtn');
+  if(currentUser){
+    s.style.display='none';a.style.display='flex';
+    a.innerHTML=pfpUrl&&isUrl(pfpUrl)?`<img src="${pfpUrl}" alt="">`:(init1(username||currentUser.email));
+  } else {s.style.display='block';a.style.display='none';}
+}
 
-      let currentUser = null;
-      let currentRoom = "global";
-      let myRole      = null; // 'owner' | 'admin' | 'mod' | null
+/* ── CHAT STATE ── */
+function updateChat(){
+  const ann=currentRoom==='announce',blocked=ann&&!canAnnounce();
+  const inp=$('msg-input'),btn=$('send-btn');
+  $('announce-banner').style.display=ann?'block':'none';
+  $('roomLabel').textContent=currentRoom;
+  if(currentUser){
+    inp.disabled=blocked;
+    inp.placeholder=blocked?'📣 Read-only — only Owner, Admin & Mod can post here':'Type a message...';
+    btn.disabled=blocked;
+  } else {inp.disabled=true;inp.placeholder='Sign in to chat...';btn.disabled=true;}
+}
 
-      function isValidImageUrl(urlString) {
-        try {
-          const url = new URL(urlString);
-          return url.protocol === "http:" || url.protocol === "https:";
-        } catch (e) { return false; }
-      }
+/* ── PROFILE PANEL ── */
+function openProf(){
+  $('uname').value=username;$('frameUrl').value=pfpFrame;
+  const img=$('pfpImg'),init=$('pfpInit');
+  if(pfpUrl&&isUrl(pfpUrl)){img.src=pfpUrl;img.style.display='block';init.style.display='none';}
+  else{img.style.display='none';init.style.display='flex';init.textContent=init1(username||currentUser?.email);}
+  $('prof-ov').classList.add('open');
+}
+function closeProf(){$('prof-ov').classList.remove('open');}
 
+/* ── PFP FILE UPLOAD ── */
+$('pfpRing').addEventListener('click',()=>$('pfpFile').click());
+$('pfpFile').addEventListener('change',async function(){
+  const file=this.files[0];if(!file)return;
+  if(file.size>5*1024*1024){toast('File too large (max 5 MB)','err');return;}
+  if(!currentUser){toast('Sign in first','err');return;}
+  const prog=$('pfpProgress');prog.style.display='block';prog.textContent='Uploading...';
+  const ext=file.name.split('.').pop().toLowerCase()||'jpg';
+  const path=`${currentUser.id}/avatar.${ext}`;
+  const{error}=await sb.storage.from('avatars').upload(path,file,{upsert:true,cacheControl:'60'});
+  if(error){prog.style.display='none';toast('Upload failed: '+error.message,'err');return;}
+  const{data:ud}=sb.storage.from('avatars').getPublicUrl(path);
+  pfpUrl=ud.publicUrl+'?t='+Date.now();
+  localStorage.setItem('pfp_url',pfpUrl);
+  const img=$('pfpImg');img.src=pfpUrl;img.style.display='block';$('pfpInit').style.display='none';
+  prog.textContent='✓ Uploaded!';setTimeout(()=>prog.style.display='none',2000);
+  updateAva();toast('Profile picture updated! ✓','ok');
+  await sb.auth.updateUser({data:{pfp_url:pfpUrl}});
+});
 
-      async function fetchRole(uid) {
-        if (!uid) return null;
-        const { data } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", uid)
-          .maybeSingle();
-        return data?.role || null;
-      }
+/* ── SAVE PROFILE ── */
+$('saveProf').addEventListener('click',async()=>{
+  const u=$('uname').value.trim(),f=$('frameUrl').value.trim();
+  if(u){username=u;localStorage.setItem('username',u);}
+  pfpFrame=f;localStorage.setItem('pfp_frame',f);
+  await sb.auth.updateUser({data:{username,pfp_frame:pfpFrame,pfp_url:pfpUrl}});
+  updateAva();closeProf();toast('Profile saved! ✓','ok');
+});
 
-      function canPostInAnnounce() {
-        return ["owner","admin","mod"].includes(myRole);
-      }
+$('logoutBtn').addEventListener('click',async()=>{
+  await sb.auth.signOut();currentUser=null;myRole=null;updateAva();updateChat();closeProf();toast('Signed out');
+});
 
-      async function checkAuth() {
-        const { data: { user } } = await supabase.auth.getUser();
-        currentUser = user;
+/* ── AUTH ── */
+const openAuth=()=>$('auth-ov').classList.add('open');
+const closeAuth=()=>{$('auth-ov').classList.remove('open');$('aerr').style.display='none';};
+const authErr=m=>{const e=$('aerr');e.textContent=m;e.style.display='block';};
+const switchTab=t=>{
+  $('ltab').classList.toggle('active',t==='l');$('stab').classList.toggle('active',t==='s');
+  $('lform').classList.toggle('active',t==='l');$('sform').classList.toggle('active',t==='s');
+  $('aerr').style.display='none';
+};
+$('ltab').addEventListener('click',()=>switchTab('l'));
+$('stab').addEventListener('click',()=>switchTab('s'));
+$('auth-cancel').addEventListener('click',closeAuth);
+$('auth-ov').addEventListener('click',e=>{if(e.target===$('auth-ov'))closeAuth();});
+$('signBtn').addEventListener('click',openAuth);
+$('loginBtn').addEventListener('click',async()=>{
+  $('aerr').style.display='none';
+  const{error}=await sb.auth.signInWithPassword({email:$('lemail').value,password:$('lpass').value});
+  if(error)authErr(error.message);else{closeAuth();toast('Welcome back! ✓','ok');}
+});
+$('lpass').addEventListener('keydown',e=>{if(e.key==='Enter')$('loginBtn').click();});
+$('signupBtn').addEventListener('click',async()=>{
+  $('aerr').style.display='none';
+  const{error}=await sb.auth.signUp({email:$('semail').value,password:$('spass').value});
+  if(error)authErr(error.message);else{toast('Account created! Check your email.','ok');switchTab('l');}
+});
 
-        myRole = await fetchRole(user?.id);
-        if (user?.email === "yunior133@icloud.com") myRole = "owner";
+/* ── ROOM ── */
+$('roomPill').addEventListener('click',()=>$('room-ov').classList.add('open'));
+$('room-cancel').addEventListener('click',()=>$('room-ov').classList.remove('open'));
+$('room-ov').addEventListener('click',e=>{if(e.target===$('room-ov'))$('room-ov').classList.remove('open');});
+document.querySelectorAll('.rtag').forEach(t=>t.addEventListener('click',()=>{switchRoom(t.dataset.r);$('room-ov').classList.remove('open');}));
+$('joinRoomBtn').addEventListener('click',()=>{const c=$('roomInput').value.trim();if(c){switchRoom(c);$('room-ov').classList.remove('open');}});
+$('roomInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinRoomBtn').click();});
+function switchRoom(r){currentRoom=r;updateChat();renderMessages();}
 
-        const isOwner = myRole === "owner";
-        usernameInput.value = isOwner ? "yunior" : (user?.email?.split("@")[0] || "");
-        usernameInput.disabled = isOwner;
-        if (isOwner) usernameInput.title = "Username locked for owner account";
-        if (isOwner) {
-          pfpInput.value = "https://raw.githubusercontent.com/yuniorrguez13-a11y/Ultraviolet/main/s_69c294687dd88191b93c319c34a84b84_Precise_Starlight_Fast_2-ezgif.com-optimize.gif";
-          pfpInput.disabled = true;
-          pfpInput.title = "Profile picture locked for owner account";
-          // Frame/outline is NOT locked for the owner — they can still set one
-        }
-        updateUI();
-      }
+/* ── CZERODE ── */
+function openCz(){$('czframe').src='https://yuniorrguez13-a11y.github.io/cZEROdeWEB/';$('czov').classList.add('open');document.body.style.overflow='hidden';}
+function closeCz(){$('czov').classList.remove('open');$('czframe').src='';document.body.style.overflow='';}
+$('czBtn').addEventListener('click',openCz);$('czclose').addEventListener('click',closeCz);
+$('czov').addEventListener('click',e=>{if(e.target===$('czov'))closeCz();});
 
-      function updateUI() {
-        const inAnnounce = currentRoom === "announce";
-        const privileged = canPostInAnnounce();
+/* ── QMAGES ── */
+function openQm(){$('qmframe').src='qmages.html';$('qmov').classList.add('open');document.body.style.overflow='hidden';}
+function closeQm(){$('qmov').classList.remove('open');$('qmframe').src='';document.body.style.overflow='';}
+$('qmBtn').addEventListener('click',openQm);$('qmclose').addEventListener('click',closeQm);
+$('qmov').addEventListener('click',e=>{if(e.target===$('qmov'))closeQm();});
 
-        if (currentUser) {
-          const blocked = inAnnounce && !privileged;
-          input.disabled = blocked;
-          input.placeholder = blocked
-            ? "📣 Read-only — only Owner, Admin & Mod can post here"
-            : "Type a message...";
-          sendBtn.disabled = blocked;
-          signupBtn.style.display = "none";
-          loginBtn.style.display = "none";
-          logoutBtn.style.display = "inline-block";
-        } else {
-          input.disabled = true;
-          input.placeholder = inAnnounce ? "📣 Read-only — only Owner, Admin & Mod can post here" : "Login to chat";
-          sendBtn.disabled = true;
-          signupBtn.style.display = "inline-block";
-          loginBtn.style.display = "inline-block";
-          logoutBtn.style.display = "none";
-        }
+/* ── MOBILE DRAWER ── */
+function openDraw(){$('mob-drawer').classList.add('open');$('mob-ov').classList.add('open');}
+function closeDraw(){$('mob-drawer').classList.remove('open');$('mob-ov').classList.remove('open');}
+$('mob-btn').addEventListener('click',openDraw);
+$('mob-ov').addEventListener('click',closeDraw);
+$('mob-cz').addEventListener('click',()=>{closeDraw();openCz();});
+$('mob-qm').addEventListener('click',()=>{closeDraw();openQm();});
 
-        const banner = document.getElementById("announce-banner");
-        banner.style.display = inAnnounce ? "block" : "none";
-      }
+// Sync safe mode checkboxes
+$('safeMode').addEventListener('change',()=>$('safeMobToggle').checked=$('safeMode').checked);
+$('safeMobToggle').addEventListener('change',()=>$('safeMode').checked=$('safeMobToggle').checked);
 
-      async function sendMessage() {
-        const text     = input.value.trim();
-        const username = usernameInput.value.trim() || "Anonymous";
-        const pfp_url   = pfpInput.value.trim();
-        const pfp_frame = pfpFrameInput.value.trim() || null;
+/* ── AVATAR & PROFILE PANEL TOGGLE ── */
+$('avaBtn').addEventListener('click',openProf);
+$('prof-close').addEventListener('click',closeProf);
+$('prof-ov').addEventListener('click',e=>{if(e.target===$('prof-ov'))closeProf();});
 
-        if (!text) return;
-        const { error } = await supabase.from("messages").insert([
-          { text, username, pfp_url, pfp_frame, room_id: currentRoom, user_id: currentUser?.id }
-        ]);
-        if (error) alert(error.message);
-        else input.value = "";
-      }
+/* ── MESSAGES ── */
+const BANNED=['badword1','badword2'];
+function shouldHide(t){return $('safeMode').checked&&BANNED.some(w=>t.toLowerCase().includes(w));}
 
-      function shouldHideMessage(text) {
-        if (!safeModeToggle.checked) return false;
-        const banned = ["badword1", "badword2"];
-        return banned.some(word => text.toLowerCase().includes(word));
-      }
+function buildAva(msg){
+  const pu=msg.pfp_url||'',fr=msg.pfp_frame||'',init=init1(msg.username);
+  if(pu&&isUrl(pu)){
+    let inner=`<img class="pava" src="${pu}" alt="" onerror="this.style.display='none'">`;
+    if(fr&&isUrl(fr))inner+=`<img class="pfr" src="${fr}" alt="" onerror="this.style.display='none'">`;
+    return`<div class="msg-ava">${inner}</div>`;
+  }
+  return`<div class="msg-ava" style="color:var(--text2);font-size:13px">${esc(init)}</div>`;
+}
 
-      async function renderMessages() {
-        const { data, error } = await supabase
-          .from("messages").select("*")
-          .eq("room_id", currentRoom)
-          .order("id", { ascending: true });
-        if (error) return;
+function buildBadge(msg){
+  if(msg.is_owner)return'<span class="mbadge bown">⚡ Owner</span>';
+  if(msg.role==='admin')return'<span class="mbadge badm">🛡 Admin</span>';
+  if(msg.role==='mod')return'<span class="mbadge bmod">🔧 Mod</span>';
+  return'';
+}
 
-        chatBox.innerHTML = "";
-        data.forEach(msg => {
-          if (shouldHideMessage(msg.text)) return;
+async function renderMessages(){
+  const box=$('chat-box');
+  const atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;
+  const{data,error}=await sb.from('messages').select('*').eq('room_id',currentRoom).order('id',{ascending:true});
+  if(error)return;
+  box.innerHTML='';
+  if(!data.length){box.innerHTML='<div class="msg-sys">No messages yet — say hello! 👋</div>';return;}
+  data.forEach(msg=>{
+    if(shouldHide(msg.text))return;
+    const rc=msg.is_owner?'own':msg.role==='admin'?'adm':msg.role==='mod'?'mod':'';
+    const div=document.createElement('div');div.className='msg';
+    div.innerHTML=buildAva(msg)
+      +`<div class="msg-body"><div class="msg-head">`
+      +`<span class="msg-user ${rc}">${esc(msg.username||'Anonymous')}</span>`
+      +buildBadge(msg)
+      +`<span class="msg-time">${ago(msg.created_at)}</span>`
+      +`</div><div class="msg-text">${esc(msg.text)}</div></div>`;
+    box.appendChild(div);
+  });
+  if(atBottom||box.children.length<=5)box.scrollTop=box.scrollHeight;
+}
 
-          const msgDiv = document.createElement("div");
-          msgDiv.style.display = "flex";
-          msgDiv.style.marginBottom = "10px";
+/* ── SEND ── */
+async function sendMsg(){
+  const inp=$('msg-input'),text=inp.value.trim();
+  if(!text||!currentUser)return;
+  const uname=username||currentUser.email.split('@')[0]||'Anonymous';
+  inp.value='';inp.style.height='auto';
+  const{error}=await sb.from('messages').insert([{
+    text,username:uname,pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null,
+    room_id:currentRoom,user_id:currentUser.id
+  }]);
+  if(error){toast(error.message,'err');inp.value=text;}
+}
 
-          // ── Build square PFP with optional frame overlay ──
-          const avatarUrl = msg.pfp_url   || "";
-          const frameUrl  = msg.pfp_frame || "";
+$('send-btn').addEventListener('click',sendMsg);
+$('msg-input').addEventListener('keypress',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+$('msg-input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px';});
 
-          if (avatarUrl && isValidImageUrl(avatarUrl)) {
-            const wrap = document.createElement("div");
-            wrap.className = "pfp-wrap";
+/* ── REALTIME ── */
+sb.channel('messages')
+  .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{
+    if(payload.new.room_id===currentRoom)renderMessages();
+  }).subscribe();
 
-            const pfp = document.createElement("img");
-            pfp.className = "pfp-avatar";
-            pfp.src = avatarUrl;
-            pfp.alt = "";
-            pfp.onerror = () => { wrap.style.display = "none"; };
-            wrap.appendChild(pfp);
+/* ── INIT ── */
+async function init(){
+  const{data:{user}}=await sb.auth.getUser();
+  currentUser=user;
+  if(user){
+    myRole=await fetchRole(user.id);
+    if(user.email==='yunior133@icloud.com')myRole='owner';
+    const m=user.user_metadata||{};
+    if(m.pfp_url){pfpUrl=m.pfp_url;localStorage.setItem('pfp_url',pfpUrl);}
+    if(m.pfp_frame){pfpFrame=m.pfp_frame;localStorage.setItem('pfp_frame',pfpFrame);}
+    if(m.username){username=m.username;localStorage.setItem('username',username);}
+    if(myRole==='owner'){
+      username='yunior';
+      pfpUrl='https://raw.githubusercontent.com/yuniorrguez13-a11y/Ultraviolet/main/s_69c294687dd88191b93c319c34a84b84_Precise_Starlight_Fast_2-ezgif.com-optimize.gif';
+    }
+  }
+  updateAva();updateChat();renderMessages();
+}
 
-            if (frameUrl && isValidImageUrl(frameUrl)) {
-              const frameImg = document.createElement("img");
-              frameImg.className = "pfp-frame";
-              frameImg.src = frameUrl;
-              frameImg.alt = "";
-              frameImg.onerror = () => { frameImg.style.display = "none"; };
-              wrap.appendChild(frameImg);
-            }
+sb.auth.onAuthStateChange(async(_,session)=>{
+  const prev=currentUser;
+  currentUser=session?.user||null;
+  if(currentUser){
+    myRole=await fetchRole(currentUser.id);
+    if(currentUser.email==='yunior133@icloud.com')myRole='owner';
+    const m=currentUser.user_metadata||{};
+    if(m.pfp_url){pfpUrl=m.pfp_url;localStorage.setItem('pfp_url',pfpUrl);}
+    if(m.pfp_frame){pfpFrame=m.pfp_frame;localStorage.setItem('pfp_frame',pfpFrame);}
+    if(m.username){username=m.username;localStorage.setItem('username',username);}
+    if(myRole==='owner'){username='yunior';pfpUrl='https://raw.githubusercontent.com/yuniorrguez13-a11y/Ultraviolet/main/s_69c294687dd88191b93c319c34a84b84_Precise_Starlight_Fast_2-ezgif.com-optimize.gif';}
+  } else {myRole=null;}
+  updateAva();updateChat();
+  if(!prev&&currentUser)renderMessages();
+});
 
-            msgDiv.appendChild(wrap);
-          }
-
-          const content = document.createElement("div");
-          const name = document.createElement("b");
-          name.textContent = msg.username + ":";
-
-          // Role badges
-          if (msg.is_owner) {
-            const badge = document.createElement("span");
-            badge.className = "owner-badge";
-            badge.textContent = "OWNER";
-            name.appendChild(badge);
-          } else if (msg.role === "admin") {
-            const badge = document.createElement("span");
-            badge.className = "admin-badge";
-            badge.textContent = "ADMIN";
-            name.appendChild(badge);
-          } else if (msg.role === "mod") {
-            const badge = document.createElement("span");
-            badge.className = "mod-badge";
-            badge.textContent = "MOD";
-            name.appendChild(badge);
-          }
-
-          name.appendChild(document.createTextNode(" "));
-          const messageText = document.createElement("span");
-          messageText.textContent = msg.text;
-          content.appendChild(name);
-          content.appendChild(messageText);
-          msgDiv.appendChild(content);
-          chatBox.appendChild(msgDiv);
-        });
-
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }
-
-      sendBtn.addEventListener("click", sendMessage);
-      input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendMessage(); });
-
-      signupBtn.addEventListener("click", async () => {
-        const { error } = await supabase.auth.signUp({ email: emailInput.value, password: passwordInput.value });
-        if (error) alert(error.message);
-        else alert("Check email for confirmation!");
-      });
-
-      loginBtn.addEventListener("click", async () => {
-        const { error } = await supabase.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
-        if (error) alert(error.message);
-        else checkAuth();
-      });
-
-      logoutBtn.addEventListener("click", async () => {
-        await supabase.auth.signOut();
-        currentUser = null;
-        updateUI();
-      });
-
-      joinRoomBtn.addEventListener("click", () => {
-        currentRoom = roomInput.value.trim() || "global";
-        currentRoomLabel.textContent = `Current room: ${currentRoom}`;
-        updateUI();
-        renderMessages();
-      });
-
-      supabase
-        .channel("messages")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
-          if (payload.new.room_id === currentRoom) renderMessages();
-        })
-        .subscribe();
-
-      checkAuth();
-      renderMessages();
-    });
-  </script>
+init();
+})();
+</script>
 </body>
 </html>
