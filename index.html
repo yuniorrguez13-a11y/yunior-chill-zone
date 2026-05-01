@@ -487,7 +487,9 @@ async function sendMsg(){
     text,
     username:uname||user.email.split('@')[0]||'Anonymous',
     pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null,
-    room_id:room,user_id:user.id
+    room_id:room,user_id:user.id,
+    is_owner:role==="owner"||null,
+    role:["admin","mod"].includes(role)?role:null
   }]);
   if(error){toast(error.message,'err');inp.value=text;}
 }
