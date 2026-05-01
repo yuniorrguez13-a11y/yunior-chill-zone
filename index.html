@@ -604,23 +604,14 @@ $('mob-qm').addEventListener('click',()=>{closeDraw();openQm();});
 $('safe-mode').addEventListener('change',()=>$('safe-mob').checked=$('safe-mode').checked);
 $('safe-mob').addEventListener('change',()=>$('safe-mode').checked=$('safe-mob').checked);
 
+
 /* ══════════════════════════════════════════
-   AUTH STATE — single listener, no init()
-   Supabase fires INITIAL_SESSION on every
-   page load, with or without a session.
-   That is the only boot path.
+   AUTH — getSession() for boot (reads
+   localStorage directly, no Web Locks),
+   onAuthStateChange only for sign in/out.
 ══════════════════════════════════════════ */
-sb.auth.onAuthStateChange(async(event,session)=>{
-
-  /* No session on load — show messages as guest */
-  if(event==='INITIAL_SESSION'&&!session){
-    user=null;role=null;
-    refreshAva();refreshInput();loadMessages();
-    return;
-  }
-
-  user=session?.user||null;
-
+async function applySession(s){
+  user=s?.user||null;
   if(user){
     role=await getRole(user.id);
     if(user.email===OWNER)role='owner';
@@ -631,10 +622,16 @@ sb.auth.onAuthStateChange(async(event,session)=>{
   }else{
     role=null;
   }
+  refreshAva();refreshInput();loadMessages();
+}
 
-  refreshAva();
-  refreshInput();
-  loadMessages();
+/* Boot — bypasses Web Locks entirely, always works on reload */
+sb.auth.getSession().then(({data:{session}})=>applySession(session));
+
+/* Sign in / sign out / token refresh — skip the boot event */
+sb.auth.onAuthStateChange((event,session)=>{
+  if(event==='INITIAL_SESSION')return;
+  applySession(session);
 });
 
 })();
