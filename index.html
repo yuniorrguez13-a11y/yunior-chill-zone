@@ -567,7 +567,16 @@ $('save-prof').addEventListener('click',async()=>{
   if(n){uname=n;localStorage.setItem('username',n);}
   pfpFrame=f;localStorage.setItem('pfp_frame',f);
   await sb.auth.updateUser({data:{username:uname,pfp_frame:pfpFrame,pfp_url:pfpUrl}});
+  /* Update all past messages so name/avatar reflects immediately */
+  if(user){
+    await sb.from('messages').update({
+      username:uname||null,
+      pfp_url:pfpUrl||null,
+      pfp_frame:pfpFrame||null
+    }).eq('user_id',user.id);
+  }
   refreshAva();closeProf();toast('Profile saved! ✓','ok');
+  loadMessages();
 });
 $('do-logout').addEventListener('click',async()=>{
   await sb.auth.signOut();closeProf();toast('Signed out');
