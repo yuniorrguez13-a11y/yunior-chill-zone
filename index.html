@@ -358,7 +358,15 @@ main{position:relative;z-index:1;padding-top:var(--hh);min-height:100vh;display:
 const SB_URL   = 'https://heohcnhgclcnmssjklom.supabase.co';
 const SB_KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhlb2hjbmhnY2xjbm1zc2prbG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNDg2NDAsImV4cCI6MjA4NTcyNDY0MH0.Y73DbstnhKAI2IvPcMrL_mtIObmeOQj-rgY0XtdE200';
 const OWNER    = 'yunior133@icloud.com';
-const sb       = window.supabase.createClient(SB_URL, SB_KEY);
+const sb       = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth: {
+    persistSession:     true,
+    storageKey:         'ycz-auth',
+    storage:            window.localStorage,
+    autoRefreshToken:   true,
+    detectSessionInUrl: true,
+  }
+});
 
 /* STATE */
 let user     = null;
