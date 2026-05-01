@@ -713,39 +713,31 @@ sb.channel('messages')
     if(payload.new.room_id===currentRoom)renderMessages();
   }).subscribe();
 
-/* ── INIT ── */
-async function init(){
-  const{data:{user}}=await sb.auth.getUser();
-  currentUser=user;
-  if(user){
-    myRole=await fetchRole(user.id);
-    if(user.email==='yunior133@icloud.com')myRole='owner';
-    const m=user.user_metadata||{};
-    if(m.pfp_url){pfpUrl=m.pfp_url;localStorage.setItem('pfp_url',pfpUrl);}
-    if(m.pfp_frame){pfpFrame=m.pfp_frame;localStorage.setItem('pfp_frame',pfpFrame);}
-    if(m.username){username=m.username;localStorage.setItem('username',username);}
-    if(myRole==='owner'){
-      username='yunior';
-      pfpUrl='https://raw.githubusercontent.com/yuniorrguez13-a11y/Ultraviolet/main/s_69c294687dd88191b93c319c34a84b84_Precise_Starlight_Fast_2-ezgif.com-optimize.gif';
-    }
+sb.auth.onAuthStateChange(async (event, session) => {
+  // Ignore the first null fire on page load
+  if (event === 'INITIAL_SESSION' && !session) {
+    renderMessages(); // still load messages for logged-out view
+    return;
   }
-  updateAva();updateChat();renderMessages();
-}
 
-sb.auth.onAuthStateChange(async(_,session)=>{
-  const prev=currentUser;
-  currentUser=session?.user||null;
-  if(currentUser){
-    myRole=await fetchRole(currentUser.id);
-    if(currentUser.email==='yunior133@icloud.com')myRole='owner';
-    const m=currentUser.user_metadata||{};
-    if(m.pfp_url){pfpUrl=m.pfp_url;localStorage.setItem('pfp_url',pfpUrl);}
-    if(m.pfp_frame){pfpFrame=m.pfp_frame;localStorage.setItem('pfp_frame',pfpFrame);}
-    if(m.username){username=m.username;localStorage.setItem('username',username);}
-    if(myRole==='owner'){username='yunior';pfpUrl='https://raw.githubusercontent.com/yuniorrguez13-a11y/Ultraviolet/main/s_69c294687dd88191b93c319c34a84b84_Precise_Starlight_Fast_2-ezgif.com-optimize.gif';}
-  } else {myRole=null;}
-  updateAva();updateChat();
-  if(!prev&&currentUser)renderMessages();
+  currentUser = session?.user || null;
+
+  if (currentUser) {
+    try { myRole = await fetchRole(currentUser.id); } catch { myRole = null; }
+    if (currentUser.email === 'yunior133@icloud.com') myRole = 'owner';
+
+    const m = currentUser.user_metadata || {};
+    if (m.pfp_url)  { pfpUrl  = m.pfp_url;   localStorage.setItem('pfp_url',   pfpUrl);   }
+    if (m.pfp_frame){ pfpFrame = m.pfp_frame; localStorage.setItem('pfp_frame', pfpFrame); }
+    if (m.username) { username = m.username;  localStorage.setItem('username',  username); }
+  
+  } else {
+    myRole = null;
+  }
+
+  updateAva();
+  updateChat();
+  renderMessages();
 });
 
 init();
