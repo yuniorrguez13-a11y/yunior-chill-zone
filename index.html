@@ -646,9 +646,9 @@ const setTab=t=>{$('t-in').classList.toggle('on',t==='in');$('t-up').classList.t
 $('t-in').addEventListener('click',()=>setTab('in'));$('t-up').addEventListener('click',()=>setTab('up'));
 $('sign-btn').addEventListener('click',openAuth);$('auth-cancel').addEventListener('click',closeAuth);
 $('auth-ov').addEventListener('click',e=>{if(e.target===$('auth-ov'))closeAuth();});
-$('do-login').addEventListener('click',async()=>{$('auth-err').style.display='none';const{error}=await sb.auth.signInWithPassword({email:$('in-email').value,password:$('in-pass').value});if(error)authErr(error.message);else{closeAuth();toast('Welcome back! ✓','ok');}});
+$('do-login').addEventListener('click',async()=>{$('auth-err').style.display='none';const email=$('in-email').value.trim(),password=$('in-pass').value;const{error}=await sb.auth.signInWithPassword({email,password});if(error)authErr(error.message);else{closeAuth();toast('Welcome back! ✓','ok');}});
 $('in-pass').addEventListener('keydown',e=>{if(e.key==='Enter')$('do-login').click();});
-$('do-signup').addEventListener('click',async()=>{$('auth-err').style.display='none';const{error}=await sb.auth.signUp({email:$('up-email').value,password:$('up-pass').value});if(error)authErr(error.message);else{toast('Account created! Check your email.','ok');setTab('in');}});
+$('do-signup').addEventListener('click',async()=>{$('auth-err').style.display='none';const email=$('up-email').value.trim(),password=$('up-pass').value;const{error}=await sb.auth.signUp({email,password});if(error)authErr(error.message);else{toast('Account created! Check your email.','ok');setTab('in');}});
 
 /* PROFILE */
 function openProf(){$('u-name').value=uname;$('u-frame').value=pfpFrame;const img=$('pfp-img'),init=$('pfp-init');if(pfpUrl&&isUrl(pfpUrl)){img.src=pfpUrl;img.style.display='block';init.style.display='none';}else{img.style.display='none';init.style.display='flex';init.textContent=ini(uname||user?.email);}$('prof-ov').classList.add('open');}
@@ -792,13 +792,60 @@ let friends=[],friendReqs={in:[],out:[]},fTab='friends';
 async function loadFriends(){
   if(!user)return;
   try{
-    const{data}=await sb.from('friendships').select(`id,requester_id,addressee_id,status,rp:user_profiles!requester_id(user_id,username,pfp_url),ap:user_profiles!addressee_id(user_id,username,pfp_url)`).or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
-    if(!data){renderFPanel();return;}
-    friends=data.filter(f=>f.status==='accepted').map(f=>{const o=f.requester_id===user.id?f.ap:f.rp;return{fid:f.id,...(o||{})};});
-    friendReqs.in=data.filter(f=>f.status==='pending'&&f.addressee_id===user.id).map(f=>({fid:f.id,...(f.rp||{})}));
-    friendReqs.out=data.filter(f=>f.status==='pending'&&f.requester_id===user.id).map(f=>({fid:f.id,...(f.ap||{})}));
+    const {data: rows, error: rowErr} = await sb
+      .from('friendships')
+      .select('id,requester_id,addressee_id,status')
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+
+    if(rowErr) throw rowErr;
+    if(!rows || !rows.length){
+      friends = [];
+      friendReqs = {in:[], out:[]};
+      renderFPanel();
+      return;
+    }
+
+    const profileIds = [...new Set(rows.flatMap(f => [f.requester_id, f.addressee_id]).filter(Boolean))];
+    const {data: profs, error: profErr} = profileIds.length
+      ? await sb.from('user_profiles').select('user_id,username,pfp_url').in('user_id', profileIds)
+      : {data: [], error: null};
+
+    if(profErr) throw profErr;
+
+    const profiles = Object.fromEntries((profs || []).map(p => [p.user_id, p]));
+
+    friends = rows
+      .filter(f => f.status === 'accepted')
+      .map(f => {
+        const otherId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
+        const o = profiles[otherId] || {};
+        return {
+          fid: f.id,
+          user_id: otherId,
+          username: o.username || 'Unknown',
+          pfp_url: o.pfp_url || ''
+        };
+      });
+
+    friendReqs.in = rows
+      .filter(f => f.status === 'pending' && f.addressee_id === user.id)
+      .map(f => {
+        const o = profiles[f.requester_id] || {};
+        return {fid: f.id, user_id: f.requester_id, username: o.username || 'Unknown', pfp_url: o.pfp_url || ''};
+      });
+
+    friendReqs.out = rows
+      .filter(f => f.status === 'pending' && f.requester_id === user.id)
+      .map(f => {
+        const o = profiles[f.addressee_id] || {};
+        return {fid: f.id, user_id: f.addressee_id, username: o.username || 'Unknown', pfp_url: o.pfp_url || ''};
+      });
+
     renderFPanel();
-  }catch(e){const b=$('fbody');if(b)b.innerHTML='<div class="f-empty">Error — create the friendships table first</div>';}
+  }catch(e){
+    const b=$('fbody');
+    if(b)b.innerHTML='<div class="f-empty">Friends could not load.<br><small style="color:var(--text3)">Check the friendships table and user_profiles table.</small></div>';
+  }
 }
 function openFriends(tab='friends'){
   if(!user){openAuth();return;}
