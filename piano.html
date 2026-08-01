@@ -433,7 +433,22 @@
 // ─────────────────────────────────────────────
 const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
 const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+/* SHARED SESSION — storageKey must match every other YCZ page ('ycz-auth')
+   so signing in on the main site signs you in here automatically. */
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth:{ persistSession:true, storageKey:'ycz-auth', storage:window.localStorage,
+         autoRefreshToken:true, detectSessionInUrl:true }
+});
+
+/* Pull the display name from user_profiles (falls back to email prefix) */
+async function yczName(u){
+  if(!u) return 'Player';
+  try{
+    const {data} = await sb.from('user_profiles').select('username,handle').eq('user_id',u.id).maybeSingle();
+    if(data && data.username) return data.username;
+  }catch(e){}
+  return (u.user_metadata && u.user_metadata.username) || u.email.split('@')[0];
+}
 
 // ─────────────────────────────────────────────
 // CONSTANTS
@@ -561,7 +576,7 @@ async function afterAuth() {
   const { data:{user} } = await sb.auth.getUser();
   if(!user) { showScreen('auth-screen'); return; }
   currentUser = user;
-  myUsername  = user.email.split('@')[0];
+  myUsername  = await yczName(user);
   myColor     = PLAYER_COLORS[myColorIdx % PLAYER_COLORS.length];
   document.getElementById('lobby-user').textContent = myUsername;
   showScreen('lobby-screen');
@@ -1076,7 +1091,7 @@ hideLoading();
 
 if(user) {
   currentUser = user;
-  myUsername  = user.email.split('@')[0];
+  myUsername  = await yczName(user);
   myColor     = PLAYER_COLORS[0];
   document.getElementById('lobby-user').textContent = myUsername;
   showScreen('lobby-screen');
