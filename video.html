@@ -202,8 +202,11 @@ document.addEventListener('keydown', function(e) {
     .search-header span{color:var(--accent);}
     ::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
   </style>
+  <link rel="stylesheet" href="ycz-theme.css">
 </head>
 <body>
+<a class="ycz-back" href="index.html" title="Back to the Chill Zone"><span>←</span> Chill Zone</a>
+
 
 <div class="topbar">
   <div class="topbar-logo" id="logoBtn"><div class="logo-icon">▶</div>YuniorVideoZone</div>
@@ -486,9 +489,12 @@ document.addEventListener('keydown', function(e) {
 
 <script>
 (function() {
+  /* storageKey must match every other YCZ page — one login covers the site */
   var _sb = supabase.createClient(
     'https://heohcnhgclcnmssjklom.supabase.co',
-    'sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq'
+    'sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq',
+    { auth:{ persistSession:true, storageKey:'ycz-auth', storage:window.localStorage,
+             autoRefreshToken:true, detectSessionInUrl:true } }
   );
 
   var currentUser = null;
@@ -1204,6 +1210,10 @@ document.addEventListener('keydown', function(e) {
   });
 
 })();
+</script>
+<script>
+/* inside the Chill Zone app these open in an overlay, so the button is noise */
+if(window.self!==window.top){var b=document.querySelector('.ycz-back');if(b)b.remove();}
 </script>
 </body>
 </html>
