@@ -1594,15 +1594,51 @@ let iceCache=null;
 async function getIce(){
   if(iceCache&&iceCache.exp>Date.now())return iceCache.servers;
   try{
-    const{data,error}=await sb.functions.invoke('turn-credentials',{body:{}});
-    if(!error&&data?.iceServers?.length){
-      iceCache={servers:data.iceServers,exp:Date.now()+(data.ttl||3600)*900};
-      return iceCache.servers;
+    /* function slug may be 'turn-credentials' or Supabase's default 'smart-function' */
+    let data=null,error=null;
+    for(const fn of ['turn-credentials','smart-function']){
+      const r=await sb.functions.invoke(fn,{body:{}});
+      if(!r.error&&r.data?.iceServers){data=r.data;error=null;console.log('[voice] using function:',fn);break;}
+      error=r.error;
     }
-    console.warn('[voice] TURN unavailable, using STUN only',error?.message||data?.error);
-  }catch(e){console.warn('[voice] TURN fetch failed',e);}
+    if(error||!data){console.warn('[voice] TURN request failed:',error?.message||error);}
+    else{
+      /* Cloudflare may send one object or an array — accept both */
+      const raw=data?.iceServers;
+      const list=Array.isArray(raw)?raw:(raw?[raw]:[]);
+      if(list.length){
+        const hasTurn=JSON.stringify(list).includes('turn:');
+        console.log('[voice] ICE servers loaded:',list.length,'entries · TURN relay:',hasTurn?'YES ✓':'NO ✗');
+        if(!hasTurn)console.warn('[voice] No turn: URLs came back — mobile networks will fail.');
+        iceCache={servers:list,exp:Date.now()+(data.ttl||3600)*900};
+        return list;
+      }
+      console.warn('[voice] Function returned no ICE servers:',data?.error||JSON.stringify(data));
+    }
+  }catch(e){console.warn('[voice] TURN fetch threw',e);}
+  console.warn('[voice] ⚠ Falling back to STUN only — voice will fail on mobile data.');
   return FALLBACK_ICE;
 }
+/* Console helper: yczVoiceTest() proves whether relay works at all */
+window.yczVoiceTest=async function(){
+  const servers=await getIce();
+  console.log('Using ICE servers:',servers);
+  const pc=new RTCPeerConnection({iceServers:servers,iceTransportPolicy:'relay'});
+  pc.createDataChannel('t');
+  const found=[];
+  pc.onicecandidate=e=>{
+    if(e.candidate){found.push(e.candidate.type+' '+(e.candidate.protocol||''));}
+    else{
+      console.log(found.length
+        ? '✓ RELAY WORKS — got '+found.length+' relay candidates: '+found.join(', ')
+        : '✗ NO RELAY CANDIDATES — TURN credentials are wrong or blocked.');
+      pc.close();
+    }
+  };
+  await pc.setLocalDescription(await pc.createOffer());
+  setTimeout(()=>{if(pc.connectionState!=='closed'){pc.close();
+    if(!found.length)console.log('✗ Timed out with no relay candidates.');}},8000);
+};
 
 let vCh=null,vRoom=null,vStream=null,vPeers={},vMuted=false,vPresence={},vRelayed=false;
 
@@ -1712,8 +1748,20 @@ function makePeer(id,servers){
     /* browsers block autoplay until the user has interacted */
     a.play().catch(()=>$('vh-unlock').classList.add('on'));
   };
-  pc.onconnectionstatechange=()=>{
+  pc.onconnectionstatechange=async()=>{
     vStatus();
+    if(pc.connectionState==='connected'){
+      try{
+        const stats=await pc.getStats();
+        stats.forEach(r=>{
+          if(r.type==='candidate-pair'&&r.state==='succeeded'&&r.nominated){
+            const l=stats.get(r.localCandidateId);
+            console.log('[voice] connected to '+id.slice(0,8)+' via '+(l?.candidateType||'?')
+              +(l?.candidateType==='relay'?' (through TURN relay)':' (direct)'));
+          }
+        });
+      }catch(e){}
+    }
     if(pc.connectionState==='failed'&&st.retries<2){
       st.retries++;
       try{pc.restartIce();}catch(e){}
