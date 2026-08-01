@@ -200,7 +200,7 @@ img{display:block;}
 .hero p{color:var(--txt2);font-size:14.5px;margin-top:5px;}
 
 /* composer */
-#comp{padding:0 18px 20px;flex:none;}
+#comp{padding:0 18px 20px;flex:none;position:relative;}
 #comp-in{
   background:var(--panel);border:1px solid var(--border);border-radius:12px;
   display:flex;align-items:flex-end;gap:4px;padding:6px 6px 6px 4px;transition:border-color .14s;
@@ -322,6 +322,53 @@ img{display:block;}
 .upx:hover{color:#ff5f6d;}
 .hint{font-size:11px;color:var(--txt3);margin-top:5px;}
 
+/* mentions */
+.mention{background:rgba(0,212,255,.16);color:var(--cyan);border-radius:4px;padding:0 3px;font-weight:600;cursor:pointer;}
+.mention:hover{background:rgba(0,212,255,.3);}
+.mention.me{background:rgba(232,22,42,.22);color:#ff8b96;}
+.m.pinged{background:rgba(232,22,42,.07);box-shadow:inset 3px 0 0 var(--red);}
+.m.pinged:hover{background:rgba(232,22,42,.11);}
+
+/* @ autocomplete */
+#ac{position:absolute;bottom:100%;left:0;right:0;margin-bottom:8px;background:var(--panel);
+  border:1px solid var(--border-2);border-radius:11px;box-shadow:0 -8px 26px rgba(0,0,0,.55);
+  overflow:hidden;display:none;z-index:60;max-height:230px;overflow-y:auto;}
+#ac.on{display:block;}
+.ac-h{padding:8px 13px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--txt3);border-bottom:1px solid var(--border);}
+.ac-i{display:flex;align-items:center;gap:9px;padding:8px 13px;cursor:pointer;}
+.ac-i.on{background:var(--hover);}
+.ac-av{width:26px;height:26px;border-radius:50%;background:#0a0a10;flex:none;display:flex;
+  align-items:center;justify-content:center;font-size:11px;font-weight:700;overflow:hidden;}
+.ac-av img{width:100%;height:100%;object-fit:cover;}
+.ac-n{font-size:14px;font-weight:600;}
+.ac-h2{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--txt3);margin-left:auto;}
+
+/* notifications */
+#nw{position:relative;flex:none;}
+#nbadge{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;background:var(--red);
+  border:2px solid var(--main);border-radius:9px;font-size:9.5px;font-weight:700;color:#fff;
+  display:none;align-items:center;justify-content:center;}
+#nbadge.on{display:flex;}
+#ndrop{position:absolute;top:40px;right:0;width:330px;max-width:88vw;background:var(--panel);
+  border:1px solid var(--border-2);border-radius:13px;box-shadow:0 14px 40px rgba(0,0,0,.65);
+  overflow:hidden;display:none;z-index:120;}
+#ndrop.on{display:block;}
+.nd-h{display:flex;align-items:center;padding:13px 15px;border-bottom:1px solid var(--border);}
+.nd-h span{flex:1;font-family:'Syne',sans-serif;font-weight:700;font-size:14.5px;}
+.nd-h button{font-size:11.5px;color:var(--cyan);font-weight:600;}
+#nd-list{max-height:370px;overflow-y:auto;}
+.ni{display:flex;gap:11px;padding:12px 15px;cursor:pointer;border-bottom:1px solid var(--border);}
+.ni:hover{background:var(--hover);}
+.ni.unread{background:rgba(232,22,42,.07);}
+.ni-ic{font-size:16px;flex:none;width:22px;text-align:center;}
+.ni-b{flex:1;min-width:0;}
+.ni-t{font-size:13.5px;color:var(--txt);line-height:1.35;}
+.ni-t b{font-weight:700;}
+.ni-m{font-size:12px;color:var(--txt2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ni-a{font-size:10.5px;color:var(--txt3);margin-top:3px;}
+.ni-e{padding:30px 16px;text-align:center;color:var(--txt3);font-size:13px;}
+
 /* toast */
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
   background:var(--panel);border:1px solid var(--border-2);border-radius:11px;padding:12px 18px;
@@ -420,6 +467,14 @@ img{display:block;}
       <span class="ic" id="top-ic">#</span>
       <span class="nm" id="top-nm">global</span>
       <span class="tp" id="top-tp"></span>
+      <div id="nw">
+        <button class="tbtn" id="nb" title="Notifications">🔔</button>
+        <span id="nbadge">0</span>
+        <div id="ndrop">
+          <div class="nd-h"><span>Notifications</span><button id="nd-mark">Mark all read</button></div>
+          <div id="nd-list"><div class="ni-e">Nothing yet</div></div>
+        </div>
+      </div>
       <button class="tbtn" id="t-inv" title="Invite people">🔗</button>
       <button class="tbtn on" id="t-mem" title="Members">👥</button>
     </div>
@@ -427,6 +482,7 @@ img{display:block;}
     <div id="msgs"><div class="sys">Connecting…</div><div id="msg-end"></div></div>
 
     <div id="comp">
+      <div id="ac"></div>
       <div id="comp-in">
         <div id="pending"></div>
         <button class="cbtn" id="c-img" title="Upload image">🖼️</button>
@@ -645,6 +701,19 @@ function toast(m,t){const e=$('toast');e.textContent=m;e.className='on'+(t?' '+t
 const open=id=>$(id).classList.add('open');
 const shut=id=>$(id).classList.remove('open');
 function linkify(t){return esc(t).replace(/(https?:\/\/[^\s<]+)/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u}</a>`);}
+const MENTION_RE=/@([a-zA-Z0-9_-]{2,24})/g;
+function renderText(t){
+  return linkify(t).replace(MENTION_RE,(full,h)=>{
+    const me=myHandle&&h.toLowerCase()===myHandle.toLowerCase();
+    return `<span class="mention${me?' me':''}" data-mh="${esc(h.toLowerCase())}">@${esc(h)}</span>`;
+  });
+}
+function pingsMe(t){
+  if(!t||!myHandle)return false;
+  MENTION_RE.lastIndex=0;
+  let m;while((m=MENTION_RE.exec(t))){if(m[1].toLowerCase()===myHandle.toLowerCase())return true;}
+  return false;
+}
 function saveUnread(){localStorage.setItem('ycz-unread',JSON.stringify(unread));}
 
 /* ══════ AUTH UI ══════ */
@@ -943,12 +1012,12 @@ function refreshComposer(){
   $('txt').disabled=!on;$('c-send').disabled=!on;$('c-img').disabled=!on;
   $('txt').placeholder=!user?'Sign in to chat…':curCh?`Message ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}`:'Pick a channel';
 }
-async function loadMsgs(){
+async function loadMsgs(quiet){
   if(!curCh){$('msgs').innerHTML='<div class="sys">Pick a channel to start.</div>';return;}
   const box=$('msgs');
   const{data,error}=await sb.from('messages').select('*').eq('room_id',curCh.room_key).order('id',{ascending:true}).limit(200);
-  if(error){box.innerHTML=`<div class="sys">⚠ ${esc(error.message)}</div>`;return;}
-  msgs=data||[];paintMsgs(true);
+  if(error){if(!quiet)box.innerHTML=`<div class="sys">⚠ ${esc(error.message)}</div>`;return;}
+  msgs=data||[];paintMsgs(!quiet);
 }
 function paintMsgs(jump){
   const box=$('msgs');
@@ -972,16 +1041,17 @@ function paintMsgs(jump){
     const img=m.image_url&&isUrl(m.image_url)
       ? `<div class="m-img" data-lb="${esc(m.image_url)}"><img src="${esc(m.image_url)}" alt="" loading="lazy"></div>`:'';
     const body=`<div class="m-bd">${grouped?'':`<div class="m-hd"><span class="m-nm ${cls}" data-uc="${esc(m.user_id||'')}">${esc(m.username||'Anonymous')}</span>${tags}<span class="m-tm">${clock(m.created_at)}</span></div>`}
-      ${m.text?`<div class="m-tx">${linkify(m.text)}</div>`:''}${img}</div>`;
+      ${m.text?`<div class="m-tx">${renderText(m.text)}</div>`:''}${img}</div>`;
     const canDel=user&&(m.user_id===user.id||['owner','admin','mod'].includes(gRole));
     const acts=canDel?`<div class="m-acts"><button class="del" data-del="${m.id}" title="Delete">🗑</button></div>`:'';
+    const ping=pingsMe(m.text)?' pinged':'';
     if(grouped){
-      h+=`<div class="m"><div class="m-gut">${clock(m.created_at)}</div>${body}${acts}</div>`;
+      h+=`<div class="m${ping}"><div class="m-gut">${clock(m.created_at)}</div>${body}${acts}</div>`;
     }else{
       const av=m.pfp_url&&isUrl(m.pfp_url)
         ?`<img class="a" src="${esc(m.pfp_url)}" alt="" onerror="this.remove()">${m.pfp_frame&&isUrl(m.pfp_frame)?`<img class="f" src="${esc(m.pfp_frame)}" alt="" onerror="this.remove()">`:''}`
         :esc(ini(m.username));
-      h+=`<div class="m grp"><div class="m-av" data-uc="${esc(m.user_id||'')}">${av}</div>${body}${acts}</div>`;
+      h+=`<div class="m grp${ping}"><div class="m-av" data-uc="${esc(m.user_id||'')}">${av}</div>${body}${acts}</div>`;
     }
   });
   if(!msgs.length)h+='<div class="sys">No messages yet — say hi 👋</div>';
@@ -996,6 +1066,12 @@ $('msgs').addEventListener('click',async e=>{
   if(del){if(!confirm('Delete this message?'))return;
     await sb.from('messages').delete().eq('id',del.dataset.del);
     msgs=msgs.filter(m=>String(m.id)!==String(del.dataset.del));paintMsgs();return;}
+  const mh=e.target.closest('[data-mh]');
+  if(mh){
+    const{data}=await sb.from('user_profiles').select('user_id').ilike('handle',mh.dataset.mh).limit(1);
+    if(data&&data[0])userCard(data[0].user_id);else toast('No user with that handle');
+    return;
+  }
   const uc=e.target.closest('[data-uc]');
   if(uc&&uc.dataset.uc)userCard(uc.dataset.uc);
 });
@@ -1022,8 +1098,61 @@ let allChan=sb.channel('all-msgs').on('postgres_changes',{event:'INSERT',schema:
 }).subscribe();
 
 /* ══════ SENDING ══════ */
-$('txt').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,180)+'px';});
-$('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+let acList=[],acIdx=0,acStart=-1;
+$('txt').addEventListener('input',function(){
+  this.style.height='auto';this.style.height=Math.min(this.scrollHeight,180)+'px';
+  const caret=this.selectionStart,before=this.value.slice(0,caret);
+  const m=before.match(/(?:^|\s)@([a-zA-Z0-9_-]{0,24})$/);
+  if(!m){closeAC();return;}
+  acStart=caret-m[1].length-1;
+  clearTimeout(this._ac);this._ac=setTimeout(()=>acSearch(m[1].toLowerCase()),140);
+});
+async function acSearch(q){
+  let out=[];
+  const pool=curSv?members.filter(m=>m.user_id!==user.id):[];
+  if(pool.length){
+    out=pool.filter(m=>(m.handle||'').toLowerCase().startsWith(q)||(m.username||'').toLowerCase().includes(q)).slice(0,6);
+  }
+  if(out.length<3&&q.length>=1){
+    try{
+      const{data}=await sb.from('user_profiles').select('user_id,username,handle,pfp_url')
+        .or(`handle.ilike.${q}%,username.ilike.%${q}%`).neq('user_id',user.id).limit(6);
+      (data||[]).forEach(p=>{if(!out.some(o=>o.user_id===p.user_id))out.push(p);});
+    }catch(e){}
+  }
+  if(curSv&&['owner','admin'].includes(curSv.myRole)&&'everyone'.startsWith(q))
+    out.unshift({user_id:'@everyone',username:'everyone',handle:'everyone',all:true});
+  acList=out.slice(0,7);acIdx=0;paintAC();
+}
+function paintAC(){
+  const ac=$('ac');
+  if(!acList.length){closeAC();return;}
+  ac.innerHTML='<div class="ac-h">Members</div>'+acList.map((u,i)=>`
+    <div class="ac-i${i===acIdx?' on':''}" data-i="${i}">
+      <div class="ac-av">${u.all?'📣':(u.pfp_url&&isUrl(u.pfp_url)?`<img src="${esc(u.pfp_url)}" alt="">`:esc(ini(u.username)))}</div>
+      <span class="ac-n">${esc(u.username||'Unknown')}</span>
+      <span class="ac-h2">@${esc(u.handle||'')}</span>
+    </div>`).join('');
+  ac.classList.add('on');
+}
+function closeAC(){acList=[];acStart=-1;$('ac').classList.remove('on');$('ac').innerHTML='';}
+function pickAC(i){
+  const u=acList[i];if(!u)return;
+  const t=$('txt'),caret=t.selectionStart;
+  t.value=t.value.slice(0,acStart)+'@'+(u.handle||'')+' '+t.value.slice(caret);
+  const pos=acStart+(u.handle||'').length+2;
+  closeAC();t.focus();t.setSelectionRange(pos,pos);
+}
+$('ac').onclick=e=>{const it=e.target.closest('[data-i]');if(it)pickAC(+it.dataset.i);};
+$('txt').addEventListener('keydown',e=>{
+  if(acList.length){
+    if(e.key==='ArrowDown'){e.preventDefault();acIdx=(acIdx+1)%acList.length;paintAC();return;}
+    if(e.key==='ArrowUp'){e.preventDefault();acIdx=(acIdx-1+acList.length)%acList.length;paintAC();return;}
+    if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();pickAC(acIdx);return;}
+    if(e.key==='Escape'){closeAC();return;}
+  }
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
+});
 $('c-send').onclick=send;
 $('c-img').onclick=()=>$('img-file').click();
 $('img-file').onchange=function(){addPending([...this.files]);this.value='';};
@@ -1075,7 +1204,38 @@ async function send(){
   $('c-send').disabled=false;
   if(error){toast(error.message,'err');$('txt').value=text;return;}
   if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);paintMsgs(true);}
+  if(text)notifyMentions(text);
+  if(curCh.kind==='dm'&&curCh.uid){
+    try{await sb.from('notifications').insert({user_id:curCh.uid,type:'dm',data:{
+      from_id:user.id,from_username:uname,room_key:curCh.room_key,kind:'dm',
+      text:`${uname} sent you a message`,snippet:(text||'📷 Image').slice(0,90)}});}catch(e){}
+  }
   for(let i=1;i<files.length;i++)await sendExtraImage(files[i].file);
+}
+async function notifyMentions(text){
+  MENTION_RE.lastIndex=0;
+  const names=[...new Set([...text.matchAll(MENTION_RE)].map(m=>m[1].toLowerCase()))];
+  if(!names.length)return;
+  const everyone=names.includes('everyone')||names.includes('here');
+  let targets=[];
+  try{
+    if(everyone&&curSv&&['owner','admin'].includes(curSv.myRole)){
+      targets=members.filter(m=>m.user_id!==user.id).map(m=>m.user_id);
+    }else{
+      const{data}=await sb.from('user_profiles').select('user_id,handle').in('handle',names);
+      targets=(data||[]).map(p=>p.user_id).filter(id=>id!==user.id);
+    }
+  }catch(e){return;}
+  if(!targets.length)return;
+  const snippet=text.length>90?text.slice(0,90)+'…':text;
+  const where=curCh.kind==='dm'?'a DM':'#'+curCh.name;
+  const rows=targets.map(uid=>({user_id:uid,type:'mention',data:{
+    from_id:user.id,from_username:uname,from_pfp:pfpUrl||null,
+    room_key:curCh.room_key,channel:curCh.name,kind:curCh.kind||'text',
+    server_id:curSv?curSv.id:null,
+    text:`${uname} mentioned you in ${where}`,snippet}}));
+  const{error}=await sb.from('notifications').insert(rows);
+  if(error)console.warn('[mentions]',error.message);
 }
 async function sendExtraImage(f){
   const ext=(f.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'')||'png';
@@ -1308,22 +1468,101 @@ $('vh-mic').onclick=async()=>{
 $('vh-leave').onclick=leaveVoice;
 window.addEventListener('beforeunload',()=>{leaveVoice();});
 
+/* ══════ NOTIFICATIONS ══════ */
+let notifs=[],ndOpen=false,nChan=null;
+async function loadNotifs(){
+  if(!user){notifs=[];paintBadge();return;}
+  try{
+    const{data}=await sb.from('notifications').select('*').eq('user_id',user.id)
+      .order('created_at',{ascending:false}).limit(40);
+    notifs=data||[];
+  }catch(e){notifs=[];}
+  paintBadge();if(ndOpen)paintNotifs();
+}
+function paintBadge(){
+  const n=notifs.filter(x=>!x.read).length,b=$('nbadge');
+  b.textContent=n>9?'9+':n;b.classList.toggle('on',n>0);
+  document.title=(n>0?`(${n}) `:'')+'Yuniors Chill Zone';
+}
+function paintNotifs(){
+  const icons={mention:'💬',friend_request:'👥',dm:'✉️'};
+  $('nd-list').innerHTML=notifs.length?notifs.map(n=>`
+    <div class="ni${n.read?'':' unread'}" data-n="${esc(n.id)}">
+      <span class="ni-ic">${icons[n.type]||'🔔'}</span>
+      <div class="ni-b">
+        <div class="ni-t">${esc(n.data?.text||(n.type||'').replace(/_/g,' '))}</div>
+        ${n.data?.snippet?`<div class="ni-m">${esc(n.data.snippet)}</div>`:''}
+        <div class="ni-a">${esc(ago(n.created_at))}</div>
+      </div>
+    </div>`).join('') : '<div class="ni-e">Nothing yet 🎉</div>';
+}
+function toggleND(force){
+  ndOpen=typeof force==='boolean'?force:!ndOpen;
+  $('ndrop').classList.toggle('on',ndOpen);
+  if(ndOpen)paintNotifs();
+}
+$('nb').onclick=e=>{e.stopPropagation();if(!user)return open('auth-ov');toggleND();};
+document.addEventListener('click',e=>{if(ndOpen&&!e.target.closest('#nw'))toggleND(false);});
+$('nd-mark').onclick=async e=>{
+  e.stopPropagation();
+  if(!user)return;
+  await sb.from('notifications').update({read:true}).eq('user_id',user.id).eq('read',false);
+  notifs.forEach(n=>n.read=true);paintBadge();paintNotifs();
+};
+$('nd-list').onclick=async e=>{
+  const row=e.target.closest('[data-n]');if(!row)return;
+  const n=notifs.find(x=>String(x.id)===row.dataset.n);if(!n)return;
+  if(!n.read){try{await sb.from('notifications').update({read:true}).eq('id',n.id);}catch(x){}
+    n.read=true;paintBadge();}
+  toggleND(false);
+  if(n.type==='friend_request'&&n.data?.from_id){userCard(n.data.from_id);return;}
+  if(n.data?.room_key)await jumpTo(n.data);
+};
+async function jumpTo(d){
+  if(d.server_id&&(!curSv||curSv.id!==d.server_id)){
+    const sv=servers.find(s=>s.id===d.server_id);
+    if(sv)await goServer(sv);
+  }else if(!d.server_id&&curSv){await goHome();}
+  const c=channels.find(x=>x.room_key===d.room_key)||dmList.find(x=>x.room_key===d.room_key);
+  if(c)openChannel(c);else toast('That channel is not available');
+}
+function watchNotifs(){
+  if(nChan){try{sb.removeChannel(nChan);}catch(e){}nChan=null;}
+  if(!user)return;
+  nChan=sb.channel('notifs:'+user.id)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',
+      filter:'user_id=eq.'+user.id},p=>{
+        notifs.unshift(p.new);paintBadge();if(ndOpen)paintNotifs();
+        toast(p.new.data?.text||'New notification');
+      }).subscribe();
+}
+
 /* ══════ MOBILE NAV ══════ */
 $('burger').onclick=()=>{document.body.classList.add('nav');$('scrim').classList.add('on');};
 $('scrim').onclick=()=>{document.body.classList.remove('nav');$('scrim').classList.remove('on');};
 
 /* ══════ SESSION ══════ */
-async function applySession(s){
-  user=s?.user||null;
+let sessionUid=null;
+async function applySession(s,force){
+  const next=s?.user||null;
+  /* Coming back to the tab fires SIGNED_IN again with the SAME user.
+     Rebuilding everything there is what made the app "restart" —
+     so if the person hasn't actually changed, just refresh quietly. */
+  if(!force&&next&&sessionUid===next.id){user=next;return;}
+  sessionUid=next?next.id:null;
+  user=next;
   if(user){
     await loadMe();
     await loadServers();
+    await loadNotifs();watchNotifs();
     if(servers.length&&!curSv)await goServer(servers[0]);
     else await goHome();
   }else{
     uname='';myHandle='';pfpUrl='';pfpFrame='';bgUrl='';gRole=null;
     servers=[];curSv=null;channels=[];curCh=null;dmList=[];members=[];
     await leaveVoice();
+    notifs=[];paintBadge();
+    if(nChan){try{sb.removeChannel(nChan);}catch(e){}nChan=null;}
     paintMe();paintRail();
     $('side-body').innerHTML='<div class="ch"><span class="nm" style="color:var(--txt3)">Sign in to see your servers</span></div>';
     $('mem').classList.add('hide');
@@ -1331,8 +1570,32 @@ async function applySession(s){
     refreshComposer();
   }
 }
-sb.auth.getSession().then(({data:{session}})=>applySession(session));
-sb.auth.onAuthStateChange((ev,session)=>{if(ev==='INITIAL_SESSION')return;applySession(session);});
+sb.auth.getSession().then(({data:{session}})=>applySession(session,true));
+sb.auth.onAuthStateChange((ev,session)=>{
+  if(ev==='INITIAL_SESSION')return;
+  /* these never mean "a different person signed in" — just keep the token */
+  if(ev==='TOKEN_REFRESHED'||ev==='USER_UPDATED'){if(session?.user)user=session.user;return;}
+  applySession(session);
+});
+
+/* ══════ TAB FOCUS — refresh in place, never rebuild ══════ */
+let awaySince=0;
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState==='hidden'){awaySince=Date.now();return;}
+  if(!user)return;
+  /* short flicks away don't need anything */
+  if(awaySince&&Date.now()-awaySince<4000)return;
+  awaySince=0;
+  if(curCh)await loadMsgs(true);
+  await loadNotifs();
+  /* realtime sockets sometimes die while backgrounded — reopen if so */
+  if(curCh&&(!msgChan||msgChan.state!=='joined'))subscribeMsgs();
+});
+window.addEventListener('online',()=>{
+  if(!user)return;
+  if(curCh){loadMsgs(true);subscribeMsgs();}
+  loadNotifs();
+});
 
 /* keep "last seen" fresh */
 setInterval(()=>{if(user)saveProfile();},4*60*1000);
