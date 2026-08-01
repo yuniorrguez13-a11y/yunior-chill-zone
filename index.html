@@ -1487,7 +1487,7 @@ async function runSlash(raw){
 }
 async function postMessage(text){
   const row={text,username:uname,pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null,
-    room_id:curCh.room_key,user_id:user.id,is_owner:gRole==='owner'||null,
+    room_id:curCh.room_key,user_id:user.id,is_owner:gRole==='owner',
     role:['admin','mod'].includes(gRole)?gRole:null,created_at:new Date().toISOString()};
   const{data}=await sb.from('messages').insert(row).select().single();
   if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);paintMsgs(true);}
@@ -1516,7 +1516,7 @@ async function send(){
     $('comp-note').textContent='';
   }
   const row={text:text||null,image_url:imgUrl,username:uname,pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null,
-    room_id:curCh.room_key,user_id:user.id,is_owner:gRole==='owner'||null,
+    room_id:curCh.room_key,user_id:user.id,is_owner:gRole==='owner',
     role:['admin','mod'].includes(gRole)?gRole:null,created_at:new Date().toISOString()};
   const{data,error}=await sb.from('messages').insert(row).select().single();
   $('c-send').disabled=false;
@@ -1562,7 +1562,8 @@ async function sendExtraImage(f){
   if(error)return;
   const url=sb.storage.from('avatars').getPublicUrl(path).data.publicUrl;
   await sb.from('messages').insert({image_url:url,username:uname,pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null,
-    room_id:curCh.room_key,user_id:user.id,created_at:new Date().toISOString()});
+    room_id:curCh.room_key,user_id:user.id,is_owner:gRole==='owner',
+    role:['admin','mod'].includes(gRole)?gRole:null,created_at:new Date().toISOString()});
 }
 
 /* ══════ MEMBERS ══════ */
