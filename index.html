@@ -388,6 +388,27 @@ img{display:block;}
 #uc-mod button.on{background:var(--red);color:#fff;}
 #uc-mod button.k{color:#ff8b96;}
 
+/* bots & bans in server settings */
+.bot-row{display:flex;align-items:center;gap:9px;padding:9px;background:#0a0a10;
+  border:1px solid var(--border);border-radius:10px;margin-bottom:7px;}
+.bot-av{width:30px;height:30px;border-radius:9px;background:#5865f2;color:#fff;flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;overflow:hidden;}
+.bot-av img{width:100%;height:100%;object-fit:cover;}
+.bot-i{flex:1;min-width:0;}
+.bot-n{font-size:13.5px;font-weight:600;}
+.bot-m{font-size:10.5px;color:var(--txt3);}
+.bot-row button{width:27px;height:27px;border-radius:7px;font-size:11px;color:var(--txt3);flex:none;}
+.bot-row button:hover{background:var(--hover);color:var(--txt);}
+.bot-row button.d:hover{color:#ff5f6d;}
+.tok{background:#0a0a10;border:1px solid var(--amb);border-radius:9px;padding:11px;margin-bottom:10px;}
+.tok-l{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--amb);margin-bottom:5px;}
+.tok-v{font-family:'JetBrains Mono',monospace;font-size:11px;word-break:break-all;color:var(--txt);
+  background:#000;padding:8px;border-radius:6px;cursor:pointer;}
+.tok-h{font-size:10.5px;color:var(--txt3);margin-top:6px;}
+.m-tx code{background:rgba(255,255,255,.09);padding:1px 5px;border-radius:5px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;}
+.m-tx em.act{color:var(--txt2);font-style:italic;}
+
 /* toast */
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
   background:var(--panel);border:1px solid var(--border-2);border-radius:11px;padding:12px 18px;
@@ -621,6 +642,11 @@ img{display:block;}
           </div>
           <div class="hint">An uploaded image replaces the emoji.</div>
         </div>
+        <div class="fg"><label class="fl">Bots</label>
+          <div id="sm-bots"></div>
+          <button class="upb" id="sm-newbot" style="width:100%;margin-top:7px;">🤖 Create a bot</button>
+        </div>
+        <div class="fg"><label class="fl">Banned users</label><div id="sm-bans"></div></div>
         <div class="fg"><label class="fl">Channels</label>
           <div id="sm-chs"></div>
           <div style="display:flex;gap:7px;margin-top:8px;">
@@ -756,8 +782,15 @@ const open=id=>$(id).classList.add('open');
 const shut=id=>$(id).classList.remove('open');
 function linkify(t){return esc(t).replace(/(https?:\/\/[^\s<]+)/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u}</a>`);}
 const MENTION_RE=/@([a-zA-Z0-9_-]{2,24})/g;
+function md(h){
+  return h
+    .replace(/`([^`\n]+)`/g,'<code>$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>')
+    .replace(/(^|[\s(])\*([^*\n]+)\*/g,'$1<i>$2</i>')
+    .replace(/~~([^~\n]+)~~/g,'<s>$1</s>');
+}
 function renderText(t){
-  return linkify(t).replace(MENTION_RE,(full,h)=>{
+  return md(linkify(t)).replace(MENTION_RE,(full,h)=>{
     const me=myHandle&&h.toLowerCase()===myHandle.toLowerCase();
     return `<span class="mention${me?' me':''}" data-mh="${esc(h.toLowerCase())}">@${esc(h)}</span>`;
   });
@@ -995,7 +1028,8 @@ function openServerMenu(){
     $('sm-icon').value=curSv.icon||'';
     svIconUrl=curSv.icon_url||'';
     prev('sm-prev',svIconUrl);
-    paintChanList();
+    paintChanList();paintBots();paintBans();
+    document.querySelectorAll('#sm-ov .tok').forEach(t=>t.remove());
   }
   open('sm-ov');
 }
@@ -1029,6 +1063,79 @@ $('sm-chs').onclick=async e=>{
     if(!curCh){const f=channels.find(x=>x.type==='text');if(f)openChannel(f);}
     toast('Channel deleted');
   }
+};
+/* ── BOTS ── */
+async function paintBots(){
+  const box=$('sm-bots');if(!box||!curSv)return;
+  let list=[];
+  try{const{data}=await sb.from('bots').select('*').eq('server_id',curSv.id).order('created_at');list=data||[];}catch(e){}
+  box.innerHTML=list.map(b=>`
+    <div class="bot-row">
+      <div class="bot-av">${b.avatar_url&&isUrl(b.avatar_url)?`<img src="${esc(b.avatar_url)}">`:'🤖'}</div>
+      <div class="bot-i"><div class="bot-n">${esc(b.name)}</div>
+        <div class="bot-m">${b.enabled?'active':'disabled'}${b.last_used_at?' · last posted '+esc(ago(b.last_used_at)):' · never used'}</div></div>
+      <button data-toggle="${esc(b.id)}" title="${b.enabled?'Disable':'Enable'}">${b.enabled?'⏸':'▶'}</button>
+      <button class="d" data-delbot="${esc(b.id)}" title="Delete">🗑</button>
+    </div>`).join('')||'<div class="hint">No bots yet.</div>';
+}
+$('sm-bots').onclick=async e=>{
+  const t=e.target.closest('[data-toggle]'),d=e.target.closest('[data-delbot]');
+  if(t){
+    const{data}=await sb.from('bots').select('enabled').eq('id',t.dataset.toggle).maybeSingle();
+    await sb.from('bots').update({enabled:!data?.enabled}).eq('id',t.dataset.toggle);
+    paintBots();
+  }
+  if(d){
+    if(!confirm('Delete this bot? Its token stops working immediately.'))return;
+    await sb.from('bots').delete().eq('id',d.dataset.delbot);
+    paintBots();toast('Bot deleted');
+  }
+};
+$('sm-newbot').onclick=async()=>{
+  if(!curSv||!canManage())return toast('Only owners and admins can add bots','err');
+  const name=prompt('What should the bot be called?','My Bot');
+  if(!name)return;
+  const token='ycz_bot_'+uid().replace(/-/g,'')+Math.random().toString(36).slice(2,10);
+  const{error}=await sb.from('bots').insert({server_id:curSv.id,name:name.trim(),token,created_by:user.id});
+  if(error)return toast(error.message,'err');
+  showToken(name.trim(),token);
+  paintBots();
+};
+function showToken(name,token){
+  const box=$('sm-bots');
+  const div=document.createElement('div');
+  div.className='tok';
+  div.innerHTML=`<div class="tok-l">⚠ ${esc(name)} — copy this token now</div>
+    <div class="tok-v" id="tok-v">${esc(token)}</div>
+    <div class="tok-h">This is the only time it's shown in full. Anyone with it can post as this bot.</div>`;
+  box.parentNode.insertBefore(div,box);
+  div.querySelector('#tok-v').onclick=()=>{navigator.clipboard?.writeText(token);toast('Token copied ✓','ok');};
+}
+
+/* ── BANS ── */
+async function paintBans(){
+  const box=$('sm-bans');if(!box||!curSv)return;
+  let list=[];
+  try{
+    const{data}=await sb.from('server_bans').select('user_id,reason').eq('server_id',curSv.id);
+    if(data&&data.length){
+      const{data:profs}=await sb.from('user_profiles').select('user_id,username').in('user_id',data.map(b=>b.user_id));
+      const by=Object.fromEntries((profs||[]).map(p=>[p.user_id,p.username]));
+      list=data.map(b=>({...b,username:by[b.user_id]||'Unknown'}));
+    }
+  }catch(e){}
+  box.innerHTML=list.map(b=>`
+    <div class="bot-row">
+      <div class="bot-av" style="background:var(--red)">🚫</div>
+      <div class="bot-i"><div class="bot-n">${esc(b.username)}</div>
+        <div class="bot-m">${esc(b.reason||'no reason given')}</div></div>
+      <button data-unban="${esc(b.user_id)}" title="Unban">↩</button>
+    </div>`).join('')||'<div class="hint">Nobody is banned.</div>';
+}
+$('sm-bans').onclick=async e=>{
+  const u=e.target.closest('[data-unban]');if(!u)return;
+  await sb.from('server_bans').delete().eq('server_id',curSv.id).eq('user_id',u.dataset.unban);
+  paintBans();toast('Unbanned — they can rejoin with the invite code');
 };
 $('sm-new-t').onclick=()=>newChannel('text');
 $('sm-new-v').onclick=()=>newChannel('voice');
@@ -1176,7 +1283,7 @@ function openChannel(c){
 function refreshComposer(){
   const on=!!user&&!!curCh;
   $('txt').disabled=!on;$('c-send').disabled=!on;$('c-img').disabled=!on;
-  $('txt').placeholder=!user?'Sign in to chat…':curCh?`Message ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}`:'Pick a channel';
+  $('txt').placeholder=!user?'Sign in to chat…':curCh?`Message ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}  ·  / for commands`:'Pick a channel';
 }
 async function loadMsgs(quiet){
   if(!curCh){$('msgs').innerHTML='<div class="sys">Pick a channel to start.</div>';return;}
@@ -1345,10 +1452,55 @@ function paintPending(){
 }
 $('pending').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;
   pending.splice(+b.dataset.rm,1);paintPending();};
+const BUILTIN={
+  shrug:()=>'¯\\_(ツ)_/¯',
+  tableflip:()=>'(╯°□°）╯︵ ┻━┻',
+  unflip:()=>'┬─┬ ノ( ゜-゜ノ)',
+  roll:a=>{
+    const m=(a||'1d6').match(/(\d*)d(\d+)/i)||[];
+    const n=Math.min(parseInt(m[1]||'1'),20),f=Math.min(parseInt(m[2]||'6'),1000);
+    const rolls=Array.from({length:n||1},()=>1+Math.floor(Math.random()*(f||6)));
+    return `🎲 rolled **${rolls.join(' + ')}**`+(rolls.length>1?` = **${rolls.reduce((x,y)=>x+y)}**`:'');
+  }
+};
+async function runSlash(raw){
+  const [cmd,...rest]=raw.slice(1).split(/\s+/);
+  const args=rest.join(' ');
+  const c=cmd.toLowerCase();
+  if(c==='help'){
+    toast('Commands: /me /shrug /roll 2d20 /tableflip — plus any your bots add');
+    return true;
+  }
+  if(c==='me'){
+    if(!args)return true;
+    await postMessage('*'+uname+' '+args+'*');
+    return true;
+  }
+  if(BUILTIN[c]){await postMessage(BUILTIN[c](args));return true;}
+  /* not built in — hand it to whatever bots are listening */
+  if(!curSv){toast('Bot commands only work inside a server');return true;}
+  const{error}=await sb.from('bot_commands').insert({server_id:curSv.id,room_key:curCh.room_key,
+    user_id:user.id,username:uname,command:c,args:args||null});
+  if(error)toast('Could not send that command','err');
+  else toast('/'+c+' sent to bots');
+  return true;
+}
+async function postMessage(text){
+  const row={text,username:uname,pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null,
+    room_id:curCh.room_key,user_id:user.id,is_owner:gRole==='owner'||null,
+    role:['admin','mod'].includes(gRole)?gRole:null,created_at:new Date().toISOString()};
+  const{data}=await sb.from('messages').insert(row).select().single();
+  if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);paintMsgs(true);}
+}
 async function send(){
   if(!user||!curCh)return;
   const text=$('txt').value.trim();
   if(!text&&!pending.length)return;
+  if(text.startsWith('/')&&!pending.length){
+    $('txt').value='';$('txt').style.height='auto';
+    await runSlash(text);
+    return;
+  }
   $('c-send').disabled=true;
   const files=pending.slice();pending=[];paintPending();
   $('txt').value='';$('txt').style.height='auto';
@@ -1556,7 +1708,8 @@ function paintModTools(uid,svRole){
   box.style.display='block';
   box.innerHTML=`<div class="lbl">Role in ${esc(curSv.name)}</div><div class="row">
     ${['admin','mod','member'].map(r=>`<button data-r="${r}" class="${svRole===r?'on':''}">${r[0].toUpperCase()+r.slice(1)}</button>`).join('')}
-    <button class="k" data-kick="1">Kick</button></div>`;
+    <button class="k" data-kick="1">Kick</button>
+    <button class="k" data-ban="1">Ban</button></div>`;
   box.onclick=async e=>{
     const rb=e.target.closest('[data-r]'),kb=e.target.closest('[data-kick]');
     if(rb){
@@ -1566,10 +1719,20 @@ function paintModTools(uid,svRole){
       toast('Role updated ✓','ok');await loadMembers();userCard(uid);
     }
     if(kb){
-      if(!confirm('Remove this member from the server?'))return;
+      if(!confirm('Remove this member? They can rejoin with the invite code.'))return;
       const{error}=await sb.from('server_members').delete().eq('server_id',curSv.id).eq('user_id',uid);
       if(error)return toast(error.message,'err');
       shut('uc-ov');toast('Member removed');await loadMembers();
+    }
+    const bb=e.target.closest('[data-ban]');
+    if(bb){
+      const reason=prompt('Ban reason (optional):','');
+      if(reason===null)return;
+      const{error}=await sb.from('server_bans').insert({server_id:curSv.id,user_id:uid,
+        reason:reason||null,banned_by:user.id});
+      if(error)return toast(error.message,'err');
+      await sb.from('server_members').delete().eq('server_id',curSv.id).eq('user_id',uid);
+      shut('uc-ov');toast('Banned — they cannot rejoin');await loadMembers();
     }
   };
 }
