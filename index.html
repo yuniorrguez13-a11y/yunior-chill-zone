@@ -415,6 +415,14 @@ img{display:block;}
 .vh-acts button:hover{background:var(--active);color:var(--txt);}
 .vh-acts button.off{color:var(--red);}
 .vh-acts button.leave{background:rgba(232,22,42,.16);color:#ff8b96;}
+.vh-sub{font-size:10.5px;color:var(--txt3);margin-top:3px;padding-left:15px;}
+.vh-sub.warn{color:var(--amb);}
+.vh-sub.bad{color:#ff8b96;}
+.vh-dot.amber{background:var(--amb);}
+.vh-dot.bad{background:var(--red);}
+.vh-unlock{display:none;width:100%;margin-top:7px;padding:8px;border-radius:8px;
+  background:var(--amb);color:#1a1000;font-size:11.5px;font-weight:700;}
+.vh-unlock.on{display:block;}
 
 /* apps overlay */
 #frm-ov{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;z-index:300;padding:14px;}
@@ -466,7 +474,9 @@ img{display:block;}
     <div class="side-head" id="side-head"><span class="nm">Direct Messages</span><span class="cv">▾</span></div>
     <div id="side-body"></div>
     <div id="vhud">
-      <div class="vh-top"><span class="vh-dot"></span><span class="vh-nm" id="vh-nm">Voice</span></div>
+      <div class="vh-top"><span class="vh-dot" id="vh-dot"></span><span class="vh-nm" id="vh-nm">Voice</span></div>
+      <div class="vh-sub" id="vh-sub">Connecting…</div>
+      <button class="vh-unlock" id="vh-unlock">🔈 Tap to enable audio</button>
       <div class="vh-acts">
         <button id="vh-mic">🎤 Mute</button>
         <button class="leave" id="vh-leave">Disconnect</button>
@@ -1568,77 +1578,200 @@ $('uc-ov').onclick=e=>{if(e.target===$('uc-ov'))shut('uc-ov');};
   $(id).onclick=e=>{if(e.target===$(id))shut(id);});
 
 /* ══════ VOICE CHANNELS (WebRTC mesh) ══════ */
-const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
-let vCh=null,vRoom=null,vStream=null,vPeers={},vMuted=false,vPresence={};
+/*  Connection strategy:
+    1. Ask our Supabase Edge Function for short-lived Cloudflare TURN creds.
+    2. Fall back to plain STUN if that fails — works for most home networks,
+       fails on mobile/CGNAT, which is exactly what TURN is there to fix.
+    3. Perfect-negotiation pattern so two people joining at once can't deadlock.
+    4. ICE candidates are queued until the remote description exists.          */
+
+const MAX_VOICE=8;                       // caps mesh load AND your TURN bill
+const FALLBACK_ICE=[
+  {urls:'stun:stun.cloudflare.com:3478'},
+  {urls:'stun:stun.l.google.com:19302'}
+];
+let iceCache=null;
+async function getIce(){
+  if(iceCache&&iceCache.exp>Date.now())return iceCache.servers;
+  try{
+    const{data,error}=await sb.functions.invoke('turn-credentials',{body:{}});
+    if(!error&&data?.iceServers?.length){
+      iceCache={servers:data.iceServers,exp:Date.now()+(data.ttl||3600)*900};
+      return iceCache.servers;
+    }
+    console.warn('[voice] TURN unavailable, using STUN only',error?.message||data?.error);
+  }catch(e){console.warn('[voice] TURN fetch failed',e);}
+  return FALLBACK_ICE;
+}
+
+let vCh=null,vRoom=null,vStream=null,vPeers={},vMuted=false,vPresence={},vRelayed=false;
+
 async function joinVoice(c){
   if(!user)return open('auth-ov');
   if(vRoom===c.id)return;
+  if(!window.isSecureContext){
+    toast('Voice needs https — plain http blocks the microphone','err');return;
+  }
+  if(!navigator.mediaDevices?.getUserMedia){
+    toast('This browser cannot do voice chat','err');return;
+  }
   await leaveVoice();
-  try{vStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});}
-  catch(e){toast('Microphone blocked — check browser permissions','err');return;}
+
+  const servers=await getIce();
+  vRelayed=servers.some(s=>JSON.stringify(s.urls||'').includes('turn'));
+
+  try{
+    vStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  }catch(e){
+    toast(e.name==='NotAllowedError'?'Microphone permission denied':'No microphone found','err');
+    return;
+  }
+  if(vMuted)vStream.getAudioTracks().forEach(t=>t.enabled=false);
+
   vRoom=c.id;
   $('vhud').classList.add('on');$('vh-nm').textContent=c.name;
+  vStatus('Connecting…');
+
   vCh=sb.channel('voice:'+c.id,{config:{presence:{key:user.id}}});
   vCh.on('presence',{event:'sync'},()=>{
-      vPresence=vCh.presenceState();paintVoiceLists();syncPeers();})
-    .on('broadcast',{event:'sig'},({payload})=>onSignal(payload))
-    .subscribe(async st=>{if(st==='SUBSCRIBED')
-      await vCh.track({uid:user.id,name:uname,pfp:pfpUrl,muted:vMuted});});
+      vPresence=vCh.presenceState();
+      const others=peerIds().length;
+      if(others+1>MAX_VOICE){
+        toast(`"${c.name}" is full (${MAX_VOICE} people max)`,'err');
+        leaveVoice();return;
+      }
+      paintVoiceLists();syncPeers(servers);vStatus();
+    })
+    .on('broadcast',{event:'sig'},({payload})=>onSignal(payload,servers))
+    .subscribe(async st=>{
+      if(st==='SUBSCRIBED')await vCh.track({uid:user.id,name:uname,pfp:pfpUrl,muted:vMuted});
+      if(st==='CHANNEL_ERROR')vStatus('Signalling failed','bad');
+    });
   toast('Joined '+c.name+' 🔊','ok');
 }
+
 async function leaveVoice(){
-  Object.values(vPeers).forEach(p=>{try{p.close();}catch(e){}});
+  Object.values(vPeers).forEach(st=>{try{st.pc.close();}catch(e){}});
   vPeers={};
   document.querySelectorAll('audio[data-peer]').forEach(a=>a.remove());
   if(vCh){try{await vCh.untrack();sb.removeChannel(vCh);}catch(e){}vCh=null;}
   if(vStream){vStream.getTracks().forEach(t=>t.stop());vStream=null;}
-  vRoom=null;vPresence={};$('vhud').classList.remove('on');paintVoiceLists();
+  vRoom=null;vPresence={};
+  $('vhud').classList.remove('on');$('vh-unlock').classList.remove('on');
+  paintVoiceLists();
 }
+
 function peerIds(){return Object.keys(vPresence).filter(id=>id!==user.id);}
-function syncPeers(){
-  const ids=peerIds();
-  Object.keys(vPeers).forEach(id=>{if(!ids.includes(id)){try{vPeers[id].close();}catch(e){}delete vPeers[id];
-    document.querySelector(`audio[data-peer="${id}"]`)?.remove();}});
-  ids.forEach(id=>{if(!vPeers[id]&&user.id>id)makePeer(id,true);});
+
+function vStatus(msg,tone){
+  const sub=$('vh-sub'),dot=$('vh-dot');
+  if(msg){sub.textContent=msg;sub.className='vh-sub'+(tone?' '+tone:'');
+    dot.className='vh-dot'+(tone==='bad'?' bad':tone==='warn'?' amber':'');return;}
+  const ids=peerIds(),live=ids.filter(id=>vPeers[id]?.pc.connectionState==='connected').length;
+  if(!ids.length){sub.textContent='Waiting for others…';sub.className='vh-sub';dot.className='vh-dot';return;}
+  if(live===ids.length){
+    sub.textContent=`Connected to ${live} ${live===1?'person':'people'}`+(vRelayed?'':' · no relay');
+    sub.className='vh-sub';dot.className='vh-dot';
+  }else{
+    sub.textContent=`Connecting… ${live}/${ids.length}`;
+    sub.className='vh-sub warn';dot.className='vh-dot amber';
+  }
 }
-function makePeer(id,initiator){
-  const pc=new RTCPeerConnection(ICE);
-  vPeers[id]=pc;
+
+function syncPeers(servers){
+  const ids=peerIds();
+  Object.keys(vPeers).forEach(id=>{
+    if(!ids.includes(id)){
+      try{vPeers[id].pc.close();}catch(e){}
+      delete vPeers[id];
+      document.querySelector(`audio[data-peer="${id}"]`)?.remove();
+    }
+  });
+  /* only one side opens the connection; the other answers */
+  ids.forEach(id=>{if(!vPeers[id]&&user.id>id)makePeer(id,servers);});
+}
+
+function makePeer(id,servers){
+  const pc=new RTCPeerConnection({iceServers:servers,iceCandidatePoolSize:2});
+  /* perfect negotiation: the "polite" peer yields when offers collide */
+  const st={pc,polite:user.id<id,making:false,ignoring:false,queue:[],retries:0};
+  vPeers[id]=st;
+
   vStream.getTracks().forEach(t=>pc.addTrack(t,vStream));
+
+  pc.onnegotiationneeded=async()=>{
+    try{st.making=true;await pc.setLocalDescription();sig(id,{desc:pc.localDescription});}
+    catch(e){console.warn('[voice] negotiation',e);}
+    finally{st.making=false;}
+  };
   pc.onicecandidate=e=>{if(e.candidate)sig(id,{ice:e.candidate});};
   pc.ontrack=e=>{
     let a=document.querySelector(`audio[data-peer="${id}"]`);
     if(!a){a=document.createElement('audio');a.dataset.peer=id;a.autoplay=true;a.playsInline=true;document.body.appendChild(a);}
     a.srcObject=e.streams[0];
+    /* browsers block autoplay until the user has interacted */
+    a.play().catch(()=>$('vh-unlock').classList.add('on'));
   };
-  pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState)){
-    try{pc.close();}catch(e){}delete vPeers[id];}};
-  if(initiator)pc.onnegotiationneeded=async()=>{
-    try{const o=await pc.createOffer();await pc.setLocalDescription(o);sig(id,{sdp:pc.localDescription});}catch(e){}};
-  return pc;
+  pc.onconnectionstatechange=()=>{
+    vStatus();
+    if(pc.connectionState==='failed'&&st.retries<2){
+      st.retries++;
+      try{pc.restartIce();}catch(e){}
+      vStatus('Reconnecting…','warn');
+    }
+    if(pc.connectionState==='failed'&&st.retries>=2){
+      vStatus('Could not reach someone — their network is blocking it','bad');
+    }
+  };
+  return st;
 }
-function sig(to,payload){vCh?.send({type:'broadcast',event:'sig',payload:{from:user.id,to,...payload}});}
-async function onSignal(p){
+
+function sig(to,payload){
+  vCh?.send({type:'broadcast',event:'sig',payload:{from:user.id,to,...payload}});
+}
+
+async function onSignal(p,servers){
   if(!p||p.to!==user.id||!vStream)return;
-  let pc=vPeers[p.from]||makePeer(p.from,false);
+  const st=vPeers[p.from]||makePeer(p.from,servers);
+  const pc=st.pc;
   try{
-    if(p.sdp){
-      await pc.setRemoteDescription(new RTCSessionDescription(p.sdp));
-      if(p.sdp.type==='offer'){
-        const a=await pc.createAnswer();await pc.setLocalDescription(a);sig(p.from,{sdp:pc.localDescription});}
-    }else if(p.ice){await pc.addIceCandidate(new RTCIceCandidate(p.ice));}
-  }catch(e){console.warn('[voice]',e);}
+    if(p.desc){
+      const collision=p.desc.type==='offer'&&(st.making||pc.signalingState!=='stable');
+      st.ignoring=!st.polite&&collision;
+      if(st.ignoring)return;                       /* impolite peer wins */
+      await pc.setRemoteDescription(p.desc);
+      /* candidates that arrived early are safe to add now */
+      for(const c of st.queue.splice(0)){try{await pc.addIceCandidate(c);}catch(e){}}
+      if(p.desc.type==='offer'){
+        await pc.setLocalDescription();
+        sig(p.from,{desc:pc.localDescription});
+      }
+    }else if(p.ice){
+      const cand=new RTCIceCandidate(p.ice);
+      if(!pc.remoteDescription){st.queue.push(cand);return;}
+      try{await pc.addIceCandidate(cand);}catch(e){if(!st.ignoring)console.warn('[voice] ice',e);}
+    }
+  }catch(e){console.warn('[voice] signal',e);}
 }
+
 function paintVoiceLists(){
   channels.filter(c=>c.type==='voice').forEach(c=>{
     const box=$('vu-'+c.id);if(!box)return;
     if(vRoom!==c.id){box.innerHTML='';return;}
-    const list=Object.values(vPresence).map(arr=>arr[0]).filter(Boolean);
-    box.innerHTML=list.map(u=>`<div class="vc-user">
-      <div class="av">${u.pfp&&isUrl(u.pfp)?`<img src="${esc(u.pfp)}" alt="">`:esc(ini(u.name))}</div>
-      <span>${esc(u.name||'Someone')}</span>${u.muted?'<span class="mut">🔇</span>':''}</div>`).join('');
+    const list=Object.values(vPresence).map(a=>a[0]).filter(Boolean);
+    box.innerHTML=list.map(u=>{
+      const conn=u.uid===user.id||vPeers[u.uid]?.pc.connectionState==='connected';
+      return `<div class="vc-user"${conn?'':' style="opacity:.5"'}>
+        <div class="av">${u.pfp&&isUrl(u.pfp)?`<img src="${esc(u.pfp)}" alt="">`:esc(ini(u.name))}</div>
+        <span>${esc(u.name||'Someone')}</span>${u.muted?'<span class="mut">🔇</span>':''}</div>`;
+    }).join('');
   });
 }
+
+$('vh-unlock').onclick=()=>{
+  document.querySelectorAll('audio[data-peer]').forEach(a=>a.play().catch(()=>{}));
+  $('vh-unlock').classList.remove('on');
+};
 $('vh-mic').onclick=async()=>{
   vMuted=!vMuted;
   vStream?.getAudioTracks().forEach(t=>t.enabled=!vMuted);
