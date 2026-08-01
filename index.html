@@ -102,8 +102,10 @@ img{display:block;}
   cursor:pointer;user-select:none;
 }
 .cat:hover{color:var(--txt2);}
-.cat .add{margin-left:auto;font-size:16px;line-height:1;padding:0 3px;color:var(--txt3);}
-.cat .add:hover{color:var(--txt);}
+.cat .add{margin-left:auto;font-size:15px;line-height:1;width:20px;height:20px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;color:var(--txt2);
+  background:var(--hover);border:1px solid var(--border);}
+.cat .add:hover{color:#fff;background:var(--red);border-color:var(--red);}
 .ch{
   display:flex;align-items:center;gap:7px;padding:7px 8px;margin-bottom:1px;
   border-radius:7px;cursor:pointer;color:var(--txt3);font-weight:500;font-size:14.5px;
@@ -609,7 +611,13 @@ img{display:block;}
           </div>
           <div class="hint">An uploaded image replaces the emoji.</div>
         </div>
-        <div class="fg"><label class="fl">Channels</label><div id="sm-chs"></div></div>
+        <div class="fg"><label class="fl">Channels</label>
+          <div id="sm-chs"></div>
+          <div style="display:flex;gap:7px;margin-top:8px;">
+            <button class="upb" id="sm-new-t"># New text channel</button>
+            <button class="upb" id="sm-new-v">🔊 New voice channel</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="card-f col">
@@ -751,6 +759,17 @@ function pingsMe(t){
   return false;
 }
 function saveUnread(){localStorage.setItem('ycz-unread',JSON.stringify(unread));}
+/* crypto.randomUUID only exists on https/localhost — this works everywhere */
+function uid(){
+  if(window.crypto?.randomUUID){try{return crypto.randomUUID();}catch(e){}}
+  if(window.crypto?.getRandomValues){
+    const b=crypto.getRandomValues(new Uint8Array(16));
+    b[6]=(b[6]&0x0f)|0x40;b[8]=(b[8]&0x3f)|0x80;
+    const h=[...b].map(x=>x.toString(16).padStart(2,'0')).join('');
+    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+  }
+  return 'ch-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
+}
 
 /* ══════ AUTH UI ══════ */
 const authErr=m=>{const e=$('auth-err');e.textContent=m;e.className='err on';};
@@ -931,7 +950,7 @@ $('sv-go').onclick=async()=>{
       if(error)return err(error.message);
       await sb.from('server_members').insert({server_id:sv.id,user_id:user.id,role:'owner'});
       for(const c of [{n:'general',t:'text'},{n:'random',t:'text'},{n:'General Voice',t:'voice'}]){
-        await sb.from('channels').insert({server_id:sv.id,name:c.n,type:c.t,room_key:crypto.randomUUID()});
+        await sb.from('channels').insert({server_id:sv.id,name:c.n,type:c.t,room_key:uid()});
       }
       shut('sv-ov');await loadServers();
       const fresh=servers.find(x=>x.id===sv.id);if(fresh)goServer(fresh);
@@ -1001,6 +1020,8 @@ $('sm-chs').onclick=async e=>{
     toast('Channel deleted');
   }
 };
+$('sm-new-t').onclick=()=>newChannel('text');
+$('sm-new-v').onclick=()=>newChannel('voice');
 $('sm-up').onclick=()=>$('sm-file').click();
 $('sm-file').onchange=async function(){
   const f=this.files[0];this.value='';
@@ -1084,9 +1105,7 @@ function chRow(c,ic){
 function unreadFor(c){return c.type==='text'&&unread[c.room_key]&&(!curCh||curCh.id!==c.id);}
 $('side-body').addEventListener('click',e=>{
   const add=e.target.closest('[data-new]');
-  if(add){$('ch-err').className='err';$('ch-nm').value='';
-    document.querySelectorAll('#ch-seg button').forEach(b=>b.classList.toggle('on',b.dataset.t===add.dataset.new));
-    open('ch-ov');return;}
+  if(add){newChannel(add.dataset.new);return;}
   const row=e.target.closest('[data-ch]');if(!row)return;
   const c=channels.find(x=>x.id===row.dataset.ch)||dmList.find(x=>x.id===row.dataset.ch);
   if(!c)return;
@@ -1097,13 +1116,38 @@ document.querySelectorAll('#ch-seg button').forEach(b=>b.onclick=()=>
   document.querySelectorAll('#ch-seg button').forEach(x=>x.classList.toggle('on',x===b)));
 $('ch-x').onclick=()=>shut('ch-ov');
 $('ch-go').onclick=async()=>{
-  const name=slug($('ch-nm').value)||$('ch-nm').value.trim();
+  const err=m=>{const e=$('ch-err');e.textContent=m;e.className='err on';};
+  if(!curSv)return err('Open a server first.');
+  if(!canManage())return err('You need to be an owner or admin of this server.');
   const type=document.querySelector('#ch-seg button.on').dataset.t;
-  if(!name){const e=$('ch-err');e.textContent='Name it something.';e.className='err on';return;}
-  const{error}=await sb.from('channels').insert({server_id:curSv.id,name,type,room_key:crypto.randomUUID()});
-  if(error){const e=$('ch-err');e.textContent=error.message;e.className='err on';return;}
-  shut('ch-ov');await loadChannels();toast('Channel created ✓','ok');
+  const raw=$('ch-nm').value.trim();
+  if(!raw)return err('Give the channel a name.');
+  /* text channels get discord-style slugs, voice channels keep real names */
+  const name=type==='text'?(slug(raw.replace(/\s+/g,'-'))||raw.slice(0,30)):raw.slice(0,30);
+  $('ch-go').disabled=true;
+  try{
+    const{data,error}=await sb.from('channels')
+      .insert({server_id:curSv.id,name,type,room_key:uid(),position:channels.length})
+      .select().single();
+    if(error)return err(error.message);
+    shut('ch-ov');
+    await loadChannels();
+    if($('sm-ov').classList.contains('open'))paintChanList();
+    toast('Created '+(type==='voice'?'🔊 ':'#')+name+' ✓','ok');
+    if(data&&type==='text')openChannel(data);
+  }catch(e){
+    err('Could not create the channel: '+(e.message||e));
+  }finally{$('ch-go').disabled=false;}
 };
+function newChannel(type){
+  if(!curSv)return toast('Open a server first');
+  if(!canManage())return toast('Only owners and admins can add channels','err');
+  $('ch-err').className='err';$('ch-nm').value='';
+  document.querySelectorAll('#ch-seg button').forEach(b=>b.classList.toggle('on',b.dataset.t===type));
+  open('ch-ov');
+  setTimeout(()=>$('ch-nm').focus(),80);
+}
+$('ch-nm').addEventListener('keydown',e=>{if(e.key==='Enter')$('ch-go').click();});
 
 /* ══════ CHANNELS / MESSAGES ══════ */
 function openChannel(c){
