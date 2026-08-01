@@ -674,7 +674,7 @@ document.addEventListener('keydown', function(e) {
       var v = r.data;
       if (!v) { toast('Video not found', 'error'); return; }
       currentVideo = v;
-      _sb.from('videos').update({ views: (v.views || 0) + 1 }).eq('id', id);
+      _sb.rpc('bump_view', { vid: String(id) });
       watchHistory = watchHistory.filter(function(h) { return h.id !== id; });
       watchHistory.unshift(v);
       if (watchHistory.length > 50) watchHistory.pop();
