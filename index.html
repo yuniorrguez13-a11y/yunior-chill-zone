@@ -409,6 +409,67 @@ img{display:block;}
   font-family:'JetBrains Mono',monospace;font-size:13px;}
 .m-tx em.act{color:var(--txt2);font-style:italic;}
 
+/* replies */
+.m-reply{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--txt3);
+  margin-bottom:2px;cursor:pointer;overflow:hidden;}
+.m-reply:hover{color:var(--txt2);}
+.m-reply::before{content:'';width:22px;height:9px;border-left:2px solid var(--border-2);
+  border-top:2px solid var(--border-2);border-top-left-radius:6px;flex:none;margin-left:8px;align-self:flex-end;}
+.m-reply .ra{width:16px;height:16px;border-radius:50%;background:var(--panel);flex:none;
+  font-size:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.m-reply .ra img{width:100%;height:100%;object-fit:cover;}
+.m-reply .rn{font-weight:600;color:var(--txt2);flex:none;}
+.m-reply .rt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.m.flash{animation:flash 1.2s;}
+@keyframes flash{0%,60%{background:rgba(0,212,255,.13);}100%{background:transparent;}}
+#reply-bar{display:none;align-items:center;gap:8px;padding:7px 12px;background:var(--panel);
+  border:1px solid var(--border);border-bottom:none;border-radius:11px 11px 0 0;font-size:12.5px;color:var(--txt2);}
+#reply-bar.on{display:flex;}
+#reply-bar b{color:var(--txt);}
+#reply-bar button{margin-left:auto;color:var(--txt3);font-size:12px;}
+#reply-bar button:hover{color:var(--txt);}
+#comp-in.replying{border-radius:0 0 11px 11px;}
+
+/* reactions */
+.rxs{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+.rx{display:flex;align-items:center;gap:4px;padding:2px 7px;border-radius:8px;
+  background:var(--panel);border:1px solid var(--border);font-size:13px;cursor:pointer;
+  transition:all .12s;line-height:1.5;}
+.rx:hover{border-color:var(--border-2);}
+.rx.mine{background:rgba(0,212,255,.14);border-color:rgba(0,212,255,.45);}
+.rx .n{font-size:11px;font-weight:700;color:var(--txt2);}
+.rx.mine .n{color:var(--cyan);}
+.rx-add{padding:2px 7px;border-radius:8px;background:var(--panel);border:1px solid var(--border);
+  font-size:12px;color:var(--txt3);cursor:pointer;}
+.rx-add:hover{color:var(--txt);}
+
+/* edit in place */
+.m-edit{width:100%;background:#0a0a10;border:1px solid var(--border-2);border-radius:9px;
+  padding:9px 11px;font-size:15px;resize:none;color:var(--txt);margin-top:3px;}
+.m-edit-h{font-size:10.5px;color:var(--txt3);margin-top:4px;}
+.edited{font-size:10px;color:var(--txt3);margin-left:5px;}
+
+/* emoji picker */
+#emo{position:absolute;bottom:100%;right:0;margin-bottom:8px;width:296px;background:var(--panel);
+  border:1px solid var(--border-2);border-radius:12px;box-shadow:0 -8px 26px rgba(0,0,0,.6);
+  padding:9px;display:none;z-index:70;}
+#emo.on{display:block;}
+#emo.float{position:fixed;bottom:auto;margin:0;}
+.emo-g{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-height:214px;overflow-y:auto;}
+.emo-g button{aspect-ratio:1;border-radius:7px;font-size:19px;display:flex;align-items:center;justify-content:center;}
+.emo-g button:hover{background:var(--hover);}
+.emo-t{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--txt3);padding:5px 4px 6px;}
+
+/* typing */
+#typing{height:18px;font-size:11.5px;color:var(--txt3);padding:2px 4px 0;font-style:italic;}
+
+/* load older */
+#older{display:flex;justify-content:center;padding:12px;}
+#older button{padding:8px 18px;border-radius:9px;background:var(--panel);border:1px solid var(--border);
+  font-size:12.5px;color:var(--txt2);}
+#older button:hover{background:var(--hover);color:var(--txt);}
+
 /* toast */
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
   background:var(--panel);border:1px solid var(--border-2);border-radius:11px;padding:12px 18px;
@@ -533,13 +594,17 @@ img{display:block;}
 
     <div id="comp">
       <div id="ac"></div>
+      <div id="emo"></div>
+      <div id="reply-bar">Replying to <b id="reply-who">…</b><button id="reply-x">✕ cancel</button></div>
       <div id="comp-in">
         <div id="pending"></div>
         <button class="cbtn" id="c-img" title="Upload image">🖼️</button>
+        <button class="cbtn" id="c-emo" title="Emoji">😀</button>
         <textarea id="txt" rows="1" placeholder="Sign in to chat…" disabled></textarea>
         <button class="cbtn send" id="c-send" disabled>➤</button>
         <input type="file" id="img-file" accept="image/*" multiple style="display:none">
       </div>
+      <div id="typing"></div>
       <div id="comp-note"></div>
     </div>
   </main>
@@ -761,6 +826,8 @@ let servers=[],curSv=null,channels=[],curCh=null;
 let members=[],msgs=[],msgChan=null;
 let dmList=[],unread=JSON.parse(localStorage.getItem('ycz-unread')||'{}');
 let pending=[];
+let reactions={},replyTo=null,editing=null,online=new Set(),typers={},sitePresence=null,moreOlder=true;
+const PAGE=60;
 
 /* ══════ UTILS ══════ */
 const $=id=>document.getElementById(id);
@@ -1268,7 +1335,7 @@ $('ch-nm').addEventListener('keydown',e=>{if(e.key==='Enter')$('ch-go').click();
 
 /* ══════ CHANNELS / MESSAGES ══════ */
 function openChannel(c){
-  curCh=c;
+  curCh=c;clearReply();editing=null;typers={};paintTyping();
   delete unread[c.room_key];saveUnread();
   $('top-ic').textContent=c.kind==='dm'?'@':'#';
   $('top-nm').textContent=c.name;
@@ -1288,14 +1355,46 @@ function refreshComposer(){
 async function loadMsgs(quiet){
   if(!curCh){$('msgs').innerHTML='<div class="sys">Pick a channel to start.</div>';return;}
   const box=$('msgs');
-  const{data,error}=await sb.from('messages').select('*').eq('room_id',curCh.room_key).order('id',{ascending:true}).limit(200);
+  /* newest first, then flip — that's how you paginate backwards */
+  const{data,error}=await sb.from('messages').select('*').eq('room_id',curCh.room_key)
+    .order('id',{ascending:false}).limit(PAGE);
   if(error){if(!quiet)box.innerHTML=`<div class="sys">⚠ ${esc(error.message)}</div>`;return;}
-  msgs=data||[];paintMsgs(!quiet);
+  msgs=(data||[]).reverse();
+  moreOlder=(data||[]).length===PAGE;
+  await loadReactions();
+  paintMsgs(!quiet);
+}
+async function loadOlder(){
+  if(!curCh||!msgs.length)return;
+  const box=$('msgs'),before=box.scrollHeight;
+  const oldest=msgs[0].id;
+  const{data}=await sb.from('messages').select('*').eq('room_id',curCh.room_key)
+    .lt('id',oldest).order('id',{ascending:false}).limit(PAGE);
+  const older=(data||[]).reverse();
+  moreOlder=(data||[]).length===PAGE;
+  if(!older.length){paintMsgs();return;}
+  msgs=older.concat(msgs);
+  await loadReactions();
+  paintMsgs();
+  box.scrollTop=box.scrollHeight-before;   /* keep your place */
+}
+async function loadReactions(){
+  reactions={};
+  const ids=msgs.map(m=>m.id).filter(Boolean);
+  if(!ids.length)return;
+  try{
+    const{data}=await sb.from('reactions').select('message_id,user_id,emoji').in('message_id',ids);
+    (data||[]).forEach(r=>{
+      (reactions[r.message_id]=reactions[r.message_id]||{});
+      (reactions[r.message_id][r.emoji]=reactions[r.message_id][r.emoji]||[]).push(r.user_id);
+    });
+  }catch(e){}
 }
 function paintMsgs(jump){
   const box=$('msgs');
   const near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
-  let h=`<div class="hero"><div class="ic">${curCh.kind==='dm'?'@':'#'}</div>
+  let h=moreOlder&&msgs.length?'<div id="older"><button id="older-btn">↑ Load older messages</button></div>':'';
+  h+=`<div class="hero"><div class="ic">${curCh.kind==='dm'?'@':'#'}</div>
     <h2>${curCh.kind==='dm'?'':'#'}${esc(curCh.name)}</h2>
     <p>${curCh.kind==='dm'?'This is the start of your conversation.':'This is the beginning of this channel.'}</p></div>`;
   let lastDay='',lastUid='',lastAt=0;
@@ -1313,10 +1412,39 @@ function paintMsgs(jump){
     else if(m.role==='mod')tags+='<span class="tag mod">Mod</span>';
     const img=m.image_url&&isUrl(m.image_url)
       ? `<div class="m-img" data-lb="${esc(m.image_url)}"><img src="${esc(m.image_url)}" alt="" loading="lazy"></div>`:'';
-    const body=`<div class="m-bd">${grouped?'':`<div class="m-hd"><span class="m-nm ${cls}" data-uc="${esc(m.user_id||'')}">${esc(m.username||'Anonymous')}</span>${tags}<span class="m-tm">${clock(m.created_at)}</span></div>`}
-      ${m.text?`<div class="m-tx">${renderText(m.text)}</div>`:''}${img}</div>`;
-    const canDel=user&&(m.user_id===user.id||['owner','admin','mod'].includes(gRole));
-    const acts=canDel?`<div class="m-acts"><button class="del" data-del="${m.id}" title="Delete">🗑</button></div>`:'';
+    /* quoted parent, if this is a reply */
+    let quote='';
+    if(m.reply_to){
+      const par=msgs.find(x=>String(x.id)===String(m.reply_to));
+      quote=par?`<div class="m-reply" data-jump="${esc(par.id)}">
+          <span class="ra">${par.pfp_url&&isUrl(par.pfp_url)?`<img src="${esc(par.pfp_url)}">`:esc(ini(par.username))}</span>
+          <span class="rn">${esc(par.username||'Anonymous')}</span>
+          <span class="rt">${esc((par.text||'📷 image').slice(0,80))}</span></div>`
+        : `<div class="m-reply"><span class="rt">message deleted</span></div>`;
+    }
+    /* reaction chips */
+    const rx=reactions[m.id]||{};
+    const rxKeys=Object.keys(rx);
+    const rxHtml=rxKeys.length?`<div class="rxs">${rxKeys.map(e=>{
+      const users=rx[e],mineRx=user&&users.includes(user.id);
+      return `<button class="rx${mineRx?' mine':''}" data-tog="${m.id}|${esc(e)}">${esc(e)}<span class="n">${users.length}</span></button>`;
+    }).join('')}<button class="rx-add" data-rx="${m.id}">＋</button></div>`:'';
+    const editedTag=m.edited_at?'<span class="edited">(edited)</span>':'';
+    const isEditing=editing&&String(editing)===String(m.id);
+    const textHtml=isEditing
+      ? `<textarea class="m-edit" data-editing="${m.id}">${esc(m.text||'')}</textarea>
+         <div class="m-edit-h">Enter to save · Esc to cancel</div>`
+      : (m.text?`<div class="m-tx">${renderText(m.text)}${editedTag}</div>`:'');
+    const body=`<div class="m-bd">${quote}${grouped?'':`<div class="m-hd"><span class="m-nm ${cls}" data-uc="${esc(m.user_id||'')}">${esc(m.username||'Anonymous')}</span>${tags}<span class="m-tm">${clock(m.created_at)}</span></div>`}
+      ${textHtml}${img}${rxHtml}</div>`;
+    const mine=user&&m.user_id===user.id;
+    const canDel=user&&(mine||['owner','admin','mod'].includes(gRole));
+    const acts=user?`<div class="m-acts">
+      <button data-rx="${m.id}" title="React">😀</button>
+      <button data-reply="${m.id}" title="Reply">↩</button>
+      ${mine&&m.text?`<button data-edit="${m.id}" title="Edit">✏️</button>`:''}
+      ${canDel?`<button class="del" data-del="${m.id}" title="Delete">🗑</button>`:''}
+    </div>`:'';
     const ping=pingsMe(m.text)?' pinged':'';
     if(grouped){
       h+=`<div class="m${ping}"><div class="m-gut">${clock(m.created_at)}</div>${body}${acts}</div>`;
@@ -1330,11 +1458,31 @@ function paintMsgs(jump){
   if(!msgs.length)h+='<div class="sys">No messages yet — say hi 👋</div>';
   h+='<div id="msg-end"></div>';
   box.innerHTML=h;
+  const ob=$('older-btn');if(ob)ob.onclick=loadOlder;
+  const ta=box.querySelector('[data-editing]');
+  if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);
+    ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,220)+'px';}
   if(jump||near)box.scrollTop=box.scrollHeight;
 }
 $('msgs').addEventListener('click',async e=>{
   const lb=e.target.closest('[data-lb]');
   if(lb){$('lb-img').src=lb.dataset.lb;$('lb').classList.add('open');return;}
+  const jump=e.target.closest('[data-jump]');
+  if(jump){
+    const el=[...$('msgs').querySelectorAll('.m')].find((_,i)=>String(msgs[i]?.id)===jump.dataset.jump);
+    const target=el||$('msgs').querySelector('.m');
+    if(target){target.scrollIntoView({behavior:'smooth',block:'center'});
+      target.classList.add('flash');setTimeout(()=>target.classList.remove('flash'),1300);}
+    return;
+  }
+  const rep_=e.target.closest('[data-reply]');
+  if(rep_){startReply(rep_.dataset.reply);return;}
+  const ed=e.target.closest('[data-edit]');
+  if(ed){editing=ed.dataset.edit;paintMsgs();return;}
+  const tog=e.target.closest('[data-tog]');
+  if(tog){const[mid,emo]=tog.dataset.tog.split('|');toggleRx(mid,emo);return;}
+  const rxb=e.target.closest('[data-rx]');
+  if(rxb){openEmoji(rxb,em=>toggleRx(rxb.dataset.rx,em));return;}
   const del=e.target.closest('[data-del]');
   if(del){if(!confirm('Delete this message?'))return;
     await sb.from('messages').delete().eq('id',del.dataset.del);
@@ -1348,18 +1496,158 @@ $('msgs').addEventListener('click',async e=>{
   const uc=e.target.closest('[data-uc]');
   if(uc&&uc.dataset.uc)userCard(uc.dataset.uc);
 });
+$('msgs').addEventListener('keydown',async e=>{
+  const ta=e.target.closest('[data-editing]');if(!ta)return;
+  if(e.key==='Escape'){editing=null;paintMsgs();return;}
+  if(e.key==='Enter'&&!e.shiftKey){
+    e.preventDefault();
+    const id=ta.dataset.editing,text=ta.value.trim();
+    editing=null;
+    if(!text){paintMsgs();return;}
+    const{error}=await sb.from('messages').update({text,edited_at:new Date().toISOString()}).eq('id',id);
+    if(error)toast(error.message,'err');
+    else{const m=msgs.find(x=>String(x.id)===String(id));
+      if(m){m.text=text;m.edited_at=new Date().toISOString();}}
+    paintMsgs();
+  }
+});
+$('msgs').addEventListener('input',e=>{
+  const ta=e.target.closest('[data-editing]');
+  if(ta){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,220)+'px';}
+});
 $('lb').onclick=()=>$('lb').classList.remove('open');
+
+/* ══════ REPLIES ══════ */
+function startReply(id){
+  const m=msgs.find(x=>String(x.id)===String(id));if(!m)return;
+  replyTo=m;
+  $('reply-who').textContent=m.username||'Anonymous';
+  $('reply-bar').classList.add('on');$('comp-in').classList.add('replying');
+  $('txt').focus();
+}
+function clearReply(){
+  replyTo=null;$('reply-bar').classList.remove('on');$('comp-in').classList.remove('replying');
+}
+$('reply-x').onclick=clearReply;
+
+/* ══════ REACTIONS ══════ */
+async function toggleRx(mid,emoji){
+  if(!user)return open('auth-ov');
+  const cur=reactions[mid]?.[emoji]||[];
+  const mine=cur.includes(user.id);
+  /* optimistic */
+  reactions[mid]=reactions[mid]||{};
+  reactions[mid][emoji]=mine?cur.filter(u=>u!==user.id):[...cur,user.id];
+  if(!reactions[mid][emoji].length)delete reactions[mid][emoji];
+  paintMsgs();
+  const q=mine
+    ? sb.from('reactions').delete().eq('message_id',mid).eq('user_id',user.id).eq('emoji',emoji)
+    : sb.from('reactions').insert({message_id:mid,user_id:user.id,emoji});
+  const{error}=await q;
+  if(error){toast('Reaction failed','err');await loadReactions();paintMsgs();}
+}
+
+/* ══════ EMOJI PICKER ══════ */
+const EMOJI=['😀','😂','🥹','😊','😍','🤔','😴','😭','😤','🥳','😎','🤯',
+'👍','👎','👏','🙌','🙏','💪','🔥','✨','💯','⚡','🎉','🎈',
+'❤️','🧡','💛','💚','💙','💜','🖤','💔','👀','🧠','💀','👻',
+'🍕','🍔','🍟','🌮','🍩','☕','🍺','🎮','🎧','🎹','⚽','🏆'];
+let emoTarget=null;
+function openEmoji(anchor,cb){
+  const box=$('emo');
+  emoTarget=cb;
+  box.innerHTML='<div class="emo-t">Pick one</div><div class="emo-g">'
+    +EMOJI.map(e=>`<button data-e="${e}">${e}</button>`).join('')+'</div>';
+  if(anchor){
+    const r=anchor.getBoundingClientRect();
+    box.classList.add('float');
+    box.style.top=Math.max(8,r.top-260)+'px';
+    box.style.left=Math.min(window.innerWidth-306,Math.max(8,r.left-150))+'px';
+    box.style.right='auto';
+  }else{
+    box.classList.remove('float');box.style.cssText='';
+  }
+  box.classList.add('on');
+}
+$('emo').onclick=e=>{
+  const b=e.target.closest('[data-e]');if(!b)return;
+  const em=b.dataset.e;
+  $('emo').classList.remove('on');
+  if(emoTarget)emoTarget(em);else{
+    const t=$('txt');t.value+=em;t.focus();
+  }
+  emoTarget=null;
+};
+$('c-emo').onclick=e=>{
+  e.stopPropagation();
+  if($('emo').classList.contains('on')){$('emo').classList.remove('on');return;}
+  openEmoji(null,null);
+};
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#emo')&&!e.target.closest('#c-emo')&&!e.target.closest('[data-rx]'))
+    $('emo').classList.remove('on');
+});
 
 function subscribeMsgs(){
   if(msgChan){try{sb.removeChannel(msgChan);}catch(e){}msgChan=null;}
   if(!curCh)return;
+  typers={};
   msgChan=sb.channel('room:'+curCh.room_key)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'room_id=eq.'+curCh.room_key},
-      p=>{if(!msgs.some(m=>m.id===p.new.id)){msgs.push(p.new);paintMsgs();}})
+      p=>{
+        if(!msgs.some(m=>m.id===p.new.id)){msgs.push(p.new);paintMsgs();}
+        delete typers[p.new.user_id];paintTyping();
+      })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'room_id=eq.'+curCh.room_key},
+      p=>{const i=msgs.findIndex(m=>m.id===p.new.id);
+        if(i>=0&&String(editing)!==String(p.new.id)){msgs[i]=p.new;paintMsgs();}})
     .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},
       p=>{const before=msgs.length;msgs=msgs.filter(m=>m.id!==p.old.id);if(msgs.length!==before)paintMsgs();})
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'reactions'},
+      p=>{applyRx(p.new,true);})
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'reactions'},
+      p=>{applyRx(p.old,false);})
+    .on('broadcast',{event:'typing'},({payload})=>{
+      if(!payload||payload.uid===user?.id)return;
+      typers[payload.uid]={name:payload.name,at:Date.now()};
+      paintTyping();
+    })
     .subscribe();
 }
+function applyRx(r,add){
+  if(!r||!msgs.some(m=>String(m.id)===String(r.message_id)))return;
+  if(r.user_id===user?.id)return;                 /* ours is already drawn */
+  const set=(reactions[r.message_id]=reactions[r.message_id]||{});
+  const list=set[r.emoji]||[];
+  if(add){if(!list.includes(r.user_id))set[r.emoji]=[...list,r.user_id];}
+  else{
+    const next=list.filter(u=>u!==r.user_id);
+    if(next.length)set[r.emoji]=next;else delete set[r.emoji];
+  }
+  paintMsgs();
+}
+
+/* ══════ TYPING INDICATORS ══════ */
+let lastTyped=0;
+function sendTyping(){
+  if(!user||!msgChan||!curCh)return;
+  const now=Date.now();
+  if(now-lastTyped<2400)return;      /* throttle — one ping every 2.4s */
+  lastTyped=now;
+  msgChan.send({type:'broadcast',event:'typing',payload:{uid:user.id,name:uname}});
+}
+function paintTyping(){
+  const box=$('typing');if(!box)return;
+  const now=Date.now();
+  Object.keys(typers).forEach(k=>{if(now-typers[k].at>5000)delete typers[k];});
+  const names=Object.values(typers).map(t=>t.name).filter(Boolean);
+  box.textContent=!names.length?''
+    : names.length===1?`${names[0]} is typing…`
+    : names.length===2?`${names[0]} and ${names[1]} are typing…`
+    : `${names.length} people are typing…`;
+}
+setInterval(paintTyping,2000);
+
 /* background: mark other channels unread */
 let allChan=sb.channel('all-msgs').on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},p=>{
   const r=p.new.room_id;
@@ -1374,6 +1662,7 @@ let allChan=sb.channel('all-msgs').on('postgres_changes',{event:'INSERT',schema:
 let acList=[],acIdx=0,acStart=-1;
 $('txt').addEventListener('input',function(){
   this.style.height='auto';this.style.height=Math.min(this.scrollHeight,180)+'px';
+  if(this.value.trim()&&!this.value.startsWith('/'))sendTyping();
   const caret=this.selectionStart,before=this.value.slice(0,caret);
   const m=before.match(/(?:^|\s)@([a-zA-Z0-9_-]{0,24})$/);
   if(!m){closeAC();return;}
@@ -1517,12 +1806,21 @@ async function send(){
   }
   const row={text:text||null,image_url:imgUrl,username:uname,pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null,
     room_id:curCh.room_key,user_id:user.id,is_owner:gRole==='owner',
+    reply_to:replyTo?replyTo.id:null,
     role:['admin','mod'].includes(gRole)?gRole:null,created_at:new Date().toISOString()};
+  const wasReplyTo=replyTo;clearReply();
   const{data,error}=await sb.from('messages').insert(row).select().single();
   $('c-send').disabled=false;
   if(error){toast(error.message,'err');$('txt').value=text;return;}
   if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);paintMsgs(true);}
   if(text)notifyMentions(text);
+  /* tell them someone replied */
+  if(wasReplyTo&&wasReplyTo.user_id&&wasReplyTo.user_id!==user.id){
+    try{await sb.from('notifications').insert({user_id:wasReplyTo.user_id,type:'mention',data:{
+      from_id:user.id,from_username:uname,room_key:curCh.room_key,channel:curCh.name,
+      kind:curCh.kind||'text',server_id:curSv?curSv.id:null,
+      text:`${uname} replied to you`,snippet:(text||'📷 image').slice(0,90)}});}catch(e){}
+  }
   if(curCh.kind==='dm'&&curCh.uid){
     try{await sb.from('notifications').insert({user_id:curCh.uid,type:'dm',data:{
       from_id:user.id,from_username:uname,room_key:curCh.room_key,kind:'dm',
@@ -1582,9 +1880,13 @@ async function loadMembers(){
 }
 function paintMembers(){
   const rank={owner:0,admin:1,mod:2,member:3};
-  members.sort((a,b)=>(rank[a.role]??9)-(rank[b.role]??9)||(a.username||'').localeCompare(b.username||''));
-  $('mem').innerHTML=`<div class="mem-cat">Members — ${members.length}</div>`+members.map(m=>`
-    <div class="mem-row ${m.role==='owner'?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':''}" data-uc="${esc(m.user_id)}">
+  members.sort((a,b)=>{
+    const ao=online.has(a.user_id)?0:1,bo=online.has(b.user_id)?0:1;   /* online first */
+    return ao-bo||(rank[a.role]??9)-(rank[b.role]??9)||(a.username||'').localeCompare(b.username||'');
+  });
+  const up=members.filter(m=>online.has(m.user_id)).length;
+  $('mem').innerHTML=`<div class="mem-cat">Members — ${up} online / ${members.length}</div>`+members.map(m=>`
+    <div class="mem-row ${online.has(m.user_id)?'on-now ':''}${m.role==='owner'?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':''}" data-uc="${esc(m.user_id)}">
       <div class="mem-av">${m.pfp_url&&isUrl(m.pfp_url)?`<img src="${esc(m.pfp_url)}" alt="">`:esc(ini(m.username))}</div>
       <div class="mem-nm">${esc(m.username||'Unknown')}</div>
     </div>`).join('');
@@ -1618,7 +1920,7 @@ function paintDMSide(){
   h+=dmList.length?dmList.map(d=>`
     <div class="ch${curCh&&curCh.id===d.id?' on':''}${unread[d.room_key]?' unread':''}" data-ch="${esc(d.id)}">
       <span class="ic">${d.pfp&&isUrl(d.pfp)?`<img src="${esc(d.pfp)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">`:'@'}</span>
-      <span class="nm">${esc(d.name)}</span><span class="dot"></span></div>`).join('')
+      <span class="nm">${esc(d.name)}${online.has(d.uid)?' <span style="color:var(--grn);font-size:9px;">●</span>':''}</span><span class="dot"></span></div>`).join('')
     : '<div class="ch"><span class="nm" style="color:var(--txt3)">Add friends to start a DM</span></div>';
   $('side-body').innerHTML=h;
   const inp=$('find-in');
@@ -1676,7 +1978,8 @@ async function userCard(uid){
   if(svRole&&curSv)tags+=`<span class="tag" style="background:var(--hover);color:var(--txt2);">${esc(svRole)} of ${esc(curSv.name)}</span>`;
   if(!tags)tags='<span class="tag" style="background:var(--hover);color:var(--txt2);">Member</span>';
   $('uc-tags').innerHTML=tags;
-  if(p.updated_at)$('uc-meta').textContent='Last seen '+ago(p.updated_at);
+  $('uc-meta').textContent=online.has(uid)?'🟢 Online now'
+    :(p.updated_at?'Last seen '+ago(p.updated_at):'');
   const st=await friendState(uid),acts=$('uc-acts');
   if(!user){acts.innerHTML='<button class="pri" id="uc-si">Sign in to connect</button>';$('uc-si').onclick=()=>{shut('uc-ov');open('auth-ov');};$('uc-mod').style.display='none';return;}
   if(st==='self'){acts.innerHTML='<button id="uc-ed">Edit my profile</button>';$('uc-ed').onclick=()=>{shut('uc-ov');openSettings();};$('uc-mod').style.display='none';return;}
@@ -2067,6 +2370,26 @@ function watchNotifs(){
 $('burger').onclick=()=>{document.body.classList.add('nav');$('scrim').classList.add('on');};
 $('scrim').onclick=()=>{document.body.classList.remove('nav');$('scrim').classList.remove('on');};
 
+/* ══════ ONLINE PRESENCE ══════ */
+/*  The green dots used to be decorative. This actually tracks who's here. */
+function watchPresence(){
+  if(sitePresence){try{sb.removeChannel(sitePresence);}catch(e){}sitePresence=null;}
+  if(!user)return;
+  sitePresence=sb.channel('online',{config:{presence:{key:user.id}}})
+    .on('presence',{event:'sync'},()=>{
+      online=new Set(Object.keys(sitePresence.presenceState()));
+      paintMembers();paintDMSide();
+    })
+    .subscribe(async st=>{
+      if(st==='SUBSCRIBED')await sitePresence.track({uid:user.id,at:Date.now()});
+    });
+}
+/* stop advertising ourselves as here when the tab goes away for a while */
+document.addEventListener('visibilitychange',()=>{
+  if(!sitePresence||!user)return;
+  if(document.visibilityState==='visible')sitePresence.track({uid:user.id,at:Date.now()});
+});
+
 /* ══════ SESSION ══════ */
 let sessionUid=null;
 async function applySession(s,force){
@@ -2080,7 +2403,7 @@ async function applySession(s,force){
   if(user){
     await loadMe();
     await loadServers();
-    await loadNotifs();watchNotifs();
+    await loadNotifs();watchNotifs();watchPresence();
     if(servers.length&&!curSv)await goServer(servers[0]);
     else await goHome();
   }else{
@@ -2089,6 +2412,8 @@ async function applySession(s,force){
     await leaveVoice();
     notifs=[];paintBadge();
     if(nChan){try{sb.removeChannel(nChan);}catch(e){}nChan=null;}
+    if(sitePresence){try{sb.removeChannel(sitePresence);}catch(e){}sitePresence=null;}
+    online=new Set();
     paintMe();paintRail();
     $('side-body').innerHTML='<div class="ch"><span class="nm" style="color:var(--txt3)">Sign in to see your servers</span></div>';
     $('mem').classList.add('hide');
