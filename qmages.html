@@ -593,8 +593,11 @@ select.form-input{cursor:pointer;}
   .bottom-nav{height:50px;}
 }
 </style>
+  <link rel="stylesheet" href="ycz-theme.css">
 </head>
 <body>
+<a class="ycz-back" href="index.html" title="Back to the Chill Zone"><span>←</span> Chill Zone</a>
+
 
 <!-- TOPBAR -->
 <div class="topbar">
@@ -934,10 +937,13 @@ select.form-input{cursor:pointer;}
 (function(){
 'use strict';
 
+/* storageKey must match every other YCZ page — one login covers the site */
 var _sb=supabase.createClient(
   'https://heohcnhgclcnmssjklom.supabase.co',
-  'sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq'
-);
+  'sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq',
+    { auth:{ persistSession:true, storageKey:'ycz-auth', storage:window.localStorage,
+             autoRefreshToken:true, detectSessionInUrl:true } }
+  );
 
 var currentUser=null,currentProfile=null,currentImage=null;
 var currentProfileId=null,currentBoardId=null;
@@ -1590,6 +1596,10 @@ _sb.auth.onAuthStateChange(function(event,session){
 });
 
 })();
+</script>
+<script>
+/* inside the Chill Zone app these open in an overlay, so the button is noise */
+if(window.self!==window.top){var b=document.querySelector('.ycz-back');if(b)b.remove();}
 </script>
 </body>
 </html>
