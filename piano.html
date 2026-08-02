@@ -596,7 +596,7 @@ async function initAudio() {
   // Try SpessaSynth + SF2
   try {
     setLoadMsg('Loading SpessaSynth engine…');
-    const mod = await import('https://cdn.jsdelivr.net/npm/spessasynth_lib/src/spessasynth_lib.js');
+    const mod = await import('https://cdn.jsdelivr.net/npm/spessasynth_lib@latest/dist/index.js');
     Synthetizer = mod.Synthetizer;
     setLoadMsg('Fetching acoustic_piano.sf2…');
     const res = await fetch('acoustic_piano.sf2');
