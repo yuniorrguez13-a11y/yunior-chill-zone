@@ -50,6 +50,7 @@ window.YCZ_ICONS = {
   piano:     '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M7 5v9M12 5v9M17 5v9M2 14h20"/>',
   grid:      '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   bolt:      '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  heart:     '<path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1l8.8 8.8 8.8-8.8a5 5 0 0 0 0-7.1z"/>',
 };
 
 window.icon = function (name, size) {
