@@ -567,37 +567,37 @@ img{display:block;}
   <!-- SERVER RAIL -->
   <nav id="rail">
     <div class="rail-item home on" id="r-home" data-sv="@home">
-      <div class="rail-btn" style="font-size:21px;">💬</div><span class="tip">Direct Messages</span>
+      <div class="rail-btn" style="font-size:21px;">💬</div><span class="tip" data-i18n="dms">Direct Messages</span>
       <span class="rail-badge" id="dm-badge">0</span>
     </div>
     <div class="rail-sep"></div>
     <div id="rail-servers"></div>
     <div class="rail-item add" id="r-add">
-      <div class="rail-btn">+</div><span class="tip">Add a Server</span>
+      <div class="rail-btn">+</div><span class="tip" data-i18n="addServer">Add a Server</span>
     </div>
     <div class="rail-sep"></div>
     <div class="rail-item" id="r-apps">
-      <div class="rail-btn" style="font-size:20px;">🎮</div><span class="tip">Apps &amp; Games</span>
+      <div class="rail-btn" style="font-size:20px;">🎮</div><span class="tip" data-i18n="apps">Apps &amp; Games</span>
     </div>
   </nav>
 
   <!-- SIDEBAR -->
   <aside id="side">
-    <div class="side-head" id="side-head"><span class="nm">Direct Messages</span><span class="cv">▾</span></div>
+    <div class="side-head" id="side-head"><span class="nm" data-i18n="dms">Direct Messages</span><span class="cv">▾</span></div>
     <div id="side-body"></div>
     <div id="vhud">
       <div class="vh-top"><span class="vh-dot" id="vh-dot"></span><span class="vh-nm" id="vh-nm">Voice</span></div>
-      <div class="vh-sub" id="vh-sub">Connecting…</div>
-      <button class="vh-unlock" id="vh-unlock">🔈 Tap to enable audio</button>
+      <div class="vh-sub" id="vh-sub" data-i18n="connecting">Connecting…</div>
+      <button class="vh-unlock" id="vh-unlock" data-i18n="enableAudio">Tap to enable audio</button>
       <div class="vh-acts">
-        <button id="vh-mic">🎤 Mute</button>
-        <button class="leave" id="vh-leave">Disconnect</button>
+        <button id="vh-mic"><span data-i18n="mute">Mute</span></button>
+        <button class="leave" id="vh-leave" data-i18n="disconnect">Disconnect</button>
       </div>
     </div>
     <div id="me-bar">
       <div id="me-av">?</div>
-      <div id="me-inf"><div id="me-nm">Not signed in</div><div id="me-hd">tap to sign in</div></div>
-      <button class="me-btn" id="me-set" title="Settings">⚙</button>
+      <div id="me-inf"><div id="me-nm" data-i18n="signedOut">Not signed in</div><div id="me-hd" data-i18n="tapSignIn">tap to sign in</div></div>
+      <button class="me-btn" id="me-set" data-i18n-title="settings" title="Settings">⚙</button>
     </div>
   </aside>
 
@@ -609,15 +609,15 @@ img{display:block;}
       <span class="nm" id="top-nm">global</span>
       <span class="tp" id="top-tp"></span>
       <div id="nw">
-        <button class="tbtn" id="nb" title="Notifications">🔔</button>
+        <button class="tbtn" id="nb" data-i18n-title="notifications" title="Notifications">🔔</button>
         <span id="nbadge">0</span>
         <div id="ndrop">
-          <div class="nd-h"><span>Notifications</span><button id="nd-mark">Mark all read</button></div>
-          <div id="nd-list"><div class="ni-e">Nothing yet</div></div>
+          <div class="nd-h"><span data-i18n="notifications">Notifications</span><button id="nd-mark" data-i18n="markAllRead">Mark all read</button></div>
+          <div id="nd-list"><div class="ni-e" data-i18n="nothingYet">Nothing yet</div></div>
         </div>
       </div>
-      <button class="tbtn" id="t-inv" title="Invite people">🔗</button>
-      <button class="tbtn on" id="t-mem" title="Members">👥</button>
+      <button class="tbtn" id="t-inv" data-i18n-title="invite" title="Invite people">🔗</button>
+      <button class="tbtn on" id="t-mem" data-i18n-title="members" title="Members">👥</button>
     </div>
 
     <div id="msgs">
@@ -625,17 +625,17 @@ img{display:block;}
            before any JavaScript runs. Replaced once the app boots. -->
       <div class="hero" id="landing">
         <div class="ic">👋</div>
-        <h2>Welcome to Yuniors Chill Zone</h2>
-        <p>A free place to hang out with friends — text and voice channels, games, music and more.</p>
+        <h2 data-i18n="welcome">Welcome to Yuniors Chill Zone</h2>
+        <p data-i18n="landingSub">A free place to hang out with friends — text and voice channels, games, music and more.</p>
         <div class="landing-grid">
-          <div class="lc"><b>💬 Servers &amp; channels</b><span>Make your own server with text and voice channels, invite friends with a code, and give people roles.</span></div>
-          <div class="lc"><b>🔊 Voice chat</b><span>Drop into a voice channel and talk. Works across phones and computers.</span></div>
-          <div class="lc"><b>🎮 Games</b><span>Snake, Doom, Minecraft, Flappy Bird and Subway Surfers, all in the browser.</span></div>
-          <div class="lc"><b>🎵 Music room</b><span>Shared playlists, plus a piano you can play with other people at the same time.</span></div>
-          <div class="lc"><b>📺 VideoZone</b><span>Upload and watch videos with the community.</span></div>
-          <div class="lc"><b>🖼️ Qmages</b><span>An image board for saving and sharing pictures onto boards.</span></div>
+          <div class="lc"><b>💬 <span data-i18n="fServers">Servers &amp; channels</span></b><span data-i18n="fServersD">Make your own server with text and voice channels, invite friends with a code, and give people roles.</span></div>
+          <div class="lc"><b>🔊 <span data-i18n="fVoice">Voice chat</span></b><span data-i18n="fVoiceD">Drop into a voice channel and talk. Works across phones and computers.</span></div>
+          <div class="lc"><b>🎮 <span data-i18n="fGames">Games</span></b><span data-i18n="fGamesD">Snake, Doom, Minecraft, Flappy Bird and Subway Surfers, all in the browser.</span></div>
+          <div class="lc"><b>🎵 <span data-i18n="fMusic">Music room</span></b><span data-i18n="fMusicD">Shared playlists, plus a piano you can play with other people at the same time.</span></div>
+          <div class="lc"><b>📺 <span data-i18n="fVideo">VideoZone</span></b><span data-i18n="fVideoD">Upload and watch videos with the community.</span></div>
+          <div class="lc"><b>🖼️ <span data-i18n="fImages">Qmages</span></b><span data-i18n="fImagesD">An image board for saving and sharing pictures onto boards.</span></div>
         </div>
-        <p class="landing-cta">Free to join — make an account to start chatting.</p>
+        <p class="landing-cta" data-i18n="landingCta">Free to join — make an account to start chatting.</p>
       </div>
       <div id="msg-end"></div>
     </div>
@@ -646,8 +646,8 @@ img{display:block;}
       <div id="reply-bar">Replying to <b id="reply-who">…</b><button id="reply-x">✕ cancel</button></div>
       <div id="comp-in">
         <div id="pending"></div>
-        <button class="cbtn" id="c-img" title="Upload image">🖼️</button>
-        <button class="cbtn" id="c-emo" title="Emoji">😀</button>
+        <button class="cbtn" id="c-img" data-i18n-title="uploadImage" title="Upload image">🖼️</button>
+        <button class="cbtn" id="c-emo" data-i18n-title="emoji" title="Emoji">😀</button>
         <textarea id="txt" rows="1" placeholder="Sign in to chat…" disabled></textarea>
         <button class="cbtn send" id="c-send" disabled>➤</button>
         <input type="file" id="img-file" accept="image/*" multiple style="display:none">
@@ -674,30 +674,31 @@ img{display:block;}
 <!-- AUTH -->
 <div class="ov" id="auth-ov">
   <div class="card">
-    <div class="card-h"><h3>Yuniors Chill Zone</h3><p>Hang out, talk, play. All in one place.</p></div>
+    <div class="card-h"><h3>Yuniors Chill Zone</h3><p data-i18n="tagline">Hang out, talk, play. All in one place.</p></div>
     <div class="card-b">
-      <div class="tabs"><div class="tab on" id="t-in">Sign In</div><div class="tab" id="t-up">Sign Up</div></div>
+      <select class="fi" id="lang-pick-2" style="margin-bottom:14px;"></select>
+      <div class="tabs"><div class="tab on" id="t-in" data-i18n="signIn">Sign In</div><div class="tab" id="t-up" data-i18n="signUp">Sign Up</div></div>
       <div class="err" id="auth-err"></div>
       <div id="p-in">
         <div class="fg"><label class="fl">Email</label><input type="email" class="fi" id="in-em" placeholder="you@example.com" autocomplete="email"></div>
         <div class="fg"><label class="fl">Password</label><input type="password" class="fi" id="in-pw" placeholder="••••••••" autocomplete="current-password"></div>
-        <button class="btn pri" id="do-in" style="width:100%;">Sign In</button>
+        <button class="btn pri" id="do-in" style="width:100%;" data-i18n="signIn">Sign In</button>
       </div>
       <div id="p-up" style="display:none;">
         <div class="fg"><label class="fl">Email</label><input type="email" class="fi" id="up-em" placeholder="you@example.com" autocomplete="email"></div>
         <div class="fg"><label class="fl">Password</label><input type="password" class="fi" id="up-pw" placeholder="At least 6 characters" autocomplete="new-password"></div>
-        <div class="fg"><label class="fl">Display name</label><input type="text" class="fi" id="up-nm" placeholder="yourcoolname"></div>
-        <button class="btn pri" id="do-up" style="width:100%;">Create Account</button>
+        <div class="fg"><label class="fl" data-i18n="displayName">Display name</label><input type="text" class="fi" id="up-nm" placeholder="yourcoolname"></div>
+        <button class="btn pri" id="do-up" style="width:100%;" data-i18n="createAccount">Create Account</button>
       </div>
     </div>
-    <div class="card-f"><button class="btn" id="auth-x">Maybe later</button></div>
+    <div class="card-f"><button class="btn" id="auth-x" data-i18n="maybeLater">Maybe later</button></div>
   </div>
 </div>
 
 <!-- ADD SERVER -->
 <div class="ov" id="sv-ov">
   <div class="card">
-    <div class="card-h"><h3 id="sv-title">Add a Server</h3><p id="sv-sub">Make your own space or join a friend's.</p></div>
+    <div class="card-h"><h3 id="sv-title" data-i18n="addServer">Add a Server</h3><p id="sv-sub" data-i18n="serverHint">Make your own space or join a friend's.</p></div>
     <div class="card-b">
       <div class="err" id="sv-err"></div>
       <div class="seg" id="sv-seg">
@@ -705,30 +706,30 @@ img{display:block;}
         <button data-m="join"><span class="e">🔗</span>Join with code</button>
       </div>
       <div id="sv-new">
-        <div class="fg"><label class="fl">Server name</label><input type="text" class="fi" id="sv-nm" placeholder="My Chill Server" maxlength="40"></div>
+        <div class="fg"><label class="fl" data-i18n="serverName">Server name</label><input type="text" class="fi" id="sv-nm" placeholder="My Chill Server" maxlength="40"></div>
         <div class="fg"><label class="fl">Icon emoji</label><input type="text" class="fi" id="sv-ic" placeholder="🔥" maxlength="2"></div>
       </div>
       <div id="sv-join" style="display:none;">
         <div class="fg"><label class="fl">Invite code</label><input type="text" class="fi mono" id="sv-code" placeholder="abc123" autocapitalize="off"></div>
       </div>
     </div>
-    <div class="card-f"><button class="btn" id="sv-x">Cancel</button><button class="btn pri" id="sv-go">Continue</button></div>
+    <div class="card-f"><button class="btn" id="sv-x" data-i18n="cancel">Cancel</button><button class="btn pri" id="sv-go" data-i18n="continue">Continue</button></div>
   </div>
 </div>
 
 <!-- ADD CHANNEL -->
 <div class="ov" id="ch-ov">
   <div class="card">
-    <div class="card-h"><h3>Create Channel</h3><p>Text channels are for chatting. Voice channels are for talking.</p></div>
+    <div class="card-h"><h3 data-i18n="createChannel">Create Channel</h3><p data-i18n="channelHint">Text channels are for chatting. Voice channels are for talking.</p></div>
     <div class="card-b">
       <div class="err" id="ch-err"></div>
       <div class="seg" id="ch-seg">
         <button class="on" data-t="text"><span class="e">#</span>Text</button>
         <button data-t="voice"><span class="e">🔊</span>Voice</button>
       </div>
-      <div class="fg"><label class="fl">Channel name</label><input type="text" class="fi" id="ch-nm" placeholder="new-channel" maxlength="30"></div>
+      <div class="fg"><label class="fl" data-i18n="channelName">Channel name</label><input type="text" class="fi" id="ch-nm" placeholder="new-channel" maxlength="30"></div>
     </div>
-    <div class="card-f"><button class="btn" id="ch-x">Cancel</button><button class="btn pri" id="ch-go">Create</button></div>
+    <div class="card-f"><button class="btn" id="ch-x" data-i18n="cancel">Cancel</button><button class="btn pri" id="ch-go" data-i18n="create">Create</button></div>
   </div>
 </div>
 
@@ -755,25 +756,25 @@ img{display:block;}
           </div>
           <div class="hint">An uploaded image replaces the emoji.</div>
         </div>
-        <div class="fg"><label class="fl">Bots</label>
+        <div class="fg"><label class="fl" data-i18n="bots">Bots</label>
           <div id="sm-bots"></div>
-          <button class="upb" id="sm-newbot" style="width:100%;margin-top:7px;">🤖 Create a bot</button>
+          <button class="upb" id="sm-newbot" style="width:100%;margin-top:7px;" data-i18n="createBot">Create a bot</button>
         </div>
-        <div class="fg"><label class="fl">Banned users</label><div id="sm-bans"></div></div>
-        <div class="fg"><label class="fl">Channels</label>
+        <div class="fg"><label class="fl" data-i18n="bannedUsers">Banned users</label><div id="sm-bans"></div></div>
+        <div class="fg"><label class="fl" data-i18n="channels">Channels</label>
           <div id="sm-chs"></div>
           <div style="display:flex;gap:7px;margin-top:8px;">
-            <button class="upb" id="sm-new-t"># New text channel</button>
-            <button class="upb" id="sm-new-v">🔊 New voice channel</button>
+            <button class="upb" id="sm-new-t" data-i18n="newText">New text channel</button>
+            <button class="upb" id="sm-new-v" data-i18n="newVoice">New voice channel</button>
           </div>
         </div>
       </div>
     </div>
     <div class="card-f col">
-      <button class="btn pri" id="sm-save" style="display:none;">Save Changes</button>
-      <button class="btn" id="sm-copy">📋 Copy invite code</button>
-      <button class="btn dng" id="sm-leave">Leave server</button>
-      <button class="btn" id="sm-x">Close</button>
+      <button class="btn pri" id="sm-save" style="display:none;" data-i18n="saveChanges">Save Changes</button>
+      <button class="btn" id="sm-copy" data-i18n="copyInvite">Copy invite code</button>
+      <button class="btn dng" id="sm-leave" data-i18n="leaveServer">Leave server</button>
+      <button class="btn" id="sm-x" data-i18n="close">Close</button>
     </div>
   </div>
 </div>
@@ -806,7 +807,7 @@ img{display:block;}
 <!-- SETTINGS -->
 <div class="ov" id="set-ov">
   <div id="set-panel">
-    <div class="set-h"><span>My Profile</span><button class="x" id="set-x">✕</button></div>
+    <div class="set-h"><span data-i18n="myProfile">My Profile</span><button class="x" id="set-x">✕</button></div>
     <div class="set-b">
       <div class="pfp-ring" id="pfp-ring">
         <img class="im" id="pfp-im" alt=""><img class="fr" id="pfp-fr" alt="">
@@ -820,7 +821,7 @@ img{display:block;}
         <input type="text" class="fi mono" id="s-hd" placeholder="yourhandle" autocapitalize="off">
         <div class="hint" id="hd-msg"></div>
       </div>
-      <div class="fg"><label class="fl">Avatar frame</label>
+      <div class="fg"><label class="fl" data-i18n="avatarFrame">Avatar frame</label>
         <div class="uprow">
           <div class="uprev" id="fr-prev"><span>none</span></div>
           <button class="upb" id="fr-up">⬆ Upload frame PNG</button>
@@ -828,7 +829,7 @@ img{display:block;}
           <input type="file" id="fr-file" accept="image/*" style="display:none">
         </div>
       </div>
-      <div class="fg"><label class="fl">Profile banner</label>
+      <div class="fg"><label class="fl" data-i18n="profileBanner">Profile banner</label>
         <div class="uprow">
           <div class="uprev w" id="bg-prev"><span>none</span></div>
           <button class="upb" id="bg-up">⬆ Upload banner</button>
@@ -837,14 +838,19 @@ img{display:block;}
         </div>
       </div>
       <div class="hint" id="up-msg"></div>
+      <div class="fg" style="margin-top:20px;">
+        <label class="fl" data-i18n="language">Language</label>
+        <select class="fi" id="lang-pick"></select>
+      </div>
     </div>
     <div class="set-f">
-      <button class="btn pri" id="s-save">Save Changes</button>
-      <button class="btn dng" id="s-out">Sign Out</button>
+      <button class="btn pri" id="s-save" data-i18n="saveChanges">Save Changes</button>
+      <button class="btn dng" id="s-out" data-i18n="signOut">Sign Out</button>
     </div>
   </div>
 </div>
 
+<script src="ycz-i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
@@ -886,11 +892,12 @@ const slug=v=>(v||'').toLowerCase().replace(/^@/,'').replace(/[^a-z0-9_-]/g,'').
 function ago(d){if(!d)return'';const t=new Date(d);if(isNaN(t))return'';const s=(Date.now()-t)/1000;
   if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';
   if(s<604800)return Math.floor(s/86400)+'d ago';return t.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
-function clock(d){const t=new Date(d);return isNaN(t)?'':t.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});}
+function clock(d){const x=new Date(d);return isNaN(x)?'':x.toLocaleTimeString(yczLang(),{hour:'numeric',minute:'2-digit'});}
 function dayKey(d){const t=new Date(d);return isNaN(t)?'':t.toDateString();}
-function dayLabel(k){const t=new Date(k),n=new Date();const y=new Date(n);y.setDate(y.getDate()-1);
-  if(t.toDateString()===n.toDateString())return'Today';if(t.toDateString()===y.toDateString())return'Yesterday';
-  return t.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});}
+function dayLabel(k){const d=new Date(k),n=new Date();const y=new Date(n);y.setDate(y.getDate()-1);
+  if(d.toDateString()===n.toDateString())return t('today');
+  if(d.toDateString()===y.toDateString())return t('yesterday');
+  return d.toLocaleDateString(yczLang(),{weekday:'long',month:'long',day:'numeric'});}
 function toast(m,t){const e=$('toast');e.textContent=m;e.className='on'+(t?' '+t:'');
   clearTimeout(e._t);e._t=setTimeout(()=>e.className='',2900);}
 const open=id=>$(id).classList.add('open');
@@ -1322,9 +1329,9 @@ function paintSide(){
   if(!curSv)return;
   const canEdit=canManage();
   const txt=channels.filter(c=>c.type==='text'),voi=channels.filter(c=>c.type==='voice');
-  let h=`<div class="cat">Text Channels${canEdit?'<span class="add" data-new="text">+</span>':''}</div>`;
+  let h=`<div class="cat">${t('textChannels')}${canEdit?'<span class="add" data-new="text">+</span>':''}</div>`;
   h+=txt.map(c=>chRow(c,'#')).join('')||'<div class="ch"><span class="nm" style="color:var(--txt3)">no channels</span></div>';
-  h+=`<div class="cat">Voice Channels${canEdit?'<span class="add" data-new="voice">+</span>':''}</div>`;
+  h+=`<div class="cat">${t('voiceChannels')}${canEdit?'<span class="add" data-new="voice">+</span>':''}</div>`;
   h+=voi.map(c=>chRow(c,'🔊')+`<div class="vc-users" id="vu-${c.id}"></div>`).join('')||'<div class="ch"><span class="nm" style="color:var(--txt3)">no channels</span></div>';
   $('side-body').innerHTML=h;
   paintVoiceLists();
@@ -1398,7 +1405,9 @@ function openChannel(c){
 function refreshComposer(){
   const on=!!user&&!!curCh;
   $('txt').disabled=!on;$('c-send').disabled=!on;$('c-img').disabled=!on;
-  $('txt').placeholder=!user?'Sign in to chat…':curCh?`Message ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}  ·  / for commands`:'Pick a channel';
+  $('txt').placeholder=!user?t('sendTip'):curCh
+    ?`${t('message')} ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}  ·  /  ${t('forCommands')}`
+    :t('noChannels');
 }
 async function loadMsgs(quiet){
   if(!curCh){$('msgs').innerHTML='<div class="sys">Pick a channel to start.</div>';return;}
@@ -1441,10 +1450,10 @@ async function loadReactions(){
 function paintMsgs(jump){
   const box=$('msgs');
   const near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
-  let h=moreOlder&&msgs.length?'<div id="older"><button id="older-btn">↑ Load older messages</button></div>':'';
+  let h=moreOlder&&msgs.length?`<div id="older"><button id="older-btn">↑ ${t('loadOlder')}</button></div>`:'';
   h+=`<div class="hero"><div class="ic">${curCh.kind==='dm'?'@':'#'}</div>
     <h2>${curCh.kind==='dm'?'':'#'}${esc(curCh.name)}</h2>
-    <p>${curCh.kind==='dm'?'This is the start of your conversation.':'This is the beginning of this channel.'}</p></div>`;
+    <p>${curCh.kind==='dm'?t('dmStart'):t('channelStart')}</p></div>`;
   let lastDay='',lastUid='',lastAt=0;
   msgs.forEach(m=>{
     const dk=dayKey(m.created_at);
@@ -1477,7 +1486,7 @@ function paintMsgs(jump){
       const users=rx[e],mineRx=user&&users.includes(user.id);
       return `<button class="rx${mineRx?' mine':''}" data-tog="${m.id}|${esc(e)}">${esc(e)}<span class="n">${users.length}</span></button>`;
     }).join('')}<button class="rx-add" data-rx="${m.id}">＋</button></div>`:'';
-    const editedTag=m.edited_at?'<span class="edited">(edited)</span>':'';
+    const editedTag=m.edited_at?`<span class="edited">${t('edited')}</span>`:'';
     const isEditing=editing&&String(editing)===String(m.id);
     const textHtml=isEditing
       ? `<textarea class="m-edit" data-editing="${m.id}">${esc(m.text||'')}</textarea>
@@ -1503,7 +1512,7 @@ function paintMsgs(jump){
       h+=`<div class="m grp${ping}"><div class="m-av" data-uc="${esc(m.user_id||'')}">${av}</div>${body}${acts}</div>`;
     }
   });
-  if(!msgs.length)h+='<div class="sys">No messages yet — say hi 👋</div>';
+  if(!msgs.length)h+=`<div class="sys">${t('noMessages')} 👋</div>`;
   h+='<div id="msg-end"></div>';
   box.innerHTML=h;
   const ob=$('older-btn');if(ob)ob.onclick=loadOlder;
@@ -1690,9 +1699,9 @@ function paintTyping(){
   Object.keys(typers).forEach(k=>{if(now-typers[k].at>5000)delete typers[k];});
   const names=Object.values(typers).map(t=>t.name).filter(Boolean);
   box.textContent=!names.length?''
-    : names.length===1?`${names[0]} is typing…`
-    : names.length===2?`${names[0]} and ${names[1]} are typing…`
-    : `${names.length} people are typing…`;
+    : names.length===1?`${names[0]} ${t('isTyping')}`
+    : names.length===2?`${names[0]} + ${names[1]} ${t('areTyping')}`
+    : `${names.length} ${t('peopleTyping')}`;
 }
 setInterval(paintTyping,2000);
 
@@ -1933,7 +1942,7 @@ function paintMembers(){
     return ao-bo||(rank[a.role]??9)-(rank[b.role]??9)||(a.username||'').localeCompare(b.username||'');
   });
   const up=members.filter(m=>online.has(m.user_id)).length;
-  $('mem').innerHTML=`<div class="mem-cat">Members — ${up} online / ${members.length}</div>`+members.map(m=>`
+  $('mem').innerHTML=`<div class="mem-cat">${t('members')} — ${up} / ${members.length}</div>`+members.map(m=>`
     <div class="mem-row ${online.has(m.user_id)?'on-now ':''}${m.role==='owner'?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':''}" data-uc="${esc(m.user_id)}">
       <div class="mem-av">${m.pfp_url&&isUrl(m.pfp_url)?`<img src="${esc(m.pfp_url)}" alt="">`:esc(ini(m.username))}</div>
       <div class="mem-nm">${esc(m.username||'Unknown')}</div>
@@ -2026,8 +2035,8 @@ async function userCard(uid){
   if(svRole&&curSv)tags+=`<span class="tag" style="background:var(--hover);color:var(--txt2);">${esc(svRole)} of ${esc(curSv.name)}</span>`;
   if(!tags)tags='<span class="tag" style="background:var(--hover);color:var(--txt2);">Member</span>';
   $('uc-tags').innerHTML=tags;
-  $('uc-meta').textContent=online.has(uid)?'🟢 Online now'
-    :(p.updated_at?'Last seen '+ago(p.updated_at):'');
+  $('uc-meta').textContent=online.has(uid)?'🟢 '+t('onlineNow')
+    :(p.updated_at?t('lastSeen')+' '+ago(p.updated_at):'');
   const st=await friendState(uid),acts=$('uc-acts');
   if(!user){acts.innerHTML='<button class="pri" id="uc-si">Sign in to connect</button>';$('uc-si').onclick=()=>{shut('uc-ov');open('auth-ov');};$('uc-mod').style.display='none';return;}
   if(st==='self'){acts.innerHTML='<button id="uc-ed">Edit my profile</button>';$('uc-ed').onclick=()=>{shut('uc-ov');openSettings();};$('uc-mod').style.display='none';return;}
@@ -2219,9 +2228,9 @@ function vStatus(msg,tone){
   if(msg){sub.textContent=msg;sub.className='vh-sub'+(tone?' '+tone:'');
     dot.className='vh-dot'+(tone==='bad'?' bad':tone==='warn'?' amber':'');return;}
   const ids=peerIds(),live=ids.filter(id=>vPeers[id]?.pc.connectionState==='connected').length;
-  if(!ids.length){sub.textContent='Waiting for others…';sub.className='vh-sub';dot.className='vh-dot';return;}
+  if(!ids.length){sub.textContent=t('waitingOthers');sub.className='vh-sub';dot.className='vh-dot';return;}
   if(live===ids.length){
-    sub.textContent=`Connected to ${live} ${live===1?'person':'people'}`+(vRelayed?'':' · no relay');
+    sub.textContent=`${t('connectedTo')} ${live}`+(vRelayed?'':' · no relay');
     sub.className='vh-sub';dot.className='vh-dot';
   }else{
     sub.textContent=`Connecting… ${live}/${ids.length}`;
@@ -2338,7 +2347,7 @@ $('vh-unlock').onclick=()=>{
 $('vh-mic').onclick=async()=>{
   vMuted=!vMuted;
   vStream?.getAudioTracks().forEach(t=>t.enabled=!vMuted);
-  $('vh-mic').textContent=vMuted?'🔇 Unmute':'🎤 Mute';
+  $('vh-mic').textContent=vMuted?'🔇 '+t('unmute'):'🎤 '+t('mute');
   $('vh-mic').classList.toggle('off',vMuted);
   if(vCh)await vCh.track({uid:user.id,name:uname,pfp:pfpUrl,muted:vMuted});
 };
@@ -2470,6 +2479,18 @@ function watchPresence(){
 document.addEventListener('visibilitychange',()=>{
   if(!sitePresence||!user)return;
   if(document.visibilityState==='visible')sitePresence.track({uid:user.id,at:Date.now()});
+});
+
+/* ══════ LANGUAGE ══════ */
+mountLangPicker($('lang-pick-2'));
+document.addEventListener('ycz-lang-changed',()=>{
+  /* repaint everything that's drawn from JS */
+  applyI18n();
+  if(curSv)paintSide();else paintDMSide();
+  paintMembers();refreshComposer();paintTyping();
+  if(curCh)paintMsgs();
+  if($('lang-pick'))$('lang-pick').value=yczLang();
+  if($('lang-pick-2'))$('lang-pick-2').value=yczLang();
 });
 
 /* ══════ SESSION ══════ */
