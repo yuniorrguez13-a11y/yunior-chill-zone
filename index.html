@@ -2401,7 +2401,8 @@ $('vh-unlock').onclick=()=>{
 $('vh-mic').onclick=async()=>{
   vMuted=!vMuted;
   vStream?.getAudioTracks().forEach(t=>t.enabled=!vMuted);
-  $('vh-mic').textContent=vMuted?'🔇 '+t('unmute'):'🎤 '+t('mute');
+  $('vh-mic').innerHTML=icon(vMuted?'micOff':'mic',15)+
+    `<span data-i18n="${vMuted?'unmute':'mute'}">${vMuted?t('unmute'):t('mute')}</span>`;
   $('vh-mic').classList.toggle('off',vMuted);
   if(vCh)await vCh.track({uid:user.id,name:uname,pfp:pfpUrl,muted:vMuted});
 };
