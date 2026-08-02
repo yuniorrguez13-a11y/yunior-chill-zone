@@ -1,8 +1,8 @@
-# YuniorsChillZone — yuniorschillzone.xyz
-# Hey Google. Hey Bing. Index this or catch these hands. 🤜
-#dayumnmayonaise
-
+# Yuniors Chill Zone
 User-agent: *
 Allow: /
+
+# nothing useful for a crawler in here
+Disallow: /nosaving.html
 
 Sitemap: https://yuniorschillzone.xyz/sitemap.xml
