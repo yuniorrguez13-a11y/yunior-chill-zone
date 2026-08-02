@@ -296,7 +296,7 @@ img{display:block;}
 .seg button{flex:1;padding:14px 10px;border-radius:11px;border:1px solid var(--border);
   background:#0a0a10;font-size:13px;color:var(--txt2);}
 .seg button.on{border-color:var(--red);background:var(--red-dim);color:var(--txt);}
-.seg .e{display:block;font-size:20px;margin-bottom:4px;}
+.seg .e{display:flex;justify-content:center;margin-bottom:6px;}
 
 /* user card */
 #uc-card{max-width:340px;padding:0;overflow:hidden;}
@@ -500,6 +500,19 @@ img{display:block;}
 .lc span{font-size:13px;color:var(--txt2);line-height:1.5;}
 .landing-cta{font-size:13.5px;color:var(--txt3);margin-top:14px;}
 
+/* icons */
+.ic-svg{display:block;flex:none;}
+.tbtn .ic-svg,.cbtn .ic-svg,.me-btn .ic-svg,.x .ic-svg{margin:0 auto;}
+.ch .ic .ic-svg,.sm-ch .ic .ic-svg{opacity:.75;}
+.rail-btn .ic-svg{width:23px;height:23px;}
+.vh-acts button{display:flex;align-items:center;justify-content:center;gap:6px;}
+.m-acts button{display:flex;align-items:center;justify-content:center;}
+.upb,.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;}
+.mem-cat .ic-svg,.cat .ic-svg{display:inline-block;vertical-align:-3px;}
+.cat .add .ic-svg{width:13px;height:13px;}
+/* server monogram fallback — no more emoji-by-default */
+.rail-btn .mono-ic{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;letter-spacing:-.02em;}
+
 /* toast */
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
   background:var(--panel);border:1px solid var(--border-2);border-radius:11px;padding:12px 18px;
@@ -567,57 +580,57 @@ img{display:block;}
   <!-- SERVER RAIL -->
   <nav id="rail">
     <div class="rail-item home on" id="r-home" data-sv="@home">
-      <div class="rail-btn" style="font-size:21px;">💬</div><span class="tip" data-i18n="dms">Direct Messages</span>
+      <div class="rail-btn"><i data-ic="chat" data-ic-size="23"></i></div><span class="tip" data-i18n="dms">Direct Messages</span>
       <span class="rail-badge" id="dm-badge">0</span>
     </div>
     <div class="rail-sep"></div>
     <div id="rail-servers"></div>
     <div class="rail-item add" id="r-add">
-      <div class="rail-btn">+</div><span class="tip" data-i18n="addServer">Add a Server</span>
+      <div class="rail-btn"><i data-ic="plus" data-ic-size="23"></i></div><span class="tip" data-i18n="addServer">Add a Server</span>
     </div>
     <div class="rail-sep"></div>
     <div class="rail-item" id="r-apps">
-      <div class="rail-btn" style="font-size:20px;">🎮</div><span class="tip" data-i18n="apps">Apps &amp; Games</span>
+      <div class="rail-btn"><i data-ic="gamepad" data-ic-size="22"></i></div><span class="tip" data-i18n="apps">Apps &amp; Games</span>
     </div>
   </nav>
 
   <!-- SIDEBAR -->
   <aside id="side">
-    <div class="side-head" id="side-head"><span class="nm" data-i18n="dms">Direct Messages</span><span class="cv">▾</span></div>
+    <div class="side-head" id="side-head"><span class="nm" data-i18n="dms">Direct Messages</span><span class="cv"><i data-ic="chevron" data-ic-size="15"></i></span></div>
     <div id="side-body"></div>
     <div id="vhud">
       <div class="vh-top"><span class="vh-dot" id="vh-dot"></span><span class="vh-nm" id="vh-nm">Voice</span></div>
       <div class="vh-sub" id="vh-sub" data-i18n="connecting">Connecting…</div>
       <button class="vh-unlock" id="vh-unlock" data-i18n="enableAudio">Tap to enable audio</button>
       <div class="vh-acts">
-        <button id="vh-mic"><span data-i18n="mute">Mute</span></button>
+        <button id="vh-mic"><i data-ic="mic" data-ic-size="15"></i><span data-i18n="mute">Mute</span></button>
         <button class="leave" id="vh-leave" data-i18n="disconnect">Disconnect</button>
       </div>
     </div>
     <div id="me-bar">
       <div id="me-av">?</div>
       <div id="me-inf"><div id="me-nm" data-i18n="signedOut">Not signed in</div><div id="me-hd" data-i18n="tapSignIn">tap to sign in</div></div>
-      <button class="me-btn" id="me-set" data-i18n-title="settings" title="Settings">⚙</button>
+      <button class="me-btn" id="me-set" data-i18n-title="settings" title="Settings"><i data-ic="settings"></i></button>
     </div>
   </aside>
 
   <!-- MAIN -->
   <main id="main">
     <div id="top">
-      <button class="burger" id="burger">☰</button>
+      <button class="burger" id="burger"><i data-ic="menu" data-ic-size="21"></i></button>
       <span class="ic" id="top-ic">#</span>
       <span class="nm" id="top-nm">global</span>
       <span class="tp" id="top-tp"></span>
       <div id="nw">
-        <button class="tbtn" id="nb" data-i18n-title="notifications" title="Notifications">🔔</button>
+        <button class="tbtn" id="nb" data-i18n-title="notifications" title="Notifications"><i data-ic="bell"></i></button>
         <span id="nbadge">0</span>
         <div id="ndrop">
           <div class="nd-h"><span data-i18n="notifications">Notifications</span><button id="nd-mark" data-i18n="markAllRead">Mark all read</button></div>
           <div id="nd-list"><div class="ni-e" data-i18n="nothingYet">Nothing yet</div></div>
         </div>
       </div>
-      <button class="tbtn" id="t-inv" data-i18n-title="invite" title="Invite people">🔗</button>
-      <button class="tbtn on" id="t-mem" data-i18n-title="members" title="Members">👥</button>
+      <button class="tbtn" id="t-inv" data-i18n-title="invite" title="Invite people"><i data-ic="link"></i></button>
+      <button class="tbtn on" id="t-mem" data-i18n-title="members" title="Members"><i data-ic="users"></i></button>
     </div>
 
     <div id="msgs">
@@ -646,10 +659,10 @@ img{display:block;}
       <div id="reply-bar">Replying to <b id="reply-who">…</b><button id="reply-x">✕ cancel</button></div>
       <div id="comp-in">
         <div id="pending"></div>
-        <button class="cbtn" id="c-img" data-i18n-title="uploadImage" title="Upload image">🖼️</button>
-        <button class="cbtn" id="c-emo" data-i18n-title="emoji" title="Emoji">😀</button>
+        <button class="cbtn" id="c-img" data-i18n-title="uploadImage" title="Upload image"><i data-ic="image" data-ic-size="19"></i></button>
+        <button class="cbtn" id="c-emo" data-i18n-title="emoji" title="Emoji"><i data-ic="smile" data-ic-size="19"></i></button>
         <textarea id="txt" rows="1" placeholder="Sign in to chat…" disabled></textarea>
-        <button class="cbtn send" id="c-send" disabled>➤</button>
+        <button class="cbtn send" id="c-send" disabled><i data-ic="send" data-ic-size="19"></i></button>
         <input type="file" id="img-file" accept="image/*" multiple style="display:none">
       </div>
       <div id="typing"></div>
@@ -667,7 +680,7 @@ img{display:block;}
 
 <!-- APPS OVERLAY -->
 <div id="frm-ov">
-  <div id="frm-h"><span id="frm-nm">App</span><button class="x" id="frm-x" style="font-size:18px;">✕</button></div>
+  <div id="frm-h"><span id="frm-nm">App</span><button class="x" id="frm-x"><i data-ic="x" data-ic-size="18"></i></button></div>
   <iframe id="frm" src="" allow="autoplay;fullscreen;camera;microphone;encrypted-media;picture-in-picture"></iframe>
 </div>
 
@@ -702,8 +715,8 @@ img{display:block;}
     <div class="card-b">
       <div class="err" id="sv-err"></div>
       <div class="seg" id="sv-seg">
-        <button class="on" data-m="new"><span class="e">✨</span>Create my own</button>
-        <button data-m="join"><span class="e">🔗</span>Join with code</button>
+        <button class="on" data-m="new"><span class="e"><i data-ic="plus" data-ic-size="20"></i></span>Create my own</button>
+        <button data-m="join"><span class="e"><i data-ic="link" data-ic-size="20"></i></span>Join with code</button>
       </div>
       <div id="sv-new">
         <div class="fg"><label class="fl" data-i18n="serverName">Server name</label><input type="text" class="fi" id="sv-nm" placeholder="My Chill Server" maxlength="40"></div>
@@ -724,8 +737,8 @@ img{display:block;}
     <div class="card-b">
       <div class="err" id="ch-err"></div>
       <div class="seg" id="ch-seg">
-        <button class="on" data-t="text"><span class="e">#</span>Text</button>
-        <button data-t="voice"><span class="e">🔊</span>Voice</button>
+        <button class="on" data-t="text"><span class="e"><i data-ic="hash" data-ic-size="20"></i></span>Text</button>
+        <button data-t="voice"><span class="e"><i data-ic="volume" data-ic-size="20"></i></span>Voice</button>
       </div>
       <div class="fg"><label class="fl" data-i18n="channelName">Channel name</label><input type="text" class="fi" id="ch-nm" placeholder="new-channel" maxlength="30"></div>
     </div>
@@ -750,29 +763,29 @@ img{display:block;}
             <div class="uprev" id="sm-prev"><span>none</span></div>
             <input type="text" class="fi" id="sm-icon" placeholder="🔥" maxlength="2"
               style="width:64px;flex:none;text-align:center;font-size:18px;">
-            <button class="upb" id="sm-up">⬆ Upload image</button>
-            <button class="upx" id="sm-iconx" title="Remove image">✕</button>
+            <button class="upb" id="sm-up"><i data-ic="upload" data-ic-size="15"></i> <span data-i18n="uploadImg">Upload image</span></button>
+            <button class="upx" id="sm-iconx" title="Remove image"><i data-ic="x" data-ic-size="13"></i></button>
             <input type="file" id="sm-file" accept="image/*" style="display:none">
           </div>
           <div class="hint">An uploaded image replaces the emoji.</div>
         </div>
         <div class="fg"><label class="fl" data-i18n="bots">Bots</label>
           <div id="sm-bots"></div>
-          <button class="upb" id="sm-newbot" style="width:100%;margin-top:7px;" data-i18n="createBot">Create a bot</button>
+          <button class="upb" id="sm-newbot" style="width:100%;margin-top:7px;"><i data-ic="bot" data-ic-size="15"></i> <span data-i18n="createBot">Create a bot</span></button>
         </div>
         <div class="fg"><label class="fl" data-i18n="bannedUsers">Banned users</label><div id="sm-bans"></div></div>
         <div class="fg"><label class="fl" data-i18n="channels">Channels</label>
           <div id="sm-chs"></div>
           <div style="display:flex;gap:7px;margin-top:8px;">
-            <button class="upb" id="sm-new-t" data-i18n="newText">New text channel</button>
-            <button class="upb" id="sm-new-v" data-i18n="newVoice">New voice channel</button>
+            <button class="upb" id="sm-new-t"><i data-ic="hash" data-ic-size="14"></i> <span data-i18n="newText">New text channel</span></button>
+            <button class="upb" id="sm-new-v"><i data-ic="volume" data-ic-size="14"></i> <span data-i18n="newVoice">New voice channel</span></button>
           </div>
         </div>
       </div>
     </div>
     <div class="card-f col">
       <button class="btn pri" id="sm-save" style="display:none;" data-i18n="saveChanges">Save Changes</button>
-      <button class="btn" id="sm-copy" data-i18n="copyInvite">Copy invite code</button>
+      <button class="btn" id="sm-copy"><i data-ic="copy" data-ic-size="15"></i> <span data-i18n="copyInvite">Copy invite code</span></button>
       <button class="btn dng" id="sm-leave" data-i18n="leaveServer">Leave server</button>
       <button class="btn" id="sm-x" data-i18n="close">Close</button>
     </div>
@@ -807,7 +820,7 @@ img{display:block;}
 <!-- SETTINGS -->
 <div class="ov" id="set-ov">
   <div id="set-panel">
-    <div class="set-h"><span data-i18n="myProfile">My Profile</span><button class="x" id="set-x">✕</button></div>
+    <div class="set-h"><span data-i18n="myProfile">My Profile</span><button class="x" id="set-x"><i data-ic="x" data-ic-size="16"></i></button></div>
     <div class="set-b">
       <div class="pfp-ring" id="pfp-ring">
         <img class="im" id="pfp-im" alt=""><img class="fr" id="pfp-fr" alt="">
@@ -824,16 +837,16 @@ img{display:block;}
       <div class="fg"><label class="fl" data-i18n="avatarFrame">Avatar frame</label>
         <div class="uprow">
           <div class="uprev" id="fr-prev"><span>none</span></div>
-          <button class="upb" id="fr-up">⬆ Upload frame PNG</button>
-          <button class="upx" id="fr-x">✕</button>
+          <button class="upb" id="fr-up"><i data-ic="upload" data-ic-size="15"></i> Upload frame PNG</button>
+          <button class="upx" id="fr-x"><i data-ic="x" data-ic-size="13"></i></button>
           <input type="file" id="fr-file" accept="image/*" style="display:none">
         </div>
       </div>
       <div class="fg"><label class="fl" data-i18n="profileBanner">Profile banner</label>
         <div class="uprow">
           <div class="uprev w" id="bg-prev"><span>none</span></div>
-          <button class="upb" id="bg-up">⬆ Upload banner</button>
-          <button class="upx" id="bg-x">✕</button>
+          <button class="upb" id="bg-up"><i data-ic="upload" data-ic-size="15"></i> Upload banner</button>
+          <button class="upx" id="bg-x"><i data-ic="x" data-ic-size="13"></i></button>
           <input type="file" id="bg-file" accept="image/*" style="display:none">
         </div>
       </div>
@@ -845,16 +858,52 @@ img{display:block;}
     </div>
     <div class="set-f">
       <button class="btn pri" id="s-save" data-i18n="saveChanges">Save Changes</button>
-      <button class="btn dng" id="s-out" data-i18n="signOut">Sign Out</button>
+      <button class="btn dng" id="s-out"><i data-ic="logout" data-ic-size="15"></i> <span data-i18n="signOut">Sign Out</span></button>
     </div>
   </div>
 </div>
 
+<script src="ycz-icons.js"></script>
 <script src="ycz-i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
 'use strict';
+
+/* ── Safety net ────────────────────────────────────────────────
+   If ycz-i18n.js or ycz-icons.js failed to load (not uploaded,
+   wrong folder, blocked), fall back to English + no icons rather
+   than taking the whole app down.                               */
+if(typeof window.t!=='function'){
+  console.warn('[ycz] ycz-i18n.js did not load — falling back to English. '+
+               'Upload it next to index.html.');
+  const EN={dms:'Direct Messages',addServer:'Add a Server',apps:'Apps & Games',
+    members:'Members',notifications:'Notifications',settings:'Settings',
+    textChannels:'Text Channels',voiceChannels:'Voice Channels',noChannels:'no channels',
+    signIn:'Sign In',message:'Message',forCommands:'for commands',
+    sendTip:'Sign in to chat…',noMessages:'No messages yet — say hi',
+    loadOlder:'Load older messages',today:'Today',yesterday:'Yesterday',
+    edited:'(edited)',reply:'Reply',react:'React',edit:'Edit',delete:'Delete',
+    isTyping:'is typing…',areTyping:'are typing…',peopleTyping:'people are typing…',
+    channelStart:'This is the beginning of this channel.',
+    dmStart:'This is the start of your conversation.',
+    connecting:'Connecting…',waitingOthers:'Waiting for others…',
+    connectedTo:'Connected to',mute:'Mute',unmute:'Unmute',
+    onlineNow:'Online now',lastSeen:'Last seen',close:'Close',
+    addFriend:'Add friend',requestSent:'Request sent',acceptRequest:'Accept request',
+    uploadImg:'Upload image',copyInvite:'Copy invite code',signOut:'Sign Out'};
+  window.t=(k,f)=>EN[k]??f??k;
+  window.yczLang=()=>'en';
+  window.applyI18n=()=>{};
+  window.setLang=()=>{};
+  window.mountLangPicker=()=>{};
+}
+if(typeof window.icon!=='function'){
+  console.warn('[ycz] ycz-icons.js did not load — icons will be blank. '+
+               'Upload it next to index.html.');
+  window.icon=()=>'';
+  window.paintIcons=()=>{};
+}
 
 /* ══════ CONFIG ══════ */
 const SB_URL='https://heohcnhgclcnmssjklom.supabase.co';
@@ -865,12 +914,12 @@ const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,s
   storage:window.localStorage,autoRefreshToken:true,detectSessionInUrl:true}});
 
 const APPS=[
-  {n:'VideoZone',e:'📺',u:'video.html'},
-  {n:'Qmages',e:'🖼️',u:'qmages.html'},
-  {n:'Piano Room',e:'🎹',u:'piano.html'},
-  {n:'Music Room',e:'🎵',u:'music.html'},
-  {n:'Gaming Zone',e:'🎮',u:'gaming.html'},
-  {n:'cZEROde',e:'⚡',u:'https://yuniorrguez13-a11y.github.io/cZEROdeWEB/'}
+  {n:'VideoZone',i:'video',u:'video.html'},
+  {n:'Qmages',i:'image',u:'qmages.html'},
+  {n:'Piano Room',i:'piano',u:'piano.html'},
+  {n:'Music Room',i:'music',u:'music.html'},
+  {n:'Gaming Zone',i:'gamepad',u:'gaming.html'},
+  {n:'cZEROde',i:'bolt',u:'https://yuniorrguez13-a11y.github.io/cZEROdeWEB/'}
 ];
 
 /* ══════ STATE ══════ */
@@ -888,6 +937,8 @@ const $=id=>document.getElementById(id);
 const esc=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const isUrl=s=>{try{const u=new URL(s);return u.protocol==='http:'||u.protocol==='https:';}catch{return false;}};
 const ini=s=>((s||'?').trim()[0]||'?').toUpperCase();
+/* "Yuniors Chill Zone" → "YC" — a proper monogram, like Discord */
+const initials=n=>(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
 const slug=v=>(v||'').toLowerCase().replace(/^@/,'').replace(/[^a-z0-9_-]/g,'').slice(0,24);
 function ago(d){if(!d)return'';const t=new Date(d);if(isNaN(t))return'';const s=(Date.now()-t)/1000;
   if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';
@@ -1076,7 +1127,9 @@ async function loadServers(){
 function paintRail(){
   $('rail-servers').innerHTML=servers.map(s=>`
     <div class="rail-item${curSv&&curSv.id===s.id?' on':''}" data-sv="${esc(s.id)}">
-      <div class="rail-btn">${s.icon_url&&isUrl(s.icon_url)?`<img src="${esc(s.icon_url)}" alt="">`:esc(s.icon||'#')}</div>
+      <div class="rail-btn">${s.icon_url&&isUrl(s.icon_url)
+        ?`<img src="${esc(s.icon_url)}" alt="">`
+        :`<span class="mono-ic">${esc((s.icon||initials(s.name)))}</span>`}</div>
       <span class="tip">${esc(s.name)}</span>
     </div>`).join('');
   $('r-home').classList.toggle('on',!curSv);
@@ -1089,7 +1142,7 @@ $('rail').addEventListener('click',e=>{
 });
 $('r-add').onclick=()=>{if(!user)return open('auth-ov');$('sv-err').className='err';$('sv-nm').value='';$('sv-code').value='';open('sv-ov');};
 $('r-apps').onclick=()=>{
-  $('ap-list').innerHTML=APPS.map(a=>`<button class="btn" style="width:100%;justify-content:flex-start;margin-bottom:8px;text-align:left;" data-u="${esc(a.u)}" data-n="${esc(a.n)}">${a.e}&nbsp;&nbsp;${esc(a.n)}</button>`).join('');
+  $('ap-list').innerHTML=APPS.map(a=>`<button class="btn" style="width:100%;justify-content:flex-start;margin-bottom:8px;text-align:left;" data-u="${esc(a.u)}" data-n="${esc(a.n)}">${icon(a.i,17)}&nbsp;&nbsp;${esc(a.n)}</button>`).join('');
   open('ap-ov');
 };
 $('ap-x').onclick=()=>shut('ap-ov');
@@ -1158,10 +1211,10 @@ function openServerMenu(){
 function paintChanList(){
   $('sm-chs').innerHTML=channels.map(c=>`
     <div class="sm-ch" data-c="${esc(c.id)}">
-      <span class="ic">${c.type==='voice'?'🔊':'#'}</span>
+      <span class="ic">${c.type==='voice'?icon('volume',14):icon('hash',14)}</span>
       <span class="nm">${esc(c.name)}</span>
-      <button data-ren="${esc(c.id)}" title="Rename">✏️</button>
-      <button class="d" data-del="${esc(c.id)}" title="Delete">🗑</button>
+      <button data-ren="${esc(c.id)}" title="Rename">${icon('pencil',14)}</button>
+      <button class="d" data-del="${esc(c.id)}" title="Delete">${icon('trash',14)}</button>
     </div>`).join('')||'<div class="hint">No channels yet.</div>';
 }
 $('sm-chs').onclick=async e=>{
@@ -1193,11 +1246,11 @@ async function paintBots(){
   try{const{data}=await sb.from('bots').select('*').eq('server_id',curSv.id).order('created_at');list=data||[];}catch(e){}
   box.innerHTML=list.map(b=>`
     <div class="bot-row">
-      <div class="bot-av">${b.avatar_url&&isUrl(b.avatar_url)?`<img src="${esc(b.avatar_url)}">`:'🤖'}</div>
+      <div class="bot-av">${b.avatar_url&&isUrl(b.avatar_url)?`<img src="${esc(b.avatar_url)}">`:icon('bot',16)}</div>
       <div class="bot-i"><div class="bot-n">${esc(b.name)}</div>
         <div class="bot-m">${b.enabled?'active':'disabled'}${b.last_used_at?' · last posted '+esc(ago(b.last_used_at)):' · never used'}</div></div>
-      <button data-toggle="${esc(b.id)}" title="${b.enabled?'Disable':'Enable'}">${b.enabled?'⏸':'▶'}</button>
-      <button class="d" data-delbot="${esc(b.id)}" title="Delete">🗑</button>
+      <button data-toggle="${esc(b.id)}" title="${b.enabled?'Disable':'Enable'}">${b.enabled?icon('pause',13):icon('play',13)}</button>
+      <button class="d" data-delbot="${esc(b.id)}" title="Delete">${icon('trash',14)}</button>
     </div>`).join('')||'<div class="hint">No bots yet.</div>';
 }
 $('sm-bots').onclick=async e=>{
@@ -1248,10 +1301,10 @@ async function paintBans(){
   }catch(e){}
   box.innerHTML=list.map(b=>`
     <div class="bot-row">
-      <div class="bot-av" style="background:var(--red)">🚫</div>
+      <div class="bot-av" style="background:var(--red)">${icon('ban',16)}</div>
       <div class="bot-i"><div class="bot-n">${esc(b.username)}</div>
         <div class="bot-m">${esc(b.reason||'no reason given')}</div></div>
-      <button data-unban="${esc(b.user_id)}" title="Unban">↩</button>
+      <button data-unban="${esc(b.user_id)}" title="Unban">${icon('reply',14)}</button>
     </div>`).join('')||'<div class="hint">Nobody is banned.</div>';
 }
 $('sm-bans').onclick=async e=>{
@@ -1329,10 +1382,10 @@ function paintSide(){
   if(!curSv)return;
   const canEdit=canManage();
   const txt=channels.filter(c=>c.type==='text'),voi=channels.filter(c=>c.type==='voice');
-  let h=`<div class="cat">${t('textChannels')}${canEdit?'<span class="add" data-new="text">+</span>':''}</div>`;
-  h+=txt.map(c=>chRow(c,'#')).join('')||'<div class="ch"><span class="nm" style="color:var(--txt3)">no channels</span></div>';
-  h+=`<div class="cat">${t('voiceChannels')}${canEdit?'<span class="add" data-new="voice">+</span>':''}</div>`;
-  h+=voi.map(c=>chRow(c,'🔊')+`<div class="vc-users" id="vu-${c.id}"></div>`).join('')||'<div class="ch"><span class="nm" style="color:var(--txt3)">no channels</span></div>';
+  let h=`<div class="cat">${t('textChannels')}${canEdit?`<span class="add" data-new="text">${icon('plus',13)}</span>`:''}</div>`;
+  h+=txt.map(c=>chRow(c,icon('hash',15))).join('')||'<div class="ch"><span class="nm" style="color:var(--txt3)">no channels</span></div>';
+  h+=`<div class="cat">${t('voiceChannels')}${canEdit?`<span class="add" data-new="voice">${icon('plus',13)}</span>`:''}</div>`;
+  h+=voi.map(c=>chRow(c,icon('volume',15))+`<div class="vc-users" id="vu-${c.id}"></div>`).join('')||'<div class="ch"><span class="nm" style="color:var(--txt3)">no channels</span></div>';
   $('side-body').innerHTML=h;
   paintVoiceLists();
 }
@@ -1392,7 +1445,7 @@ $('ch-nm').addEventListener('keydown',e=>{if(e.key==='Enter')$('ch-go').click();
 function openChannel(c){
   curCh=c;clearReply();editing=null;typers={};paintTyping();
   delete unread[c.room_key];saveUnread();
-  $('top-ic').textContent=c.kind==='dm'?'@':'#';
+  $('top-ic').innerHTML=c.kind==='dm'?'@':icon('hash',18);
   $('top-nm').textContent=c.name;
   $('top-tp').textContent=c.kind==='dm'?'Direct message':(curSv?curSv.name:'');
   $('t-inv').style.display=curSv?'flex':'none';
@@ -1451,7 +1504,7 @@ function paintMsgs(jump){
   const box=$('msgs');
   const near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
   let h=moreOlder&&msgs.length?`<div id="older"><button id="older-btn">↑ ${t('loadOlder')}</button></div>`:'';
-  h+=`<div class="hero"><div class="ic">${curCh.kind==='dm'?'@':'#'}</div>
+  h+=`<div class="hero"><div class="ic">${curCh.kind==='dm'?'@':icon('hash',30)}</div>
     <h2>${curCh.kind==='dm'?'':'#'}${esc(curCh.name)}</h2>
     <p>${curCh.kind==='dm'?t('dmStart'):t('channelStart')}</p></div>`;
   let lastDay='',lastUid='',lastAt=0;
@@ -1497,10 +1550,10 @@ function paintMsgs(jump){
     const mine=user&&m.user_id===user.id;
     const canDel=user&&(mine||['owner','admin','mod'].includes(gRole));
     const acts=user?`<div class="m-acts">
-      <button data-rx="${m.id}" title="React">😀</button>
-      <button data-reply="${m.id}" title="Reply">↩</button>
-      ${mine&&m.text?`<button data-edit="${m.id}" title="Edit">✏️</button>`:''}
-      ${canDel?`<button class="del" data-del="${m.id}" title="Delete">🗑</button>`:''}
+      <button data-rx="${m.id}" title="${t('react')}">${icon('smile',15)}</button>
+      <button data-reply="${m.id}" title="${t('reply')}">${icon('reply',15)}</button>
+      ${mine&&m.text?`<button data-edit="${m.id}" title="${t('edit')}">${icon('pencil',15)}</button>`:''}
+      ${canDel?`<button class="del" data-del="${m.id}" title="${t('delete')}">${icon('trash',15)}</button>`:''}
     </div>`:'';
     const ping=pingsMe(m.text)?' pinged':'';
     if(grouped){
@@ -2029,8 +2082,8 @@ async function userCard(uid){
   if(p.pfp_frame&&isUrl(p.pfp_frame)){$('uc-fr').src=p.pfp_frame;$('uc-fr').style.display='block';}
   if(p.bg_url&&isUrl(p.bg_url))$('uc-ban').style.backgroundImage=`url("${esc(p.bg_url)}")`;
   let tags='';
-  if(r==='owner')tags+='<span class="tag own">⚡ Site Owner</span>';
-  else if(r==='admin')tags+='<span class="tag adm">Admin</span>';
+  if(r==='owner')tags+=`<span class="tag own">${icon('crown',11)} Site Owner</span>`;
+  else if(r==='admin')tags+=`<span class="tag adm">${icon('shield',11)} Admin</span>`;
   else if(r==='mod')tags+='<span class="tag mod">Mod</span>';
   if(svRole&&curSv)tags+=`<span class="tag" style="background:var(--hover);color:var(--txt2);">${esc(svRole)} of ${esc(curSv.name)}</span>`;
   if(!tags)tags='<span class="tag" style="background:var(--hover);color:var(--txt2);">Member</span>';
@@ -2040,10 +2093,11 @@ async function userCard(uid){
   const st=await friendState(uid),acts=$('uc-acts');
   if(!user){acts.innerHTML='<button class="pri" id="uc-si">Sign in to connect</button>';$('uc-si').onclick=()=>{shut('uc-ov');open('auth-ov');};$('uc-mod').style.display='none';return;}
   if(st==='self'){acts.innerHTML='<button id="uc-ed">Edit my profile</button>';$('uc-ed').onclick=()=>{shut('uc-ov');openSettings();};$('uc-mod').style.display='none';return;}
-  acts.innerHTML=(st==='friends'?'<button class="pri" id="uc-dm">💬 Message</button>'
-    :st==='sent'?'<button disabled>⏳ Request sent</button>'
-    :st==='incoming'?'<button class="pri" id="uc-ac">✓ Accept request</button>'
-    :'<button class="pri" id="uc-ad">➕ Add friend</button>')+'<button id="uc-cl">Close</button>';
+  acts.innerHTML=(st==='friends'?`<button class="pri" id="uc-dm">${icon('chat',15)} ${t('message')}</button>`
+    :st==='sent'?`<button disabled>${t('requestSent')}</button>`
+    :st==='incoming'?`<button class="pri" id="uc-ac">${icon('check',15)} ${t('acceptRequest')}</button>`
+    :`<button class="pri" id="uc-ad">${icon('plus',15)} ${t('addFriend')}</button>`)
+    +`<button id="uc-cl">${t('close')}</button>`;
   $('uc-cl').onclick=()=>shut('uc-ov');
   if($('uc-dm'))$('uc-dm').onclick=async()=>{shut('uc-ov');await goHome();
     const d=dmList.find(x=>x.uid===uid);if(d)openChannel(d);};
@@ -2485,7 +2539,7 @@ document.addEventListener('visibilitychange',()=>{
 mountLangPicker($('lang-pick-2'));
 document.addEventListener('ycz-lang-changed',()=>{
   /* repaint everything that's drawn from JS */
-  applyI18n();
+  applyI18n();paintIcons();
   if(curSv)paintSide();else paintDMSide();
   paintMembers();refreshComposer();paintTyping();
   if(curCh)paintMsgs();
