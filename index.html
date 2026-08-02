@@ -3,8 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yuniors Chill Zone</title>
+<title>Yuniors Chill Zone — chat, voice, games and music</title>
 <link rel="icon" type="image/png" href="favicon.png">
+<link rel="canonical" href="https://yuniorschillzone.xyz/">
+<meta name="description" content="Yuniors Chill Zone is a free hangout: servers with text and voice channels, a shared music room, browser games, an image board and a multiplayer piano. Make an account and jump in.">
+<meta name="theme-color" content="#e8162a">
+<meta name="robots" content="index, follow">
+
+<!-- how the link looks when shared on Discord, WhatsApp, iMessage -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Yuniors Chill Zone">
+<meta property="og:title" content="Yuniors Chill Zone">
+<meta property="og:description" content="Chat, voice channels, games, music and more. Free to join.">
+<meta property="og:url" content="https://yuniorschillzone.xyz/">
+<meta property="og:image" content="https://yuniorschillzone.xyz/preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Yuniors Chill Zone">
+<meta name="twitter:description" content="Chat, voice channels, games, music and more. Free to join.">
+<meta name="twitter:image" content="https://yuniorschillzone.xyz/preview.png">
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite",
+ "name":"Yuniors Chill Zone","alternateName":["YuniorsChillZone","Yunior Chill Zone","YCZ"],
+ "url":"https://yuniorschillzone.xyz/",
+ "description":"A free community hangout with text and voice chat, games, music and an image board."}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -470,6 +493,13 @@ img{display:block;}
   font-size:12.5px;color:var(--txt2);}
 #older button:hover{background:var(--hover);color:var(--txt);}
 
+/* landing (logged out) */
+.landing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:11px;margin:22px 0 6px;max-width:760px;}
+.lc{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;}
+.lc b{display:block;font-size:14px;margin-bottom:4px;}
+.lc span{font-size:13px;color:var(--txt2);line-height:1.5;}
+.landing-cta{font-size:13.5px;color:var(--txt3);margin-top:14px;}
+
 /* toast */
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
   background:var(--panel);border:1px solid var(--border-2);border-radius:11px;padding:12px 18px;
@@ -590,7 +620,25 @@ img{display:block;}
       <button class="tbtn on" id="t-mem" title="Members">👥</button>
     </div>
 
-    <div id="msgs"><div class="sys">Connecting…</div><div id="msg-end"></div></div>
+    <div id="msgs">
+      <!-- Static copy: this is what search engines and link previews read
+           before any JavaScript runs. Replaced once the app boots. -->
+      <div class="hero" id="landing">
+        <div class="ic">👋</div>
+        <h2>Welcome to Yuniors Chill Zone</h2>
+        <p>A free place to hang out with friends — text and voice channels, games, music and more.</p>
+        <div class="landing-grid">
+          <div class="lc"><b>💬 Servers &amp; channels</b><span>Make your own server with text and voice channels, invite friends with a code, and give people roles.</span></div>
+          <div class="lc"><b>🔊 Voice chat</b><span>Drop into a voice channel and talk. Works across phones and computers.</span></div>
+          <div class="lc"><b>🎮 Games</b><span>Snake, Doom, Minecraft, Flappy Bird and Subway Surfers, all in the browser.</span></div>
+          <div class="lc"><b>🎵 Music room</b><span>Shared playlists, plus a piano you can play with other people at the same time.</span></div>
+          <div class="lc"><b>📺 VideoZone</b><span>Upload and watch videos with the community.</span></div>
+          <div class="lc"><b>🖼️ Qmages</b><span>An image board for saving and sharing pictures onto boards.</span></div>
+        </div>
+        <p class="landing-cta">Free to join — make an account to start chatting.</p>
+      </div>
+      <div id="msg-end"></div>
+    </div>
 
     <div id="comp">
       <div id="ac"></div>
@@ -2363,7 +2411,41 @@ function watchNotifs(){
       filter:'user_id=eq.'+user.id},p=>{
         notifs.unshift(p.new);paintBadge();if(ndOpen)paintNotifs();
         toast(p.new.data?.text||'New notification');
+        popNotif(p.new);
       }).subscribe();
+}
+
+/* ══════ DESKTOP NOTIFICATIONS ══════ */
+/*  Fires when the tab is in the background but still open.
+    True push with the tab CLOSED needs a service worker + VAPID keys —
+    a separate job, see the note in the chat.                            */
+let notifPermAsked=localStorage.getItem('ycz-notif-asked')==='1';
+async function askNotifPerm(){
+  if(!('Notification' in window))return;
+  if(Notification.permission!=='default')return;
+  if(notifPermAsked)return;
+  notifPermAsked=true;localStorage.setItem('ycz-notif-asked','1');
+  try{await Notification.requestPermission();}catch(e){}
+}
+function popNotif(n){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  if(document.visibilityState==='visible')return;      /* they can already see it */
+  const d=n.data||{};
+  try{
+    const note=new Notification(d.text||'New activity in the Chill Zone',{
+      body:d.snippet||'',
+      icon:d.from_pfp||'favicon.png',
+      badge:'favicon.png',
+      tag:'ycz-'+(n.type||'x')+'-'+(d.room_key||''),   /* collapses duplicates */
+      silent:false
+    });
+    note.onclick=()=>{
+      window.focus();note.close();
+      if(d.room_key)jumpTo(d);
+      else if(d.from_id)userCard(d.from_id);
+    };
+    setTimeout(()=>note.close(),9000);
+  }catch(e){}
 }
 
 /* ══════ MOBILE NAV ══════ */
@@ -2403,7 +2485,7 @@ async function applySession(s,force){
   if(user){
     await loadMe();
     await loadServers();
-    await loadNotifs();watchNotifs();watchPresence();
+    await loadNotifs();watchNotifs();watchPresence();askNotifPerm();
     if(servers.length&&!curSv)await goServer(servers[0]);
     else await goHome();
   }else{
@@ -2417,7 +2499,7 @@ async function applySession(s,force){
     paintMe();paintRail();
     $('side-body').innerHTML='<div class="ch"><span class="nm" style="color:var(--txt3)">Sign in to see your servers</span></div>';
     $('mem').classList.add('hide');
-    $('msgs').innerHTML='<div class="hero"><div class="ic">👋</div><h2>Yuniors Chill Zone</h2><p>Sign in to join servers, chat, and hop in voice.</p></div>';
+    if(!$('landing')){location.reload();return;}
     refreshComposer();
   }
 }
