@@ -1,76 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-
-  <!-- MAIN HUB -->
   <url>
     <loc>https://yuniorschillzone.xyz/</loc>
-    <lastmod>2026-02-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
-
-  <!-- VIDEOZONE -->
   <url>
     <loc>https://yuniorschillzone.xyz/video.html</loc>
-    <lastmod>2026-02-24</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- MUSIC ROOM -->
-  <url>
-    <loc>https://yuniorschillzone.xyz/music.html</loc>
-    <lastmod>2026-02-24</lastmod>
-    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- GAMING ZONE -->
+  <url>
+    <loc>https://yuniorschillzone.xyz/qmages.html</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
   <url>
     <loc>https://yuniorschillzone.xyz/gaming.html</loc>
-    <lastmod>2026-02-24</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.7</priority>
   </url>
-
-  <!-- SNAKE -->
   <url>
-    <loc>https://yuniorschillzone.xyz/snake.html</loc>
-    <lastmod>2026-02-24</lastmod>
-    <changefreq>monthly</changefreq>
+    <loc>https://yuniorschillzone.xyz/music.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://yuniorschillzone.xyz/piano.html</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
-
-  <!-- DOOM -->
-  <url>
-    <loc>https://yuniorschillzone.xyz/doom/Titlescreen.html</loc>
-    <lastmod>2026-02-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
-  <!-- MINECRAFT -->
-  <url>
-    <loc>https://yuniorschillzone.xyz/minecraft.html</loc>
-    <lastmod>2026-02-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
-  <!-- FLAPPY BIRD -->
-  <url>
-    <loc>https://yuniorschillzone.xyz/flappybird/index.html</loc>
-    <lastmod>2026-02-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
-  <!-- SUBWAY SURFERS -->
-  <url>
-    <loc>https://yuniorschillzone.xyz/subway%20surfying/index.html</loc>
-    <lastmod>2026-02-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
 </urlset>
