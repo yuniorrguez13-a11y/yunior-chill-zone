@@ -83,6 +83,23 @@ document.addEventListener('keydown', function(e) {
     @media(max-width:900px){.player-layout{grid-template-columns:1fr;}}
     .player-video{width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9;}
     .player-video video{width:100%;height:100%;}
+
+    /* Shorts are 9/16. Without this they get letterboxed into the
+       widescreen box with big black bars down both sides. */
+    .page.short-mode .player-layout{grid-template-columns:1fr 360px;}
+    .page.short-mode .player-video{
+      aspect-ratio:9/16;
+      width:auto;
+      height:min(78vh,720px);
+      margin:0 auto;
+    }
+    .page.short-mode .player-video video{object-fit:contain;}
+    .page.short-mode .player-col{max-width:520px;margin:0 auto;}
+    /* the Up next thumbnails are portrait too when we're on a Short */
+    .page.short-mode .related-thumb{width:68px;height:120px;}
+    @media(max-width:900px){
+      .page.short-mode .player-video{height:auto;width:100%;}
+    }
     .player-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin:16px 0 8px;}
     .player-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
     .player-channel{display:flex;align-items:center;gap:10px;cursor:pointer;}
@@ -275,7 +292,7 @@ document.addEventListener('keydown', function(e) {
   <!-- PLAYER -->
   <div class="page" id="page-player">
     <div class="player-layout">
-      <div>
+      <div class="player-col">
         <div class="player-video"><video id="mainVideo" controls></video></div>
         <div class="player-title" id="playerTitle"></div>
         <div class="player-meta">
@@ -303,7 +320,7 @@ document.addEventListener('keydown', function(e) {
         </div>
       </div>
       <div>
-        <div class="section-title" style="font-size:15px">Up next</div>
+        <div class="section-title" style="font-size:15px" id="upNextTitle">Up next</div>
         <div id="relatedVideos"></div>
       </div>
     </div>
@@ -544,6 +561,9 @@ document.addEventListener('keydown', function(e) {
     if ((page === 'upload' || page === 'liked' || page === 'profile' || page === 'edit-channel') && !currentUser) {
       page = 'auth';
     }
+    // leaving the player: stop playback. Shorts loop, so without this one
+    // would keep going in the background after you navigate away.
+    if (page !== 'player') { try { $('mainVideo').pause(); } catch(e) {} }
     document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
     document.querySelectorAll('.nav-item[data-page]').forEach(function(n) { n.classList.remove('active'); });
     var pg = $('page-' + page);
@@ -688,7 +708,15 @@ document.addEventListener('keydown', function(e) {
       if (watchHistory.length > 50) watchHistory.pop();
       try { localStorage.setItem('yvz_history', JSON.stringify(watchHistory)); } catch(e) {}
 
-      $('mainVideo').src = v.video_url;
+      // Shorts play portrait, loop, and start on their own — a click got
+      // us here, so the browser counts this as user-initiated.
+      var mv = $('mainVideo');
+      mv.src = v.video_url;
+      mv.loop = !!v.is_short;
+      $('page-player').classList.toggle('short-mode', !!v.is_short);
+      $('upNextTitle').textContent = v.is_short ? 'More Shorts' : 'Up next';
+      if (v.is_short) mv.play().catch(function() {});
+
       $('playerTitle').textContent = v.title;
       $('playerDesc').textContent = v.description || '';
       var p = v.profiles || {};
