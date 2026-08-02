@@ -237,8 +237,11 @@ document.addEventListener('keydown', function(e) {
       box-shadow: 0 0 20px var(--cyan-glow);
     }
   </style>
+  <link rel="stylesheet" href="ycz-theme.css">
 </head>
 <body>
+<a class="ycz-back" href="index.html" title="Back to the Chill Zone"><span>←</span> Chill Zone</a>
+
   <div class="bg-layer"></div>
   <div class="page">
     <header>
@@ -298,5 +301,8 @@ document.addEventListener('keydown', function(e) {
       </div>
     </div>
   </div>
+<script>
+if(window.self!==window.top){var b=document.querySelector('.ycz-back');if(b)b.remove();}
+</script>
 </body>
 </html>
