@@ -1511,9 +1511,9 @@ function paintMsgs(jump){
   msgs.forEach(m=>{
     const dk=dayKey(m.created_at);
     if(dk!==lastDay){h+=`<div class="day"><span>${esc(dayLabel(dk))}</span></div>`;lastDay=dk;lastUid='';}
-    const t=new Date(m.created_at).getTime();
-    const grouped=m.user_id===lastUid&&(t-lastAt)<5*60*1000;
-    lastUid=m.user_id;lastAt=t;
+    const ts=new Date(m.created_at).getTime();
+    const grouped=m.user_id===lastUid&&(ts-lastAt)<5*60*1000;
+    lastUid=m.user_id;lastAt=ts;
     const cls=m.is_owner?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':'';
     let tags='';
     if(m.is_bot)tags+='<span class="tag bot">Bot</span>';
