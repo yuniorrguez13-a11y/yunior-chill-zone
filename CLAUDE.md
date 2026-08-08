@@ -22,6 +22,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `qmages.html` | Image board. Own app, shares session + theme. |
 | `piano.html` | Multiplayer piano. |
 | `music.html`, `gaming.html` | Static link pages, themed via `ycz-theme.css`. |
+| `features-update.sql` | Idempotent DB migration: `user_profiles.bio` + `pinned_messages` with RLS. Run once in the Supabase SQL editor. |
 
 ### Supabase Edge Functions
 | Function | Purpose | Notes |
@@ -94,6 +95,12 @@ scoped `.page:not([id])` for exactly this reason.
 - `server_members` — server_id, user_id, role (owner/admin/mod/member).
 - `channels` — server_id, name, type (text/voice), room_key, position.
 - `friendships`, `notifications`, `reactions`, `bots`, `bot_commands`, `server_bans`
+- `pinned_messages` — message_id (text, no FK on purpose — id types are mixed), room_id,
+  pinned_by, created_at. Created by `features-update.sql`. RLS: everyone reads; only room
+  moderators (or the two DM participants) insert/delete, via the `ycz_can_pin(text)`
+  security-definer helper. The app cleans up pins whose message was deleted.
+- `user_profiles.bio` — added by `features-update.sql`. `saveProfile()` in `index.html`
+  retries without `bio` if the column doesn't exist yet, so the app works either way.
 - `videos` (VideoZone: has `is_short`), `qmages_*` (image board)
 
 **Id column types are inconsistent** — some are `uuid`, some `text`. SQL touching ids
@@ -122,7 +129,7 @@ restricted plus a security-definer `join_server(code)` RPC and a matching change
 `index.html`. Not done yet.
 
 Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_username(jsonb,text)`,
-`ycz_create_profile()` (trigger fn).
+`ycz_create_profile()` (trigger fn), `ycz_can_pin(text)`.
 
 ---
 
@@ -163,11 +170,13 @@ Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_user
 ## Known gaps / next up
 
 - `servers_read` invite-code exposure (above)
-- Bot tokens are generated with `Math.random()` (`index.html:1273`) — weak
-- Emoji still in the interface: `🏠` home icon, `🟢` online dot, `✓`/`✗` in handle
-  availability and upload messages
+- **`features-update.sql` must be run once** in the Supabase SQL editor for pinned
+  messages and profile bios to work (the app degrades gracefully until then)
+- Emoji still in the interface: landing-page feature cards (`💬 🔊 🎮 …`, arguably
+  content), the `🌙`/`☀️` theme buttons on VideoZone/Qmages, and misc toast checkmarks.
+  The chat-app chrome (`🏠`, `🟢`, `👤`, `📷`, `🔇`, `📣`, notification icons) is now SVG.
 - Music/Gaming page *content* is still English (only chrome is translated)
-- No message search, no pinned messages, no screen share
+- No screen share
 - Push notifications only fire when the tab is open in the background — real push needs a
   service worker + VAPID keys
 - Kick/ban exist but there's no audit log
@@ -175,7 +184,16 @@ Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_user
 - Voice is mesh — degrades past ~8 people
 - `preview.png` (1200×630) for link previews doesn't exist
 - Not submitted to Google Search Console
-- No light/dark toggle in the main chat app (VideoZone and Qmages have one)
+
+### Shipped in the Aug 2026 features update
+Message search (topbar, searches the server's text channels), pinned messages,
+light/dark toggle in the chat app (localStorage `ycz-theme`, shared with VideoZone and
+Qmages, which now persist it too), online/away/do-not-disturb status (via presence
+payload), profile bios, notification sounds (WebAudio blip, toggle in settings),
+jump-to-latest pill with new-message counter, DM unread badge on the rail, server
+mods/admins can delete messages client-side (RLS already allowed it), bot tokens now
+use `crypto.getRandomValues`, Esc closes modals. Also fixed: language change no longer
+overwrites the signed-in username in the user bar (`data-i18n` stomp in `paintMe`).
 
 ---
 

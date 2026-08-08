@@ -1343,7 +1343,14 @@ document.addEventListener('keydown', function(e) {
     isDark = !isDark;
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     $('themeBtn').textContent = isDark ? '🌙' : '☀️';
+    // same key the chat app and Qmages use — one preference, whole site
+    localStorage.setItem('ycz-theme', isDark ? 'dark' : 'light');
   });
+  if (localStorage.getItem('ycz-theme') === 'light') {
+    isDark = false;
+    document.documentElement.setAttribute('data-theme', 'light');
+    $('themeBtn').textContent = '☀️';
+  }
   $('signInBtn').addEventListener('click', function() { navigate('auth'); });
   $('userAvatar').addEventListener('click', function() { navigate('profile'); });
   $('searchBtn').addEventListener('click', doSearch);
