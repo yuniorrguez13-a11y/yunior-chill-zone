@@ -154,6 +154,11 @@ Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_user
 
 ## Conventions
 
+- **This is not a template project.** It used to be pitched as open-source-to-fork, with
+  a `personalize.html` site builder and a `nosaving.html` Ctrl+S trap — all removed
+  Aug 2026 at the owner's request. Don't reintroduce template framing anywhere
+  (README, pages, comments).
+
 - No build step. Edit the HTML directly.
 - Shared behaviour goes in `ycz-theme.css` / `ycz-i18n.js` / `ycz-icons.js`, never
   duplicated per page.
