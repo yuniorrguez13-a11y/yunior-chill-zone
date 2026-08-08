@@ -229,6 +229,18 @@ with a "You are banned" message client-side, lock/slowmode/timeouts enforced
 server-side via `ycz_can_post` with a polite client-side pre-check
 (`lastSent` map + composer states).
 
+### Shipped in the Aug 2026 polish pass
+Notifications now clear themselves when you open the room they point at
+(`clearRoomNotifs`, filtered on `data->>room_key`), and a notification for the room
+you're actively viewing (tab visible) is marked read immediately — no toast/ping.
+Discord-style red mention counters on the server icons in the rail
+(`paintSvBadges`, driven by unread notifications' `data.server_id`). Member-list
+status bubbles were being clipped: `.mem-av` had `overflow:hidden`, which cut its own
+`::after` dot — the overflow moved to the `img` (border-radius) instead; don't put it
+back. VideoZone views fixed server-side: `bump_view(vid text)` security-definer RPC
+(SQL delivered in chat, never committed) — the client already called it, the function
+was missing/blocked by RLS.
+
 ### Shipped in the Aug 2026 features update
 Message search (topbar, searches the server's text channels), pinned messages,
 light/dark toggle in the chat app (localStorage `ycz-theme`, shared with VideoZone and
