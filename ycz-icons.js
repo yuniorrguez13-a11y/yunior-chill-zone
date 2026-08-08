@@ -59,6 +59,11 @@ window.YCZ_ICONS = {
   moon:      '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   megaphone: '<path d="M3 11l14-5v12L3 13z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/><path d="M20.5 9a4 4 0 0 1 0 6"/>',
   mail:      '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/>',
+  lock:      '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  unlock:    '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.7-1.5"/>',
+  timer:     '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/>',
+  scroll:    '<path d="M8 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8"/><path d="M8 3a2 2 0 0 0-2 2v12"/><path d="M6 17a2 2 0 0 0 0 4h2"/><path d="M11 8h6M11 12h6M11 16h4"/>',
+  refresh:   '<path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v5h-5"/>',
 };
 
 window.icon = function (name, size) {

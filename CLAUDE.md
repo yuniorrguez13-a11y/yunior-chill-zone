@@ -91,8 +91,17 @@ scoped `.page:not([id])` for exactly this reason.
 - `messages` — text, image_url, username, pfp_url, pfp_frame, room_id, user_id, is_owner,
   is_bot, bot_id, role, reply_to, edited_at, created_at.
 - `servers` — name, icon (emoji), icon_url, owner_id, invite_code.
-- `server_members` — server_id, user_id, role (owner/admin/mod/member).
-- `channels` — server_id, name, type (text/voice), room_key, position.
+- `server_members` — server_id, user_id, role (owner/admin/mod/member), muted_until
+  (timeouts, added by the admin-tools migration).
+- `channels` — server_id, name, type (text/voice), room_key, position, slowmode (seconds,
+  0 = off), locked (both added by the admin-tools migration).
+- `server_audit_log` — server_id (text), actor_id, actor_name, action, target, detail,
+  created_at. Written client-side on every mod action; RLS makes entries unforgeable
+  (actor must be you, must be a mod of that server) and immutable (no UPDATE policy;
+  DELETE only by the server owner, used when deleting a whole server). Read by
+  owner/admin/mod. Actions: role, kick, ban, unban, timeout, untimeout, purge, lock,
+  unlock, slowmode, channel_create/rename/delete, invite, transfer, server_update,
+  bot_create/delete. Viewer lives in server settings; lines are i18n (`aud_*` keys).
 - `friendships`, `notifications`, `reactions`, `bots`, `bot_commands`, `server_bans`
 - `pinned_messages` — message_id (text, no FK on purpose — id types are mixed), room_id,
   pinned_by, created_at. Created by `features-update.sql`. RLS: everyone reads; only room
@@ -115,12 +124,23 @@ Storage: one public bucket, `avatars` — profile pictures, frames, banners, ser
 chat images. Writes restricted to `<user-id>/...` paths by RLS.
 
 ### RLS
-Audited and fixed. Current intent:
+Audited and fixed; the admin-tools migration rebuilt the policies on `servers`,
+`server_members`, `server_bans` and the `messages` INSERT policy. Current intent:
 - `messages` SELECT — authenticated only; DMs limited to the two participants
-- `messages` INSERT — `user_id` must be you, and you must be in the DM
+- `messages` INSERT — `user_id` must be you, you must be in the DM, and
+  `ycz_can_post(room_id)` must pass (channel not locked, you're not timed out,
+  slowmode window elapsed — moderators exempt; DMs and non-channel rooms always pass)
 - `messages` DELETE — author, server owner, or admin/mod of that server
-- `server_members` — no self-service UPDATE (a `FOR ALL` policy previously let any member
-  set their own role to `owner`)
+- `server_members` — no self-service UPDATE. Owner changes any role; **admins can set
+  mods/members to mod/member** (not themselves, not admins, can't grant admin). Kick:
+  owner anyone, admins only mods/members, anyone can remove themself. INSERT: only your
+  own row, as `member` (or `owner` when you created the server), **blocked if you're in
+  `server_bans`** — bans are enforced by the database, not just the UI.
+- `server_bans` — owner/admins ban (not the owner, admins can't ban admins, `banned_by`
+  must be you); the banned user can read their own ban (the app uses that to say
+  "You are banned" on a failed join).
+- `servers` — UPDATE by owner or admin, but a trigger (`ycz_server_owner_guard`) blocks
+  `owner_id` changes by anyone but the current owner; DELETE owner-only.
 
 Known remaining hole: `servers_read` is `USING (true)`, so any logged-in user can read
 every server's `invite_code` and join uninvited. Fixing it properly needs server SELECT
@@ -128,7 +148,10 @@ restricted plus a security-definer `join_server(code)` RPC and a matching change
 `index.html`. Not done yet.
 
 Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_username(jsonb,text)`,
-`ycz_create_profile()` (trigger fn), `ycz_can_pin(text)`.
+`ycz_create_profile()` (trigger fn), `ycz_can_pin(text)`, and from the admin-tools
+migration: `ycz_sv_role(text)` (your role in a server, 'owner' if you own it),
+`ycz_site_owner()`, `ycz_is_banned(text)`, `ycz_can_post(text)`,
+`ycz_guard_server_owner()` (trigger fn). All security definer.
 
 ---
 
@@ -176,10 +199,12 @@ Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_user
 ## Known gaps / next up
 
 - `servers_read` invite-code exposure (above)
-- **The Aug 2026 features migration must be run once** in the Supabase SQL editor for
-  pinned messages and profile bios to work — it adds `user_profiles.bio` and the
-  `pinned_messages` table with RLS. It lives in chat with the owner, not in the repo
-  (owner rule: SQL is never committed). The app degrades gracefully until it's run.
+- **Both Aug 2026 migrations must each be run once** in the Supabase SQL editor — the
+  features migration (pinned messages + `user_profiles.bio`) is done; the **admin-tools
+  migration** (audit log, slowmode/lock columns, timeouts, rebuilt RLS) lives in chat
+  with the owner, not in the repo (owner rule: SQL is never committed). The app degrades
+  gracefully until it's run: no audit entries, lock/slowmode/timeout invisible,
+  role-change buttons error for admins, bans stay client-side-only.
 - Emoji still in the interface: landing-page feature cards (`💬 🔊 🎮 …`, arguably
   content), the `🌙`/`☀️` theme buttons on VideoZone/Qmages, and misc toast checkmarks.
   The chat-app chrome (`🏠`, `🟢`, `👤`, `📷`, `🔇`, `📣`, notification icons) is now SVG.
@@ -187,11 +212,22 @@ Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_user
 - No screen share
 - Push notifications only fire when the tab is open in the background — real push needs a
   service worker + VAPID keys
-- Kick/ban exist but there's no audit log
-- Only server owners can change roles (admins can't)
 - Voice is mesh — degrades past ~8 people
 - `preview.png` (1200×630) for link previews doesn't exist
 - Not submitted to Google Search Console
+
+### Shipped in the Aug 2026 admin-tools update
+Server audit log (viewer in server settings, `aud_*` i18n keys), admins can now manage
+roles/kick/ban for mods and members (owner still needed for admin grants — mirrored in
+RLS), member timeouts (5m/1h/24h, `muted_until`), per-channel slowmode
+(5/10/30/60/300s) and channel lock (buttons in server settings' channel list; lock icon
+in the sidebar), purge-user's-messages button on the mod card, members manager panel
+with search in server settings, invite-code regenerate, transfer ownership (member rows
+first, then `servers.owner_id` — the RLS order matters), delete server
+(type-the-name confirm, children cleaned up first), bans now enforced by RLS on join
+with a "You are banned" message client-side, lock/slowmode/timeouts enforced
+server-side via `ycz_can_post` with a polite client-side pre-check
+(`lastSent` map + composer states).
 
 ### Shipped in the Aug 2026 features update
 Message search (topbar, searches the server's text channels), pinned messages,

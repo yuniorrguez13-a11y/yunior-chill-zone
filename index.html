@@ -428,6 +428,22 @@ img{display:block;}
 .tok-v{font-family:'JetBrains Mono',monospace;font-size:11px;word-break:break-all;color:var(--txt);
   background:#000;padding:8px;border-radius:6px;cursor:pointer;}
 .tok-h{font-size:10.5px;color:var(--txt3);margin-top:6px;}
+
+/* admin tools */
+.sm-scroll{max-height:224px;overflow-y:auto;}
+.sm-ch button.on{color:var(--red);}
+.sm-ch .sv{font-size:9.5px;font-weight:700;color:var(--red);flex:none;}
+.mem-mgr{cursor:pointer;}
+.mem-mgr:hover{border-color:var(--border-2);}
+.aud-row{display:flex;gap:8px;padding:7px 9px;background:#0a0a10;border:1px solid var(--border);
+  border-radius:9px;margin-bottom:6px;align-items:flex-start;}
+.aud-row .ic{color:var(--txt3);flex:none;margin-top:1px;display:flex;}
+.aud-t{flex:1;min-width:0;font-size:12.5px;color:var(--txt2);line-height:1.45;overflow-wrap:anywhere;}
+.aud-t b{color:var(--txt);font-weight:600;}
+.aud-ago{display:block;font-size:10.5px;color:var(--txt3);margin-top:1px;}
+.upb.dngb{color:#ff8b96;}
+.upb.dngb:hover{border-color:#ff5f6d;color:#ff5f6d;}
+.ch .lk{color:var(--txt3);flex:none;display:flex;align-items:center;}
 .m-tx code{background:rgba(255,255,255,.09);padding:1px 5px;border-radius:5px;
   font-family:'JetBrains Mono',monospace;font-size:13px;}
 .m-tx em.act{color:var(--txt2);font-style:italic;}
@@ -614,7 +630,7 @@ body.light .m-tx code{background:rgba(0,0,0,.07);}
 body.light #me-bar{background:rgba(0,0,0,.045);}
 body.light #vhud{background:rgba(0,0,0,.05);}
 body.light .fi,body.light .tabs,body.light .seg button,body.light .sm-ch,body.light .bot-row,
-body.light .uprev,body.light .upb,body.light .m-edit,body.light .ac-av{background:#f0f0f4;}
+body.light .uprev,body.light .upb,body.light .m-edit,body.light .ac-av,body.light .aud-row{background:#f0f0f4;}
 body.light .tdrop .fi{background:#f0f0f4;}
 body.light .tok-v{background:#fff;}
 body.light .rail-item::before{background:#191922;}
@@ -837,7 +853,10 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
     <div class="card-b">
       <div class="err" id="sm-err"></div>
       <div class="fg"><label class="fl">Invite code — share this</label>
-        <input type="text" class="fi mono" id="sm-code" readonly style="cursor:pointer;"></div>
+        <div style="display:flex;gap:7px;">
+          <input type="text" class="fi mono" id="sm-code" readonly style="cursor:pointer;">
+          <button class="upb" id="sm-regen" style="display:none;flex:none;" data-i18n-title="regenInvite" title="New code"><i data-ic="refresh" data-ic-size="15"></i></button>
+        </div></div>
 
       <div id="sm-edit" style="display:none;">
         <div class="fg"><label class="fl">Server name</label>
@@ -853,6 +872,10 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
           </div>
           <div class="hint">An uploaded image replaces the emoji.</div>
         </div>
+        <div class="fg"><label class="fl" data-i18n="members">Members</label>
+          <input type="text" class="fi" id="sm-msearch" data-i18n-ph="searchMembers" placeholder="Search members…" autocomplete="off" style="margin-bottom:7px;">
+          <div id="sm-mems" class="sm-scroll"></div>
+        </div>
         <div class="fg"><label class="fl" data-i18n="bots">Bots</label>
           <div id="sm-bots"></div>
           <button class="upb" id="sm-newbot" style="width:100%;margin-top:7px;"><i data-ic="bot" data-ic-size="15"></i> <span data-i18n="createBot">Create a bot</span></button>
@@ -863,6 +886,13 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
           <div style="display:flex;gap:7px;margin-top:8px;">
             <button class="upb" id="sm-new-t"><i data-ic="hash" data-ic-size="14"></i> <span data-i18n="newText">New text channel</span></button>
             <button class="upb" id="sm-new-v"><i data-ic="volume" data-ic-size="14"></i> <span data-i18n="newVoice">New voice channel</span></button>
+          </div>
+        </div>
+        <div class="fg"><label class="fl" data-i18n="auditLog">Audit log</label><div id="sm-audit" class="sm-scroll"></div></div>
+        <div class="fg" id="sm-danger" style="display:none;"><label class="fl" data-i18n="dangerZone">Danger zone</label>
+          <div style="display:flex;gap:7px;">
+            <button class="upb" id="sm-transfer"><i data-ic="crown" data-ic-size="15"></i> <span data-i18n="transferOwner">Transfer ownership</span></button>
+            <button class="upb dngb" id="sm-delsv"><i data-ic="trash" data-ic-size="15"></i> <span data-i18n="deleteServer">Delete server</span></button>
           </div>
         </div>
       </div>
@@ -1029,6 +1059,7 @@ let dmList=[],unread=JSON.parse(localStorage.getItem('ycz-unread')||'{}');
 let pending=[];
 let reactions={},replyTo=null,editing=null,online=new Set(),typers={},sitePresence=null,moreOlder=true;
 let pins=[],pinRes=[],searchRes=[],myBio='',newCount=0,jumpedBack=false;
+let lastSent={},myMutedUntil=null;      /* admin tools: client slowmode + own timeout */
 const PAGE=60;
 
 /* ══════ UTILS ══════ */
@@ -1361,8 +1392,16 @@ $('sv-go').onclick=async()=>{
       const code=$('sv-code').value.trim().toLowerCase();if(!code)return err('Paste an invite code.');
       const{data:sv}=await sb.from('servers').select('*').eq('invite_code',code).maybeSingle();
       if(!sv)return err('No server with that code.');
-      const{error}=await sb.from('server_members').upsert({server_id:sv.id,user_id:user.id,role:'member'},{onConflict:'server_id,user_id'});
-      if(error)return err(error.message);
+      if(servers.some(x=>x.id===sv.id)){  /* already in — just open it */
+        shut('sv-ov');const fresh=servers.find(x=>x.id===sv.id);if(fresh)goServer(fresh);return;
+      }
+      const{error}=await sb.from('server_members').insert({server_id:sv.id,user_id:user.id,role:'member'});
+      if(error){
+        try{const{data:b}=await sb.from('server_bans').select('user_id')
+          .eq('server_id',sv.id).eq('user_id',user.id).maybeSingle();
+          if(b)return err('You are banned from this server.');}catch(e2){}
+        return err(error.message);
+      }
       shut('sv-ov');await loadServers();
       const fresh=servers.find(x=>x.id===sv.id);if(fresh)goServer(fresh);
       toast('Joined '+sv.name+' ✓','ok');
@@ -1382,32 +1421,154 @@ function openServerMenu(){
   $('sm-edit').style.display=can?'block':'none';
   $('sm-save').style.display=can?'block':'none';
   $('sm-leave').style.display=curSv.owner_id===user?.id?'none':'block';
+  $('sm-regen').style.display=can?'flex':'none';
   if(can){
     $('sm-name').value=curSv.name||'';
     $('sm-icon').value=curSv.icon||'';
     svIconUrl=curSv.icon_url||'';
     prev('sm-prev',svIconUrl);
-    paintChanList();paintBots();paintBans();
+    $('sm-msearch').value='';
+    $('sm-danger').style.display=(curSv.owner_id===user.id||gRole==='owner')?'block':'none';
+    paintChanList();paintBots();paintBans();paintMemPanel();paintAuditLog();
     document.querySelectorAll('#sm-ov .tok').forEach(t=>t.remove());
   }
   open('sm-ov');
 }
+/* ── AUDIT LOG ──
+   Written client-side on every mod action; RLS makes entries
+   unforgeable (actor must be you) and immutable (no update policy). */
+async function audit(action,target,detail){
+  if(!curSv||!user)return;
+  try{await sb.from('server_audit_log').insert({server_id:String(curSv.id),actor_id:user.id,
+    actor_name:uname,action,target:target||null,detail:detail||null});}catch(e){}
+}
+const AUD_IC={role:'shield',kick:'logout',ban:'ban',unban:'reply',timeout:'timer',untimeout:'timer',
+  purge:'trash',lock:'lock',unlock:'unlock',slowmode:'timer',channel_create:'plus',
+  channel_rename:'pencil',channel_delete:'trash',invite:'refresh',transfer:'crown',
+  server_update:'pencil',bot_create:'bot',bot_delete:'bot'};
+async function paintAuditLog(){
+  const box=$('sm-audit');if(!box||!curSv)return;
+  let list=[];
+  try{const{data}=await sb.from('server_audit_log').select('*').eq('server_id',String(curSv.id))
+    .order('created_at',{ascending:false}).limit(50);list=data||[];}catch(e){}
+  box.innerHTML=list.map(a=>{
+    const key='aud_'+a.action;
+    let line=t(key);
+    if(line===key)line='{a} — '+esc(a.action)+(a.target?' {t}':'');
+    line=esc(line).replace('{a}',`<b>${esc(a.actor_name||'?')}</b>`)
+                  .replace('{t}',`<b>${esc(a.target||'')}</b>`)
+                  .replace('{d}',esc(a.detail||''));
+    return `<div class="aud-row"><span class="ic">${icon(AUD_IC[a.action]||'scroll',14)}</span>
+      <div class="aud-t">${line}<span class="aud-ago">${esc(ago(a.created_at))}</span></div></div>`;
+  }).join('')||`<div class="hint">${t('auditEmpty')}</div>`;
+}
+/* ── MEMBERS PANEL ── */
+function paintMemPanel(){
+  const box=$('sm-mems');if(!box||!curSv)return;
+  const q=($('sm-msearch').value||'').trim().toLowerCase();
+  const rank={owner:0,admin:1,mod:2,member:3};
+  const list=members.slice()
+    .sort((a,b)=>(rank[a.role]??9)-(rank[b.role]??9)||(a.username||'').localeCompare(b.username||''))
+    .filter(m=>!q||(m.username||'').toLowerCase().includes(q)||(m.handle||'').toLowerCase().includes(q));
+  box.innerHTML=list.map(m=>{
+    const muted=m.muted_until&&new Date(m.muted_until)>new Date();
+    return `<div class="bot-row mem-mgr" data-mu="${esc(m.user_id)}">
+      <div class="bot-av">${m.pfp_url&&isUrl(m.pfp_url)?`<img src="${esc(m.pfp_url)}">`:esc(ini(m.username))}</div>
+      <div class="bot-i"><div class="bot-n">${esc(m.username||'Unknown')}</div>
+        <div class="bot-m">${esc(m.role)}${m.handle?' · @'+esc(m.handle):''}${muted?' · '+t('timedOut'):''}</div></div>
+      ${icon('chevron',14)}
+    </div>`;}).join('')||`<div class="hint">${t('noResults')}</div>`;
+}
+$('sm-mems').onclick=e=>{const r=e.target.closest('[data-mu]');if(r)userCard(r.dataset.mu);};
+$('sm-msearch').oninput=()=>paintMemPanel();
+/* ── INVITE / DANGER ZONE ── */
+$('sm-regen').onclick=async()=>{
+  if(!curSv||!canManage())return;
+  const code=Math.random().toString(36).slice(2,8);
+  const{error}=await sb.from('servers').update({invite_code:code}).eq('id',curSv.id);
+  if(error)return toast(error.message,'err');
+  curSv.invite_code=code;$('sm-code').value=code;
+  const inList=servers.find(x=>x.id===curSv.id);if(inList)inList.invite_code=code;
+  audit('invite');toast(t('inviteReset'),'ok');
+};
+$('sm-transfer').onclick=async()=>{
+  if(!curSv||(curSv.owner_id!==user.id&&gRole!=='owner'))return;
+  const h=prompt('Type the @handle of the member who should become the new owner:');
+  if(!h)return;
+  const clean=h.trim().replace(/^@/,'').toLowerCase();
+  const m=members.find(x=>(x.handle||'').toLowerCase()===clean);
+  if(!m)return toast('No member here has that handle','err');
+  if(m.user_id===user.id)return toast('That is already you','err');
+  if(!confirm(`Hand "${curSv.name}" over to @${clean}? You become an admin, and only they can hand it back.`))return;
+  /* member rows first — once servers.owner_id flips, the old owner can no longer edit them */
+  let r=await sb.from('server_members').update({role:'owner'}).eq('server_id',curSv.id).eq('user_id',m.user_id);
+  if(r.error)return toast(r.error.message,'err');
+  await sb.from('server_members').update({role:'admin'}).eq('server_id',curSv.id).eq('user_id',user.id);
+  r=await sb.from('servers').update({owner_id:m.user_id}).eq('id',curSv.id);
+  if(r.error)return toast(r.error.message,'err');
+  audit('transfer',m.username||clean);
+  shut('sm-ov');
+  await loadServers();
+  const fresh=servers.find(x=>x.id===curSv.id);if(fresh)goServer(fresh);
+  toast('Ownership transferred ✓','ok');
+};
+$('sm-delsv').onclick=async()=>{
+  if(!curSv||(curSv.owner_id!==user.id&&gRole!=='owner'))return;
+  const typed=prompt(`This deletes "${curSv.name}" for everyone — channels, members, bots and bans. Messages become unreachable.\n\nType the server name to confirm:`);
+  if(typed===null)return;
+  if(typed.trim()!==curSv.name)return toast('Name did not match — nothing was deleted','err');
+  const sid=curSv.id;
+  for(const tb of ['server_audit_log','bots','server_bans','channels','server_members']){
+    try{await sb.from(tb).delete().eq('server_id',tb==='server_audit_log'?String(sid):sid);}catch(e){}
+  }
+  const{error}=await sb.from('servers').delete().eq('id',sid);
+  if(error)return toast(error.message,'err');
+  shut('sm-ov');curSv=null;curCh=null;
+  await loadServers();goHome();
+  toast('Server deleted');
+};
+const SLOW_STEPS=[0,5,10,30,60,300];
 function paintChanList(){
   $('sm-chs').innerHTML=channels.map(c=>`
     <div class="sm-ch" data-c="${esc(c.id)}">
-      <span class="ic">${c.type==='voice'?icon('volume',14):icon('hash',14)}</span>
+      <span class="ic">${c.type==='voice'?icon('volume',14):(c.locked?icon('lock',14):icon('hash',14))}</span>
       <span class="nm">${esc(c.name)}</span>
+      ${c.type==='text'?`
+      ${c.slowmode?`<span class="sv">${c.slowmode}s</span>`:''}
+      <button data-slow="${esc(c.id)}" class="${c.slowmode?'on':''}" data-i18n-title="slowmode" title="Slowmode">${icon('timer',14)}</button>
+      <button data-lock="${esc(c.id)}" class="${c.locked?'on':''}" title="${c.locked?t('unlockCh'):t('lockCh')}">${icon(c.locked?'lock':'unlock',14)}</button>`:''}
       <button data-ren="${esc(c.id)}" title="Rename">${icon('pencil',14)}</button>
       <button class="d" data-del="${esc(c.id)}" title="Delete">${icon('trash',14)}</button>
     </div>`).join('')||'<div class="hint">No channels yet.</div>';
 }
 $('sm-chs').onclick=async e=>{
   const ren=e.target.closest('[data-ren]'),del=e.target.closest('[data-del]');
+  const lk=e.target.closest('[data-lock]'),sl=e.target.closest('[data-slow]');
+  if(lk){
+    const c=channels.find(x=>x.id===lk.dataset.lock);if(!c)return;
+    const{error}=await sb.from('channels').update({locked:!c.locked}).eq('id',c.id);
+    if(error)return toast(error.message,'err');
+    c.locked=!c.locked;paintChanList();paintSide();
+    audit(c.locked?'lock':'unlock',c.name);
+    if(curCh&&curCh.id===c.id){curCh.locked=c.locked;refreshComposer();}
+    toast((c.locked?t('lockCh'):t('unlockCh'))+' ✓','ok');
+  }
+  if(sl){
+    const c=channels.find(x=>x.id===sl.dataset.slow);if(!c)return;
+    const next=SLOW_STEPS[(SLOW_STEPS.indexOf(c.slowmode||0)+1+SLOW_STEPS.length)%SLOW_STEPS.length];
+    const{error}=await sb.from('channels').update({slowmode:next}).eq('id',c.id);
+    if(error)return toast(error.message,'err');
+    c.slowmode=next;paintChanList();
+    audit('slowmode',c.name,next?next+'s':t('slowOff'));
+    if(curCh&&curCh.id===c.id){curCh.slowmode=next;refreshComposer();}
+    toast(t('slowmode')+': '+(next?next+'s':t('slowOff')),'ok');
+  }
   if(ren){
     const c=channels.find(x=>x.id===ren.dataset.ren);if(!c)return;
     const nm=prompt('Rename channel',c.name);if(!nm||nm===c.name)return;
     const{error}=await sb.from('channels').update({name:nm.trim()}).eq('id',c.id);
     if(error)return toast(error.message,'err');
+    audit('channel_rename',nm.trim(),c.name);
     await loadChannels();paintChanList();
     if(curCh&&curCh.id===c.id){curCh.name=nm.trim();$('top-nm').textContent=curCh.name;}
     toast('Channel renamed ✓','ok');
@@ -1417,6 +1578,7 @@ $('sm-chs').onclick=async e=>{
     if(!confirm(`Delete "${c.name}"? Its messages stay in the database but become unreachable.`))return;
     const{error}=await sb.from('channels').delete().eq('id',c.id);
     if(error)return toast(error.message,'err');
+    audit('channel_delete',c.name);
     if(curCh&&curCh.id===c.id)curCh=null;
     await loadChannels();paintChanList();
     if(!curCh){const f=channels.find(x=>x.type==='text');if(f)openChannel(f);}
@@ -1446,7 +1608,9 @@ $('sm-bots').onclick=async e=>{
   }
   if(d){
     if(!confirm('Delete this bot? Its token stops working immediately.'))return;
+    const gone=(await sb.from('bots').select('name').eq('id',d.dataset.delbot).maybeSingle()).data;
     await sb.from('bots').delete().eq('id',d.dataset.delbot);
+    audit('bot_delete',gone?.name||'bot');
     paintBots();toast('Bot deleted');
   }
 };
@@ -1457,6 +1621,7 @@ $('sm-newbot').onclick=async()=>{
   const token='ycz_bot_'+randomToken(24);
   const{error}=await sb.from('bots').insert({server_id:curSv.id,name:name.trim(),token,created_by:user.id});
   if(error)return toast(error.message,'err');
+  audit('bot_create',name.trim());
   showToken(name.trim(),token);
   paintBots();
 };
@@ -1493,7 +1658,9 @@ async function paintBans(){
 }
 $('sm-bans').onclick=async e=>{
   const u=e.target.closest('[data-unban]');if(!u)return;
+  const nm=(u.closest('.bot-row')?.querySelector('.bot-n')?.textContent)||'user';
   await sb.from('server_bans').delete().eq('server_id',curSv.id).eq('user_id',u.dataset.unban);
+  audit('unban',nm);
   paintBans();toast('Unbanned — they can rejoin with the invite code');
 };
 $('sm-new-t').onclick=()=>newChannel('text');
@@ -1520,6 +1687,7 @@ $('sm-save').onclick=async()=>{
   if(error){const e=$('sm-err');e.textContent=error.message;e.className='err on';return;}
   Object.assign(curSv,patch);
   const inList=servers.find(x=>x.id===curSv.id);if(inList)Object.assign(inList,patch);
+  audit('server_update');
   paintRail();$('side-head').querySelector('.nm').textContent=name;
   shut('sm-ov');toast('Server updated ✓','ok');
 };
@@ -1587,7 +1755,7 @@ function paintSide(){
 function chRow(c,ic){
   const un=unreadFor(c);
   return `<div class="ch${curCh&&curCh.id===c.id?' on':''}${un?' unread':''}" data-ch="${esc(c.id)}">
-    <span class="ic">${ic}</span><span class="nm">${esc(c.name)}</span><span class="dot"></span></div>`;
+    <span class="ic">${ic}</span><span class="nm">${esc(c.name)}</span>${c.locked?`<span class="lk">${icon('lock',12)}</span>`:''}<span class="dot"></span></div>`;
 }
 function unreadFor(c){return c.type==='text'&&unread[c.room_key]&&(!curCh||curCh.id!==c.id);}
 $('side-body').addEventListener('click',e=>{
@@ -1617,6 +1785,7 @@ $('ch-go').onclick=async()=>{
       .insert({server_id:curSv.id,name,type,room_key:uid(),position:channels.length})
       .select().single();
     if(error)return err(error.message);
+    audit('channel_create',name);
     shut('ch-ov');
     await loadChannels();
     if($('sm-ov').classList.contains('open'))paintChanList();
@@ -1653,11 +1822,17 @@ function openChannel(c,skipLoad){
   refreshComposer();
 }
 function refreshComposer(){
-  const on=!!user&&!!curCh;
+  const isCh=curCh&&curCh.kind!=='dm';
+  const lockedOut=isCh&&curCh.locked&&!canModerate();
+  const mutedOut=isCh&&curSv&&myMutedUntil&&new Date(myMutedUntil)>new Date()&&!canModerate();
+  const on=!!user&&!!curCh&&!lockedOut&&!mutedOut;
   $('txt').disabled=!on;$('c-send').disabled=!on;$('c-img').disabled=!on;
-  $('txt').placeholder=!user?t('sendTip'):curCh
-    ?`${t('message')} ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}  ·  /  ${t('forCommands')}`
-    :t('noChannels');
+  $('txt').placeholder=!user?t('sendTip'):!curCh?t('noChannels')
+    :lockedOut?t('chLocked')
+    :mutedOut?t('mutedNote').replace('{t}',new Date(myMutedUntil).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))
+    :`${t('message')} ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}  ·  /  ${t('forCommands')}`;
+  const sm=isCh&&on&&(curCh.slowmode||0);
+  $('comp-note').textContent=sm&&!canModerate()?t('slowNote').replace('{s}',sm):'';
 }
 async function loadMsgs(quiet){
   if(!curCh){$('msgs').innerHTML='<div class="sys">Pick a channel to start.</div>';return;}
@@ -2288,6 +2463,12 @@ async function send(){
   if(!user||!curCh)return;
   const text=$('txt').value.trim();
   if(!text&&!pending.length)return;
+  /* client-side slowmode — the database enforces it too, this is the polite version */
+  const sm=curCh.kind!=='dm'?(curCh.slowmode||0):0;
+  if(sm>0&&!canModerate()){
+    const left=Math.ceil(((lastSent[curCh.room_key]||0)+sm*1000-Date.now())/1000);
+    if(left>0)return toast(t('slowWait').replace('{s}',left),'err');
+  }
   if(text.startsWith('/')&&!pending.length){
     $('txt').value='';$('txt').style.height='auto';
     await runSlash(text);
@@ -2315,6 +2496,8 @@ async function send(){
   const{data,error}=await sb.from('messages').insert(row).select().single();
   $('c-send').disabled=false;
   if(error){toast(error.message,'err');$('txt').value=text;return;}
+  lastSent[curCh.room_key]=Date.now();
+  refreshComposer();
   if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);paintMsgs(true);}
   if(text)notifyMentions(text);
   /* tell them someone replied */
@@ -2369,17 +2552,24 @@ async function sendExtraImage(f){
 
 /* ══════ MEMBERS ══════ */
 async function loadMembers(){
-  members=[];
-  if(!curSv){$('mem').classList.add('hide');return;}
+  members=[];myMutedUntil=null;
+  if(!curSv){$('mem').classList.add('hide');refreshComposer();return;}
   try{
-    const{data}=await sb.from('server_members').select('role,user_id').eq('server_id',curSv.id);
-    const ids=(data||[]).map(m=>m.user_id);
+    let rows=[];
+    /* muted_until arrives with the admin-tools migration — retry without it until then */
+    let r=await sb.from('server_members').select('role,user_id,muted_until').eq('server_id',curSv.id);
+    if(r.error)r=await sb.from('server_members').select('role,user_id').eq('server_id',curSv.id);
+    rows=r.data||[];
+    const ids=rows.map(m=>m.user_id);
     if(!ids.length){paintMembers();return;}
     const{data:profs}=await sb.from('user_profiles').select('user_id,username,handle,pfp_url').in('user_id',ids);
     const byId=Object.fromEntries((profs||[]).map(p=>[p.user_id,p]));
-    members=(data||[]).map(m=>({...m,...(byId[m.user_id]||{})}));
+    members=rows.map(m=>({...m,...(byId[m.user_id]||{})}));
+    myMutedUntil=(members.find(m=>m.user_id===user?.id)||{}).muted_until||null;
   }catch(e){}
   paintMembers();
+  refreshComposer();
+  if($('sm-ov').classList.contains('open'))paintMemPanel();
 }
 function paintMembers(){
   const rank={owner:0,admin:1,mod:2,member:3};
@@ -2516,25 +2706,40 @@ async function userCard(uid){
 }
 function paintModTools(uid,svRole){
   const box=$('uc-mod');
-  const owner=curSv&&user&&(curSv.owner_id===user.id||gRole==='owner');
-  if(!owner||!curSv||uid===user.id||!members.some(m=>m.user_id===uid)){box.style.display='none';return;}
+  const iOwn=curSv&&user&&(curSv.owner_id===user.id||gRole==='owner');
+  const iAdm=curSv&&user&&!iOwn&&curSv.myRole==='admin';
+  const target=members.find(m=>m.user_id===uid);
+  const tRole=svRole||'member';
+  /* owner touches everyone; admins only mods and members (RLS enforces the same) */
+  const may=iOwn||(iAdm&&['mod','member'].includes(tRole));
+  if(!curSv||!user||uid===user.id||!target||!may){box.style.display='none';return;}
   box.style.display='block';
+  const tName=target.username||'Unknown';
+  const roles=iOwn?['admin','mod','member']:['mod','member'];
+  const muted=target.muted_until&&new Date(target.muted_until)>new Date();
   box.innerHTML=`<div class="lbl">Role in ${esc(curSv.name)}</div><div class="row">
-    ${['admin','mod','member'].map(r=>`<button data-r="${r}" class="${svRole===r?'on':''}">${r[0].toUpperCase()+r.slice(1)}</button>`).join('')}
+    ${roles.map(r=>`<button data-r="${r}" class="${tRole===r?'on':''}">${r[0].toUpperCase()+r.slice(1)}</button>`).join('')}
     <button class="k" data-kick="1">Kick</button>
-    <button class="k" data-ban="1">Ban</button></div>`;
+    <button class="k" data-ban="1">Ban</button></div>
+  <div class="lbl" style="margin-top:10px;">${t('timeout')}</div><div class="row">
+    ${muted
+      ?`<button data-mute="0">${t('removeTimeout')}</button>`
+      :`<button data-mute="300">5m</button><button data-mute="3600">1h</button><button data-mute="86400">24h</button>`}
+    <button class="k" data-purge="1">${t('purgeUser')}</button></div>`;
   box.onclick=async e=>{
     const rb=e.target.closest('[data-r]'),kb=e.target.closest('[data-kick]');
     if(rb){
       const{error}=await sb.from('server_members').update({role:rb.dataset.r})
         .eq('server_id',curSv.id).eq('user_id',uid);
       if(error)return toast(error.message,'err');
+      audit('role',tName,rb.dataset.r);
       toast('Role updated ✓','ok');await loadMembers();userCard(uid);
     }
     if(kb){
       if(!confirm('Remove this member? They can rejoin with the invite code.'))return;
       const{error}=await sb.from('server_members').delete().eq('server_id',curSv.id).eq('user_id',uid);
       if(error)return toast(error.message,'err');
+      audit('kick',tName);
       shut('uc-ov');toast('Member removed');await loadMembers();
     }
     const bb=e.target.closest('[data-ban]');
@@ -2545,7 +2750,34 @@ function paintModTools(uid,svRole){
         reason:reason||null,banned_by:user.id});
       if(error)return toast(error.message,'err');
       await sb.from('server_members').delete().eq('server_id',curSv.id).eq('user_id',uid);
+      audit('ban',tName,reason||null);
       shut('uc-ov');toast('Banned — they cannot rejoin');await loadMembers();
+    }
+    const mb=e.target.closest('[data-mute]');
+    if(mb){
+      const secs=+mb.dataset.mute;
+      const until=secs?new Date(Date.now()+secs*1000).toISOString():null;
+      const{error}=await sb.from('server_members').update({muted_until:until})
+        .eq('server_id',curSv.id).eq('user_id',uid);
+      if(error)return toast(error.message,'err');
+      audit(secs?'timeout':'untimeout',tName,secs?(secs===300?'5m':secs===3600?'1h':'24h'):null);
+      toast(secs?t('timedOut')+' ✓':t('removeTimeout')+' ✓','ok');
+      await loadMembers();userCard(uid);
+    }
+    const pb=e.target.closest('[data-purge]');
+    if(pb){
+      if(!confirm(t('purgeConfirm')))return;
+      const keys=channels.filter(c=>c.type==='text').map(c=>c.room_key);
+      if(!keys.length)return;
+      const{data:hits}=await sb.from('messages').select('id').eq('user_id',uid).in('room_id',keys);
+      const n=(hits||[]).length;
+      if(n){
+        const{error}=await sb.from('messages').delete().eq('user_id',uid).in('room_id',keys);
+        if(error)return toast(error.message,'err');
+      }
+      audit('purge',tName,String(n));
+      toast(n+' '+t('purged'),'ok');
+      if(curCh&&keys.includes(curCh.room_key))loadMsgs(true);
     }
   };
 }
