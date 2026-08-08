@@ -72,6 +72,69 @@ document.addEventListener('keydown', function(e) {
     .video-channel-link{cursor:pointer;color:var(--text2);}
     .video-channel-link:hover{color:var(--accent);}
 
+    /* ── Shorts feed: one short per screen, snap-scrolled like TikTok ── */
+    /* cancels .main's 24px padding so the feed can go edge to edge */
+    /* position:relative so the mute button pins to the feed, not the
+       viewport — otherwise it lands underneath the fixed topbar */
+    #page-shorts.active{margin:-24px;position:relative;}
+    .sfeed{
+      height:calc(100vh - 56px);overflow-y:scroll;overscroll-behavior-y:contain;
+      scroll-snap-type:y mandatory;scrollbar-width:none;background:#000;
+    }
+    .sfeed::-webkit-scrollbar{display:none;}
+    .sfeed-item{
+      height:calc(100vh - 56px);scroll-snap-align:start;scroll-snap-stop:always;
+      position:relative;display:flex;align-items:center;justify-content:center;background:#000;
+    }
+    .sfeed-item video{height:100%;max-width:100%;object-fit:contain;background:#000;}
+    /* everything below sits on top of the video */
+    .sfeed-item::after{
+      content:'';position:absolute;left:0;right:0;bottom:0;height:45%;
+      background:linear-gradient(transparent,rgba(0,0,0,.75));pointer-events:none;
+    }
+    .sfeed-info{
+      position:absolute;left:0;bottom:0;padding:20px 92px 26px 20px;
+      z-index:2;color:#fff;max-width:min(560px,100%);
+    }
+    .sfeed-user{display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:8px;}
+    .sfeed-user-name{font-weight:700;font-size:15px;}
+    .sfeed-title{font-size:14px;line-height:1.4;}
+    .sfeed-sub{font-size:12px;opacity:.75;margin-top:5px;}
+    .sfeed-rail{
+      position:absolute;right:14px;bottom:26px;z-index:2;
+      display:flex;flex-direction:column;align-items:center;gap:16px;
+    }
+    .sfeed-btn{
+      display:flex;flex-direction:column;align-items:center;gap:4px;
+      background:none;border:none;cursor:pointer;color:#fff;
+      font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;
+    }
+    .sfeed-btn .ic-wrap{
+      width:44px;height:44px;border-radius:50%;
+      background:rgba(255,255,255,.14);backdrop-filter:blur(6px);
+      display:flex;align-items:center;justify-content:center;transition:transform .12s,background .12s;
+    }
+    .sfeed-btn:active .ic-wrap{transform:scale(.9);}
+    .sfeed-btn.on .ic-wrap{background:var(--accent);}
+    .sfeed-btn.on svg{fill:#fff;}
+    /* big play glyph shown while a short is paused */
+    .sfeed-pause{
+      position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      z-index:2;color:#fff;opacity:0;transition:opacity .15s;pointer-events:none;
+      filter:drop-shadow(0 2px 8px rgba(0,0,0,.6));
+    }
+    .sfeed-item.paused .sfeed-pause{opacity:.92;}
+    .sfeed-mute{
+      position:absolute;top:16px;right:16px;z-index:3;
+      width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;
+      background:rgba(0,0,0,.5);backdrop-filter:blur(6px);color:#fff;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .sfeed-empty{height:100%;display:flex;align-items:center;justify-content:center;color:var(--text2);}
+    @media(max-width:760px){
+      .sfeed-info{padding-right:78px;}
+    }
+
     .shorts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:40px;}
     .short-card{border-radius:12px;overflow:hidden;cursor:pointer;position:relative;aspect-ratio:9/16;background:var(--bg3);border:1px solid var(--border);transition:transform 0.2s;}
     .short-card:hover{transform:scale(1.03);}
@@ -83,6 +146,23 @@ document.addEventListener('keydown', function(e) {
     @media(max-width:900px){.player-layout{grid-template-columns:1fr;}}
     .player-video{width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9;}
     .player-video video{width:100%;height:100%;}
+
+    /* Shorts are 9/16. Without this they get letterboxed into the
+       widescreen box with big black bars down both sides. */
+    .page.short-mode .player-layout{grid-template-columns:1fr 360px;}
+    .page.short-mode .player-video{
+      aspect-ratio:9/16;
+      width:auto;
+      height:min(78vh,720px);
+      margin:0 auto;
+    }
+    .page.short-mode .player-video video{object-fit:contain;}
+    .page.short-mode .player-col{max-width:520px;margin:0 auto;}
+    /* the Up next thumbnails are portrait too when we're on a Short */
+    .page.short-mode .related-thumb{width:68px;height:120px;}
+    @media(max-width:900px){
+      .page.short-mode .player-video{height:auto;width:100%;}
+    }
     .player-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin:16px 0 8px;}
     .player-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
     .player-channel{display:flex;align-items:center;gap:10px;cursor:pointer;}
@@ -268,14 +348,14 @@ document.addEventListener('keydown', function(e) {
 
   <!-- SHORTS -->
   <div class="page" id="page-shorts">
-    <div class="section-title">⚡ Shorts</div>
-    <div class="shorts-grid" id="shorts-grid"></div>
+    <button class="sfeed-mute" id="sfeedMute"></button>
+    <div class="sfeed" id="sfeed"></div>
   </div>
 
   <!-- PLAYER -->
   <div class="page" id="page-player">
     <div class="player-layout">
-      <div>
+      <div class="player-col">
         <div class="player-video"><video id="mainVideo" controls></video></div>
         <div class="player-title" id="playerTitle"></div>
         <div class="player-meta">
@@ -303,7 +383,7 @@ document.addEventListener('keydown', function(e) {
         </div>
       </div>
       <div>
-        <div class="section-title" style="font-size:15px">Up next</div>
+        <div class="section-title" style="font-size:15px" id="upNextTitle">Up next</div>
         <div id="relatedVideos"></div>
       </div>
     </div>
@@ -510,6 +590,7 @@ document.addEventListener('keydown', function(e) {
   var bannerFile = null;
   var pfpFile = null;
   var watchHistory = [];
+  var sfeedStartId = null;     // short to land on when the feed opens
 
   try { watchHistory = JSON.parse(localStorage.getItem('yvz_history') || '[]'); } catch(e) {}
 
@@ -544,6 +625,10 @@ document.addEventListener('keydown', function(e) {
     if ((page === 'upload' || page === 'liked' || page === 'profile' || page === 'edit-channel') && !currentUser) {
       page = 'auth';
     }
+    // leaving the player: stop playback. Shorts loop, so without this one
+    // would keep going in the background after you navigate away.
+    if (page !== 'player') { try { $('mainVideo').pause(); } catch(e) {} }
+    if (page !== 'shorts') stopSfeed();
     document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
     document.querySelectorAll('.nav-item[data-page]').forEach(function(n) { n.classList.remove('active'); });
     var pg = $('page-' + page);
@@ -551,7 +636,7 @@ document.addEventListener('keydown', function(e) {
     var nv = $('nav-' + page);
     if (nv) nv.classList.add('active');
     if (page === 'home') loadHome();
-    if (page === 'shorts') loadShorts();
+    if (page === 'shorts') { loadShorts(sfeedStartId); sfeedStartId = null; }
     if (page === 'history') loadHistory();
     if (page === 'liked') loadLiked();
     if (page === 'profile') loadProfile();
@@ -594,7 +679,9 @@ document.addEventListener('keydown', function(e) {
     el.querySelectorAll('.video-card[data-id], .short-card[data-id]').forEach(function(c) {
       c.addEventListener('click', function(e) {
         if (e.target.closest('[data-channel-id]')) return;
-        openVideo(c.dataset.id);
+        // shorts open the scroller, starting on the one you clicked
+        if (c.classList.contains('short-card')) openShorts(c.dataset.id);
+        else openVideo(c.dataset.id);
       });
     });
     el.querySelectorAll('[data-channel-id]').forEach(function(c) {
@@ -665,14 +752,170 @@ document.addEventListener('keydown', function(e) {
     });
   }
 
-  function loadShorts() {
-    _sb.from('videos').select('*, profiles(username, avatar_url)').eq('is_short', true).order('created_at', { ascending: false }).then(function(r) {
-      var g = $('shorts-grid');
-      if (!r.data || !r.data.length) {
-        g.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚡</div><p>No shorts yet!</p></div>';
-      } else { g.innerHTML = r.data.map(shortCard).join(''); bindCards(g); }
+  /* ═══════════════════════════════════════════════════════════════
+     SHORTS FEED — full-screen vertical scroller.
+     One short per screen, snapped. Whichever one is on screen plays
+     and loops; the rest are paused so only ever one is running.
+     ═══════════════════════════════════════════════════════════════ */
+
+  var sfeedMuted = false;      // shared across shorts, like every other app
+  var sfeedObserver = null;
+  var sfeedViewed = {};        // only count a view once per visit
+
+  /* open the feed on a specific short (clicked from a grid) */
+  function openShorts(id) { sfeedStartId = id; navigate('shorts'); }
+
+  function sfeedItem(v) {
+    var p = v.profiles || {};
+    var u = p.username || 'Unknown';
+    return '<div class="sfeed-item paused" data-id="' + v.id + '" data-user="' + v.user_id + '">' +
+      '<video src="' + v.video_url + '" loop playsinline preload="none"' +
+        (v.thumbnail_url ? ' poster="' + v.thumbnail_url + '"' : '') + '></video>' +
+      '<div class="sfeed-pause">' + icon('play', 62) + '</div>' +
+      '<div class="sfeed-info">' +
+        '<div class="sfeed-user" data-channel-id="' + v.user_id + '">' +
+          avatarHTML(p, 34) + '<span class="sfeed-user-name">@' + u + '</span>' +
+        '</div>' +
+        '<div class="sfeed-title">' + v.title + '</div>' +
+        '<div class="sfeed-sub">' + fv(v.views) + ' views • ' + timeAgo(v.created_at) + '</div>' +
+      '</div>' +
+      '<div class="sfeed-rail">' +
+        '<button class="sfeed-btn sfeed-like" title="Like">' +
+          '<span class="ic-wrap">' + icon('heart', 22) + '</span><span class="sfeed-likes">0</span></button>' +
+        '<button class="sfeed-btn sfeed-comment" title="Comments">' +
+          '<span class="ic-wrap">' + icon('chat', 22) + '</span><span>Comments</span></button>' +
+      '</div></div>';
+  }
+
+  function loadShorts(startId) {
+    var feed = $('sfeed');
+    feed.innerHTML = '<div class="sfeed-empty">Loading…</div>';
+    _sb.from('videos').select('*, profiles(username, avatar_url)').eq('is_short', true)
+      .order('created_at', { ascending: false }).then(function(r) {
+      var rows = r.data || [];
+      if (!rows.length) {
+        feed.innerHTML = '<div class="sfeed-empty">No shorts yet!</div>';
+        return;
+      }
+      // opened from a card: put that short first so it's what you land on
+      if (startId) {
+        var i = rows.findIndex(function(v) { return String(v.id) === String(startId); });
+        if (i > 0) rows.unshift(rows.splice(i, 1)[0]);
+      }
+      feed.innerHTML = rows.map(sfeedItem).join('');
+      feed.scrollTop = 0;
+      paintMuteBtn();
+      bindSfeed(feed);
+      watchSfeed(feed);
     });
   }
+
+  function paintMuteBtn() {
+    var b = $('sfeedMute');
+    if (b) b.innerHTML = icon(sfeedMuted ? 'volumeOff' : 'volume', 18);
+  }
+
+  function setSfeedMuted(m) {
+    sfeedMuted = m;
+    $('sfeed').querySelectorAll('video').forEach(function(v) { v.muted = m; });
+    paintMuteBtn();
+  }
+
+  function bindSfeed(feed) {
+    feed.querySelectorAll('.sfeed-item').forEach(function(item) {
+      var vid = item.querySelector('video');
+      var id = item.dataset.id;
+
+      // tap the video to pause/resume, same as every shorts app
+      vid.addEventListener('click', function() {
+        if (vid.paused) { vid.play().catch(function() {}); } else { vid.pause(); }
+      });
+      vid.addEventListener('play',  function() { item.classList.remove('paused'); });
+      vid.addEventListener('pause', function() { item.classList.add('paused'); });
+
+      item.querySelector('.sfeed-user').addEventListener('click', function() {
+        openChannel(item.dataset.user);
+      });
+      item.querySelector('.sfeed-like').addEventListener('click', function() {
+        toggleSfeedLike(id, item);
+      });
+      item.querySelector('.sfeed-comment').addEventListener('click', function() {
+        openVideo(id);
+      });
+    });
+  }
+
+  /* plays whichever short is on screen, pauses the rest */
+  function watchSfeed(feed) {
+    if (sfeedObserver) sfeedObserver.disconnect();
+    sfeedObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        var item = e.target;
+        var vid = item.querySelector('video');
+        if (!vid) return;
+        if (e.isIntersecting) {
+          vid.muted = sfeedMuted;
+          vid.play().catch(function() {
+            // browser refused sound without a gesture — go muted and retry
+            setSfeedMuted(true);
+            vid.play().catch(function() {});
+          });
+          onSfeedActive(item);
+        } else {
+          vid.pause();
+          vid.currentTime = 0;
+        }
+      });
+    }, { root: feed, threshold: 0.6 });
+    feed.querySelectorAll('.sfeed-item').forEach(function(i) { sfeedObserver.observe(i); });
+  }
+
+  function onSfeedActive(item) {
+    var id = item.dataset.id;
+    if (!sfeedViewed[id]) {
+      sfeedViewed[id] = true;
+      _sb.rpc('bump_view', { vid: String(id) });
+    }
+    loadSfeedLikes(id, item);
+  }
+
+  function loadSfeedLikes(id, item) {
+    _sb.from('likes').select('user_id').eq('video_id', id).then(function(r) {
+      var rows = r.data || [];
+      item.querySelector('.sfeed-likes').textContent = fv(rows.length);
+      var mine = currentUser && rows.some(function(l) { return l.user_id === currentUser.id; });
+      item.querySelector('.sfeed-like').classList.toggle('on', !!mine);
+    });
+  }
+
+  function toggleSfeedLike(id, item) {
+    if (!currentUser) { navigate('auth'); return; }
+    _sb.from('likes').select('id').eq('video_id', id).eq('user_id', currentUser.id).then(function(r) {
+      var done = function() { loadSfeedLikes(id, item); };
+      if (r.data && r.data.length) {
+        _sb.from('likes').delete().eq('id', r.data[0].id).then(done);
+      } else {
+        _sb.from('likes').insert({ video_id: id, user_id: currentUser.id }).then(done);
+      }
+    });
+  }
+
+  function stopSfeed() {
+    if (sfeedObserver) { sfeedObserver.disconnect(); sfeedObserver = null; }
+    var feed = $('sfeed');
+    if (feed) feed.querySelectorAll('video').forEach(function(v) { v.pause(); });
+  }
+
+  /* scroll one short at a time with the arrow keys */
+  document.addEventListener('keydown', function(e) {
+    var pg = $('page-shorts');
+    if (!pg || !pg.classList.contains('active')) return;
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    var feed = $('sfeed');
+    var step = feed.clientHeight * (e.key === 'ArrowDown' ? 1 : -1);
+    feed.scrollBy({ top: step, behavior: 'smooth' });
+  });
 
   function openVideo(id) {
     navigate('player');
@@ -688,7 +931,15 @@ document.addEventListener('keydown', function(e) {
       if (watchHistory.length > 50) watchHistory.pop();
       try { localStorage.setItem('yvz_history', JSON.stringify(watchHistory)); } catch(e) {}
 
-      $('mainVideo').src = v.video_url;
+      // Shorts play portrait, loop, and start on their own — a click got
+      // us here, so the browser counts this as user-initiated.
+      var mv = $('mainVideo');
+      mv.src = v.video_url;
+      mv.loop = !!v.is_short;
+      $('page-player').classList.toggle('short-mode', !!v.is_short);
+      $('upNextTitle').textContent = v.is_short ? 'More Shorts' : 'Up next';
+      if (v.is_short) mv.play().catch(function() {});
+
       $('playerTitle').textContent = v.title;
       $('playerDesc').textContent = v.description || '';
       var p = v.profiles || {};
@@ -780,7 +1031,10 @@ document.addEventListener('keydown', function(e) {
           '<div><div class="related-title">' + v.title + '</div><div class="related-sub">@' + ru + ' • ' + fv(v.views) + ' views</div></div></div>';
       }).join('');
       c.querySelectorAll('.related-video').forEach(function(el) {
-        el.addEventListener('click', function() { openVideo(el.dataset.id); });
+        el.addEventListener('click', function() {
+          // a Short in this list belongs in the scroller, not the player
+          if (isShortVal) openShorts(el.dataset.id); else openVideo(el.dataset.id);
+        });
       });
     });
   }
@@ -1084,11 +1338,19 @@ document.addEventListener('keydown', function(e) {
 
   // EVENT LISTENERS
   $('logoBtn').addEventListener('click', function() { navigate('home'); });
+  $('sfeedMute').addEventListener('click', function() { setSfeedMuted(!sfeedMuted); });
   $('themeBtn').addEventListener('click', function() {
     isDark = !isDark;
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     $('themeBtn').textContent = isDark ? '🌙' : '☀️';
+    // same key the chat app and Qmages use — one preference, whole site
+    localStorage.setItem('ycz-theme', isDark ? 'dark' : 'light');
   });
+  if (localStorage.getItem('ycz-theme') === 'light') {
+    isDark = false;
+    document.documentElement.setAttribute('data-theme', 'light');
+    $('themeBtn').textContent = '☀️';
+  }
   $('signInBtn').addEventListener('click', function() { navigate('auth'); });
   $('userAvatar').addEventListener('click', function() { navigate('profile'); });
   $('searchBtn').addEventListener('click', doSearch);

@@ -559,7 +559,75 @@ img{display:block;}
 /* mobile */
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:34;display:none;}
 #scrim.on{display:block;}
+/* ══ TOPBAR DROPDOWNS (search, pins) ══ */
+.tw{position:relative;flex:none;}
+.tdrop{position:absolute;top:40px;right:0;width:340px;max-width:88vw;background:var(--panel);
+  border:1px solid var(--border-2);border-radius:13px;box-shadow:0 14px 40px rgba(0,0,0,.65);
+  overflow:hidden;display:none;z-index:120;}
+.tdrop.on{display:block;}
+.tdrop .fi{background:var(--main);}
+.td-list{max-height:370px;overflow-y:auto;}
+.ni .ni-x{width:24px;height:24px;border-radius:6px;color:var(--txt3);font-size:11px;flex:none;align-self:center;}
+.ni .ni-x:hover{background:var(--hover);color:#ff5f6d;}
+.ni-ic .ic-svg{margin:3px auto 0;}
+
+/* pinned marker on a message */
+.pin-mark{color:var(--amb);display:inline-flex;align-self:center;}
+
+/* ══ JUMP TO LATEST ══ */
+#jump{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:10px;
+  padding:8px 16px;border-radius:20px;background:var(--red);color:#fff;font-size:12.5px;font-weight:700;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);display:none;z-index:55;white-space:nowrap;}
+#jump.on{display:block;}
+
+/* ══ STATUS DOTS ══ */
+.mem-row.on-now.st-idle .mem-av::after{background:var(--amb);}
+.mem-row.on-now.st-dnd .mem-av::after{background:var(--red);}
+.on-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--grn);margin-right:5px;}
+.on-dot.st-idle{background:var(--amb);}
+.on-dot.st-dnd{background:var(--red);}
+.st-pick button{display:flex;align-items:center;justify-content:center;gap:7px;}
+.st-dot{width:9px;height:9px;border-radius:50%;flex:none;}
+
+/* bio on the user card */
+#uc-bio{font-size:13.5px;color:var(--txt2);margin:2px 0 8px;white-space:pre-wrap;word-wrap:break-word;}
+
+/* inline icons inside hint lines */
+.hint .ic-svg,#hd-msg .ic-svg,#up-msg .ic-svg{display:inline-block;vertical-align:-2px;}
+
+/* ══ LIGHT THEME ══
+   Flipped by the sun/moon button in the user bar. Saved to localStorage
+   as ycz-theme, the same key VideoZone and Qmages read — one preference
+   for the whole site. */
+body.light{
+  --rail:#e3e3ea; --side:#ececf1; --main:#f7f7fa; --panel:#ffffff;
+  --hover:rgba(0,0,0,.05); --active:rgba(0,0,0,.09);
+  --border:rgba(0,0,0,.08); --border-2:rgba(0,0,0,.14);
+  --red-dim:rgba(232,22,42,.08);
+  --txt:#191922; --txt2:#4e4e62; --txt3:#8b8b9e;
+}
+body.light ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.16);background-clip:padding-box;}
+body.light ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.28);background-clip:padding-box;}
+body.light .m:hover{background:rgba(0,0,0,.045);}
+body.light .m-tx{color:#2c2c38;}
+body.light .m-tx code{background:rgba(0,0,0,.07);}
+body.light #me-bar{background:rgba(0,0,0,.045);}
+body.light #vhud{background:rgba(0,0,0,.05);}
+body.light .fi,body.light .tabs,body.light .seg button,body.light .sm-ch,body.light .bot-row,
+body.light .uprev,body.light .upb,body.light .m-edit,body.light .ac-av{background:#f0f0f4;}
+body.light .tdrop .fi{background:#f0f0f4;}
+body.light .tok-v{background:#fff;}
+body.light .rail-item::before{background:#191922;}
+body.light .ch.on,body.light .ch.unread,body.light .tbtn.on{color:#111;}
+body.light #rail{border-right-color:rgba(0,0,0,.12);}
+body.light #side{border-right-color:rgba(0,0,0,.08);}
+body.light #mem{border-left-color:rgba(0,0,0,.08);}
+body.light #top{box-shadow:0 1px 0 rgba(0,0,0,.04);}
+body.light .card{box-shadow:0 22px 60px rgba(0,0,0,.22);}
+body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.light #ac{box-shadow:0 8px 26px rgba(0,0,0,.16);}
+
 @media(max-width:900px){#mem{display:none;}}
+@media(max-width:480px){#t-inv{display:none !important;}}
 @media(max-width:760px){
   #rail,#side{position:fixed;top:0;bottom:0;transition:transform .22s cubic-bezier(.2,.9,.3,1);}
   #rail{transform:translateX(-100%);}
@@ -610,6 +678,7 @@ img{display:block;}
     <div id="me-bar">
       <div id="me-av">?</div>
       <div id="me-inf"><div id="me-nm" data-i18n="signedOut">Not signed in</div><div id="me-hd" data-i18n="tapSignIn">tap to sign in</div></div>
+      <button class="me-btn" id="me-theme" data-i18n-title="lightMode" title="Light mode"><i data-ic="sun"></i></button>
       <button class="me-btn" id="me-set" data-i18n-title="settings" title="Settings"><i data-ic="settings"></i></button>
     </div>
   </aside>
@@ -621,6 +690,20 @@ img{display:block;}
       <span class="ic" id="top-ic">#</span>
       <span class="nm" id="top-nm">global</span>
       <span class="tp" id="top-tp"></span>
+      <div class="tw" id="sw">
+        <button class="tbtn" id="sb-btn" data-i18n-title="search" title="Search"><i data-ic="search"></i></button>
+        <div class="tdrop" id="sdrop">
+          <div class="nd-h" style="padding:10px 12px;"><input class="fi" id="s-q" data-i18n-ph="searchMsgs" placeholder="Search messages…" autocomplete="off"></div>
+          <div class="td-list" id="s-res"></div>
+        </div>
+      </div>
+      <div class="tw" id="pw">
+        <button class="tbtn" id="pb-btn" data-i18n-title="pinned" title="Pinned messages"><i data-ic="pin"></i></button>
+        <div class="tdrop" id="pdrop">
+          <div class="nd-h"><span data-i18n="pinned">Pinned messages</span></div>
+          <div class="td-list" id="p-list"></div>
+        </div>
+      </div>
       <div id="nw">
         <button class="tbtn" id="nb" data-i18n-title="notifications" title="Notifications"><i data-ic="bell"></i></button>
         <span id="nbadge">0</span>
@@ -654,6 +737,7 @@ img{display:block;}
     </div>
 
     <div id="comp">
+      <button id="jump"></button>
       <div id="ac"></div>
       <div id="emo"></div>
       <div id="reply-bar">Replying to <b id="reply-who">…</b><button id="reply-x">✕ cancel</button></div>
@@ -801,6 +885,7 @@ img{display:block;}
       <div id="uc-nm">Loading…</div>
       <div id="uc-hd">@…</div>
       <div id="uc-tags"></div>
+      <div id="uc-bio" style="display:none;"></div>
       <div id="uc-meta"></div>
       <div id="uc-acts"></div>
       <div id="uc-mod" style="display:none;"></div>
@@ -824,7 +909,7 @@ img{display:block;}
     <div class="set-b">
       <div class="pfp-ring" id="pfp-ring">
         <img class="im" id="pfp-im" alt=""><img class="fr" id="pfp-fr" alt="">
-        <span class="ph" id="pfp-ph">👤</span><div class="cam">📷</div>
+        <span class="ph" id="pfp-ph"><i data-ic="user" data-ic-size="34"></i></span><div class="cam"><i data-ic="camera" data-ic-size="22"></i></div>
         <input type="file" id="pfp-file" accept="image/*" style="display:none">
       </div>
       <div class="hint" style="text-align:center;margin-bottom:20px;">Tap the circle to change your picture · max 5MB</div>
@@ -833,6 +918,19 @@ img{display:block;}
       <div class="fg"><label class="fl">Handle (unique @name)</label>
         <input type="text" class="fi mono" id="s-hd" placeholder="yourhandle" autocapitalize="off">
         <div class="hint" id="hd-msg"></div>
+      </div>
+      <div class="fg"><label class="fl" data-i18n="bio">About me</label>
+        <textarea class="fi" id="s-bio" rows="3" maxlength="190" data-i18n-ph="bioPh" placeholder="Tell people a bit about yourself…" style="resize:none;"></textarea>
+      </div>
+      <div class="fg"><label class="fl" data-i18n="status">Status</label>
+        <div class="seg st-pick" id="s-st" style="margin-bottom:0;">
+          <button data-st="online"><span class="st-dot" style="background:var(--grn);"></span><span data-i18n="stOnline">Online</span></button>
+          <button data-st="idle"><span class="st-dot" style="background:var(--amb);"></span><span data-i18n="stIdle">Away</span></button>
+          <button data-st="dnd"><span class="st-dot" style="background:var(--red);"></span><span data-i18n="stDnd">Do not disturb</span></button>
+        </div>
+      </div>
+      <div class="fg"><label class="fl" data-i18n="notifSounds">Notification sounds</label>
+        <button class="upb" id="s-snd" style="width:100%;"></button>
       </div>
       <div class="fg"><label class="fl" data-i18n="avatarFrame">Avatar frame</label>
         <div class="uprow">
@@ -930,6 +1028,7 @@ let members=[],msgs=[],msgChan=null;
 let dmList=[],unread=JSON.parse(localStorage.getItem('ycz-unread')||'{}');
 let pending=[];
 let reactions={},replyTo=null,editing=null,online=new Set(),typers={},sitePresence=null,moreOlder=true;
+let pins=[],pinRes=[],searchRes=[],myBio='',newCount=0,jumpedBack=false;
 const PAGE=60;
 
 /* ══════ UTILS ══════ */
@@ -986,6 +1085,58 @@ function uid(){
   }
   return 'ch-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
 }
+/* long random hex for bot tokens — Math.random is guessable, this is not */
+function randomToken(bytes){
+  if(window.crypto?.getRandomValues){
+    const b=crypto.getRandomValues(new Uint8Array(bytes||24));
+    return [...b].map(x=>x.toString(16).padStart(2,'0')).join('');
+  }
+  return uid().replace(/-/g,'')+Math.random().toString(36).slice(2,10);
+}
+
+/* ══════ THEME ══════
+   Same localStorage key as VideoZone and Qmages, so flipping it here
+   flips it everywhere. */
+let theme=localStorage.getItem('ycz-theme')==='light'?'light':'dark';
+function applyTheme(){
+  document.body.classList.toggle('light',theme==='light');
+  const b=$('me-theme');
+  if(b){b.innerHTML=icon(theme==='light'?'moon':'sun',15);
+    b.title=t(theme==='light'?'darkMode':'lightMode');}
+}
+$('me-theme').onclick=()=>{
+  theme=theme==='light'?'dark':'light';
+  localStorage.setItem('ycz-theme',theme);
+  applyTheme();
+};
+applyTheme();
+
+/* ══════ STATUS (online / away / do not disturb) ══════ */
+let myStatus=['online','idle','dnd'].includes(localStorage.getItem('ycz-status'))
+  ?localStorage.getItem('ycz-status'):'online';
+let statuses={};            /* uid → status, from presence */
+function statusOf(id){return statuses[id]||'online';}
+
+/* ══════ NOTIFICATION SOUND ══════
+   A tiny two-tone blip made with WebAudio — no audio file needed. */
+let audioCtx=null;
+function soundsOn(){return localStorage.getItem('ycz-sounds')!=='0';}
+function ping(){
+  if(!soundsOn()||myStatus==='dnd')return;
+  try{
+    audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended')audioCtx.resume();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='sine';
+    o.frequency.setValueAtTime(880,audioCtx.currentTime);
+    o.frequency.setValueAtTime(660,audioCtx.currentTime+.09);
+    g.gain.setValueAtTime(.001,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.12,audioCtx.currentTime+.02);
+    g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+.24);
+    o.start();o.stop(audioCtx.currentTime+.26);
+  }catch(e){}
+}
 
 /* ══════ AUTH UI ══════ */
 const authErr=m=>{const e=$('auth-err');e.textContent=m;e.className='err on';};
@@ -1003,7 +1154,7 @@ $('do-in').onclick=async()=>{
   const{error}=await sb.auth.signInWithPassword({email,password});
   $('do-in').disabled=false;
   if(error)return authErr(error.message);
-  shut('auth-ov');toast('Welcome back ✓','ok');
+  shut('auth-ov');toast(t('welcomeBack')+' ✓','ok');
 };
 $('do-up').onclick=async()=>{
   const email=$('up-em').value.trim(),password=$('up-pw').value,nm=$('up-nm').value.trim();
@@ -1012,7 +1163,7 @@ $('do-up').onclick=async()=>{
   const{error}=await sb.auth.signUp({email,password,options:{data:{username:nm||email.split('@')[0]}}});
   $('do-up').disabled=false;
   if(error)return authErr(error.message);
-  toast('Account created — check your email 📧','ok');authTab('in');
+  toast(t('checkEmail'),'ok');authTab('in');
 };
 $('in-pw').onkeydown=e=>{if(e.key==='Enter')$('do-in').click();};
 $('up-nm').onkeydown=e=>{if(e.key==='Enter')$('do-up').click();};
@@ -1024,7 +1175,7 @@ async function loadMe(){
   try{
     const{data}=await sb.from('user_profiles').select('*').eq('user_id',user.id).maybeSingle();
     if(data){uname=data.username||uname;myHandle=data.handle||myHandle;pfpUrl=data.pfp_url||pfpUrl;
-      pfpFrame=data.pfp_frame||pfpFrame;bgUrl=data.bg_url||bgUrl;}
+      pfpFrame=data.pfp_frame||pfpFrame;bgUrl=data.bg_url||bgUrl;myBio=data.bio||'';}
   }catch(e){}
   if(!uname)uname=user.email.split('@')[0];
   if(!myHandle)await makeHandle();
@@ -1045,15 +1196,28 @@ async function makeHandle(){
 }
 async function saveProfile(){
   if(!user)return;
-  try{await sb.from('user_profiles').upsert({user_id:user.id,username:uname,handle:myHandle||null,
-    pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null,bg_url:bgUrl||null,updated_at:new Date().toISOString()},{onConflict:'user_id'});}catch(e){}
+  const row={user_id:user.id,username:uname,handle:myHandle||null,pfp_url:pfpUrl||null,
+    pfp_frame:pfpFrame||null,bg_url:bgUrl||null,updated_at:new Date().toISOString()};
+  try{
+    /* bio column may not exist yet (features-update.sql not run) — if the
+       save fails with it, retry without so "last seen" keeps working */
+    const{error}=await sb.from('user_profiles').upsert({...row,bio:myBio||null},{onConflict:'user_id'});
+    if(error)await sb.from('user_profiles').upsert(row,{onConflict:'user_id'});
+  }catch(e){}
 }
 function paintMe(){
-  const av=$('me-av');
+  const av=$('me-av'),nm=$('me-nm'),hd=$('me-hd');
   if(user){
     av.innerHTML=pfpUrl&&isUrl(pfpUrl)?`<img src="${esc(pfpUrl)}" alt="">`:ini(uname);
-    $('me-nm').textContent=uname;$('me-hd').textContent='@'+(myHandle||'…');
-  }else{av.textContent='?';$('me-nm').textContent='Not signed in';$('me-hd').textContent='tap to sign in';}
+    /* drop the i18n keys or applyI18n() will overwrite the name with
+       "Not signed in" on every language change */
+    nm.removeAttribute('data-i18n');hd.removeAttribute('data-i18n');
+    nm.textContent=uname;hd.textContent='@'+(myHandle||'…');
+  }else{
+    av.textContent='?';
+    nm.setAttribute('data-i18n','signedOut');hd.setAttribute('data-i18n','tapSignIn');
+    nm.textContent=t('signedOut');hd.textContent=t('tapSignIn');
+  }
 }
 $('me-av').onclick=$('me-inf').onclick=()=>user?openSettings():open('auth-ov');
 $('me-set').onclick=()=>user?openSettings():open('auth-ov');
@@ -1061,19 +1225,38 @@ $('me-set').onclick=()=>user?openSettings():open('auth-ov');
 function prev(id,url){const e=$(id);if(url&&isUrl(url)){e.style.backgroundImage=`url("${url}")`;e.innerHTML='';}
   else{e.style.backgroundImage='';e.innerHTML='<span>none</span>';}}
 function openSettings(){
-  $('s-nm').value=uname;$('s-hd').value=myHandle;$('hd-msg').textContent='';$('up-msg').textContent='';
+  $('s-nm').value=uname;$('s-hd').value=myHandle;$('s-bio').value=myBio;
+  $('hd-msg').textContent='';$('up-msg').textContent='';
   const im=$('pfp-im'),fr=$('pfp-fr'),ph=$('pfp-ph');
   if(pfpUrl&&isUrl(pfpUrl)){im.src=pfpUrl;im.style.display='block';ph.style.display='none';}else{im.style.display='none';ph.style.display='block';}
   if(pfpFrame&&isUrl(pfpFrame)){fr.src=pfpFrame;fr.style.display='block';}else fr.style.display='none';
   prev('fr-prev',pfpFrame);prev('bg-prev',bgUrl);
+  paintStatusPick();paintSoundBtn();
   open('set-ov');
 }
+function paintStatusPick(){
+  document.querySelectorAll('#s-st button').forEach(b=>b.classList.toggle('on',b.dataset.st===myStatus));
+}
+document.querySelectorAll('#s-st button').forEach(b=>b.onclick=()=>{
+  myStatus=b.dataset.st;localStorage.setItem('ycz-status',myStatus);
+  paintStatusPick();
+  if(sitePresence&&user)sitePresence.track({uid:user.id,status:myStatus,at:Date.now()});
+});
+function paintSoundBtn(){
+  $('s-snd').innerHTML=icon(soundsOn()?'volume':'volumeOff',15)+' '
+    +esc(t(soundsOn()?'soundsOn':'soundsOff'));
+}
+$('s-snd').onclick=()=>{
+  localStorage.setItem('ycz-sounds',soundsOn()?'0':'1');
+  paintSoundBtn();
+  if(soundsOn())ping();          /* preview the blip */
+};
 $('set-x').onclick=()=>shut('set-ov');
 $('s-hd').oninput=function(){
   const h=slug(this.value),m=$('hd-msg');if(!h){m.textContent='';return;}
   clearTimeout(this._t);this._t=setTimeout(async()=>{
     const free=await handleFree(h);
-    m.textContent=free?`✓ @${h} is available`:`✗ @${h} is taken`;
+    m.innerHTML=`${icon(free?'check':'x',12)} @${esc(h)} ${esc(t(free?'available':'taken'))}`;
     m.style.color=free?'var(--grn)':'#ff5f6d';},420);
 };
 async function upload(file,name){
@@ -1084,7 +1267,7 @@ async function upload(file,name){
   const path=`${user.id}/${name}.${ext}`;
   const{error}=await sb.storage.from('avatars').upload(path,file,{upsert:true,cacheControl:'60'});
   if(error){$('up-msg').textContent='';toast('Upload failed: '+error.message,'err');return null;}
-  $('up-msg').textContent='✓ Uploaded';
+  $('up-msg').innerHTML=icon('check',12)+' '+esc(t('uploaded'));
   return sb.storage.from('avatars').getPublicUrl(path).data.publicUrl+'?t='+Date.now();
 }
 $('pfp-ring').onclick=()=>$('pfp-file').click();
@@ -1101,8 +1284,9 @@ $('bg-x').onclick=()=>{bgUrl='';prev('bg-prev','');};
 $('s-save').onclick=async()=>{
   const n=$('s-nm').value.trim(),h=slug($('s-hd').value);
   if(n)uname=n;
+  myBio=$('s-bio').value.trim();
   if(h&&h!==myHandle){
-    if(!await handleFree(h)){$('hd-msg').textContent=`✗ @${h} is taken`;$('hd-msg').style.color='#ff5f6d';return;}
+    if(!await handleFree(h)){$('hd-msg').innerHTML=`${icon('x',12)} @${esc(h)} ${esc(t('taken'))}`;$('hd-msg').style.color='#ff5f6d';return;}
     myHandle=h;
   }
   await sb.auth.updateUser({data:{username:uname,handle:myHandle,pfp_url:pfpUrl,pfp_frame:pfpFrame,bg_url:bgUrl}});
@@ -1270,7 +1454,7 @@ $('sm-newbot').onclick=async()=>{
   if(!curSv||!canManage())return toast('Only owners and admins can add bots','err');
   const name=prompt('What should the bot be called?','My Bot');
   if(!name)return;
-  const token='ycz_bot_'+uid().replace(/-/g,'')+Math.random().toString(36).slice(2,10);
+  const token='ycz_bot_'+randomToken(24);
   const{error}=await sb.from('bots').insert({server_id:curSv.id,name:name.trim(),token,created_by:user.id});
   if(error)return toast(error.message,'err');
   showToken(name.trim(),token);
@@ -1378,6 +1562,17 @@ function canManage(){
   if(!user||!curSv)return false;
   return curSv.owner_id===user.id||['owner','admin'].includes(curSv.myRole)||gRole==='owner';
 }
+/* like canManage but mods count too — deleting and pinning messages */
+function canModerate(){
+  if(!user)return false;
+  if(['owner','admin','mod'].includes(gRole))return true;
+  if(curSv)return curSv.owner_id===user.id||['owner','admin','mod'].includes(curSv.myRole);
+  return false;
+}
+function canPin(){
+  if(!user||!curCh)return false;
+  return curCh.kind==='dm'?true:canModerate();
+}
 function paintSide(){
   if(!curSv)return;
   const canEdit=canManage();
@@ -1425,7 +1620,7 @@ $('ch-go').onclick=async()=>{
     shut('ch-ov');
     await loadChannels();
     if($('sm-ov').classList.contains('open'))paintChanList();
-    toast('Created '+(type==='voice'?'🔊 ':'#')+name+' ✓','ok');
+    toast('Created '+(type==='voice'?'':'#')+name+' ✓','ok');
     if(data&&type==='text')openChannel(data);
   }catch(e){
     err('Could not create the channel: '+(e.message||e));
@@ -1442,9 +1637,10 @@ function newChannel(type){
 $('ch-nm').addEventListener('keydown',e=>{if(e.key==='Enter')$('ch-go').click();});
 
 /* ══════ CHANNELS / MESSAGES ══════ */
-function openChannel(c){
+function openChannel(c,skipLoad){
   curCh=c;clearReply();editing=null;typers={};paintTyping();
-  delete unread[c.room_key];saveUnread();
+  newCount=0;jumpedBack=false;paintJump(false);
+  delete unread[c.room_key];saveUnread();paintDMBadge();
   $('top-ic').innerHTML=c.kind==='dm'?'@':icon('hash',18);
   $('top-nm').textContent=c.name;
   $('top-tp').textContent=c.kind==='dm'?'Direct message':(curSv?curSv.name:'');
@@ -1452,7 +1648,8 @@ function openChannel(c){
   $('t-mem').style.display=curSv?'flex':'none';
   if(!curSv)$('mem').classList.add('hide');
   paintSide();paintDMSide();
-  loadMsgs();subscribeMsgs();
+  if(!skipLoad)loadMsgs();
+  subscribeMsgs();loadPins();
   refreshComposer();
 }
 function refreshComposer(){
@@ -1503,6 +1700,8 @@ async function loadReactions(){
 function paintMsgs(jump){
   const box=$('msgs');
   const near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
+  const pinnedSet=new Set(pins.map(p=>String(p.message_id)));
+  const pinOK=canPin();
   let h=moreOlder&&msgs.length?`<div id="older"><button id="older-btn">↑ ${t('loadOlder')}</button></div>`:'';
   h+=`<div class="hero"><div class="ic">${curCh.kind==='dm'?'@':icon('hash',30)}</div>
     <h2>${curCh.kind==='dm'?'':'#'}${esc(curCh.name)}</h2>
@@ -1529,7 +1728,7 @@ function paintMsgs(jump){
       quote=par?`<div class="m-reply" data-jump="${esc(par.id)}">
           <span class="ra">${par.pfp_url&&isUrl(par.pfp_url)?`<img src="${esc(par.pfp_url)}">`:esc(ini(par.username))}</span>
           <span class="rn">${esc(par.username||'Anonymous')}</span>
-          <span class="rt">${esc((par.text||'📷 image').slice(0,80))}</span></div>`
+          <span class="rt">${esc((par.text||t('imageMsg')).slice(0,80))}</span></div>`
         : `<div class="m-reply"><span class="rt">message deleted</span></div>`;
     }
     /* reaction chips */
@@ -1545,13 +1744,16 @@ function paintMsgs(jump){
       ? `<textarea class="m-edit" data-editing="${m.id}">${esc(m.text||'')}</textarea>
          <div class="m-edit-h">Enter to save · Esc to cancel</div>`
       : (m.text?`<div class="m-tx">${renderText(m.text)}${editedTag}</div>`:'');
-    const body=`<div class="m-bd">${quote}${grouped?'':`<div class="m-hd"><span class="m-nm ${cls}" data-uc="${esc(m.user_id||'')}">${esc(m.username||'Anonymous')}</span>${tags}<span class="m-tm">${clock(m.created_at)}</span></div>`}
+    const isPinned=pinnedSet.has(String(m.id));
+    const pinMark=isPinned?`<span class="pin-mark" title="${esc(t('pinned'))}">${icon('pin',11)}</span>`:'';
+    const body=`<div class="m-bd">${quote}${grouped?'':`<div class="m-hd"><span class="m-nm ${cls}" data-uc="${esc(m.user_id||'')}">${esc(m.username||'Anonymous')}</span>${tags}<span class="m-tm">${clock(m.created_at)}</span>${pinMark}</div>`}
       ${textHtml}${img}${rxHtml}</div>`;
     const mine=user&&m.user_id===user.id;
-    const canDel=user&&(mine||['owner','admin','mod'].includes(gRole));
+    const canDel=user&&(mine||canModerate());
     const acts=user?`<div class="m-acts">
       <button data-rx="${m.id}" title="${t('react')}">${icon('smile',15)}</button>
       <button data-reply="${m.id}" title="${t('reply')}">${icon('reply',15)}</button>
+      ${pinOK?`<button data-pin="${m.id}" title="${t(isPinned?'unpinMsg':'pinMsg')}">${icon('pin',15)}</button>`:''}
       ${mine&&m.text?`<button data-edit="${m.id}" title="${t('edit')}">${icon('pencil',15)}</button>`:''}
       ${canDel?`<button class="del" data-del="${m.id}" title="${t('delete')}">${icon('trash',15)}</button>`:''}
     </div>`:'';
@@ -1565,7 +1767,7 @@ function paintMsgs(jump){
       h+=`<div class="m grp${ping}"><div class="m-av" data-uc="${esc(m.user_id||'')}">${av}</div>${body}${acts}</div>`;
     }
   });
-  if(!msgs.length)h+=`<div class="sys">${t('noMessages')} 👋</div>`;
+  if(!msgs.length)h+=`<div class="sys">${t('noMessages')}</div>`;
   h+='<div id="msg-end"></div>';
   box.innerHTML=h;
   const ob=$('older-btn');if(ob)ob.onclick=loadOlder;
@@ -1593,6 +1795,8 @@ $('msgs').addEventListener('click',async e=>{
   if(tog){const[mid,emo]=tog.dataset.tog.split('|');toggleRx(mid,emo);return;}
   const rxb=e.target.closest('[data-rx]');
   if(rxb){openEmoji(rxb,em=>toggleRx(rxb.dataset.rx,em));return;}
+  const pn=e.target.closest('[data-pin]');
+  if(pn){togglePin(pn.dataset.pin);return;}
   const del=e.target.closest('[data-del]');
   if(del){if(!confirm('Delete this message?'))return;
     await sb.from('messages').delete().eq('id',del.dataset.del);
@@ -1698,6 +1902,180 @@ document.addEventListener('click',e=>{
     $('emo').classList.remove('on');
 });
 
+/* ══════ TOPBAR DROPDOWNS — only one open at a time ══════ */
+function closeDrops(except){
+  ['sdrop','pdrop'].forEach(id=>{if(id!==except)$(id).classList.remove('on');});
+  if(except!=='ndrop'&&ndOpen)toggleND(false);
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#sw'))$('sdrop').classList.remove('on');
+  if(!e.target.closest('#pw'))$('pdrop').classList.remove('on');
+});
+
+/* ══════ JUMP TO A MESSAGE (from search results and pins) ══════ */
+function flashMsg(id){
+  const i=msgs.findIndex(x=>String(x.id)===String(id));if(i<0)return;
+  const el=[...$('msgs').querySelectorAll('.m')][i];if(!el)return;
+  el.scrollIntoView({block:'center'});
+  el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1300);
+}
+async function jumpToMsg(roomKey,m){
+  const c=(curCh&&curCh.room_key===roomKey)?curCh
+    :channels.find(x=>x.room_key===roomKey)||dmList.find(x=>x.room_key===roomKey);
+  if(!c){toast('That channel is not available');return;}
+  if(!curCh||curCh.id!==c.id)openChannel(c,true);   /* skip the normal load — we do a targeted one */
+  const{data}=await sb.from('messages').select('*').eq('room_id',roomKey)
+    .lte('created_at',m.created_at).order('created_at',{ascending:false}).limit(PAGE);
+  msgs=(data||[]).reverse();
+  moreOlder=(data||[]).length===PAGE;
+  await loadReactions();
+  paintMsgs();
+  flashMsg(m.id);
+  /* we're looking at old history now — offer the way back down */
+  jumpedBack=true;paintJump(true);
+}
+
+/* ══════ MESSAGE SEARCH ══════ */
+function searchKeys(){
+  if(curSv)return channels.filter(c=>c.type==='text').map(c=>c.room_key);
+  if(curCh&&curCh.kind==='dm')return[curCh.room_key];
+  return[];
+}
+async function doSearch(){
+  const res=$('s-res');
+  const q=$('s-q').value.trim();
+  if(q.length<2){res.innerHTML=`<div class="ni-e">${esc(t('typeToSearch'))}</div>`;return;}
+  const keys=searchKeys();
+  if(!keys.length){res.innerHTML=`<div class="ni-e">${esc(t('noResults'))}</div>`;return;}
+  const safe=q.replace(/([%_\\])/g,'\\$1');
+  let rows=[];
+  try{
+    const{data}=await sb.from('messages').select('id,room_id,username,text,created_at')
+      .in('room_id',keys).ilike('text','%'+safe+'%')
+      .order('created_at',{ascending:false}).limit(25);
+    rows=data||[];
+  }catch(e){}
+  searchRes=rows;
+  const chName=r=>{
+    const c=channels.find(x=>x.room_key===r.room_id)||dmList.find(x=>x.room_key===r.room_id);
+    return c?(c.kind==='dm'?'@'+c.name:'#'+c.name):'';
+  };
+  res.innerHTML=rows.length?rows.map((r,i)=>`
+    <div class="ni" data-sr="${i}">
+      <span class="ni-ic">${icon('hash',14)}</span>
+      <div class="ni-b">
+        <div class="ni-t"><b>${esc(r.username||'Anonymous')}</b> · ${esc(chName(r))}</div>
+        <div class="ni-m">${esc((r.text||'').slice(0,120))}</div>
+        <div class="ni-a">${esc(ago(r.created_at))}</div>
+      </div>
+    </div>`).join(''):`<div class="ni-e">${esc(t('noResults'))}</div>`;
+}
+$('sb-btn').onclick=e=>{
+  e.stopPropagation();
+  const was=$('sdrop').classList.contains('on');
+  closeDrops();
+  if(!was){$('sdrop').classList.add('on');$('s-q').focus();
+    if(!$('s-res').innerHTML)$('s-res').innerHTML=`<div class="ni-e">${esc(t('typeToSearch'))}</div>`;}
+};
+$('s-q').oninput=function(){clearTimeout(this._t);this._t=setTimeout(doSearch,320);};
+$('s-q').onkeydown=e=>{if(e.key==='Enter')doSearch();};
+$('s-res').onclick=e=>{
+  const it=e.target.closest('[data-sr]');if(!it)return;
+  const r=searchRes[+it.dataset.sr];if(!r)return;
+  closeDrops();
+  jumpToMsg(r.room_id,r);
+};
+
+/* ══════ PINNED MESSAGES ══════ */
+async function loadPins(){
+  pins=[];
+  if(!curCh)return;
+  try{
+    const{data}=await sb.from('pinned_messages').select('*').eq('room_id',curCh.room_key);
+    pins=data||[];
+  }catch(e){}
+}
+async function togglePin(mid){
+  if(!canPin())return;
+  const key=String(mid);
+  if(pins.some(p=>String(p.message_id)===key)){
+    const{error}=await sb.from('pinned_messages').delete().eq('message_id',key).eq('room_id',curCh.room_key);
+    if(error)return toast(error.message,'err');
+    pins=pins.filter(p=>String(p.message_id)!==key);
+    toast(t('msgUnpinned'));
+  }else{
+    const{error}=await sb.from('pinned_messages').insert({message_id:key,room_id:curCh.room_key,pinned_by:user.id});
+    if(error)return toast(error.message,'err');
+    pins.push({message_id:key,room_id:curCh.room_key,pinned_by:user.id});
+    toast(t('msgPinned'),'ok');
+  }
+  paintMsgs();
+  if($('pdrop').classList.contains('on'))paintPins();
+}
+async function paintPins(){
+  const box=$('p-list');
+  if(!pins.length){box.innerHTML=`<div class="ni-e">${esc(t('noPins'))}</div>`;return;}
+  box.innerHTML='<div class="ni-e">…</div>';
+  let rows=[];
+  try{
+    const{data}=await sb.from('messages').select('id,username,text,image_url,created_at')
+      .in('id',pins.map(p=>p.message_id));
+    rows=data||[];
+  }catch(e){}
+  /* pins whose message got deleted — clean them up quietly */
+  const got=new Set(rows.map(r=>String(r.id)));
+  const orphans=pins.filter(p=>!got.has(String(p.message_id)));
+  if(orphans.length&&canPin()){
+    pins=pins.filter(p=>got.has(String(p.message_id)));
+    orphans.forEach(p=>{sb.from('pinned_messages').delete().eq('message_id',p.message_id)
+      .eq('room_id',curCh.room_key).then(()=>{});});
+  }
+  rows.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  pinRes=rows;
+  box.innerHTML=rows.length?rows.map((m,i)=>`
+    <div class="ni" data-pj="${i}">
+      <span class="ni-ic">${icon('pin',14)}</span>
+      <div class="ni-b">
+        <div class="ni-t"><b>${esc(m.username||'Anonymous')}</b></div>
+        <div class="ni-m">${esc((m.text||t('imageMsg')).slice(0,120))}</div>
+        <div class="ni-a">${esc(ago(m.created_at))}</div>
+      </div>
+      ${canPin()?`<button class="ni-x" data-unpin="${esc(String(m.id))}" title="${esc(t('unpinMsg'))}">${icon('x',12)}</button>`:''}
+    </div>`).join(''):`<div class="ni-e">${esc(t('noPins'))}</div>`;
+}
+$('pb-btn').onclick=e=>{
+  e.stopPropagation();
+  const was=$('pdrop').classList.contains('on');
+  closeDrops();
+  if(!was){$('pdrop').classList.add('on');paintPins();}
+};
+$('p-list').onclick=async e=>{
+  const un=e.target.closest('[data-unpin]');
+  if(un){await togglePin(un.dataset.unpin);return;}
+  const it=e.target.closest('[data-pj]');if(!it)return;
+  const m=pinRes[+it.dataset.pj];if(!m)return;
+  closeDrops();
+  jumpToMsg(curCh.room_key,m);
+};
+
+/* ══════ JUMP-TO-LATEST PILL ══════ */
+function paintJump(show){
+  const j=$('jump');
+  if(!show){j.classList.remove('on');return;}
+  j.textContent=newCount>0?`${newCount} ${t('newMessages')}`:t('jumpLatest');
+  j.classList.add('on');
+}
+$('msgs').addEventListener('scroll',()=>{
+  const box=$('msgs');
+  const away=box.scrollHeight-box.scrollTop-box.clientHeight;
+  if(away<60&&!jumpedBack){newCount=0;paintJump(false);}
+  else if(newCount>0||jumpedBack||away>420)paintJump(true);
+});
+$('jump').onclick=()=>{
+  newCount=0;jumpedBack=false;paintJump(false);
+  loadMsgs();                      /* reloads the latest page and scrolls down */
+};
+
 function subscribeMsgs(){
   if(msgChan){try{sb.removeChannel(msgChan);}catch(e){}msgChan=null;}
   if(!curCh)return;
@@ -1705,7 +2083,13 @@ function subscribeMsgs(){
   msgChan=sb.channel('room:'+curCh.room_key)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'room_id=eq.'+curCh.room_key},
       p=>{
-        if(!msgs.some(m=>m.id===p.new.id)){msgs.push(p.new);paintMsgs();}
+        if(!msgs.some(m=>m.id===p.new.id)){
+          const box=$('msgs');
+          const away=box.scrollHeight-box.scrollTop-box.clientHeight;
+          msgs.push(p.new);paintMsgs();
+          /* scrolled up in history? count what they're missing */
+          if((away>140||jumpedBack)&&p.new.user_id!==user?.id){newCount++;paintJump(true);}
+        }
         delete typers[p.new.user_id];paintTyping();
       })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'room_id=eq.'+curCh.room_key},
@@ -1765,8 +2149,17 @@ let allChan=sb.channel('all-msgs').on('postgres_changes',{event:'INSERT',schema:
   if(p.new.user_id===user?.id)return;
   const known=channels.some(c=>c.room_key===r)||dmList.some(c=>c.room_key===r);
   if(!known)return;
-  unread[r]=(unread[r]||0)+1;saveUnread();paintSide();paintDMSide();
+  unread[r]=(unread[r]||0)+1;saveUnread();paintSide();paintDMSide();paintDMBadge();
 }).subscribe();
+
+/* the little red counter on the DM home button in the rail */
+function paintDMBadge(){
+  const n=Object.keys(unread).filter(k=>k.startsWith('dm_')&&unread[k]).length;
+  const b=$('dm-badge');
+  b.textContent=n>9?'9+':n;
+  b.classList.toggle('on',n>0);
+}
+paintDMBadge();
 
 /* ══════ SENDING ══════ */
 let acList=[],acIdx=0,acStart=-1;
@@ -1801,7 +2194,7 @@ function paintAC(){
   if(!acList.length){closeAC();return;}
   ac.innerHTML='<div class="ac-h">Members</div>'+acList.map((u,i)=>`
     <div class="ac-i${i===acIdx?' on':''}" data-i="${i}">
-      <div class="ac-av">${u.all?'📣':(u.pfp_url&&isUrl(u.pfp_url)?`<img src="${esc(u.pfp_url)}" alt="">`:esc(ini(u.username)))}</div>
+      <div class="ac-av">${u.all?icon('megaphone',14):(u.pfp_url&&isUrl(u.pfp_url)?`<img src="${esc(u.pfp_url)}" alt="">`:esc(ini(u.username)))}</div>
       <span class="ac-n">${esc(u.username||'Unknown')}</span>
       <span class="ac-h2">@${esc(u.handle||'')}</span>
     </div>`).join('');
@@ -1929,12 +2322,12 @@ async function send(){
     try{await sb.from('notifications').insert({user_id:wasReplyTo.user_id,type:'mention',data:{
       from_id:user.id,from_username:uname,room_key:curCh.room_key,channel:curCh.name,
       kind:curCh.kind||'text',server_id:curSv?curSv.id:null,
-      text:`${uname} replied to you`,snippet:(text||'📷 image').slice(0,90)}});}catch(e){}
+      text:`${uname} replied to you`,snippet:(text||t('imageMsg')).slice(0,90)}});}catch(e){}
   }
   if(curCh.kind==='dm'&&curCh.uid){
     try{await sb.from('notifications').insert({user_id:curCh.uid,type:'dm',data:{
       from_id:user.id,from_username:uname,room_key:curCh.room_key,kind:'dm',
-      text:`${uname} sent you a message`,snippet:(text||'📷 Image').slice(0,90)}});}catch(e){}
+      text:`${uname} sent you a message`,snippet:(text||t('imageMsg')).slice(0,90)}});}catch(e){}
   }
   for(let i=1;i<files.length;i++)await sendExtraImage(files[i].file);
 }
@@ -1996,7 +2389,7 @@ function paintMembers(){
   });
   const up=members.filter(m=>online.has(m.user_id)).length;
   $('mem').innerHTML=`<div class="mem-cat">${t('members')} — ${up} / ${members.length}</div>`+members.map(m=>`
-    <div class="mem-row ${online.has(m.user_id)?'on-now ':''}${m.role==='owner'?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':''}" data-uc="${esc(m.user_id)}">
+    <div class="mem-row ${online.has(m.user_id)?'on-now st-'+statusOf(m.user_id)+' ':''}${m.role==='owner'?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':''}" data-uc="${esc(m.user_id)}">
       <div class="mem-av">${m.pfp_url&&isUrl(m.pfp_url)?`<img src="${esc(m.pfp_url)}" alt="">`:esc(ini(m.username))}</div>
       <div class="mem-nm">${esc(m.username||'Unknown')}</div>
     </div>`).join('');
@@ -2023,14 +2416,15 @@ async function loadDMs(){
 }
 function paintDMSide(){
   if(curSv)return;
-  let h=`<div class="cat">Find people<span class="add" id="dm-find">🔍</span></div>
-    <div class="fg" style="padding:0 4px 6px;"><input class="fi" id="find-in" placeholder="Search @handle or name…" autocomplete="off"></div>
+  let h=`<div class="cat">${t('findPeople')}<span class="add" id="dm-find">${icon('search',12)}</span></div>
+    <div class="fg" style="padding:0 4px 6px;"><input class="fi" id="find-in" placeholder="${esc(t('searchPeople'))}" autocomplete="off"></div>
     <div id="find-res"></div>
-    <div class="cat">Direct Messages</div>`;
+    <div class="cat">${t('dms')}</div>`;
+  const stCol={online:'var(--grn)',idle:'var(--amb)',dnd:'var(--red)'};
   h+=dmList.length?dmList.map(d=>`
     <div class="ch${curCh&&curCh.id===d.id?' on':''}${unread[d.room_key]?' unread':''}" data-ch="${esc(d.id)}">
       <span class="ic">${d.pfp&&isUrl(d.pfp)?`<img src="${esc(d.pfp)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">`:'@'}</span>
-      <span class="nm">${esc(d.name)}${online.has(d.uid)?' <span style="color:var(--grn);font-size:9px;">●</span>':''}</span><span class="dot"></span></div>`).join('')
+      <span class="nm">${esc(d.name)}${online.has(d.uid)?` <span style="color:${stCol[statusOf(d.uid)]||'var(--grn)'};font-size:9px;">●</span>`:''}</span><span class="dot"></span></div>`).join('')
     : '<div class="ch"><span class="nm" style="color:var(--txt3)">Add friends to start a DM</span></div>';
   $('side-body').innerHTML=h;
   const inp=$('find-in');
@@ -2038,8 +2432,8 @@ function paintDMSide(){
 }
 function pickFirstDM(){
   if(dmList.length)openChannel(dmList[0]);
-  else{curCh=null;$('top-nm').textContent='Home';$('top-ic').textContent='🏠';$('top-tp').textContent='';
-    $('msgs').innerHTML='<div class="hero"><div class="ic">👋</div><h2>Welcome back</h2><p>Pick a server on the left, or add a friend to start a DM.</p></div>';
+  else{curCh=null;$('top-nm').textContent='Home';$('top-ic').innerHTML=icon('home',18);$('top-tp').textContent='';
+    $('msgs').innerHTML=`<div class="hero"><div class="ic">${icon('home',30)}</div><h2>Welcome back</h2><p>Pick a server on the left, or add a friend to start a DM.</p></div>`;
     refreshComposer();}
 }
 async function findPeople(q){
@@ -2071,6 +2465,7 @@ async function userCard(uid){
   open('uc-ov');
   $('uc-nm').textContent='Loading…';$('uc-hd').textContent='';$('uc-tags').innerHTML='';
   $('uc-meta').textContent='';$('uc-acts').innerHTML='';$('uc-av').textContent='?';
+  $('uc-bio').style.display='none';$('uc-bio').textContent='';
   $('uc-fr').style.display='none';$('uc-ban').style.backgroundImage='';
   let p={};
   try{const{data}=await sb.from('user_profiles').select('*').eq('user_id',uid).maybeSingle();p=data||{};}catch(e){}
@@ -2088,8 +2483,11 @@ async function userCard(uid){
   if(svRole&&curSv)tags+=`<span class="tag" style="background:var(--hover);color:var(--txt2);">${esc(svRole)} of ${esc(curSv.name)}</span>`;
   if(!tags)tags='<span class="tag" style="background:var(--hover);color:var(--txt2);">Member</span>';
   $('uc-tags').innerHTML=tags;
-  $('uc-meta').textContent=online.has(uid)?'🟢 '+t('onlineNow')
-    :(p.updated_at?t('lastSeen')+' '+ago(p.updated_at):'');
+  if(p.bio){$('uc-bio').textContent=p.bio;$('uc-bio').style.display='block';}
+  const ust=statusOf(uid);
+  $('uc-meta').innerHTML=online.has(uid)
+    ?`<span class="on-dot st-${ust}"></span>${esc(t(ust==='idle'?'stIdle':ust==='dnd'?'stDnd':'onlineNow'))}`
+    :esc(p.updated_at?t('lastSeen')+' '+ago(p.updated_at):'');
   const st=await friendState(uid),acts=$('uc-acts');
   if(!user){acts.innerHTML='<button class="pri" id="uc-si">Sign in to connect</button>';$('uc-si').onclick=()=>{shut('uc-ov');open('auth-ov');};$('uc-mod').style.display='none';return;}
   if(st==='self'){acts.innerHTML='<button id="uc-ed">Edit my profile</button>';$('uc-ed').onclick=()=>{shut('uc-ov');openSettings();};$('uc-mod').style.display='none';return;}
@@ -2261,7 +2659,7 @@ async function joinVoice(c){
       if(st==='SUBSCRIBED')await vCh.track({uid:user.id,name:uname,pfp:pfpUrl,muted:vMuted});
       if(st==='CHANNEL_ERROR')vStatus('Signalling failed','bad');
     });
-  toast('Joined '+c.name+' 🔊','ok');
+  toast('Joined '+c.name,'ok');
 }
 
 async function leaveVoice(){
@@ -2389,7 +2787,7 @@ function paintVoiceLists(){
       const conn=u.uid===user.id||vPeers[u.uid]?.pc.connectionState==='connected';
       return `<div class="vc-user"${conn?'':' style="opacity:.5"'}>
         <div class="av">${u.pfp&&isUrl(u.pfp)?`<img src="${esc(u.pfp)}" alt="">`:esc(ini(u.name))}</div>
-        <span>${esc(u.name||'Someone')}</span>${u.muted?'<span class="mut">🔇</span>':''}</div>`;
+        <span>${esc(u.name||'Someone')}</span>${u.muted?`<span class="mut">${icon('micOff',12)}</span>`:''}</div>`;
     }).join('');
   });
 }
@@ -2426,23 +2824,23 @@ function paintBadge(){
   document.title=(n>0?`(${n}) `:'')+'Yuniors Chill Zone';
 }
 function paintNotifs(){
-  const icons={mention:'💬',friend_request:'👥',dm:'✉️'};
+  const icons={mention:icon('chat',16),friend_request:icon('users',16),dm:icon('mail',16)};
   $('nd-list').innerHTML=notifs.length?notifs.map(n=>`
     <div class="ni${n.read?'':' unread'}" data-n="${esc(n.id)}">
-      <span class="ni-ic">${icons[n.type]||'🔔'}</span>
+      <span class="ni-ic">${icons[n.type]||icon('bell',16)}</span>
       <div class="ni-b">
         <div class="ni-t">${esc(n.data?.text||(n.type||'').replace(/_/g,' '))}</div>
         ${n.data?.snippet?`<div class="ni-m">${esc(n.data.snippet)}</div>`:''}
         <div class="ni-a">${esc(ago(n.created_at))}</div>
       </div>
-    </div>`).join('') : '<div class="ni-e">Nothing yet 🎉</div>';
+    </div>`).join('') : `<div class="ni-e">${esc(t('nothingYet'))}</div>`;
 }
 function toggleND(force){
   ndOpen=typeof force==='boolean'?force:!ndOpen;
   $('ndrop').classList.toggle('on',ndOpen);
   if(ndOpen)paintNotifs();
 }
-$('nb').onclick=e=>{e.stopPropagation();if(!user)return open('auth-ov');toggleND();};
+$('nb').onclick=e=>{e.stopPropagation();if(!user)return open('auth-ov');closeDrops('ndrop');toggleND();};
 document.addEventListener('click',e=>{if(ndOpen&&!e.target.closest('#nw'))toggleND(false);});
 $('nd-mark').onclick=async e=>{
   e.stopPropagation();
@@ -2475,6 +2873,7 @@ function watchNotifs(){
       filter:'user_id=eq.'+user.id},p=>{
         notifs.unshift(p.new);paintBadge();if(ndOpen)paintNotifs();
         toast(p.new.data?.text||'New notification');
+        ping();
         popNotif(p.new);
       }).subscribe();
 }
@@ -2494,6 +2893,7 @@ async function askNotifPerm(){
 function popNotif(n){
   if(!('Notification' in window)||Notification.permission!=='granted')return;
   if(document.visibilityState==='visible')return;      /* they can already see it */
+  if(myStatus==='dnd')return;                          /* do not disturb means it */
   const d=n.data||{};
   try{
     const note=new Notification(d.text||'New activity in the Chill Zone',{
@@ -2516,6 +2916,17 @@ function popNotif(n){
 $('burger').onclick=()=>{document.body.classList.add('nav');$('scrim').classList.add('on');};
 $('scrim').onclick=()=>{document.body.classList.remove('nav');$('scrim').classList.remove('on');};
 
+/* ══════ ESCAPE CLOSES THINGS — topmost first ══════ */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if($('lb').classList.contains('open')){$('lb').classList.remove('open');return;}
+  if($('frm-ov').classList.contains('open')){$('frm-ov').classList.remove('open');$('frm').src='';return;}
+  const ov=[...document.querySelectorAll('.ov.open')].pop();
+  if(ov){shut(ov.id);return;}
+  if($('emo').classList.contains('on')){$('emo').classList.remove('on');return;}
+  closeDrops();
+});
+
 /* ══════ ONLINE PRESENCE ══════ */
 /*  The green dots used to be decorative. This actually tracks who's here. */
 function watchPresence(){
@@ -2523,24 +2934,27 @@ function watchPresence(){
   if(!user)return;
   sitePresence=sb.channel('online',{config:{presence:{key:user.id}}})
     .on('presence',{event:'sync'},()=>{
-      online=new Set(Object.keys(sitePresence.presenceState()));
+      const state=sitePresence.presenceState();
+      online=new Set(Object.keys(state));
+      statuses={};
+      Object.keys(state).forEach(k=>{statuses[k]=state[k][0]?.status||'online';});
       paintMembers();paintDMSide();
     })
     .subscribe(async st=>{
-      if(st==='SUBSCRIBED')await sitePresence.track({uid:user.id,at:Date.now()});
+      if(st==='SUBSCRIBED')await sitePresence.track({uid:user.id,status:myStatus,at:Date.now()});
     });
 }
 /* stop advertising ourselves as here when the tab goes away for a while */
 document.addEventListener('visibilitychange',()=>{
   if(!sitePresence||!user)return;
-  if(document.visibilityState==='visible')sitePresence.track({uid:user.id,at:Date.now()});
+  if(document.visibilityState==='visible')sitePresence.track({uid:user.id,status:myStatus,at:Date.now()});
 });
 
 /* ══════ LANGUAGE ══════ */
 mountLangPicker($('lang-pick-2'));
 document.addEventListener('ycz-lang-changed',()=>{
   /* repaint everything that's drawn from JS */
-  applyI18n();paintIcons();
+  applyI18n();paintIcons();applyTheme();paintMe();
   if(curSv)paintSide();else paintDMSide();
   paintMembers();refreshComposer();paintTyping();
   if(curCh)paintMsgs();
@@ -2565,8 +2979,9 @@ async function applySession(s,force){
     if(servers.length&&!curSv)await goServer(servers[0]);
     else await goHome();
   }else{
-    uname='';myHandle='';pfpUrl='';pfpFrame='';bgUrl='';gRole=null;
+    uname='';myHandle='';pfpUrl='';pfpFrame='';bgUrl='';myBio='';gRole=null;
     servers=[];curSv=null;channels=[];curCh=null;dmList=[];members=[];
+    pins=[];statuses={};newCount=0;jumpedBack=false;paintJump(false);paintDMBadge();
     await leaveVoice();
     notifs=[];paintBadge();
     if(nChan){try{sb.removeChannel(nChan);}catch(e){}nChan=null;}

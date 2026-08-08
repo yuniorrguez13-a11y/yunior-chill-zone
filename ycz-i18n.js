@@ -92,6 +92,18 @@ en: {
   fImages:"Qmages", fImagesD:"An image board for saving and sharing pictures onto boards.",
   landingCta:"Free to join — make an account to start chatting.",
   backToChat:"Chill Zone", language:"Language",
+
+  /* features update */
+  search:"Search", searchMsgs:"Search messages…", noResults:"No results",
+  typeToSearch:"Type at least 2 letters to search this server.",
+  pinned:"Pinned messages", pinMsg:"Pin", unpinMsg:"Unpin",
+  noPins:"Nothing pinned yet.", msgPinned:"Message pinned", msgUnpinned:"Message unpinned",
+  lightMode:"Light mode", darkMode:"Dark mode",
+  notifSounds:"Notification sounds", soundsOn:"On", soundsOff:"Off",
+  status:"Status", stOnline:"Online", stIdle:"Away", stDnd:"Do not disturb",
+  bio:"About me", bioPh:"Tell people a bit about yourself…",
+  newMessages:"new messages", jumpLatest:"Jump to latest",
+  uploaded:"Uploaded", imageMsg:"image",
 },
 
 es: {
@@ -160,6 +172,17 @@ es: {
   fImages:"Qmages", fImagesD:"Un tablón de imágenes para guardar y compartir fotos.",
   landingCta:"Gratis — crea una cuenta y empieza a chatear.",
   backToChat:"Chill Zone", language:"Idioma",
+
+  search:"Buscar", searchMsgs:"Buscar mensajes…", noResults:"Sin resultados",
+  typeToSearch:"Escribe al menos 2 letras para buscar en este servidor.",
+  pinned:"Mensajes fijados", pinMsg:"Fijar", unpinMsg:"Desfijar",
+  noPins:"Todavía no hay nada fijado.", msgPinned:"Mensaje fijado", msgUnpinned:"Mensaje desfijado",
+  lightMode:"Modo claro", darkMode:"Modo oscuro",
+  notifSounds:"Sonidos de notificación", soundsOn:"Activados", soundsOff:"Silenciados",
+  status:"Estado", stOnline:"En línea", stIdle:"Ausente", stDnd:"No molestar",
+  bio:"Sobre mí", bioPh:"Cuenta algo sobre ti…",
+  newMessages:"mensajes nuevos", jumpLatest:"Ir al último",
+  uploaded:"Subida", imageMsg:"imagen",
 },
 
 fr: {
@@ -228,6 +251,17 @@ fr: {
   fImages:"Qmages", fImagesD:"Un tableau d'images pour sauvegarder et partager des photos.",
   landingCta:"Gratuit — crée un compte pour commencer à discuter.",
   backToChat:"Chill Zone", language:"Langue",
+
+  search:"Rechercher", searchMsgs:"Rechercher des messages…", noResults:"Aucun résultat",
+  typeToSearch:"Tape au moins 2 lettres pour chercher sur ce serveur.",
+  pinned:"Messages épinglés", pinMsg:"Épingler", unpinMsg:"Désépingler",
+  noPins:"Rien d'épinglé pour l'instant.", msgPinned:"Message épinglé", msgUnpinned:"Message désépinglé",
+  lightMode:"Mode clair", darkMode:"Mode sombre",
+  notifSounds:"Sons de notification", soundsOn:"Activés", soundsOff:"Coupés",
+  status:"Statut", stOnline:"En ligne", stIdle:"Absent", stDnd:"Ne pas déranger",
+  bio:"À propos de moi", bioPh:"Raconte un peu qui tu es…",
+  newMessages:"nouveaux messages", jumpLatest:"Aller au dernier",
+  uploaded:"Envoyée", imageMsg:"image",
 },
 
 pt: {
@@ -296,6 +330,17 @@ pt: {
   fImages:"Qmages", fImagesD:"Um quadro de imagens para guardar e partilhar fotos.",
   landingCta:"Grátis — cria uma conta e começa a conversar.",
   backToChat:"Chill Zone", language:"Idioma",
+
+  search:"Pesquisar", searchMsgs:"Pesquisar mensagens…", noResults:"Sem resultados",
+  typeToSearch:"Escreve pelo menos 2 letras para pesquisar neste servidor.",
+  pinned:"Mensagens afixadas", pinMsg:"Afixar", unpinMsg:"Desafixar",
+  noPins:"Ainda não há nada afixado.", msgPinned:"Mensagem afixada", msgUnpinned:"Mensagem desafixada",
+  lightMode:"Modo claro", darkMode:"Modo escuro",
+  notifSounds:"Sons de notificação", soundsOn:"Ligados", soundsOff:"Desligados",
+  status:"Estado", stOnline:"Online", stIdle:"Ausente", stDnd:"Não incomodar",
+  bio:"Sobre mim", bioPh:"Conta um pouco sobre ti…",
+  newMessages:"mensagens novas", jumpLatest:"Ir para a última",
+  uploaded:"Enviada", imageMsg:"imagem",
 },
 
 };

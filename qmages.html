@@ -1477,8 +1477,15 @@ $('userAvatar').addEventListener('click',function(){if(currentUser)openProfile(c
 $('themeBtn').addEventListener('click',function(){
   isDark=!isDark;
   document.documentElement.setAttribute('data-theme',isDark?'dark':'light');
+  /* same key the chat app and VideoZone use — one preference, whole site */
+  localStorage.setItem('ycz-theme',isDark?'dark':'light');
   $('themeBtn').textContent=isDark?'🌙':'☀️';tw($('themeBtn'));
 });
+if(localStorage.getItem('ycz-theme')==='light'){
+  isDark=false;
+  document.documentElement.setAttribute('data-theme','light');
+  $('themeBtn').textContent='☀️';
+}
 
 document.querySelectorAll('.sidebar .nav-item[data-page]').forEach(function(el){el.addEventListener('click',function(){navigate(el.dataset.page);});});
 document.querySelectorAll('.sidebar .nav-item[data-cat]').forEach(function(el){
