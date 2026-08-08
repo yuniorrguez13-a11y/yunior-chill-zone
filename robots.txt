@@ -2,7 +2,4 @@
 User-agent: *
 Allow: /
 
-# nothing useful for a crawler in here
-Disallow: /nosaving.html
-
 Sitemap: https://yuniorschillzone.xyz/sitemap.xml
