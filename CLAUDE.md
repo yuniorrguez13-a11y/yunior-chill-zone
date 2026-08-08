@@ -22,7 +22,6 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `qmages.html` | Image board. Own app, shares session + theme. |
 | `piano.html` | Multiplayer piano. |
 | `music.html`, `gaming.html` | Static link pages, themed via `ycz-theme.css`. |
-| `features-update.sql` | Idempotent DB migration: `user_profiles.bio` + `pinned_messages` with RLS. Run once in the Supabase SQL editor. |
 
 ### Supabase Edge Functions
 | Function | Purpose | Notes |
@@ -160,7 +159,9 @@ Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_user
   duplicated per page.
 - New UI strings get a `data-i18n` key and an entry in all four languages.
 - New icons go in `ycz-icons.js` — **never add emoji to the interface**.
-- SQL ships as an idempotent file safe to re-run, with a verification `select` at the end.
+- SQL is written idempotent (safe to re-run) with a verification `select` at the end,
+  and is **never committed to the repo** — always hand it to the owner in chat so he can
+  paste it into the Supabase SQL editor himself. This is an explicit owner rule.
 - The Supabase anon/publishable key is in the client on purpose — that's what it's for.
   Security comes from RLS. **Never** put a service-role key or the Cloudflare TURN token
   in client code.
@@ -170,8 +171,10 @@ Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_user
 ## Known gaps / next up
 
 - `servers_read` invite-code exposure (above)
-- **`features-update.sql` must be run once** in the Supabase SQL editor for pinned
-  messages and profile bios to work (the app degrades gracefully until then)
+- **The Aug 2026 features migration must be run once** in the Supabase SQL editor for
+  pinned messages and profile bios to work — it adds `user_profiles.bio` and the
+  `pinned_messages` table with RLS. It lives in chat with the owner, not in the repo
+  (owner rule: SQL is never committed). The app degrades gracefully until it's run.
 - Emoji still in the interface: landing-page feature cards (`💬 🔊 🎮 …`, arguably
   content), the `🌙`/`☀️` theme buttons on VideoZone/Qmages, and misc toast checkmarks.
   The chat-app chrome (`🏠`, `🟢`, `👤`, `📷`, `🔇`, `📣`, notification icons) is now SVG.
