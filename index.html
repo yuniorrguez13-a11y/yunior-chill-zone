@@ -252,8 +252,9 @@ img{display:block;}
 .mem-cat{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--txt3);padding:10px 8px 5px;}
 .mem-row{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:8px;cursor:pointer;transition:background .1s;}
 .mem-row:hover{background:var(--hover);}
-.mem-av{width:31px;height:31px;border-radius:50%;background:var(--panel);flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;overflow:hidden;position:relative;}
-.mem-av img{width:100%;height:100%;object-fit:cover;}
+/* no overflow:hidden here — it would clip the status bubble (::after) */
+.mem-av{width:31px;height:31px;border-radius:50%;background:var(--panel);flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;position:relative;}
+.mem-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
 .mem-av::after{content:'';position:absolute;bottom:-1px;right:-1px;width:11px;height:11px;border-radius:50%;background:var(--txt3);border:2.5px solid var(--side);}
 .mem-row.on-now .mem-av::after{background:var(--grn);}
 .mem-nm{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1346,8 +1347,10 @@ function paintRail(){
         ?`<img src="${esc(s.icon_url)}" alt="">`
         :`<span class="mono-ic">${esc((s.icon||initials(s.name)))}</span>`}</div>
       <span class="tip">${esc(s.name)}</span>
+      <span class="rail-badge" data-svb="${esc(s.id)}">0</span>
     </div>`).join('');
   $('r-home').classList.toggle('on',!curSv);
+  paintSvBadges();
 }
 $('rail').addEventListener('click',e=>{
   const it=e.target.closest('[data-sv]');if(!it)return;
@@ -1810,6 +1813,7 @@ function openChannel(c,skipLoad){
   curCh=c;clearReply();editing=null;typers={};paintTyping();
   newCount=0;jumpedBack=false;paintJump(false);
   delete unread[c.room_key];saveUnread();paintDMBadge();
+  if(user)clearRoomNotifs(c.room_key);
   $('top-ic').innerHTML=c.kind==='dm'?'@':icon('hash',18);
   $('top-nm').textContent=c.name;
   $('top-tp').textContent=c.kind==='dm'?'Direct message':(curSv?curSv.name:'');
@@ -3054,6 +3058,23 @@ function paintBadge(){
   const n=notifs.filter(x=>!x.read).length,b=$('nbadge');
   b.textContent=n>9?'9+':n;b.classList.toggle('on',n>0);
   document.title=(n>0?`(${n}) `:'')+'Yuniors Chill Zone';
+  paintSvBadges();
+}
+/* Discord-style red counters on the server icons in the rail */
+function paintSvBadges(){
+  document.querySelectorAll('[data-svb]').forEach(b=>{
+    const n=notifs.filter(x=>!x.read&&x.data?.server_id===b.dataset.svb).length;
+    b.textContent=n>9?'9+':n;b.classList.toggle('on',n>0);
+  });
+}
+/* opening a room counts as reading its notifications */
+async function clearRoomNotifs(key){
+  const mine=notifs.filter(n=>!n.read&&n.data?.room_key===key);
+  if(!mine.length)return;
+  mine.forEach(n=>n.read=true);
+  paintBadge();if(ndOpen)paintNotifs();
+  try{await sb.from('notifications').update({read:true})
+    .eq('user_id',user.id).eq('read',false).filter('data->>room_key','eq',key);}catch(e){}
 }
 function paintNotifs(){
   const icons={mention:icon('chat',16),friend_request:icon('users',16),dm:icon('mail',16)};
@@ -3103,6 +3124,12 @@ function watchNotifs(){
   nChan=sb.channel('notifs:'+user.id)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',
       filter:'user_id=eq.'+user.id},p=>{
+        /* already looking at that room with the tab visible → it's read */
+        if(curCh&&p.new.data?.room_key===curCh.room_key&&document.visibilityState==='visible'){
+          p.new.read=true;notifs.unshift(p.new);paintBadge();if(ndOpen)paintNotifs();
+          try{sb.from('notifications').update({read:true}).eq('id',p.new.id).then(()=>{});}catch(e){}
+          return;
+        }
         notifs.unshift(p.new);paintBadge();if(ndOpen)paintNotifs();
         toast(p.new.data?.text||'New notification');
         ping();
