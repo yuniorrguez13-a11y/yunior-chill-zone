@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Suds of Doom — Yuniors Chill Zone</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      height:100%;
+      background:#08080c;
+      overflow:hidden;
+      font-family: system-ui, sans-serif;
+      touch-action:none;
+      -webkit-user-select:none; user-select:none;
+    }
+    #wrap {
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+    }
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      cursor: crosshair;
+      background:#08080c;
+    }
+    #backLink {
+      position:fixed; top:12px; left:14px; z-index:5;
+      color:#7a7a8e; text-decoration:none; font-size:13px; letter-spacing:1px;
+      text-transform:uppercase;
+      padding:6px 10px; border:1px solid rgba(232,22,42,.25); border-radius:6px;
+      background:rgba(6,6,10,.6);
+      transition: color .15s, border-color .15s;
+    }
+    #backLink:hover { color:#fff; border-color:rgba(232,22,42,.7); }
+    body.playing #backLink { display:none; }
+  </style>
+</head>
+<body>
+  <a id="backLink" href="index.html">&larr; Yuniors Chill Zone</a>
+  <div id="wrap"><canvas id="game" width="480" height="270"></canvas></div>
+
+<script>
+'use strict';
+/* ================================================================
+   SUDS OF DOOM — the dishwasher uprising
+   Single-file bullet-hell arena prototype. No network, no deps.
+   ================================================================ */
+
+const W = 480, H = 270, TAU = Math.PI * 2;
+const cv = document.getElementById('game');
+const cx = cv.getContext('2d');
+cx.imageSmoothingEnabled = false;
+
+const CRIMSON = '#e8162a';
+
+// ---------- tuning ----------
+const T = {
+  playerSpeed: 85,
+  playerHP: 6,
+  iframes: 1.0,
+  coreRadius: 2.5,          // tiny bullet-hell hitbox
+  bodyRadius: 5,            // for enemy contact
+  magnetRadius: 26,
+  gun: { damage: 6, rate: 4, speed: 170, count: 1, pierce: 0, size: 1, bspeedMul: 1 },
+  washer:  { hp: 20, speed: 22, touch: 1, shootCd: 2.8, range: 150, r: 7 },
+  rinser:  { hp: 16, speed: 30, touch: 1, shootCd: 2.3, r: 7 },
+  bubbler: { hp: 26, speed: 14, touch: 1, shootCd: 3.4, r: 7 },
+  boss:    { hp: 550, speed: 12, touch: 2, r: 20 },
+  plateSpeed: 62, forkSpeed: 105, bubbleSpeed: 26,
+  eliteHPMul: 3, eliteSpeedMul: 1.25,
+  maxEBullets: 550, maxPBullets: 300, maxParticles: 380,
+};
+
+// ---------- tiny helpers ----------
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+const rand = (a,b)=> a + Math.random()*(b-a);
+const irand = (a,b)=> Math.floor(rand(a,b+1));
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const dist2 = (ax,ay,bx,by)=>{ const dx=ax-bx, dy=ay-by; return dx*dx+dy*dy; };
+const lerp = (a,b,t)=> a+(b-a)*t;
+
+// ================================================================
+// AUDIO — little WebAudio synth, starts on first click
+// ================================================================
+let AC = null, masterGain = null, muted = false;
+try { muted = localStorage.getItem('suds-muted') === '1'; } catch(e){}
+
+function audioInit(){
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = AC.createGain();
+    masterGain.gain.value = muted ? 0 : 0.22;
+    masterGain.connect(AC.destination);
+  } catch(e){ AC = null; }
+}
+function setMuted(m){
+  muted = m;
+  try { localStorage.setItem('suds-muted', m ? '1' : '0'); } catch(e){}
+  if (masterGain) masterGain.gain.value = m ? 0 : 0.22;
+}
+function tone(type, f0, f1, dur, vol, delay){
+  if (!AC || muted) return;
+  const t0 = AC.currentTime + (delay||0);
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t0);
+  if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(1,f1), t0+dur);
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  o.connect(g); g.connect(masterGain);
+  o.start(t0); o.stop(t0+dur+0.02);
+}
+function noise(dur, vol, delay){
+  if (!AC || muted) return;
+  const t0 = AC.currentTime + (delay||0);
+  const n = Math.floor(AC.sampleRate * dur);
+  const buf = AC.createBuffer(1, n, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const g = AC.createGain(); g.gain.value = vol;
+  src.connect(g); g.connect(masterGain);
+  src.start(t0);
+}
+const SFX = {
+  shoot(){ tone('square', 760, 320, .06, .12); },
+  plate(){ tone('triangle', 340, 220, .05, .10); },
+  fork(){ tone('sawtooth', 520, 380, .05, .07); },
+  bubble(){ tone('sine', 420, 560, .08, .08); },
+  hitEnemy(){ noise(.03, .10); },
+  boom(){ noise(.18, .22); tone('triangle', 130, 40, .25, .25); },
+  hurt(){ tone('sawtooth', 240, 70, .22, .22); noise(.08,.12); },
+  pickup(){ tone('sine', 620, 880, .07, .10); },
+  heart(){ tone('sine', 520, 780, .12, .14); tone('sine', 780, 1040, .12, .12, .08); },
+  levelup(){ [523,659,784,1046].forEach((f,i)=> tone('square', f, f, .09, .12, i*0.07)); },
+  evolve(){ [392,523,659,784,1046].forEach((f,i)=> tone('square', f, f, .11, .13, i*0.08)); },
+  alarm(){ tone('square', 220, 220, .18, .16); tone('square', 175, 175, .18, .16, .22);
+           tone('square', 220, 220, .18, .16, .44); },
+  bossdie(){ noise(.4,.28); tone('triangle', 100, 30, .6, .3);
+             [784,659,523,392].forEach((f,i)=> tone('square', f, f, .1, .1, .1+i*.09)); },
+  gameover(){ [392,330,262,196].forEach((f,i)=> tone('triangle', f, f, .22, .18, i*.18)); },
+  click(){ tone('square', 880, 880, .04, .08); },
+};
+
+// ================================================================
+// PIXEL FONT — 3x5 (some glyphs wider), drawn as rects
+// ================================================================
+const FONT = {
+  'A':[".#.","#.#","###","#.#","#.#"],'B':["##.","#.#","##.","#.#","##."],
+  'C':[".##","#..","#..","#..",".##"],'D':["##.","#.#","#.#","#.#","##."],
+  'E':["###","#..","##.","#..","###"],'F':["###","#..","##.","#..","#.."],
+  'G':[".##","#..","#.#","#.#",".##"],'H':["#.#","#.#","###","#.#","#.#"],
+  'I':["###",".#.",".#.",".#.","###"],'J':["..#","..#","..#","#.#",".#."],
+  'K':["#.#","#.#","##.","#.#","#.#"],'L':["#..","#..","#..","#..","###"],
+  'M':["#...#","##.##","#.#.#","#...#","#...#"],
+  'N':["#..#","##.#","#.##","#..#","#..#"],
+  'O':["###","#.#","#.#","#.#","###"],'P':["##.","#.#","##.","#..","#.."],
+  'Q':["##.","#.#","#.#","##.","..#"],'R':["##.","#.#","##.","#.#","#.#"],
+  'S':[".##","#..",".#.","..#","##."],'T':["###",".#.",".#.",".#.",".#."],
+  'U':["#.#","#.#","#.#","#.#","###"],'V':["#.#","#.#","#.#","#.#",".#."],
+  'W':["#...#","#...#","#.#.#","##.##","#...#"],
+  'X':["#.#","#.#",".#.","#.#","#.#"],'Y':["#.#","#.#",".#.",".#.",".#."],
+  'Z':["###","..#",".#.","#..","###"],
+  '0':["###","#.#","#.#","#.#","###"],'1':[".#.","##.",".#.",".#.","###"],
+  '2':["###","..#","###","#..","###"],'3':["###","..#",".##","..#","###"],
+  '4':["#.#","#.#","###","..#","..#"],'5':["###","#..","###","..#","###"],
+  '6':["###","#..","###","#.#","###"],'7':["###","..#","..#",".#.",".#."],
+  '8':["###","#.#","###","#.#","###"],'9':["###","#.#","###","..#","###"],
+  '-':["...","...","###","...","..."],'+':["...",".#.","###",".#.","..."],
+  '.':[".",".",".",".","#"],':':[".","#",".","#","."],
+  '!':["#","#","#",".","#"],'?':["###","..#",".#.","...",".#."],
+  '/':["..#","..#",".#.","#..","#.."],'%':["#.#","..#",".#.","#..","#.#"],
+  "'":["#","#",".",".","."],',':[".",".",".","#","#"],
+  '(':[".#","#.","#.","#.",".#"],')':["#.",".#",".#",".#","#."],
+  ' ':["..","..","..","..",".."],
+};
+function textWidth(str, scale){
+  let w = 0;
+  for (const ch of str.toUpperCase()){
+    const g = FONT[ch] || FONT['?'];
+    w += (g[0].length + 1) * scale;
+  }
+  return w - scale;
+}
+function drawText(str, x, y, scale, color, align){
+  const s = str.toUpperCase();
+  if (align === 'center') x -= Math.floor(textWidth(s, scale)/2);
+  else if (align === 'right') x -= textWidth(s, scale);
+  cx.fillStyle = color;
+  let px = x;
+  for (const ch of s){
+    const g = FONT[ch] || FONT['?'];
+    for (let r=0;r<5;r++){
+      const row = g[r];
+      for (let c=0;c<row.length;c++){
+        if (row[c] === '#') cx.fillRect(px + c*scale, y + r*scale, scale, scale);
+      }
+    }
+    px += (g[0].length + 1) * scale;
+  }
+}
+
+// ================================================================
+// SPRITES — pixel maps baked to offscreen canvases
+// ================================================================
+function makeSprite(rows, pal){
+  const h = rows.length, w = rows[0].length;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++){
+    const ch = rows[y][x];
+    if (ch !== '.' && pal[ch]){ g.fillStyle = pal[ch]; g.fillRect(x,y,1,1); }
+  }
+  return c;
+}
+function makeSilhouette(sp, color){
+  const c = document.createElement('canvas');
+  c.width = sp.width; c.height = sp.height;
+  const g = c.getContext('2d');
+  g.drawImage(sp,0,0);
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = color; g.fillRect(0,0,c.width,c.height);
+  return c;
+}
+function makeTint(sp, color, alpha){
+  const c = document.createElement('canvas');
+  c.width = sp.width; c.height = sp.height;
+  const g = c.getContext('2d');
+  g.drawImage(sp,0,0);
+  g.globalCompositeOperation = 'source-atop';
+  g.globalAlpha = alpha;
+  g.fillStyle = color; g.fillRect(0,0,c.width,c.height);
+  return c;
+}
+
+const SP = {};
+(function bakeSprites(){
+  // --- player: little gunner in a chill zone hoodie ---
+  SP.player = makeSprite([
+    "...OOOOOO...",
+    "..OHHHHHHO..",
+    ".OHHHHHHHHO.",
+    ".ODDDDDDDDO.",
+    ".OSSSSSSSSO.",
+    ".OSKSSSSKSO.",
+    ".OSSSSSSSSO.",
+    "..OBBBBBBO..",
+    ".OBBBBBBBBO.",
+    ".OBBWBBWBBO.",
+    ".OBBBBBBBBO.",
+    "..OLLOOLL...",
+    "..OLL..LLO..",
+    "..OO....OO..",
+  ],{O:'#191420',H:CRIMSON,D:'#a00d1c',S:'#f0c090',K:'#241a20',B:'#2a2a36',W:'#f0f0f5',L:'#232338'});
+
+  SP.gun = makeSprite([
+    ".....OO",
+    "OOOOOOG",
+    "OGGGGGG",
+    "..OG...",
+  ],{O:'#12141a',G:'#8b93a4'});
+
+  // --- washer: basic angry dishwasher ---
+  SP.washer = makeSprite([
+    ".OOOOOOOOOOOOOO.",
+    "OWWWWWWWWWWWWWWO",
+    "OWPPPPPPPPPPPPWO",
+    "OWPRP.YP.....PWO",
+    "OWWWWWWWWWWWWWWO",
+    "OWGDDDDDDDDDDGWO",
+    "OWGDNNNNNNNNDGWO",
+    "OWGDNEKNNKENDGWO",
+    "OWGDNEENNEENDGWO",
+    "OWGDNNNNNNNNDGWO",
+    "OWGDNnnnnnnNDGWO",
+    "OWGDDDDDDDDDDGWO",
+    "OWWWWWWWWWWWWWWO",
+    ".OOOOOOOOOOOOOO.",
+    "..OFF......FF...",
+    "..OFF......FF...",
+  ],{O:'#14161d',W:'#dfe3ea',G:'#aab0bd',P:'#3a3f4c',R:CRIMSON,Y:'#f4c542',
+     D:'#7d8494',N:'#35608c',n:'#5b8fc4',E:'#ffffff',K:'#101018',F:'#14161d'});
+
+  // --- rinser: tall silver fork-flinger ---
+  SP.rinser = makeSprite([
+    ".OOOOOOOOOOOO.",
+    "OSSSSSSSSSSSSO",
+    "OSPPPPPPPPPPSO",
+    "OSPY.R.....PSO",
+    "OSSSSSSSSSSSSO",
+    "OSGMMMMMMMMGSO",
+    "OSGMEK..KEMGSO",
+    "OSGMEE..EEMGSO",
+    "OSGMMMMMMMMGSO",
+    "OSGMFFFFFFMGSO",
+    "OSGMMMMMMMMGSO",
+    "OSGMMMFFMMMGSO",
+    "OSGMMMMMMMMGSO",
+    "OSSSSSSSSSSSSO",
+    ".OOOOOOOOOOOO.",
+    "..OZZ....ZZ...",
+    "..OZZ....ZZ...",
+    "..............",
+  ],{O:'#14161d',S:'#c3cad6',G:'#8e96a6',P:'#3a3f4c',Y:'#f4c542',R:CRIMSON,
+     M:'#5a6272',E:'#ffffff',K:'#101018',F:'#e8ecf2',Z:'#14161d'});
+
+  // --- bubbler: round teal bubble machine ---
+  SP.bubbler = makeSprite([
+    "....OOOOOO....",
+    "..OOTTTTTTOO..",
+    ".OTTUUUUUUTTO.",
+    ".OTUuu..uuTTO.",
+    "OTTUu....uUTTO",
+    "OTUU..EK..UUTO",
+    "OTUU..EE..UUTO",
+    "OTTUu....uUTTO",
+    ".OTUuu..uuTTO.",
+    ".OTTUUUUUUTTO.",
+    "..OOTTTTTTOO..",
+    "...OFF..FFO...",
+    "...OFF..FFO...",
+    "..............",
+  ],{O:'#14161d',T:'#2e7d84',U:'#3fa3ac',u:'#7fd4da',E:'#ffffff',K:'#101018',F:'#14161d'});
+
+  // --- MEGAWASHER boss (drawn 2x at render) ---
+  SP.boss = makeSprite([
+    "..OOOOOOOOOOOOOOOOOOOOOOOOOO..",
+    ".OWWWWWWWWWWWWWWWWWWWWWWWWWWO.",
+    "OWWPPPPPPPPPPPPPPPPPPPPPPPPWWO",
+    "OWWPRRP.YYP.RRP.YYP......PPWWO",
+    "OWWPPPPPPPPPPPPPPPPPPPPPPPPWWO",
+    "OWWWWWWWWWWWWWWWWWWWWWWWWWWWWO",
+    "OWGGDDDDDDDDDDDDDDDDDDDDDDGGWO",
+    "OWGDDNNNNNNNNNNNNNNNNNNNNDDGWO",
+    "OWGDNNRRNNNNNNNNNNNNRRNNNNDGWO",
+    "OWGDNRRRRNNNNNNNNNNRRRRNNNDGWO",
+    "OWGDNRKKRNNNNNNNNNNRKKRNNNDGWO",
+    "OWGDNRRRRNNNNNNNNNNRRRRNNNDGWO",
+    "OWGDNNRRNNNNNNNNNNNNRRNNNNDGWO",
+    "OWGDNNNNNNNNNNNNNNNNNNNNNNDGWO",
+    "OWGDNnnnnnnnnnnnnnnnnnnnnNDGWO",
+    "OWGDDDDDDDDDDDDDDDDDDDDDDDDGWO",
+    "OWGGWWWWWWWWWWWWWWWWWWWWWWGGWO",
+    "OWGDDDDDDDDDDDDDDDDDDDDDDDDGWO",
+    "OWGDNNNNNNNNNNNNNNNNNNNNNNDGWO",
+    "OWGDNnnnnnnnnnnnnnnnnnnnnNDGWO",
+    "OWGDDDDDDDDDDDDDDDDDDDDDDDDGWO",
+    "OWWWWWWWWWWWWWWWWWWWWWWWWWWWWO",
+    ".OOOOOOOOOOOOOOOOOOOOOOOOOOOO.",
+    "..OFFF..................FFF...",
+    "..OFFF..................FFF...",
+  ],{O:'#101218',W:'#c9ced9',G:'#959cab',P:'#30343f',R:CRIMSON,Y:'#f4c542',
+     D:'#6a7181',N:'#243a52',n:'#4b7bb0',K:'#ffffff',F:'#101218'});
+
+  // --- projectiles ---
+  SP.slug = makeSprite([
+    ".YY.",
+    "YWWY",
+    ".YY.",
+  ],{Y:'#f4c542',W:'#fff7d0'});
+
+  SP.plate = makeSprite([
+    ".OOOOO.",
+    "OWWWWWO",
+    "OWwwwWO",
+    "OWWWWWO",
+    ".OOOOO.",
+  ],{O:'#8d94a2',W:'#eef1f6',w:'#c6cdd8'});
+
+  SP.fork = makeSprite([
+    "......S.S",
+    "SSSSSSSSS",
+    "......S.S",
+  ],{S:'#cfd6e0'});
+
+  SP.bubble = makeSprite([
+    ".BBB.",
+    "Bw..B",
+    "B...B",
+    "B...B",
+    ".BBB.",
+  ],{B:'#6fd8e2',w:'#e8feff'});
+
+  // --- pickups ---
+  SP.sud = makeSprite([
+    ".BB.",
+    "BwBB",
+    "BBBB",
+    ".BB.",
+  ],{B:'#79c7f0',w:'#e8fbff'});
+
+  SP.heart = makeSprite([
+    ".RR.RR.",
+    "RrRRRrR",
+    "RRRRRRR",
+    ".RRRRR.",
+    "..RRR..",
+    "...R...",
+  ],{R:CRIMSON,r:'#ff7080'});
+
+  // silhouettes for damage flash + elite tints
+  for (const k of ['player','washer','rinser','bubbler','boss'])
+    SP[k+'_flash'] = makeSilhouette(SP[k], '#ffffff');
+  for (const k of ['washer','rinser','bubbler'])
+    SP[k+'_elite'] = makeTint(SP[k], '#ffc02a', 0.45);
+})();
+
+// --- kitchen floor background, baked once ---
+const bg = document.createElement('canvas');
+bg.width = W; bg.height = H;
+(function bakeBg(){
+  const g = bg.getContext('2d');
+  const t = 24;
+  for (let y=0; y<H/t; y++) for (let x=0; x<W/t; x++){
+    g.fillStyle = (x+y) % 2 ? '#15151c' : '#191922';
+    g.fillRect(x*t, y*t, t, t);
+    if ((x*7+y*13) % 11 === 0){ g.fillStyle = '#1e1e28'; g.fillRect(x*t+4, y*t+14, 6, 2); }
+    if ((x*5+y*3) % 13 === 0){ g.fillStyle = '#121218'; g.fillRect(x*t+14, y*t+5, 2, 5); }
+  }
+  g.strokeStyle = '#0c0c12'; g.lineWidth = 8; g.strokeRect(0,0,W,H);
+  g.strokeStyle = '#22222e'; g.lineWidth = 2; g.strokeRect(4,4,W-8,H-8);
+  const grad = g.createRadialGradient(W/2,H/2, 90, W/2,H/2, 300);
+  grad.addColorStop(0,'rgba(0,0,0,0)');
+  grad.addColorStop(1,'rgba(0,0,0,0.45)');
+  g.fillStyle = grad; g.fillRect(0,0,W,H);
+})();
+
+// ================================================================
+// INPUT
+// ================================================================
+const keys = {};
+const mouse = { x: W/2, y: H/2, down: false };
+let usingTouch = false;
+const touch = { active:false, id:null, sx:0, sy:0, dx:0, dy:0 };
+
+let viewScale = 1, viewLeft = 0, viewTop = 0;
+function resize(){
+  const ww = window.innerWidth, wh = window.innerHeight;
+  let s = Math.min(ww/W, wh/H);
+  if (s >= 1) s = Math.floor(s);
+  viewScale = s;
+  cv.style.width  = Math.round(W*s) + 'px';
+  cv.style.height = Math.round(H*s) + 'px';
+  const r = cv.getBoundingClientRect();
+  viewLeft = r.left; viewTop = r.top;
+}
+window.addEventListener('resize', resize);
+
+function toGame(clientX, clientY){
+  const r = cv.getBoundingClientRect();
+  return { x: clamp((clientX - r.left) / viewScale, 0, W),
+           y: clamp((clientY - r.top) / viewScale, 0, H) };
+}
+
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  if (k === 'm'){ setMuted(!muted); }
+  if (k === 'p' && ST.mode === 'play'){ ST.mode = 'pause'; }
+  else if (k === 'p' && ST.mode === 'pause'){ ST.mode = 'play'; }
+  if (k === 'r' && ST.mode === 'over'){ audioInit(); startRun(); }
+  if (ST.mode === 'levelup'){
+    if (k === '1') chooseCard(0);
+    if (k === '2') chooseCard(1);
+    if (k === '3') chooseCard(2);
+  }
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+cv.addEventListener('mousemove', e => {
+  const p = toGame(e.clientX, e.clientY);
+  mouse.x = p.x; mouse.y = p.y;
+});
+cv.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  audioInit();
+  if (AC && AC.state === 'suspended') AC.resume();
+  const p = toGame(e.clientX, e.clientY);
+  mouse.x = p.x; mouse.y = p.y;
+  if (ST.mode === 'menu'){ startRun(); return; }
+  if (ST.mode === 'over'){ startRun(); return; }
+  if (ST.mode === 'pause'){ ST.mode = 'play'; return; }
+  if (ST.mode === 'levelup'){ clickCard(p.x, p.y); return; }
+  mouse.down = true;
+});
+window.addEventListener('mouseup', ()=> { mouse.down = false; });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+cv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  usingTouch = true;
+  audioInit();
+  if (AC && AC.state === 'suspended') AC.resume();
+  const t0 = e.changedTouches[0];
+  const p = toGame(t0.clientX, t0.clientY);
+  if (ST.mode === 'menu' || ST.mode === 'over'){ startRun(); return; }
+  if (ST.mode === 'pause'){ ST.mode = 'play'; return; }
+  if (ST.mode === 'levelup'){ clickCard(p.x, p.y); return; }
+  touch.active = true; touch.id = t0.identifier;
+  touch.sx = t0.clientX; touch.sy = t0.clientY;
+  touch.dx = 0; touch.dy = 0;
+}, {passive:false});
+cv.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t0 of e.changedTouches){
+    if (t0.identifier === touch.id){
+      touch.dx = (t0.clientX - touch.sx) / viewScale;
+      touch.dy = (t0.clientY - touch.sy) / viewScale;
+    }
+  }
+}, {passive:false});
+function touchEnd(e){
+  for (const t0 of e.changedTouches){
+    if (t0.identifier === touch.id){ touch.active = false; touch.dx = 0; touch.dy = 0; }
+  }
+}
+cv.addEventListener('touchend', touchEnd);
+cv.addEventListener('touchcancel', touchEnd);
+
+document.addEventListener('visibilitychange', ()=>{
+  if (document.hidden && ST.mode === 'play') ST.mode = 'pause';
+});
+window.addEventListener('blur', ()=>{ if (ST.mode === 'play') ST.mode = 'pause'; });
+
+// ================================================================
+// GAME STATE
+// ================================================================
+const ST = {
+  mode: 'menu',       // menu | play | levelup | pause | over
+  time: 0, wave: 0, kills: 0,
+  waveState: 'idle',  // announce | active | clear | bosswarn
+  waveTimer: 0, toSpawn: [], spawnTimer: 0,
+  shake: 0, flashRed: 0,
+  banner: '', bannerTimer: 0,
+  levelQueue: 0, cards: [],
+  best: { wave: 0, kills: 0 },
+};
+try {
+  ST.best.wave  = parseInt(localStorage.getItem('suds-best-wave')||'0',10) || 0;
+  ST.best.kills = parseInt(localStorage.getItem('suds-best-kills')||'0',10) || 0;
+} catch(e){}
+
+const player = {
+  x: W/2, y: H/2, vx: 0, vy: 0,
+  hp: T.playerHP, maxhp: T.playerHP,
+  aim: 0, iframe: 0, fireCd: 0, flash: 0,
+  speedMul: 1, gun: null, gunName: 'PEASHOOTER', upgrades: 0,
+  xp: 0, level: 1, xpNext: 5,
+};
+
+let enemies = [], pbullets = [], ebullets = [], pickups = [], parts = [], floaters = [];
+let boss = null;
+
+const GUN_NAMES = [
+  [0,  'PEASHOOTER'],
+  [3,  'PLATE PUNISHER'],
+  [6,  'SUD SHREDDER'],
+  [9,  'RINSE CANNON'],
+  [12, 'MEGABLASTER 9000'],
+];
+
+const CARDS = [
+  { id:'rate',  name:'RAPID CYCLE',    desc:'+30% FIRE RATE',        apply: g => g.rate *= 1.30 },
+  { id:'dmg',   name:'HEAVY LOAD',     desc:'+35% DAMAGE',           apply: g => { g.damage *= 1.35; g.size = Math.min(2.2, g.size*1.12); } },
+  { id:'split', name:'SPLIT BARREL',   desc:'+1 BULLET',             apply: g => g.count = Math.min(6, g.count+1), max: g => g.count >= 6 },
+  { id:'boots', name:'TURBO SNEAKERS', desc:'+12% MOVE SPEED',       apply: () => player.speedMul *= 1.12 },
+  { id:'armor', name:'STEEL APRON',    desc:'+1 MAX HEART, HEAL 2',  apply: () => { player.maxhp++; player.hp = Math.min(player.maxhp, player.hp+2); } },
+  { id:'drill', name:'DRILL ROUNDS',   desc:'BULLETS PIERCE +1',     apply: g => g.pierce = Math.min(3, g.pierce+1), max: g => g.pierce >= 3 },
+  { id:'rifle', name:'LONG RIFLING',   desc:'+25% BULLET SPEED',     apply: g => { g.bspeedMul *= 1.25; g.damage *= 1.10; } },
+];
+
+function startRun(){
+  ST.mode = 'play';
+  ST.time = 0; ST.wave = 0; ST.kills = 0;
+  ST.waveState = 'clear'; ST.waveTimer = 0.5;
+  ST.toSpawn = []; ST.spawnTimer = 0;
+  ST.shake = 0; ST.flashRed = 0; ST.banner = ''; ST.bannerTimer = 0;
+  ST.levelQueue = 0; ST.cards = [];
+  player.x = W/2; player.y = H/2; player.vx = 0; player.vy = 0;
+  player.hp = T.playerHP; player.maxhp = T.playerHP;
+  player.iframe = 0; player.fireCd = 0; player.flash = 0;
+  player.speedMul = 1; player.upgrades = 0; player.gunName = 'PEASHOOTER';
+  player.gun = Object.assign({}, T.gun);
+  player.xp = 0; player.level = 1; player.xpNext = 5;
+  enemies = []; pbullets = []; ebullets = []; pickups = []; parts = []; floaters = [];
+  boss = null;
+  document.body.classList.add('playing');
+  SFX.click();
+}
+
+function endRun(){
+  ST.mode = 'over';
+  document.body.classList.remove('playing');
+  if (ST.wave > ST.best.wave || (ST.wave === ST.best.wave && ST.kills > ST.best.kills)){
+    ST.best.wave = ST.wave; ST.best.kills = ST.kills;
+    try {
+      localStorage.setItem('suds-best-wave', String(ST.best.wave));
+      localStorage.setItem('suds-best-kills', String(ST.best.kills));
+    } catch(e){}
+  }
+  SFX.gameover();
+}
+
+// ================================================================
+// WAVES
+// ================================================================
+function isBossWave(n){ return n % 5 === 0; }
+
+function beginWave(n){
+  ST.wave = n;
+  if (isBossWave(n)){
+    ST.waveState = 'bosswarn';
+    ST.waveTimer = 2.2;
+    ST.banner = 'WARNING! MEGAWASHER APPROACHES'; ST.bannerTimer = 2.2;
+    SFX.alarm();
+    return;
+  }
+  ST.waveState = 'announce';
+  ST.waveTimer = 1.4;
+  ST.banner = 'WAVE ' + n; ST.bannerTimer = 1.4;
+  const budget = 4 + n * 2;
+  const list = [];
+  for (let i=0;i<budget;i++){
+    let type = 'washer';
+    if (n >= 2 && Math.random() < 0.35) type = 'rinser';
+    if (n >= 3 && Math.random() < 0.22) type = 'bubbler';
+    list.push(type);
+  }
+  ST.toSpawn = list;
+  ST.spawnTimer = 0;
+}
+
+function spawnEdgePos(){
+  const side = irand(0,3), m = 14;
+  if (side === 0) return { x: rand(m, W-m), y: -10 };
+  if (side === 1) return { x: rand(m, W-m), y: H+10 };
+  if (side === 2) return { x: -10, y: rand(m, H-m) };
+  return { x: W+10, y: rand(m, H-m) };
+}
+
+function waveScale(n){ return 1 + (n-1) * 0.15; }
+
+function spawnEnemy(type, x, y){
+  const n = ST.wave, sc = waveScale(n);
+  const base = T[type];
+  const elite = type !== 'boss' && n >= 4 && Math.random() < (0.10 + n*0.012);
+  const e = {
+    type, x, y,
+    hp: base.hp * sc * (elite ? T.eliteHPMul : 1),
+    maxhp: base.hp * sc * (elite ? T.eliteHPMul : 1),
+    speed: base.speed * (1 + (n-1)*0.03) * (elite ? T.eliteSpeedMul : 1),
+    r: base.r * (elite ? 1.2 : 1),
+    touch: base.touch + (elite ? 1 : 0),
+    elite,
+    t1: rand(0.6, base.shootCd || 2.5),   // shoot timer
+    t2: rand(0, TAU),                     // wobble phase
+    flash: 0,
+  };
+  if (type === 'boss'){
+    const bossLvl = Math.floor(n / 5);
+    e.hp = e.maxhp = T.boss.hp * (1 + (bossLvl-1) * 0.9);
+    e.speed = T.boss.speed;
+    e.r = T.boss.r; e.touch = T.boss.touch;
+    e.spiralA = 0; e.tSpiral = 1.2; e.tVolley = 2.6; e.tRing = 4.0;
+    e.bossLvl = bossLvl;
+    boss = e;
+  }
+  enemies.push(e);
+  return e;
+}
+
+function updateWaves(dt){
+  ST.waveTimer -= dt;
+  if (ST.waveState === 'clear'){
+    if (ST.waveTimer <= 0) beginWave(ST.wave + 1);
+  } else if (ST.waveState === 'announce'){
+    if (ST.waveTimer <= 0) ST.waveState = 'active';
+  } else if (ST.waveState === 'bosswarn'){
+    if (ST.waveTimer <= 0){
+      const p = spawnEdgePos();
+      spawnEnemy('boss', clamp(p.x, 40, W-40), -30);
+      ST.waveState = 'active';
+    }
+  } else if (ST.waveState === 'active'){
+    if (ST.toSpawn.length){
+      ST.spawnTimer -= dt;
+      if (ST.spawnTimer <= 0){
+        const p = spawnEdgePos();
+        spawnEnemy(ST.toSpawn.pop(), p.x, p.y);
+        ST.spawnTimer = rand(0.25, 0.7);
+      }
+    } else if (!enemies.length){
+      ST.waveState = 'clear';
+      ST.waveTimer = 1.6;
+      ST.banner = 'WAVE ' + ST.wave + ' CLEAR!'; ST.bannerTimer = 1.4;
+    }
+  }
+}
+
+// ================================================================
+// BULLETS
+// ================================================================
+function firePlayerGun(dt){
+  const g = player.gun;
+  player.fireCd -= dt;
+  let want = mouse.down || keys[' '];
+  let aimX, aimY;
+  if (usingTouch && touch.active){
+    // touch: auto-aim nearest enemy
+    let best = null, bd = 1e9;
+    for (const e of enemies){
+      const d = dist2(player.x, player.y, e.x, e.y);
+      if (d < bd){ bd = d; best = e; }
+    }
+    if (best){ want = true; aimX = best.x; aimY = best.y; }
+  }
+  if (aimX === undefined){ aimX = mouse.x; aimY = mouse.y; }
+  player.aim = Math.atan2(aimY - player.y, aimX - player.x);
+
+  if (!want || player.fireCd > 0) return;
+  player.fireCd = 1 / g.rate;
+  const n = g.count;
+  const spread = n > 1 ? (0.09 + n*0.03) : 0;
+  for (let i=0;i<n;i++){
+    const off = n > 1 ? (i/(n-1) - 0.5) * spread * 2 : 0;
+    const a = player.aim + off + rand(-0.015, 0.015);
+    if (pbullets.length >= T.maxPBullets) pbullets.shift();
+    pbullets.push({
+      x: player.x + Math.cos(player.aim)*8, y: player.y + Math.sin(player.aim)*8,
+      vx: Math.cos(a)*g.speed*g.bspeedMul, vy: Math.sin(a)*g.speed*g.bspeedMul,
+      dmg: g.damage, size: g.size, pierce: g.pierce, hitList: null,
+    });
+  }
+  ST.shake = Math.min(3, ST.shake + 0.4);
+  SFX.shoot();
+}
+
+function eshoot(x, y, angle, speed, kind){
+  if (ebullets.length >= T.maxEBullets) ebullets.shift();
+  ebullets.push({
+    x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+    kind, spin: rand(0, TAU), age: 0,
+  });
+}
+
+function updatePBullets(dt){
+  for (let i = pbullets.length-1; i >= 0; i--){
+    const b = pbullets[i];
+    b.x += b.vx*dt; b.y += b.vy*dt;
+    if (b.x < 4 || b.x > W-4 || b.y < 4 || b.y > H-4){
+      spawnParts(b.x, b.y, 2, '#f4c542', 30);
+      pbullets.splice(i,1);
+    }
+  }
+}
+
+function updateEBullets(dt){
+  for (let i = ebullets.length-1; i >= 0; i--){
+    const b = ebullets[i];
+    b.age += dt;
+    if (b.kind === 'bubble'){
+      // gentle homing for the first 3 seconds, then pop at 6
+      if (b.age < 3){
+        const ta = Math.atan2(player.y - b.y, player.x - b.x);
+        let ca = Math.atan2(b.vy, b.vx);
+        let d = ta - ca;
+        while (d > Math.PI) d -= TAU;
+        while (d < -Math.PI) d += TAU;
+        ca += clamp(d, -0.9*dt, 0.9*dt);
+        const sp = Math.hypot(b.vx, b.vy);
+        b.vx = Math.cos(ca)*sp; b.vy = Math.sin(ca)*sp;
+      }
+      if (b.age > 6){ spawnParts(b.x, b.y, 3, '#6fd8e2', 26); ebullets.splice(i,1); continue; }
+    }
+    b.x += b.vx*dt; b.y += b.vy*dt;
+    b.spin += dt * 6;
+    if (b.x < -14 || b.x > W+14 || b.y < -14 || b.y > H+14){ ebullets.splice(i,1); }
+  }
+}
+
+// ================================================================
+// ENEMIES
+// ================================================================
+function updateEnemies(dt){
+  const sc = waveScale(ST.wave);
+  for (const e of enemies){
+    e.flash = Math.max(0, e.flash - dt);
+    const dx = player.x - e.x, dy = player.y - e.y;
+    const d = Math.hypot(dx, dy) || 1;
+
+    if (e.type === 'washer'){
+      e.x += (dx/d) * e.speed * dt;
+      e.y += (dy/d) * e.speed * dt;
+      e.t1 -= dt;
+      if (e.t1 <= 0 && d < T.washer.range && onScreen(e)){
+        e.t1 = T.washer.shootCd / Math.sqrt(sc);
+        const a = Math.atan2(dy, dx);
+        for (let k=-1;k<=1;k++) eshoot(e.x, e.y, a + k*0.28, T.plateSpeed * (1 + ST.wave*0.02), 'plate');
+        SFX.plate();
+      }
+    }
+    else if (e.type === 'rinser'){
+      // keep 105–150px, strafe sideways
+      e.t2 += dt;
+      const want = d > 150 ? 1 : (d < 105 ? -1 : 0);
+      const ax = dx/d, ay = dy/d;
+      const px = -ay, py = ax; // perpendicular
+      const strafe = Math.sin(e.t2 * 0.9) > 0 ? 1 : -1;
+      e.x += (ax*want + px*strafe*0.6) * e.speed * dt;
+      e.y += (ay*want + py*strafe*0.6) * e.speed * dt;
+      e.t1 -= dt;
+      if (e.t1 <= 0 && onScreen(e)){
+        e.t1 = T.rinser.shootCd / Math.sqrt(sc);
+        const a = Math.atan2(dy, dx);
+        for (let k=0;k<3;k++){
+          const err = rand(-0.06, 0.06);
+          eshoot(e.x, e.y, a + err, T.forkSpeed * (1 + ST.wave*0.02), 'fork');
+        }
+        SFX.fork();
+      }
+    }
+    else if (e.type === 'bubbler'){
+      e.t2 += dt;
+      e.x += Math.cos(e.t2*0.7) * e.speed * dt + (dx/d) * e.speed * 0.4 * dt;
+      e.y += Math.sin(e.t2*0.9) * e.speed * dt + (dy/d) * e.speed * 0.4 * dt;
+      e.t1 -= dt;
+      if (e.t1 <= 0 && onScreen(e)){
+        e.t1 = T.bubbler.shootCd / Math.sqrt(sc);
+        const n = 8 + Math.min(6, Math.floor(ST.wave/3));
+        const a0 = rand(0, TAU);
+        for (let k=0;k<n;k++) eshoot(e.x, e.y, a0 + k*TAU/n, T.bubbleSpeed, 'bubble');
+        SFX.bubble();
+      }
+    }
+    else if (e.type === 'boss'){
+      updateBoss(e, dt, dx, dy, d);
+    }
+
+    e.x = clamp(e.x, -20, W+20);
+    e.y = clamp(e.y, -30, H+20);
+  }
+}
+
+function onScreen(e){ return e.x > 8 && e.x < W-8 && e.y > 8 && e.y < H-8; }
+
+function updateBoss(e, dt, dx, dy, d){
+  const lv = e.bossLvl;
+  if (d > 90){ e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt; }
+  else { e.t2 += dt; e.x += Math.cos(e.t2*0.5)*8*dt; }
+
+  // spiral of plates — the signature move
+  e.tSpiral -= dt;
+  if (e.tSpiral <= 0){
+    e.tSpiral = Math.max(0.09, 0.16 - lv*0.015);
+    e.spiralA += 0.42;
+    const arms = 2 + Math.min(2, lv-1);
+    for (let k=0;k<arms;k++)
+      eshoot(e.x, e.y, e.spiralA + k*TAU/arms, T.plateSpeed*0.9, 'plate');
+  }
+  // aimed fork volley
+  e.tVolley -= dt;
+  if (e.tVolley <= 0){
+    e.tVolley = Math.max(1.8, 3.2 - lv*0.2);
+    const a = Math.atan2(dy, dx);
+    const n = 5 + lv;
+    for (let k=0;k<n;k++) eshoot(e.x, e.y, a + (k/(n-1)-0.5)*0.7, T.forkSpeed*1.05, 'fork');
+    SFX.fork();
+  }
+  // bubble ring
+  e.tRing -= dt;
+  if (e.tRing <= 0){
+    e.tRing = Math.max(3.2, 5 - lv*0.3);
+    const n = 10 + lv*2;
+    const a0 = rand(0, TAU);
+    for (let k=0;k<n;k++) eshoot(e.x, e.y, a0 + k*TAU/n, T.bubbleSpeed*1.15, 'bubble');
+    SFX.bubble();
+  }
+}
+
+function damageEnemy(e, dmg, hitX, hitY){
+  e.hp -= dmg;
+  e.flash = 0.08;
+  SFX.hitEnemy();
+  addFloater(hitX, hitY - 6, String(Math.round(dmg)), '#f4c542');
+  if (e.hp <= 0) killEnemy(e);
+}
+
+function killEnemy(e){
+  const idx = enemies.indexOf(e);
+  if (idx >= 0) enemies.splice(idx, 1);
+  ST.kills++;
+  ST.shake = Math.min(6, ST.shake + 2);
+  const isB = e.type === 'boss';
+  spawnParts(e.x, e.y, isB ? 50 : 14, '#dfe3ea', isB ? 120 : 70);
+  spawnParts(e.x, e.y, isB ? 30 : 8, '#79c7f0', isB ? 100 : 55);
+  if (e.elite) spawnParts(e.x, e.y, 10, '#ffc02a', 80);
+  if (isB){
+    boss = null;
+    SFX.bossdie();
+    for (let k=0;k<10;k++) dropPickup(e.x + rand(-18,18), e.y + rand(-14,14), 'sud');
+    dropPickup(e.x, e.y, 'heart');
+    addFloater(e.x, e.y - 20, 'MEGAWASHER DOWN!', CRIMSON, 2.2);
+  } else {
+    SFX.boom();
+    const n = e.elite ? 4 : irand(1,2);
+    for (let k=0;k<n;k++) dropPickup(e.x + rand(-6,6), e.y + rand(-6,6), 'sud');
+    const heartChance = e.elite ? 0.35 : 0.03;
+    if (Math.random() < heartChance) dropPickup(e.x, e.y, 'heart');
+  }
+}
+
+// ================================================================
+// PICKUPS / XP
+// ================================================================
+function dropPickup(x, y, kind){
+  pickups.push({ x: clamp(x, 10, W-10), y: clamp(y, 10, H-10), kind, vx: rand(-20,20), vy: rand(-20,20), age: 0 });
+}
+
+function updatePickups(dt){
+  for (let i = pickups.length-1; i >= 0; i--){
+    const p = pickups[i];
+    p.age += dt;
+    p.vx *= 0.92; p.vy *= 0.92;
+    const d2 = dist2(p.x, p.y, player.x, player.y);
+    const mr = T.magnetRadius;
+    if (d2 < mr*mr){
+      const d = Math.sqrt(d2) || 1;
+      const pull = 220 * (1 - d/mr) + 60;
+      p.vx += (player.x - p.x)/d * pull * dt * 10;
+      p.vy += (player.y - p.y)/d * pull * dt * 10;
+    }
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    if (d2 < 7*7){
+      if (p.kind === 'sud'){ gainXP(1); SFX.pickup(); }
+      else { player.hp = Math.min(player.maxhp, player.hp + 1); SFX.heart(); addFloater(player.x, player.y-12, '+1 HEART', CRIMSON); }
+      pickups.splice(i,1);
+    } else if (p.age > 25){
+      pickups.splice(i,1);
+    }
+  }
+}
+
+function gainXP(n){
+  player.xp += n;
+  while (player.xp >= player.xpNext){
+    player.xp -= player.xpNext;
+    player.level++;
+    player.xpNext = Math.round(player.xpNext * 1.35 + 2);
+    ST.levelQueue++;
+  }
+  if (ST.levelQueue > 0 && ST.mode === 'play') openLevelUp();
+}
+
+function openLevelUp(){
+  ST.levelQueue--;
+  ST.mode = 'levelup';
+  const pool = CARDS.filter(c => !(c.max && c.max(player.gun)));
+  const picks = [];
+  while (picks.length < 3 && pool.length){
+    const c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
+    picks.push(c);
+  }
+  ST.cards = picks;
+  SFX.levelup();
+}
+
+function chooseCard(i){
+  const c = ST.cards[i];
+  if (!c) return;
+  c.apply(player.gun);
+  player.upgrades++;
+  SFX.click();
+  // gun evolution name
+  let newName = player.gunName;
+  for (const [need, name] of GUN_NAMES) if (player.upgrades >= need) newName = name;
+  if (newName !== player.gunName){
+    player.gunName = newName;
+    ST.banner = 'GUN EVOLVED: ' + newName; ST.bannerTimer = 2.0;
+    SFX.evolve();
+    spawnParts(player.x, player.y, 24, '#f4c542', 90);
+  }
+  ST.cards = [];
+  if (ST.levelQueue > 0) openLevelUp();
+  else ST.mode = 'play';
+}
+
+function clickCard(x, y){
+  const cw = 108, chh = 84, gap = 16;
+  const total = 3*cw + 2*gap;
+  const x0 = (W - total)/2, y0 = (H - chh)/2 + 8;
+  for (let i=0;i<3;i++){
+    const cxr = x0 + i*(cw+gap);
+    if (x >= cxr && x <= cxr+cw && y >= y0 && y <= y0+chh){ chooseCard(i); return; }
+  }
+}
+
+// ================================================================
+// PLAYER
+// ================================================================
+function updatePlayer(dt){
+  let mx = 0, my = 0;
+  if (keys['w'] || keys['arrowup']) my--;
+  if (keys['s'] || keys['arrowdown']) my++;
+  if (keys['a'] || keys['arrowleft']) mx--;
+  if (keys['d'] || keys['arrowright']) mx++;
+  if (usingTouch && touch.active){
+    const mag = Math.hypot(touch.dx, touch.dy);
+    if (mag > 6){ mx = touch.dx/mag; my = touch.dy/mag; }
+  }
+  const mag = Math.hypot(mx, my);
+  if (mag > 0){ mx /= mag; my /= mag; }
+  const sp = T.playerSpeed * player.speedMul;
+  player.x = clamp(player.x + mx*sp*dt, 10, W-10);
+  player.y = clamp(player.y + my*sp*dt, 10, H-10);
+  player.iframe = Math.max(0, player.iframe - dt);
+  player.flash = Math.max(0, player.flash - dt);
+
+  firePlayerGun(dt);
+
+  // enemy bullets vs player (tiny core hitbox)
+  if (player.iframe <= 0){
+    const cr = T.coreRadius;
+    for (let i = ebullets.length-1; i >= 0; i--){
+      const b = ebullets[i];
+      const br = b.kind === 'plate' ? 3 : (b.kind === 'bubble' ? 2.5 : 2);
+      if (dist2(b.x, b.y, player.x, player.y) < (cr+br)*(cr+br)){
+        ebullets.splice(i,1);
+        hurtPlayer(1);
+        break;
+      }
+    }
+  }
+  // enemy contact
+  if (player.iframe <= 0){
+    for (const e of enemies){
+      if (dist2(e.x, e.y, player.x, player.y) < (e.r + T.bodyRadius)*(e.r + T.bodyRadius)){
+        hurtPlayer(e.touch);
+        // knockback away from the enemy
+        const a = Math.atan2(player.y - e.y, player.x - e.x);
+        player.x = clamp(player.x + Math.cos(a)*14, 10, W-10);
+        player.y = clamp(player.y + Math.sin(a)*14, 10, H-10);
+        break;
+      }
+    }
+  }
+}
+
+function hurtPlayer(dmg){
+  player.hp -= dmg;
+  player.iframe = T.iframes;
+  player.flash = 0.25;
+  ST.shake = Math.min(8, ST.shake + 5);
+  ST.flashRed = 0.25;
+  SFX.hurt();
+  spawnParts(player.x, player.y, 10, CRIMSON, 80);
+  if (player.hp <= 0){
+    player.hp = 0;
+    spawnParts(player.x, player.y, 40, CRIMSON, 120);
+    spawnParts(player.x, player.y, 20, '#f0c090', 90);
+    endRun();
+  }
+}
+
+// player bullets vs enemies
+function collidePlayerBullets(){
+  for (let i = pbullets.length-1; i >= 0; i--){
+    const b = pbullets[i];
+    const br = 2.5 * b.size;
+    let hit = false;
+    for (const e of enemies){
+      if (b.hitList && b.hitList.indexOf(e) >= 0) continue;
+      if (dist2(b.x, b.y, e.x, e.y) < (e.r+br)*(e.r+br)){
+        damageEnemy(e, b.dmg, b.x, b.y);
+        spawnParts(b.x, b.y, 3, '#f4c542', 50);
+        if (b.pierce > 0){
+          b.pierce--;
+          (b.hitList || (b.hitList = [])).push(e);
+        } else {
+          hit = true;
+        }
+        break;
+      }
+    }
+    if (hit) pbullets.splice(i,1);
+  }
+}
+
+// ================================================================
+// PARTICLES & FLOATERS
+// ================================================================
+function spawnParts(x, y, n, color, speed){
+  for (let i=0;i<n;i++){
+    if (parts.length >= T.maxParticles) parts.shift();
+    const a = rand(0, TAU), s = rand(speed*0.3, speed);
+    parts.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: rand(0.25, 0.6), color, size: Math.random() < 0.3 ? 2 : 1 });
+  }
+}
+function updateParts(dt){
+  for (let i = parts.length-1; i >= 0; i--){
+    const p = parts[i];
+    p.life -= dt;
+    if (p.life <= 0){ parts.splice(i,1); continue; }
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.vx *= 0.94; p.vy *= 0.94;
+  }
+}
+function addFloater(x, y, text, color, life){
+  floaters.push({ x, y, text, color, life: life || 0.7, max: life || 0.7 });
+  if (floaters.length > 24) floaters.shift();
+}
+function updateFloaters(dt){
+  for (let i = floaters.length-1; i >= 0; i--){
+    const f = floaters[i];
+    f.life -= dt; f.y -= 14*dt;
+    if (f.life <= 0) floaters.splice(i,1);
+  }
+}
+
+// ================================================================
+// RENDER
+// ================================================================
+function drawSpriteC(sp, x, y, scale){
+  const s = scale || 1;
+  cx.drawImage(sp, Math.round(x - sp.width*s/2), Math.round(y - sp.height*s/2), sp.width*s, sp.height*s);
+}
+function drawSpriteRot(sp, x, y, angle, scale){
+  const s = scale || 1;
+  cx.save();
+  cx.translate(Math.round(x), Math.round(y));
+  cx.rotate(angle);
+  cx.drawImage(sp, -sp.width*s/2, -sp.height*s/2, sp.width*s, sp.height*s);
+  cx.restore();
+}
+
+function render(){
+  cx.setTransform(1,0,0,1,0,0);
+  cx.clearRect(0,0,W,H);
+
+  // screen shake
+  if (ST.shake > 0.1){
+    cx.setTransform(1,0,0,1, Math.round(rand(-ST.shake, ST.shake)*0.5), Math.round(rand(-ST.shake, ST.shake)*0.5));
+  }
+
+  cx.drawImage(bg, 0, 0);
+
+  if (ST.mode === 'menu'){ renderMenu(); return; }
+
+  // pickups
+  for (const p of pickups){
+    const bob = Math.sin((ST.time + p.x) * 4) * 1.5;
+    drawSpriteC(p.kind === 'sud' ? SP.sud : SP.heart, p.x, p.y + bob);
+  }
+
+  // enemies
+  for (const e of enemies){
+    let sp = SP[e.type], scale = 1;
+    if (e.elite && SP[e.type+'_elite']){ sp = SP[e.type+'_elite']; scale = 1.15; }
+    if (e.type === 'boss') scale = 2;
+    const wob = Math.sin(ST.time*6 + e.t2) * 1;
+    drawSpriteC(sp, e.x, e.y + wob*0.4, scale);
+    if (e.flash > 0){
+      cx.globalAlpha = 0.85;
+      drawSpriteC(SP[e.type+'_flash'], e.x, e.y + wob*0.4, scale);
+      cx.globalAlpha = 1;
+    }
+    // small hp bar for elites
+    if (e.elite && e.hp < e.maxhp){
+      const w2 = 14;
+      cx.fillStyle = '#101018'; cx.fillRect(e.x-w2/2, e.y-13, w2, 2);
+      cx.fillStyle = '#ffc02a'; cx.fillRect(e.x-w2/2, e.y-13, w2 * (e.hp/e.maxhp), 2);
+    }
+  }
+
+  // player (blink during iframes)
+  const blink = player.iframe > 0 && Math.floor(ST.time*14) % 2 === 0;
+  if (ST.mode !== 'over' && !blink){
+    drawSpriteC(SP.player, player.x, player.y);
+    drawSpriteRot(SP.gun, player.x + Math.cos(player.aim)*7, player.y + 1 + Math.sin(player.aim)*7, player.aim);
+    if (player.flash > 0){
+      cx.globalAlpha = 0.7;
+      drawSpriteC(SP.player_flash, player.x, player.y);
+      cx.globalAlpha = 1;
+    }
+  }
+
+  // player bullets
+  for (const b of pbullets){
+    drawSpriteRot(SP.slug, b.x, b.y, Math.atan2(b.vy, b.vx), b.size);
+  }
+
+  // enemy bullets
+  for (const b of ebullets){
+    if (b.kind === 'plate') drawSpriteRot(SP.plate, b.x, b.y, b.spin);
+    else if (b.kind === 'fork') drawSpriteRot(SP.fork, b.x, b.y, Math.atan2(b.vy, b.vx));
+    else {
+      const puls = 1 + Math.sin(b.age*8)*0.15;
+      drawSpriteC(SP.bubble, b.x, b.y, puls);
+    }
+  }
+
+  // particles
+  for (const p of parts){
+    cx.globalAlpha = clamp(p.life*3, 0, 1);
+    cx.fillStyle = p.color;
+    cx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+  }
+  cx.globalAlpha = 1;
+
+  // floaters
+  for (const f of floaters){
+    cx.globalAlpha = clamp(f.life / f.max, 0, 1);
+    drawText(f.text, Math.round(f.x), Math.round(f.y), 1, f.color, 'center');
+  }
+  cx.globalAlpha = 1;
+
+  renderHUD();
+
+  // red hurt vignette
+  if (ST.flashRed > 0){
+    cx.globalAlpha = ST.flashRed * 1.4;
+    cx.fillStyle = CRIMSON;
+    cx.fillRect(0,0,W,3); cx.fillRect(0,H-3,W,3);
+    cx.fillRect(0,0,3,H); cx.fillRect(W-3,0,3,H);
+    cx.globalAlpha = 1;
+  }
+
+  if (ST.mode === 'levelup') renderLevelUp();
+  if (ST.mode === 'pause') renderPause();
+  if (ST.mode === 'over') renderGameOver();
+}
+
+function renderHUD(){
+  // hearts
+  for (let i=0;i<player.maxhp;i++){
+    const x = 10 + i*9, y = 8;
+    if (i < player.hp) drawSpriteC(SP.heart, x, y);
+    else {
+      cx.globalAlpha = 0.25;
+      drawSpriteC(SP.heart, x, y);
+      cx.globalAlpha = 1;
+    }
+  }
+  // wave
+  const label = boss ? 'MEGAWASHER' : (ST.wave > 0 ? 'WAVE ' + ST.wave : '');
+  if (label) drawText(label, W/2, 6, 1, boss ? CRIMSON : '#dfe3ea', 'center');
+  // boss hp bar
+  if (boss){
+    const bw = 140;
+    cx.fillStyle = '#101018'; cx.fillRect(W/2-bw/2, 14, bw, 4);
+    cx.fillStyle = CRIMSON; cx.fillRect(W/2-bw/2, 14, bw * clamp(boss.hp/boss.maxhp,0,1), 4);
+  }
+  // kills + time
+  const mm = Math.floor(ST.time/60), ss = Math.floor(ST.time%60);
+  drawText(String(ST.kills) + ' KO', W-8, 6, 1, '#dfe3ea', 'right');
+  drawText((mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss, W-8, 14, 1, '#7a7a8e', 'right');
+  // xp bar
+  cx.fillStyle = '#101018'; cx.fillRect(0, H-4, W, 4);
+  cx.fillStyle = '#79c7f0'; cx.fillRect(0, H-4, W * clamp(player.xp/player.xpNext, 0, 1), 4);
+  // gun name + level
+  drawText(player.gunName, 8, H-13, 1, '#f4c542');
+  drawText('LV ' + player.level, W-8, H-13, 1, '#79c7f0', 'right');
+  // banner
+  if (ST.bannerTimer > 0){
+    const a = clamp(ST.bannerTimer, 0, 1);
+    cx.globalAlpha = a;
+    const big = ST.banner.indexOf('WARNING') === 0;
+    drawText(ST.banner, W/2, H/2 - 40, big ? 2 : 2, big ? CRIMSON : '#fff', 'center');
+    cx.globalAlpha = 1;
+  }
+}
+
+function renderMenu(){
+  cx.fillStyle = 'rgba(6,6,10,0.55)';
+  cx.fillRect(0,0,W,H);
+  const bob = Math.sin(ST.time*2) * 3;
+  drawSpriteC(SP.washer, W/2, 74 + bob, 3);
+  drawText('SUDS OF DOOM', W/2, 116, 3, CRIMSON, 'center');
+  drawText('THE DISHWASHER UPRISING', W/2, 136, 1, '#dfe3ea', 'center');
+  if (Math.floor(ST.time*2) % 2 === 0)
+    drawText(usingTouch ? 'TAP TO START' : 'CLICK TO START', W/2, 158, 1, '#f4c542', 'center');
+  drawText('WASD MOVE + MOUSE AIM + HOLD TO FIRE', W/2, 182, 1, '#7a7a8e', 'center');
+  drawText('TOUCH: DRAG TO MOVE, AUTO-FIRE', W/2, 192, 1, '#7a7a8e', 'center');
+  drawText('P PAUSE + M MUTE', W/2, 202, 1, '#7a7a8e', 'center');
+  if (ST.best.wave > 0)
+    drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 222, 1, '#79c7f0', 'center');
+  drawText('A YUNIORS CHILL ZONE GAME', W/2, H-14, 1, '#3a3a48', 'center');
+  if (muted) drawText('MUTED', W-8, 6, 1, '#7a7a8e', 'right');
+}
+
+function renderLevelUp(){
+  cx.fillStyle = 'rgba(6,6,10,0.72)';
+  cx.fillRect(0,0,W,H);
+  drawText('LEVEL UP!', W/2, 36, 2, '#f4c542', 'center');
+  drawText('PICK AN UPGRADE (1-2-3 OR CLICK)', W/2, 54, 1, '#dfe3ea', 'center');
+  const cw = 108, chh = 84, gap = 16;
+  const total = 3*cw + 2*gap;
+  const x0 = (W - total)/2, y0 = (H - chh)/2 + 8;
+  for (let i=0;i<ST.cards.length;i++){
+    const c = ST.cards[i];
+    const x = x0 + i*(cw+gap);
+    const hover = mouse.x >= x && mouse.x <= x+cw && mouse.y >= y0 && mouse.y <= y0+chh;
+    cx.fillStyle = hover ? '#20202e' : '#16161f';
+    cx.fillRect(x, y0, cw, chh);
+    cx.strokeStyle = hover ? CRIMSON : '#3a3a48';
+    cx.lineWidth = 2;
+    cx.strokeRect(x+1, y0+1, cw-2, chh-2);
+    drawText(String(i+1), x+8, y0+8, 2, hover ? CRIMSON : '#7a7a8e');
+    drawText(c.name, x+cw/2, y0+34, 1, '#fff', 'center');
+    drawText(c.desc, x+cw/2, y0+52, 1, '#f4c542', 'center');
+  }
+}
+
+function renderPause(){
+  cx.fillStyle = 'rgba(6,6,10,0.6)';
+  cx.fillRect(0,0,W,H);
+  drawText('PAUSED', W/2, H/2 - 14, 3, '#fff', 'center');
+  drawText('P OR CLICK TO RESUME', W/2, H/2 + 16, 1, '#7a7a8e', 'center');
+}
+
+function renderGameOver(){
+  cx.fillStyle = 'rgba(6,6,10,0.7)';
+  cx.fillRect(0,0,W,H);
+  drawText('YOU GOT WASHED!', W/2, 70, 3, CRIMSON, 'center');
+  drawText('WAVE ' + ST.wave + ' + ' + ST.kills + ' KO', W/2, 104, 2, '#fff', 'center');
+  const mm = Math.floor(ST.time/60), ss = Math.floor(ST.time%60);
+  drawText('SURVIVED ' + (mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss, W/2, 124, 1, '#dfe3ea', 'center');
+  drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 142, 1, '#79c7f0', 'center');
+  if (Math.floor(ST.time*2) % 2 === 0)
+    drawText(usingTouch ? 'TAP TO RETRY' : 'PRESS R OR CLICK TO RETRY', W/2, 172, 1, '#f4c542', 'center');
+}
+
+// ================================================================
+// MAIN LOOP — fixed 60hz update, render per frame
+// ================================================================
+let last = performance.now(), acc = 0;
+const STEP = 1/60;
+
+function frame(now){
+  requestAnimationFrame(frame);
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.1) dt = 0.1;
+  acc += dt;
+  while (acc >= STEP){
+    tick(STEP);
+    acc -= STEP;
+  }
+  render();
+}
+
+function tick(dt){
+  ST.time += dt;
+  ST.shake = Math.max(0, ST.shake - dt*14);
+  ST.flashRed = Math.max(0, ST.flashRed - dt);
+  ST.bannerTimer = Math.max(0, ST.bannerTimer - dt);
+  if (ST.mode !== 'play') return;
+  updateWaves(dt);
+  updatePlayer(dt);
+  updateEnemies(dt);
+  updatePBullets(dt);
+  updateEBullets(dt);
+  collidePlayerBullets();
+  updatePickups(dt);
+  updateParts(dt);
+  updateFloaters(dt);
+}
+
+// ================================================================
+// DEBUG / TEST HOOKS (used by automated tests, harmless in prod)
+// ================================================================
+window.SUDS = {
+  get state(){ return ST.mode; },
+  get stats(){ return { wave: ST.wave, kills: ST.kills, hp: player.hp, level: player.level,
+    enemies: enemies.length, ebullets: ebullets.length, pbullets: pbullets.length, time: ST.time }; },
+  start(){ if (ST.mode !== 'play') startRun(); },
+  forceWave(n){ enemies = []; ebullets = []; boss = null; ST.toSpawn = []; ST.waveState = 'clear'; ST.waveTimer = 0.01; ST.wave = n-1; },
+  grantXP(n){ gainXP(n); },
+  hurt(n){ player.iframe = 0; hurtPlayer(n||1); },
+  spawn(type, x, y){ return spawnEnemy(type, x===undefined?rand(30,W-30):x, y===undefined?rand(30,H-30):y); },
+  choose(i){ chooseCard(i); },
+  god(on){ player.iframe = on ? 1e9 : 0; },
+};
+
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
