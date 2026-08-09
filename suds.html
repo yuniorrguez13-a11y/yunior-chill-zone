@@ -468,12 +468,158 @@ for (const k in HERO) HERO_FLASH[k] = makeSilhouette(HERO[k], '#ffffff');
 
 const SP = {};
 (function bakeSprites(){
-  SP.gun = makeSprite([
-    ".....OO",
-    "OOOOOOG",
-    "OGGGGGG",
-    "..OG...",
-  ],{O:'#12141a',G:'#8b93a4'});
+  // --- the five floating guns ---
+  // Traced from the reference art: background keyed out, cropped, area-averaged
+  // down to game resolution, colour-quantised, then given a 1px silhouette
+  // outline so they read against the dark kitchen floor.
+  SP.gunA = makeSprite([
+    "...aaa....aaa..aa.aaaa.aaa..",
+    "..abcdaaaabecaaecabffgabcca.",
+    ".aaefggffgfhieihgejkkhgggfca",
+    "agfgfgffffkhifkigfijjhkggfca",
+    "agkffgfffghhgifjjjjjjjkggfca",
+    "addcgegggfhighfgegfjjkkeegca",
+    ".aadgccccgifgifigghffkedeeda",
+    "...adbaaadcddcdcdddcedaabba.",
+    "....aa...aaaaaaaaaaaaa..aa..",
+  ],{a:'#0d0e14',b:'#000000',c:'#383830',d:'#202020',e:'#404040',f:'#787068',g:'#605850',
+     h:'#a8a8a8',i:'#888888',j:'#f8f0d0',k:'#a09880'});
+
+  SP.gunB = makeSprite([
+    ".....aa.aaaaaa.aa.................",
+    "....abbabbcddeafga................",
+    "...agbhijdjjjjihbha...............",
+    ".aaagbfjjjjjjjjhbgaaaaaaaaaaaaaaa.",
+    "abghgbdjjjjjjjjkggggehbbbbbbgfebha",
+    "affbhbdjjjjjjjjkggdebbfdfedddglbga",
+    "aghlhbcjjjjjjjdfbgdbelggggggggbifa",
+    "afedhbfjjjjjjjcgggfekkkkkkkkkikkfa",
+    "afidhbbcdjjjdkigbgdeifeeffffffekfa",
+    "afbbhghkccdckkilggbeemmmmmmmmmmcfa",
+    "afijhfbekccckkfbbhdeemmmmmmmmmlkfa",
+    "afedghhheiccifhghgieikkkkkkkkkkifa",
+    "affihgnlhbggbhhnghbekfffffffffeifa",
+    "afijfinhggggghhncbdbblhhhhhhhhhfba",
+    "abfghlibhllhhlhhlhglhhhlhhlhbhhlla",
+    "affbfbkfeigeibekbeigieibeibfkbbeba",
+    "abblmmebgblhblhbhhblfgbghbghegbfga",
+    "abfihlebggbghhghhhhneghbhgblefdfga",
+    ".alhglghhhhhhhhhhhhlhlhhhhhlglhha.",
+    "..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..",
+  ],{a:'#0d0e14',b:'#403830',c:'#988878',d:'#989090',e:'#686050',f:'#585048',g:'#303028',
+     h:'#202018',i:'#787060',j:'#f8f8e8',k:'#888070',l:'#101008',m:'#000000',n:'#382818'});
+
+  SP.gunC = makeSprite([
+    "...............................aaaa.",
+    "..aaaaaaaaaaaaaaaa...aaaa.....abccba",
+    ".addbebefgghbbbdfeaaaeffha...ahgijga",
+    "aedghgdkdffkdghfghcffkfgha.aabkkccba",
+    ".abhfjjdkkkkjjfhbbgcckhkbaabfcfgljea",
+    ".abgjjljmmmmmdjkgkhgdhgfgbhddfggcjba",
+    ".agdjiminmmnmjjdfhjijdhfggffkkfkdjda",
+    "aebcjimlllmiimdfginiiichbchfghkkdjha",
+    "agcdjiilllmnlndjnjdbbjjcccbhgfggjjba",
+    "agcfjllnlnniliffdkekkekhhcgdddfdljba",
+    "agcfjllnillnimfbebbffbbbbcfdddfkcjda",
+    "abhfjilillliimffkgbffbbhhcgdddfgdcfa",
+    ".abcjmiilllilnfdinjfhkcccckfddfgccba",
+    "aefdjillnninlidhhdiijijggfhgkkkgccba",
+    ".akkjjiniminimjkgbdjjjbeekbkkgfgclca",
+    ".aehfjmjdfddmjdbfkhfcbkkhehfghhkdjka",
+    ".akkbkdfdffhfkbkhbkcchkkbeebffgkfcba",
+    "aedgbkhdcljfbkhdfbggghfgkaaaehkkjjha",
+    ".ahkecgcjclchgbggeeeeeggba..aabkjjfa",
+    "..aaehbdlclcbheeeaaaaaeea.....aedcba",
+    "....aaekcjckeaaaa.....aa.......aaaa.",
+    "......abbbbea.......................",
+    ".......aaaaa........................",
+  ],{a:'#0d0e14',b:'#181810',c:'#786850',d:'#606050',e:'#000000',f:'#504840',g:'#403830',
+     h:'#282018',i:'#c0e8f0',j:'#90c0c8',k:'#303028',l:'#f8f8f8',m:'#78c8e0',n:'#d8f0f8'});
+
+  SP.gunD = makeSprite([
+    "..aaaaaaaaaaaaaaa.........................",
+    ".abccbbbbbdddeffeaaaaaaaaaaaaaa...........",
+    "abcbbbbbbcccccggghhigggggcddbbdaaaaaaaa...",
+    "abccccccbcejkkggggggiiiiiillllllfhhhfecaa.",
+    "abccmmcbegkcccccccfggggggiiiiiiigggggggjea",
+    "ancccccccffcmmmmmmjfbdeddedcedecdekkkkkeca",
+    "ancbbbbbcfecmmmmmmefbdeddedcedecdehhhhheca",
+    "abccmmcbehjcccccccfhhhghhhliiliilhhhhhhfea",
+    "abccccccbccjjjhhhhghiiiiiillllllejjjeecaa.",
+    "adcbbbbbbbbdbchghjjlkkklkcnnnnnnaaaaaaa...",
+    ".anddnnnnnnnnceeenaaaaaaaaaaaaaa..........",
+    "..aaaaaaaaaaaaaaaa........................",
+  ],{a:'#0d0e14',b:'#383838',c:'#484848',d:'#282828',e:'#a0a0a0',f:'#b8b8b0',g:'#f8f8f8',
+     h:'#e8e8e0',i:'#b8f8f8',j:'#d0d0c8',k:'#d8d8d8',l:'#c0d0d8',m:'#00f8f8',n:'#181818'});
+
+  SP.gunE = makeSprite([
+    "...........aa........aaaaaa.........aa................",
+    "..........abbaa.....acddddda......aabea...............",
+    "..........afbbfa...agcbbbbeba...aafebfa...............",
+    "...........agbeeaaagbbhhhhgbbaaafeebga................",
+    "...........ahhbbefihhbhhhhgfhiheebgha.................",
+    "....aaaaaa.aahfjbbgffebbbbebbgbfbfhia.................",
+    "...afeeefhahhhffbcddkjbjjblkdmcebfiiaaaaa.............",
+    "..agbbbbggihgggjecenmggggggllcceefbeebcdcaaaaaaaaaaaa.",
+    ".aigffbfgihgiigjggddbffffffbddbbebbbklnonlkkkkkkkkknfa",
+    ".aihffbfffbiifghhfceffcffcfbmdgbfggfodljldooooooooomha",
+    ".ahhhggghggibebbghgfbmnnnndbfgggghgjmbecchgggggggggga.",
+    "agccfggggggefbbfbhhbobffffckfhggfebhmdlondooooooooolga",
+    "agbbfbggggfgbgggjfgefgjjjjgcbfjghbbflmmjlmkkkkkkkkklga",
+    "agbbgghhhhffbjhhgdkfgjjjjjjgekehhgfgefedcgbffffffffga.",
+    "agbbgghhhhgffjihdobhjjjjjjjjhcocgcllffdnlcllllllllldga",
+    "aigbgghhhhgghhffddggjjjjjjjjghlcgggcdgfcdmkkkkkkkkknga",
+    ".agghgghhhfegggfjdggjjjjjjjjghdjfffbedjjffebbbbbbbbgia",
+    ".aggghhhhhfbgggfjdhgjjjjjjjjghdjfffbbcjegemddddddddea.",
+    "ahfbgghhhhgghhggmmhgjjjjjjjjghnchhicchhfdlpppppppppofa",
+    "agbbgghhhhggbjiifnchjjjjjjjjhmlgibmmhhemdfcccccccccbia",
+    "agbbfghhhhgggjihgbnbgjjjjjjgcngiihgheecmmgbbbbbbbbbga.",
+    "agbbgfggggggggffbgfeegjjjjgmbgbfhebgnllonlpppppppppofa",
+    "aiggiiiiiiihfbbffghfocccccdnhhggfbfhdcmlmelllllllllcha",
+    ".aiigfffgjjigggghhefgdnmmnegfghffggjledlmhhhhhhhhhhia.",
+    ".aihfbjfgggiihfghgdmbfeffefbmdhgghhbolllllpppppppppofa",
+    ".aigffffgiighhjbiifmefggggfemfgggggfncmjlcnnnnnnnnndha",
+    "..aigggghhiiiighedenmhhhhhhlledefghhfgbebhggggggghgha.",
+    "...ahhhhiiaiiiggfbbbojjjjjlobebgfgiiaaaaaaaaaaaaaaaa..",
+    "....aaaaaa.aaibjbbhhgghhhhggghbfbfhha.................",
+    "...........ahhgfghihgbhhhigfhihgfffea.................",
+    "...........agbegiaaggbhhhhgfgaaaheebba................",
+    "..........afbggaa..ahbfffffga...aagffba...............",
+    "..........afgaa.....aiiiiiia......aafba...............",
+    "...........aa........aaaaaa.........aa................",
+  ],{a:'#0d0e14',b:'#484848',c:'#707070',d:'#808080',e:'#585858',f:'#383838',g:'#282828',
+     h:'#101010',i:'#000000',j:'#f88000',k:'#e8e8e8',l:'#a0a0a0',m:'#909090',n:'#b8b8b8',
+     o:'#c8c8c8',p:'#f8f8f8'});
+
+  // --- player bullets, one look per gun ---
+  SP.pdisc = makeSprite([
+    ".oYYYo.",
+    "oYWWWYo",
+    "YWWWWWY",
+    "oYWWWYo",
+    ".oYYYo.",
+  ],{o:'#8a6f1c',Y:'#f4c542',W:'#fff7d0'});
+
+  SP.foam = makeSprite([
+    ".WW.",
+    "WFFW",
+    "WFFW",
+    ".WW.",
+  ],{W:'#9fe0ff',F:'#ffffff'});
+
+  SP.beam = makeSprite([
+    ".cccccccccc.",
+    "cCWWWWWWWWCc",
+    "cCWWWWWWWWCc",
+    ".cccccccccc.",
+  ],{c:'#0d84b8',C:'#2fd0ff',W:'#a8f4ff'});
+
+  SP.mslug = makeSprite([
+    ".RRRR.",
+    "RRYYRR",
+    "RRYYRR",
+    ".RRRR.",
+  ],{R:'#ff9420',Y:'#ffe8b0'});
 
   // --- washer: basic angry dishwasher ---
   SP.washer = makeSprite([
@@ -784,20 +930,38 @@ const player = {
   hp: T.playerHP, maxhp: T.playerHP,
   aim: 0, iframe: 0, fireCd: 0, flash: 0,
   face: 1, moving: false,
-  speedMul: 1, gun: null, gunName: 'PEASHOOTER', upgrades: 0,
+  speedMul: 1, gun: null, gunName: 'PEASHOOTER', gunIdx: 0, upgrades: 0,
   xp: 0, level: 1, xpNext: 5,
 };
 
 let enemies = [], pbullets = [], ebullets = [], pickups = [], parts = [], floaters = [];
 let boss = null;
 
-const GUN_NAMES = [
-  [0,  'PEASHOOTER'],
-  [3,  'PLATE PUNISHER'],
-  [6,  'SUD SHREDDER'],
-  [9,  'RINSE CANNON'],
-  [12, 'MEGABLASTER 9000'],
+// The five guns. Each one runs the same base stat block (player.gun, which is
+// what the level-up cards buff) through its own multipliers, so every card
+// keeps working no matter which gun you are holding. `need` is the number of
+// upgrades that unlocks it.
+const GUNS = [
+  { need:0,  name:'PEASHOOTER',       sp:'gunA', shot:'slug',
+    dmg:1.00, rate:1.00, bspd:1.00, add:0, spread:0.00, pierce:0, shake:0.4, life:0 },
+  { need:3,  name:'PLATE PUNISHER',   sp:'gunB', shot:'disc',
+    dmg:2.60, rate:0.45, bspd:0.72, add:0, spread:0.04, pierce:0, shake:1.7, life:0 },
+  { need:6,  name:'SUD SHREDDER',     sp:'gunC', shot:'foam',
+    dmg:0.55, rate:0.70, bspd:1.05, add:4, spread:0.60, pierce:0, shake:1.5, life:0.52 },
+  { need:9,  name:'RINSE CANNON',     sp:'gunD', shot:'beam',
+    dmg:1.50, rate:0.85, bspd:2.10, add:0, spread:0.02, pierce:2, shake:0.9, life:0 },
+  { need:12, name:'MEGABLASTER 9000', sp:'gunE', shot:'mega',
+    dmg:0.70, rate:2.20, bspd:1.30, add:1, spread:0.13, pierce:0, shake:2.4, life:0 },
 ];
+
+function gunFor(upgrades){
+  let i = 0;
+  for (let k=0;k<GUNS.length;k++) if (upgrades >= GUNS[k].need) i = k;
+  return i;
+}
+// How far the gun floats out. It follows the sprite's own width, so the
+// Megablaster hangs a lot further from him than the starter pistol does.
+function gunRadius(g){ return 12 + SP[g.sp].width * 0.30; }
 
 const CARDS = [
   { id:'rate',  name:'RAPID CYCLE',    desc:'+30% FIRE RATE',        apply: g => g.rate = Math.min(20, g.rate*1.30), max: g => g.rate >= 20 },
@@ -820,7 +984,8 @@ function startRun(){
   player.hp = T.playerHP; player.maxhp = T.playerHP;
   player.iframe = 0; player.fireCd = 0; player.flash = 0;
   player.face = 1; player.moving = false;
-  player.speedMul = 1; player.upgrades = 0; player.gunName = 'PEASHOOTER';
+  player.speedMul = 1; player.upgrades = 0;
+  player.gunIdx = 0; player.gunName = GUNS[0].name;
   player.gun = Object.assign({}, T.gun);
   player.xp = 0; player.level = 1; player.xpNext = 5;
   enemies = []; pbullets = []; ebullets = []; pickups = []; parts = []; floaters = [];
@@ -959,21 +1124,52 @@ function firePlayerGun(dt){
   player.aim = Math.atan2(aimY - player.y, aimX - player.x);
 
   if (!want || player.fireCd > 0) return;
-  player.fireCd = 1 / g.rate;
-  const n = g.count;
-  const spread = n > 1 ? (0.09 + n*0.03) : 0;
+  const gun = GUNS[player.gunIdx];
+  player.fireCd = 1 / (g.rate * gun.rate);
+  const n = g.count + gun.add;
+  const spd = g.speed * g.bspeedMul * gun.bspd;
+  const dmg = g.damage * gun.dmg;
+  const pierce = g.pierce + gun.pierce;
+  const spread = (n > 1 ? (0.09 + n*0.03) : 0) + gun.spread;
+  const gr = gunRadius(gun);
+  const mx = player.x + Math.cos(player.aim)*gr;
+  const my = player.y + Math.sin(player.aim)*gr;
   for (let i=0;i<n;i++){
-    const off = n > 1 ? (i/(n-1) - 0.5) * spread * 2 : 0;
+    const off = n > 1 ? (i/(n-1) - 0.5) * spread * 2 : rand(-spread, spread);
     const a = player.aim + off + rand(-0.015, 0.015);
     if (pbullets.length >= T.maxPBullets) pbullets.shift();
     pbullets.push({
-      x: player.x + Math.cos(player.aim)*13, y: player.y + Math.sin(player.aim)*13,
-      vx: Math.cos(a)*g.speed*g.bspeedMul, vy: Math.sin(a)*g.speed*g.bspeedMul,
-      ang: a, dmg: g.damage, size: g.size, pierce: g.pierce, hitList: null,
+      x: mx, y: my,
+      vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
+      ang: a, dmg, size: g.size, pierce, hitList: null,
+      shot: gun.shot, life: gun.life,
     });
   }
-  ST.shake = Math.min(3, ST.shake + 0.4);
+  // The muzzle floats well ahead of him now, so anything standing between the
+  // two would never be hit. Sweep that gap by hand.
+  sweepMuzzle(mx, my, dmg * n);
+  ST.shake = Math.min(3, ST.shake + gun.shake*0.5);
   SFX.shoot();
+}
+
+// Anything caught between the player and the floating muzzle takes the shot.
+function sweepMuzzle(mx, my, dmg){
+  const dx = mx - player.x, dy = my - player.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  const ux = dx/len, uy = dy/len;
+  let best = null, bt = 1e9;
+  for (const e of enemies){
+    const t = (e.x - player.x)*ux + (e.y - player.y)*uy;
+    if (t < 0 || t > len || t >= bt) continue;
+    const px = player.x + ux*t, py = player.y + uy*t;
+    if (dist2(px, py, e.x, e.y) > e.r*e.r) continue;
+    bt = t; best = e;
+  }
+  if (best){
+    damageEnemy(best, dmg, best.x, best.y);
+    spawnParts(best.x, best.y, 3, '#f4c542', 50);
+  }
 }
 
 function eshoot(x, y, angle, speed, kind){
@@ -988,6 +1184,15 @@ function updatePBullets(dt){
   for (let i = pbullets.length-1; i >= 0; i--){
     const b = pbullets[i];
     b.x += b.vx*dt; b.y += b.vy*dt;
+    // short-lived shots (the Sud Shredder's foam) fizzle out instead of flying on
+    if (b.life > 0){
+      b.life -= dt;
+      if (b.life <= 0){
+        spawnParts(b.x, b.y, 2, '#cfe8ff', 24);
+        pbullets.splice(i,1);
+        continue;
+      }
+    }
     if (b.x < 4 || b.x > W-4 || b.y < 4 || b.y > H-4){
       spawnParts(b.x, b.y, 2, '#f4c542', 30);
       pbullets.splice(i,1);
@@ -1214,12 +1419,12 @@ function chooseCard(i){
   c.apply(player.gun);
   player.upgrades++;
   SFX.click();
-  // gun evolution name
-  let newName = player.gunName;
-  for (const [need, name] of GUN_NAMES) if (player.upgrades >= need) newName = name;
-  if (newName !== player.gunName){
-    player.gunName = newName;
-    ST.banner = 'GUN EVOLVED: ' + newName; ST.bannerTimer = 2.0;
+  // gun evolution — swaps the whole weapon, not just the label
+  const idx = gunFor(player.upgrades);
+  if (idx !== player.gunIdx){
+    player.gunIdx = idx;
+    player.gunName = GUNS[idx].name;
+    ST.banner = 'GUN EVOLVED: ' + player.gunName; ST.bannerTimer = 2.0;
     SFX.evolve();
     spawnParts(player.x, player.y, 24, '#f4c542', 90);
   }
@@ -1381,6 +1586,17 @@ function drawSpriteRot(sp, x, y, angle, scale){
   cx.setTransform(1,0,0,1, shakeX, shakeY);
 }
 
+// The guns are big enough now that rotating one past vertical would show it
+// upside down. Mirror it across the barrel axis instead of letting it roll over.
+function drawGunRot(sp, x, y, angle){
+  const flip = Math.abs(angle) > Math.PI/2 ? -1 : 1;
+  cx.setTransform(1,0,0,1, shakeX + Math.round(x), shakeY + Math.round(y));
+  cx.rotate(angle);
+  cx.scale(1, flip);
+  cx.drawImage(sp, -sp.width/2, -sp.height/2);
+  cx.setTransform(1,0,0,1, shakeX, shakeY);
+}
+
 // Hero animation: which pose to show, and the hover offset that sells the float.
 function heroFrame(){
   if (player.flash > 0) return 'hit';
@@ -1448,9 +1664,10 @@ function render(){
     const hov = heroHover(key);
     drawHero(key, player.x, player.y, player.face, hov);
     // the gun isn't held — it floats out at arm's length and bobs on its own
-    const gr = 12 + Math.sin(ST.time*5.5)*0.9;
-    drawSpriteRot(SP.gun, player.x + Math.cos(player.aim)*gr,
-                          player.y + hov + Math.sin(player.aim)*gr, player.aim);
+    const gun = GUNS[player.gunIdx];
+    const gr = gunRadius(gun) + Math.sin(ST.time*5.5)*0.9;
+    drawGunRot(SP[gun.sp], player.x + Math.cos(player.aim)*gr,
+                           player.y + hov + Math.sin(player.aim)*gr, player.aim);
     if (player.flash > 0){
       cx.globalAlpha = 0.7;
       drawHero(key, player.x, player.y, player.face, hov, true);
@@ -1458,9 +1675,13 @@ function render(){
     }
   }
 
-  // player bullets
+  // player bullets — each gun throws something different
   for (const b of pbullets){
-    drawSpriteRot(SP.slug, b.x, b.y, b.ang, b.size);
+    if (b.shot === 'disc')      drawSpriteRot(SP.pdisc, b.x, b.y, b.ang + ST.time*14, b.size);
+    else if (b.shot === 'foam') drawSpriteC(SP.foam, b.x, b.y, b.size);
+    else if (b.shot === 'beam') drawSpriteRot(SP.beam, b.x, b.y, b.ang, b.size);
+    else if (b.shot === 'mega') drawSpriteRot(SP.mslug, b.x, b.y, b.ang, b.size);
+    else                        drawSpriteRot(SP.slug, b.x, b.y, b.ang, b.size);
   }
 
   // enemy bullets
@@ -1654,6 +1875,7 @@ window.SUDS = {
   hurt(n){ player.iframe = 0; hurtPlayer(n||1); },
   spawn(type, x, y){ return spawnEnemy(type, x===undefined?rand(30,W-30):x, y===undefined?rand(30,H-30):y); },
   choose(i){ chooseCard(i); },
+  gun(i){ player.gunIdx = clamp(i|0, 0, GUNS.length-1); player.gunName = GUNS[player.gunIdx].name; return player.gunName; },
   god(on){ player.iframe = on ? 1e9 : 0; },
 };
 
