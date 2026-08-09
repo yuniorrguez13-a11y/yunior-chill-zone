@@ -950,8 +950,11 @@ const GUNS = [
     dmg:0.55, rate:0.70, bspd:1.05, add:4, spread:0.60, pierce:0, shake:1.5, life:0.52 },
   { need:9,  name:'RINSE CANNON',     sp:'gunD', shot:'beam',
     dmg:1.50, rate:0.85, bspd:2.10, add:0, spread:0.02, pierce:2, shake:0.9, life:0 },
+  // six barrels, six bullets — and they are stacked parallel on the sprite, so
+  // it throws a wall of straight lines rather than a fan. `bank` is how wide
+  // that wall is, measured across the aim direction.
   { need:12, name:'MEGABLASTER 9000', sp:'gunE', shot:'mega',
-    dmg:0.70, rate:2.20, bspd:1.30, add:1, spread:0.13, pierce:0, shake:2.4, life:0 },
+    dmg:0.45, rate:1.60, bspd:1.30, add:5, spread:0.00, pierce:0, shake:2.4, life:0, bank:18 },
 ];
 
 function gunFor(upgrades){
@@ -1134,12 +1137,23 @@ function firePlayerGun(dt){
   const gr = gunRadius(gun);
   const mx = player.x + Math.cos(player.aim)*gr;
   const my = player.y + Math.sin(player.aim)*gr;
+  // across-the-barrels offset, used by banked guns to fire parallel streams
+  const nx = -Math.sin(player.aim), ny = Math.cos(player.aim);
   for (let i=0;i<n;i++){
-    const off = n > 1 ? (i/(n-1) - 0.5) * spread * 2 : rand(-spread, spread);
-    const a = player.aim + off + rand(-0.015, 0.015);
+    const t = n > 1 ? (i/(n-1) - 0.5) : 0;     // -0.5 .. +0.5 across the barrels
+    let a, bx = mx, by = my;
+    if (gun.bank){
+      // every barrel points the same way — spread them sideways, not angularly
+      bx += nx * t * gun.bank;
+      by += ny * t * gun.bank;
+      a = player.aim + rand(-0.02, 0.02);
+    } else {
+      const off = n > 1 ? t * spread * 2 : rand(-spread, spread);
+      a = player.aim + off + rand(-0.015, 0.015);
+    }
     if (pbullets.length >= T.maxPBullets) pbullets.shift();
     pbullets.push({
-      x: mx, y: my,
+      x: bx, y: by,
       vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
       ang: a, dmg, size: g.size, pierce, hitList: null,
       shot: gun.shot, life: gun.life,
