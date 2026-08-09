@@ -759,24 +759,197 @@ const SP = {};
     SP[k+'_elite'] = makeTint(SP[k], '#ffc02a', 0.45);
 })();
 
-// --- kitchen floor background, baked once ---
-const bg = document.createElement('canvas');
-bg.width = W; bg.height = H;
-(function bakeBg(){
-  const g = bg.getContext('2d');
-  const t = 24;
-  for (let y=0; y<H/t; y++) for (let x=0; x<W/t; x++){
-    g.fillStyle = (x+y) % 2 ? '#15151c' : '#191922';
-    g.fillRect(x*t, y*t, t, t);
-    if ((x*7+y*13) % 11 === 0){ g.fillStyle = '#1e1e28'; g.fillRect(x*t+4, y*t+14, 6, 2); }
-    if ((x*5+y*3) % 13 === 0){ g.fillStyle = '#121218'; g.fillRect(x*t+14, y*t+5, 2, 5); }
+// ================================================================
+// THE KITCHEN — the map
+// The arena used to be exactly one 480x270 screen. Now it is a whole
+// kitchen, three screens across and three deep, split into named
+// areas and full of solid counters, crates and shelves. The camera
+// follows you around it.
+//
+// Everything here is plain data. Move a rectangle in WALLS and the
+// collision, the minimap and the drawn kitchen all move with it —
+// there is nothing else to keep in sync.
+// ================================================================
+const WORLD = { w: 1440, h: 810 };
+const cam = { x: 0, y: 0 };
+
+// Named areas. Cosmetic: they pick the floor tiles and supply the
+// location caption that fades in when you walk into one.
+const ZONES = [
+  { x:  0, y:  0, w:1440, h:270, floor:'line',  name:'THE LINE' },
+  { x:  0, y:270, w: 712, h:270, floor:'prep',  name:'PREP STATION' },
+  { x:712, y:270, w: 728, h:270, floor:'pit',   name:'THE DISH PIT' },
+  { x:  0, y:540, w: 542, h:270, floor:'cold',  name:'WALK-IN FREEZER' },
+  { x:542, y:540, w: 898, h:270, floor:'store', name:'DRY STORE' },
+];
+
+// Solid rectangles. You, the dishwashers and every bullet collide with
+// these — the Megawasher is the one thing that ploughs straight through.
+// Keep the gaps between them around 46px or wider, or the kitchen stops
+// being fun to move through.
+const WALLS = [
+  // --- outer shell ---
+  { x:0, y:0, w:1440, h:12, k:'wall' },
+  { x:0, y:798, w:1440, h:12, k:'wall' },
+  { x:0, y:0, w:12, h:810, k:'wall' },
+  { x:1428, y:0, w:12, h:810, k:'wall' },
+
+  // --- THE LINE: counter runs with service gaps, two pillars ---
+  { x:120, y: 56, w:300, h:26, k:'counter' },
+  { x:520, y: 56, w:250, h:26, k:'counter' },
+  { x:880, y: 56, w:380, h:26, k:'counter' },
+  { x:440, y:176, w: 34, h:34, k:'pillar' },
+  { x:980, y:176, w: 34, h:34, k:'pillar' },
+
+  // --- the wall under the line, with three doorways ---
+  { x:  12, y:262, w:230, h:16, k:'wall' },   // door at x 242-360
+  { x: 360, y:262, w:300, h:16, k:'wall' },   // door at x 660-780
+  { x: 780, y:262, w:280, h:16, k:'wall' },   // door at x 1060-1180
+  { x:1180, y:262, w:248, h:16, k:'wall' },
+
+  // --- PREP STATION: tables to duck behind, one island ---
+  { x:150, y:330, w:170, h:52, k:'counter' },
+  { x:150, y:430, w:170, h:52, k:'counter' },
+  { x:390, y:300, w: 52, h:80, k:'counter' },
+  { x:500, y:360, w:150, h:100, k:'island' },
+
+  // --- the pass between prep and the dish pit, doorway in the middle ---
+  { x:706, y:278, w:16, h:100, k:'wall' },    // door at y 378-452
+  { x:706, y:452, w:16, h: 88, k:'wall' },
+
+  // --- THE DISH PIT: island plus two sinks ---
+  { x: 900, y:330, w:180, h:120, k:'island' },
+  { x:1160, y:310, w:110, h: 70, k:'sink' },
+  { x:1160, y:420, w:110, h: 70, k:'sink' },
+
+  // --- freezer front wall, doorway at x 192-300 ---
+  { x: 12, y:546, w:180, h:16, k:'wall' },
+  { x:300, y:546, w:242, h:16, k:'wall' },
+  // --- freezer / dry store divider, doorway at y 652-716 ---
+  { x:534, y:562, w:16, h: 90, k:'wall' },
+  { x:534, y:716, w:16, h: 82, k:'wall' },
+
+  // --- WALK-IN FREEZER: three racks ---
+  { x:100, y:610, w:44, h:150, k:'rack' },
+  { x:216, y:610, w:44, h:150, k:'rack' },
+  { x:332, y:610, w:44, h:150, k:'rack' },
+
+  // --- DRY STORE: stacked crates and shelving ---
+  { x: 660, y:610, w: 56, h: 56, k:'crate' },
+  { x: 748, y:686, w: 56, h: 56, k:'crate' },
+  { x: 640, y:730, w: 56, h: 56, k:'crate' },
+  { x: 900, y:600, w:220, h: 36, k:'shelf' },
+  { x: 900, y:706, w:220, h: 36, k:'shelf' },
+  { x:1230, y:600, w: 36, h:180, k:'shelf' },
+];
+
+// Is the box of half-size `pad` centred on (x,y) inside anything solid?
+function wallAt(x, y, pad){
+  const p = pad || 0;
+  for (let i=0;i<WALLS.length;i++){
+    const w = WALLS[i];
+    if (x > w.x - p && x < w.x + w.w + p && y > w.y - p && y < w.y + w.h + p) return w;
   }
-  g.strokeStyle = '#0c0c12'; g.lineWidth = 8; g.strokeRect(0,0,W,H);
-  g.strokeStyle = '#22222e'; g.lineWidth = 2; g.strokeRect(4,4,W-8,H-8);
-  const grad = g.createRadialGradient(W/2,H/2, 90, W/2,H/2, 300);
-  grad.addColorStop(0,'rgba(0,0,0,0)');
-  grad.addColorStop(1,'rgba(0,0,0,0.45)');
-  g.fillStyle = grad; g.fillRect(0,0,W,H);
+  return null;
+}
+
+// Move something with a radius, sliding along whatever it bumps into.
+// Each axis is tried on its own, which is what stops you sticking to a
+// counter when you walk into it diagonally.
+function moveCircle(o, dx, dy, r){
+  // if something is somehow already inside a counter, let it walk straight
+  // out rather than sealing it in there forever
+  if (wallAt(o.x, o.y, r)){ o.x += dx; o.y += dy; }
+  else {
+    if (dx && !wallAt(o.x + dx, o.y, r)) o.x += dx;
+    if (dy && !wallAt(o.x, o.y + dy, r)) o.y += dy;
+  }
+  o.x = clamp(o.x, r, WORLD.w - r);
+  o.y = clamp(o.y, r, WORLD.h - r);
+}
+
+// How far a ray gets before a wall stops it. Marched rather than solved:
+// it runs once a frame for the beam, and stepping is easier to trust.
+function rayWall(x, y, ux, uy, maxLen){
+  for (let t = 4; t < maxLen; t += 3){
+    if (wallAt(x + ux*t, y + uy*t, 0)) return t - 3;
+  }
+  return maxLen;
+}
+
+// A spot with nothing solid in it — used for spawns.
+function clearSpot(x, y, pad){
+  return !wallAt(x, y, pad || 12) &&
+         x > 16 && x < WORLD.w-16 && y > 16 && y < WORLD.h-16;
+}
+
+function zoneAt(x, y){
+  for (const z of ZONES)
+    if (x >= z.x && x < z.x+z.w && y >= z.y && y < z.y+z.h) return z;
+  return ZONES[0];
+}
+
+// --- the whole kitchen, baked once into one big canvas ---
+const bg = document.createElement('canvas');
+bg.width = WORLD.w; bg.height = WORLD.h;
+(function bakeWorld(){
+  const g = bg.getContext('2d');
+  const FLOOR = {
+    line:  ['#15151c','#191922','#1e1e28'],
+    prep:  ['#171720','#1c1c26','#23232e'],
+    pit:   ['#131a1f','#172026','#1d2830'],
+    cold:  ['#141b24','#18212c','#202c38'],
+    store: ['#1a1720','#1f1b27','#26202f'],
+  };
+  const WK = {
+    counter:['#3a3f4c','#525968','#22252e'],
+    island: ['#3f4450','#5a6170','#24272f'],
+    sink:   ['#33404a','#4a5c6c','#1e262c'],
+    rack:   ['#2c3a44','#3f5464','#1a2228'],
+    crate:  ['#4a3a28','#66523c','#2a2018'],
+    shelf:  ['#3a3226','#514736','#211c14'],
+    pillar: ['#2e2e3a','#43434f','#1a1a22'],
+    wall:   ['#26262f','#353541','#131318'],
+  };
+  const t = 24;
+  for (const z of ZONES){
+    const col = FLOOR[z.floor] || FLOOR.line;
+    for (let y = z.y; y < z.y+z.h; y += t) for (let x = z.x; x < z.x+z.w; x += t){
+      const gx = (x/t)|0, gy = (y/t)|0;
+      g.fillStyle = (gx+gy) % 2 ? col[0] : col[1];
+      g.fillRect(x, y, Math.min(t, z.x+z.w-x), Math.min(t, z.y+z.h-y));
+      if ((gx*7+gy*13) % 11 === 0){ g.fillStyle = col[2]; g.fillRect(x+4, y+14, 6, 2); }
+      if ((gx*5+gy*3) % 13 === 0){ g.fillStyle = '#101016'; g.fillRect(x+14, y+5, 2, 5); }
+    }
+    // a seam so you can feel where one area ends and the next begins
+    g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 2;
+    g.strokeRect(z.x+1, z.y+1, z.w-2, z.h-2);
+  }
+  for (const w of WALLS){
+    const c = WK[w.k] || WK.wall;
+    g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(w.x+3, w.y+5, w.w, w.h);
+    g.fillStyle = c[0]; g.fillRect(w.x, w.y, w.w, w.h);
+    g.fillStyle = c[1]; g.fillRect(w.x, w.y, w.w, 2);
+    g.fillStyle = c[2]; g.fillRect(w.x, w.y+w.h-2, w.w, 2);
+    g.fillStyle = c[2]; g.fillRect(w.x+w.w-2, w.y+2, 2, w.h-4);
+    if (w.k === 'counter' || w.k === 'island'){
+      g.fillStyle = 'rgba(255,255,255,0.05)';
+      for (let x = w.x+6; x < w.x+w.w-5; x += 12) g.fillRect(x, w.y+4, 1, w.h-8);
+    } else if (w.k === 'sink'){
+      g.fillStyle = '#1b2830'; g.fillRect(w.x+8, w.y+8, w.w-16, w.h-16);
+      g.fillStyle = '#2f4552'; g.fillRect(w.x+10, w.y+10, w.w-20, 3);
+    } else if (w.k === 'crate'){
+      g.strokeStyle = c[2]; g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(w.x+3, w.y+3); g.lineTo(w.x+w.w-3, w.y+w.h-3);
+      g.moveTo(w.x+w.w-3, w.y+3); g.lineTo(w.x+3, w.y+w.h-3);
+      g.stroke();
+    } else if (w.k === 'shelf' || w.k === 'rack'){
+      g.fillStyle = c[2];
+      if (w.w > w.h) for (let x = w.x+10; x < w.x+w.w-6; x += 22) g.fillRect(x, w.y+3, 2, w.h-6);
+      else           for (let y = w.y+10; y < w.y+w.h-6; y += 22) g.fillRect(w.x+3, y, w.w-6, 2);
+    }
+  }
 })();
 
 // ================================================================
@@ -813,6 +986,17 @@ window.addEventListener('keydown', e => {
   if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
   if (e.repeat) return;                              // OS auto-repeat must not re-toggle
   if (k === 'm'){ setMuted(!muted); }
+  if (ST.mode === 'menu'){
+    if (k === 'w' || k === 'arrowup')   ST.menuSel = (ST.menuSel + MENU.length - 1) % MENU.length;
+    if (k === 's' || k === 'arrowdown') ST.menuSel = (ST.menuSel + 1) % MENU.length;
+    if (k === 'enter' || k === ' '){
+      audioInit();
+      if (AC && AC.state === 'suspended') AC.resume();
+      MENU[ST.menuSel].act();
+    }
+    return;
+  }
+  if (ST.mode === 'help'){ ST.mode = 'menu'; return; }
   if (k === 'p' && ST.mode === 'play'){ ST.mode = 'pause'; }
   else if (k === 'p' && ST.mode === 'pause'){ ST.mode = 'play'; }
   if (k === 'r' && ST.mode === 'over'){
@@ -831,6 +1015,10 @@ window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 cv.addEventListener('mousemove', e => {
   const p = toGame(e.clientX, e.clientY);
   mouse.x = p.x; mouse.y = p.y;
+  if (ST.mode === 'menu'){
+    const i = menuHit(p.x, p.y);
+    if (i >= 0) ST.menuSel = i;
+  }
 });
 cv.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
@@ -838,7 +1026,13 @@ cv.addEventListener('mousedown', e => {
   if (AC && AC.state === 'suspended') AC.resume();
   const p = toGame(e.clientX, e.clientY);
   mouse.x = p.x; mouse.y = p.y;
-  if (ST.mode === 'menu' || ST.mode === 'over'){ startRun(); }
+  if (ST.mode === 'menu'){
+    const i = menuHit(p.x, p.y);
+    if (i >= 0){ ST.menuSel = i; MENU[i].act(); }
+    else startRun();               // clicking anywhere else still just plays
+  }
+  else if (ST.mode === 'help'){ ST.mode = 'menu'; SFX.click(); }
+  else if (ST.mode === 'over'){ startRun(); }
   else if (ST.mode === 'pause'){ ST.mode = 'play'; }
   else if (ST.mode === 'levelup'){ clickCard(p.x, p.y); }
   // any click that lands us in play mode counts as held fire
@@ -860,7 +1054,14 @@ cv.addEventListener('touchstart', e => {
     touch.sx = t0.clientX; touch.sy = t0.clientY;
     touch.dx = 0; touch.dy = 0;
   }
-  if (ST.mode === 'menu' || ST.mode === 'over'){ startRun(); return; }
+  if (ST.mode === 'menu'){
+    const i = menuHit(p.x, p.y);
+    if (i >= 0){ ST.menuSel = i; MENU[i].act(); }
+    else startRun();
+    return;
+  }
+  if (ST.mode === 'help'){ ST.mode = 'menu'; SFX.click(); return; }
+  if (ST.mode === 'over'){ startRun(); return; }
   if (ST.mode === 'pause'){ ST.mode = 'play'; return; }
   if (ST.mode === 'levelup'){ clickCard(p.x, p.y); return; }
 }, {passive:false});
@@ -911,6 +1112,8 @@ const ST = {
   shake: 0, flashRed: 0,
   banner: '', bannerTimer: 0,
   levelQueue: 0, cards: [],
+  zone: '', zoneTimer: 0,     // location caption when you walk into a new area
+  menuSel: 0,                 // which main-menu item is highlighted
   best: { wave: 0, kills: 0 },
 };
 try {
@@ -918,19 +1121,43 @@ try {
   ST.best.kills = parseInt(localStorage.getItem('suds-best-kills')||'0',10) || 0;
 } catch(e){}
 
+// where he starts: just north of the middle doorway, in THE LINE
+const SPAWN = { x: 720, y: 200 };
+
 const player = {
-  x: W/2, y: H/2, vx: 0, vy: 0,
+  x: SPAWN.x, y: SPAWN.y, vx: 0, vy: 0,
   hp: T.playerHP, maxhp: T.playerHP,
   aim: 0, iframe: 0, fireCd: 0, flash: 0,
   face: 1, moving: false,
   speedMul: 1, gun: null, gunName: 'PEASHOOTER', gunIdx: 0, upgrades: 0,
   xp: 0, level: 1, xpNext: 5,
+  aimTrail: [0,0,0],      // recent aim angles, for the gun's motion smear
+  orbs: 0,                // spare barrels floating around him
 };
 
 let enemies = [], pbullets = [], ebullets = [], pickups = [], parts = [], floaters = [];
+let orbs = [];          // the spare barrels: { ang, cd }
 let boss = null;
 let beamFx = null;      // set each frame the Rinse Cannon is held down
 let beamSfxCd = 0;
+
+// The camera. It sits on the player but leans a little toward where he is
+// aiming, so you get to see what you are shooting at before it reaches you.
+function updateCam(dt, snap){
+  const lead = 40;
+  const tx = clamp(player.x + Math.cos(player.aim)*lead - W/2, 0, WORLD.w - W);
+  const ty = clamp(player.y + Math.sin(player.aim)*lead - H/2, 0, WORLD.h - H);
+  if (snap){ cam.x = tx; cam.y = ty; return; }
+  const k = 1 - Math.pow(0.0018, dt);   // frame-rate independent smoothing
+  cam.x += (tx - cam.x) * k;
+  cam.y += (ty - cam.y) * k;
+  cam.x = clamp(cam.x, 0, WORLD.w - W);
+  cam.y = clamp(cam.y, 0, WORLD.h - H);
+}
+function inView(x, y, m){
+  const p = m === undefined ? 8 : m;
+  return x > cam.x - p && x < cam.x + W + p && y > cam.y - p && y < cam.y + H + p;
+}
 
 // The five guns. Each one runs the same base stat block (player.gun, which is
 // what the level-up cards buff) through its own multipliers, so every card
@@ -973,7 +1200,56 @@ const CARDS = [
   { id:'armor', name:'STEEL APRON',    desc:'+1 MAX HEART, HEAL 2',  apply: () => { player.maxhp++; player.hp = Math.min(player.maxhp, player.hp+2); } },
   { id:'drill', name:'DRILL ROUNDS',   desc:'BULLETS PIERCE +1',     apply: g => g.pierce = Math.min(3, g.pierce+1), max: g => g.pierce >= 3 },
   { id:'rifle', name:'LONG RIFLING',   desc:'+25% BULLET SPEED',     apply: g => { g.bspeedMul *= 1.25; g.damage *= 1.10; } },
+  // he whistles a second tune and another barrel comes along for the ride.
+  // Spare barrels orbit him and pick their own targets.
+  { id:'orb',   name:'SPARE BARREL',   desc:'+1 ORBITING GUN',       apply: () => addOrb(), max: () => player.orbs >= 3 },
 ];
+
+// ---- spare barrels: little guns that circle him and fire on their own ----
+const ORB_RADIUS = 30, ORB_SPIN = 1.25, ORB_RANGE = 200, ORB_DMG = 0.5;
+function addOrb(){
+  player.orbs = Math.min(3, player.orbs + 1);
+  rebuildOrbs();
+}
+function rebuildOrbs(){
+  const keep = orbs.length ? orbs[0].ang : 0;
+  orbs = [];
+  for (let i=0;i<player.orbs;i++){
+    const a = keep + i*TAU/player.orbs;
+    orbs.push({ ang: a, cd: rand(0, 0.3), aim: a,
+                x: player.x + Math.cos(a)*ORB_RADIUS,
+                y: player.y + Math.sin(a)*ORB_RADIUS });
+  }
+}
+function updateOrbs(dt){
+  if (!orbs.length) return;
+  const g = player.gun, gun = GUNS[player.gunIdx];
+  for (const o of orbs){
+    o.ang += ORB_SPIN * dt;
+    o.x = player.x + Math.cos(o.ang)*ORB_RADIUS;
+    o.y = player.y + Math.sin(o.ang)*ORB_RADIUS;
+    o.cd -= dt;
+    // find something worth shooting — nearest enemy inside its range
+    let best = null, bd = ORB_RANGE*ORB_RANGE;
+    for (const e of enemies){
+      const d = dist2(o.x, o.y, e.x, e.y);
+      if (d < bd){ bd = d; best = e; }
+    }
+    o.aim = best ? Math.atan2(best.y - o.y, best.x - o.x) : o.ang;
+    if (!best || o.cd > 0) continue;
+    // spare barrels always throw plain slugs, whatever he is carrying —
+    // three simultaneous beams would be a different game
+    o.cd = 1 / (g.rate * 0.55);
+    const spd = g.speed * g.bspeedMul;
+    if (pbullets.length >= T.maxPBullets) pbullets.shift();
+    pbullets.push({
+      x: o.x, y: o.y,
+      vx: Math.cos(o.aim)*spd, vy: Math.sin(o.aim)*spd,
+      ang: o.aim, dmg: g.damage * gun.dmg * ORB_DMG, size: g.size,
+      pierce: g.pierce, hitList: null, shot: 'slug', life: 0,
+    });
+  }
+}
 
 function startRun(){
   ST.mode = 'play';
@@ -982,7 +1258,8 @@ function startRun(){
   ST.toSpawn = []; ST.spawnTimer = 0;
   ST.shake = 0; ST.flashRed = 0; ST.banner = ''; ST.bannerTimer = 0;
   ST.levelQueue = 0; ST.cards = [];
-  player.x = W/2; player.y = H/2; player.vx = 0; player.vy = 0;
+  ST.zone = ''; ST.zoneTimer = 0;
+  player.x = SPAWN.x; player.y = SPAWN.y; player.vx = 0; player.vy = 0;
   player.hp = T.playerHP; player.maxhp = T.playerHP;
   player.iframe = 0; player.fireCd = 0; player.flash = 0;
   player.face = 1; player.moving = false;
@@ -990,8 +1267,10 @@ function startRun(){
   player.gunIdx = 0; player.gunName = GUNS[0].name;
   player.gun = Object.assign({}, T.gun);
   player.xp = 0; player.level = 1; player.xpNext = 5;
-  enemies = []; pbullets = []; ebullets = []; pickups = []; parts = []; floaters = [];
+  player.aim = 0; player.aimTrail = [0,0,0]; player.orbs = 0;
+  enemies = []; pbullets = []; ebullets = []; pickups = []; parts = []; floaters = []; orbs = [];
   boss = null; beamFx = null; beamSfxCd = 0;
+  updateCam(0, true);
   document.body.classList.add('playing');
   SFX.click();
 }
@@ -1038,12 +1317,28 @@ function beginWave(n){
   ST.spawnTimer = 0;
 }
 
+// Enemies come in from just off the edge of what you can see, not the edge
+// of the kitchen — otherwise half a wave would spend the round walking.
+// Retries until it finds somewhere that isn't inside a counter.
 function spawnEdgePos(){
-  const side = irand(0,3), m = 14;
-  if (side === 0) return { x: rand(m, W-m), y: -10 };
-  if (side === 1) return { x: rand(m, W-m), y: H+10 };
-  if (side === 2) return { x: -10, y: rand(m, H-m) };
-  return { x: W+10, y: rand(m, H-m) };
+  for (let tries = 0; tries < 40; tries++){
+    const side = irand(0,3), m = 20;
+    let x, y;
+    if (side === 0){ x = rand(cam.x+m, cam.x+W-m); y = cam.y - 16; }
+    else if (side === 1){ x = rand(cam.x+m, cam.x+W-m); y = cam.y + H + 16; }
+    else if (side === 2){ x = cam.x - 16; y = rand(cam.y+m, cam.y+H-m); }
+    else { x = cam.x + W + 16; y = rand(cam.y+m, cam.y+H-m); }
+    x = clamp(x, 18, WORLD.w-18); y = clamp(y, 18, WORLD.h-18);
+    if (clearSpot(x, y, 12)) return { x, y };
+  }
+  // fell through: drop it somewhere clear near the player instead
+  for (let tries = 0; tries < 60; tries++){
+    const a = rand(0, TAU), d = rand(120, 300);
+    const x = clamp(player.x + Math.cos(a)*d, 18, WORLD.w-18);
+    const y = clamp(player.y + Math.sin(a)*d, 18, WORLD.h-18);
+    if (clearSpot(x, y, 12)) return { x, y };
+  }
+  return { x: SPAWN.x, y: SPAWN.y };
 }
 
 function waveScale(n){ return 1 + (n-1) * 0.15; }
@@ -1071,6 +1366,7 @@ function spawnEnemy(type, x, y){
     e.r = T.boss.r; e.touch = T.boss.touch;
     e.spiralA = 0; e.tSpiral = 1.2; e.tVolley = 2.6; e.tRing = 4.0;
     e.bossLvl = bossLvl;
+    e.ghost = true;          // the Megawasher goes through the furniture
     boss = e;
   }
   enemies.push(e);
@@ -1086,7 +1382,7 @@ function updateWaves(dt){
   } else if (ST.waveState === 'bosswarn'){
     if (ST.waveTimer <= 0){
       const p = spawnEdgePos();
-      spawnEnemy('boss', clamp(p.x, 40, W-40), -30);
+      spawnEnemy('boss', clamp(p.x, 40, WORLD.w-40), clamp(p.y, 40, WORLD.h-40));
       ST.waveState = 'active';
     }
   } else if (ST.waveState === 'active'){
@@ -1122,12 +1418,19 @@ function firePlayerGun(dt){
     }
     if (best){ want = true; aimX = best.x; aimY = best.y; }
   }
-  if (aimX === undefined){ aimX = mouse.x; aimY = mouse.y; }
+  // the mouse is in screen pixels; the player lives in the kitchen
+  if (aimX === undefined){ aimX = mouse.x + cam.x; aimY = mouse.y + cam.y; }
   player.aim = Math.atan2(aimY - player.y, aimX - player.x);
+  // keep the last few aim angles so the gun can smear when it swings hard
+  player.aimTrail[2] = player.aimTrail[1];
+  player.aimTrail[1] = player.aimTrail[0];
+  player.aimTrail[0] = player.aim;
 
   const gun = GUNS[player.gunIdx];
+  // cleared every frame by everything, not just by the beam gun — otherwise
+  // swapping off the Rinse Cannon mid-burn leaves the last beam painted on
+  beamFx = null;
   if (gun.beam){
-    beamFx = null;
     beamSfxCd -= dt;
     if (want) fireBeam(g, gun, dt);
     return;
@@ -1179,10 +1482,11 @@ function firePlayerGun(dt){
 const BEAM_FALLOFF = 0.55;   // damage multiplier per extra body burned through
 function fireBeam(g, gun, dt){
   const ux = Math.cos(player.aim), uy = Math.sin(player.aim);
-  // distance from the player to the wall along the aim
-  const tx = ux > 0 ? (W-4 - player.x)/ux : ux < 0 ? (4 - player.x)/ux : 1e9;
-  const ty = uy > 0 ? (H-4 - player.y)/uy : uy < 0 ? (4 - player.y)/uy : 1e9;
-  const maxLen = Math.max(0, Math.min(tx, ty));
+  // how far it can reach: out to the edge of the kitchen, or the first
+  // counter in the way, whichever comes first
+  const tx = ux > 0 ? (WORLD.w-4 - player.x)/ux : ux < 0 ? (4 - player.x)/ux : 1e9;
+  const ty = uy > 0 ? (WORLD.h-4 - player.y)/uy : uy < 0 ? (4 - player.y)/uy : 1e9;
+  const maxLen = rayWall(player.x, player.y, ux, uy, Math.max(0, Math.min(tx, ty)));
 
   const half = 2 + g.size;
   const hits = [];
@@ -1271,7 +1575,8 @@ function updatePBullets(dt){
         continue;
       }
     }
-    if (b.x < 4 || b.x > W-4 || b.y < 4 || b.y > H-4){
+    // splat against the kitchen itself
+    if (b.x < 4 || b.x > WORLD.w-4 || b.y < 4 || b.y > WORLD.h-4 || wallAt(b.x, b.y, 0)){
       spawnParts(b.x, b.y, 2, '#f4c542', 30);
       pbullets.splice(i,1);
     }
@@ -1298,7 +1603,12 @@ function updateEBullets(dt){
     }
     b.x += b.vx*dt; b.y += b.vy*dt;
     b.spin += dt * 6;
-    if (b.x < -14 || b.x > W+14 || b.y < -14 || b.y > H+14){ ebullets.splice(i,1); }
+    if (b.x < -14 || b.x > WORLD.w+14 || b.y < -14 || b.y > WORLD.h+14){ ebullets.splice(i,1); continue; }
+    // counters are cover — enemy fire breaks on them too
+    if (wallAt(b.x, b.y, 0)){
+      spawnParts(b.x, b.y, 2, b.kind === 'bubble' ? '#6fd8e2' : '#9aa3b2', 26);
+      ebullets.splice(i,1);
+    }
   }
 }
 
@@ -1313,8 +1623,7 @@ function updateEnemies(dt){
     const d = Math.hypot(dx, dy) || 1;
 
     if (e.type === 'washer'){
-      e.x += (dx/d) * e.speed * dt;
-      e.y += (dy/d) * e.speed * dt;
+      step(e, (dx/d) * e.speed * dt, (dy/d) * e.speed * dt);
       e.t1 -= dt;
       if (e.t1 <= 0 && d < T.washer.range && onScreen(e)){
         e.t1 = T.washer.shootCd / Math.sqrt(sc);
@@ -1330,8 +1639,8 @@ function updateEnemies(dt){
       const ax = dx/d, ay = dy/d;
       const px = -ay, py = ax; // perpendicular
       const strafe = Math.sin(e.t2 * 0.9) > 0 ? 1 : -1;
-      e.x += (ax*want + px*strafe*0.6) * e.speed * dt;
-      e.y += (ay*want + py*strafe*0.6) * e.speed * dt;
+      step(e, (ax*want + px*strafe*0.6) * e.speed * dt,
+              (ay*want + py*strafe*0.6) * e.speed * dt);
       e.t1 -= dt;
       if (e.t1 <= 0 && onScreen(e)){
         e.t1 = T.rinser.shootCd / Math.sqrt(sc);
@@ -1345,8 +1654,8 @@ function updateEnemies(dt){
     }
     else if (e.type === 'bubbler'){
       e.t2 += dt;
-      e.x += Math.cos(e.t2*0.7) * e.speed * dt + (dx/d) * e.speed * 0.4 * dt;
-      e.y += Math.sin(e.t2*0.9) * e.speed * dt + (dy/d) * e.speed * 0.4 * dt;
+      step(e, Math.cos(e.t2*0.7) * e.speed * dt + (dx/d) * e.speed * 0.4 * dt,
+              Math.sin(e.t2*0.9) * e.speed * dt + (dy/d) * e.speed * 0.4 * dt);
       e.t1 -= dt;
       if (e.t1 <= 0 && onScreen(e)){
         e.t1 = T.bubbler.shootCd / Math.sqrt(sc);
@@ -1360,20 +1669,28 @@ function updateEnemies(dt){
       updateBoss(e, dt, dx, dy, d);
     }
 
-    e.x = clamp(e.x, -20, W+20);
-    e.y = clamp(e.y, -30, H+20);
+    e.x = clamp(e.x, -20, WORLD.w+20);
+    e.y = clamp(e.y, -30, WORLD.h+20);
   }
 }
 
-function onScreen(e){ return e.x > 8 && e.x < W-8 && e.y > 8 && e.y < H-8; }
+// One enemy step, sliding off the furniture. The Megawasher is flagged
+// `ghost` and simply drives through it.
+function step(e, dx, dy){
+  if (e.ghost){ e.x += dx; e.y += dy; return; }
+  moveCircle(e, dx, dy, e.r * 0.8);
+}
+
+// "can it see you / is it worth firing" — now measured against the view,
+// not the whole kitchen, so off-screen enemies don't spam bullets at you.
+function onScreen(e){ return inView(e.x, e.y, -8); }
 
 function updateBoss(e, dt, dx, dy, d){
   const lv = e.bossLvl;
   if (d > 90){ e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt; }
   else { e.t2 += dt; e.x += Math.cos(e.t2*0.5)*8*dt; }
-  // rolling in from the top: descend faster and hold fire until visible
-  // (bullets born above the arena would be culled instantly and never seen)
-  if (e.y < 16){ e.y += 30*dt; return; }
+  // it spawns off-screen like everything else; hold fire until you can see it
+  if (!inView(e.x, e.y, 30)) return;
 
   // spiral of plates — the signature move
   e.tSpiral -= dt;
@@ -1440,7 +1757,17 @@ function killEnemy(e){
 // PICKUPS / XP
 // ================================================================
 function dropPickup(x, y, kind){
-  pickups.push({ x: clamp(x, 10, W-10), y: clamp(y, 10, H-10), kind, vx: rand(-20,20), vy: rand(-20,20), age: 0 });
+  let px = clamp(x, 14, WORLD.w-14), py = clamp(y, 14, WORLD.h-14);
+  // never leave a pickup stranded inside a counter — nudge it out
+  if (wallAt(px, py, 6)){
+    for (let i=0;i<24;i++){
+      const a = (i/24)*TAU;
+      const tx = clamp(px + Math.cos(a)*26, 14, WORLD.w-14);
+      const ty = clamp(py + Math.sin(a)*26, 14, WORLD.h-14);
+      if (!wallAt(tx, ty, 6)){ px = tx; py = ty; break; }
+    }
+  }
+  pickups.push({ x: px, y: py, kind, vx: rand(-20,20), vy: rand(-20,20), age: 0 });
 }
 
 function updatePickups(dt){
@@ -1456,7 +1783,7 @@ function updatePickups(dt){
       p.vx += (player.x - p.x)/d * pull * dt * 10;
       p.vy += (player.y - p.y)/d * pull * dt * 10;
     }
-    p.x += p.vx*dt; p.y += p.vy*dt;
+    moveCircle(p, p.vx*dt, p.vy*dt, 3);
     if (d2 < 7*7){
       if (p.kind === 'sud'){ gainXP(1); SFX.pickup(); }
       else { player.hp = Math.min(player.maxhp, player.hp + 1); SFX.heart(); addFloater(player.x, player.y-12, '+1 HEART', CRIMSON); }
@@ -1537,8 +1864,9 @@ function updatePlayer(dt){
   const mag = Math.hypot(mx, my);
   if (mag > 0){ mx /= mag; my /= mag; }
   const sp = T.playerSpeed * player.speedMul;
-  player.x = clamp(player.x + mx*sp*dt, 10, W-10);
-  player.y = clamp(player.y + my*sp*dt, 10, H-10);
+  // his own collision box is small — he floats, and a big box would snag
+  // on every doorway in the kitchen
+  moveCircle(player, mx*sp*dt, my*sp*dt, 6);
   player.moving = mag > 0;
   // face the way he's aiming, with a dead zone so he doesn't flicker near vertical
   const ax = Math.cos(player.aim);
@@ -1568,8 +1896,7 @@ function updatePlayer(dt){
         hurtPlayer(e.touch);
         // knockback away from the enemy
         const a = Math.atan2(player.y - e.y, player.x - e.x);
-        player.x = clamp(player.x + Math.cos(a)*14, 10, W-10);
-        player.y = clamp(player.y + Math.sin(a)*14, 10, H-10);
+        moveCircle(player, Math.cos(a)*14, Math.sin(a)*14, 6);
         break;
       }
     }
@@ -1650,7 +1977,10 @@ function updateFloaters(dt){
 // ================================================================
 // RENDER
 // ================================================================
-let shakeX = 0, shakeY = 0;
+// ox/oy is world -> screen: the camera, plus screen shake. Setting it once
+// means every world-space draw below is written in plain kitchen coordinates.
+// sx0/sy0 is the shake on its own, for anything pinned to the screen.
+let ox = 0, oy = 0, sx0 = 0, sy0 = 0;
 function drawSpriteC(sp, x, y, scale){
   const s = scale || 1;
   cx.drawImage(sp, Math.round(x - sp.width*s/2), Math.round(y - sp.height*s/2), sp.width*s, sp.height*s);
@@ -1658,21 +1988,46 @@ function drawSpriteC(sp, x, y, scale){
 // setTransform instead of save/restore: hundreds of rotated bullets per frame
 function drawSpriteRot(sp, x, y, angle, scale){
   const s = scale || 1;
-  cx.setTransform(1,0,0,1, shakeX + Math.round(x), shakeY + Math.round(y));
+  cx.setTransform(1,0,0,1, ox + Math.round(x), oy + Math.round(y));
   cx.rotate(angle);
   cx.drawImage(sp, -sp.width*s/2, -sp.height*s/2, sp.width*s, sp.height*s);
-  cx.setTransform(1,0,0,1, shakeX, shakeY);
+  cx.setTransform(1,0,0,1, ox, oy);
 }
 
 // The guns are big enough now that rotating one past vertical would show it
 // upside down. Mirror it across the barrel axis instead of letting it roll over.
-function drawGunRot(sp, x, y, angle){
+function drawGunRot(sp, x, y, angle, alpha){
   const flip = Math.abs(angle) > Math.PI/2 ? -1 : 1;
-  cx.setTransform(1,0,0,1, shakeX + Math.round(x), shakeY + Math.round(y));
+  if (alpha !== undefined) cx.globalAlpha = alpha;
+  cx.setTransform(1,0,0,1, ox + Math.round(x), oy + Math.round(y));
   cx.rotate(angle);
   cx.scale(1, flip);
   cx.drawImage(sp, -sp.width/2, -sp.height/2);
-  cx.setTransform(1,0,0,1, shakeX, shakeY);
+  cx.setTransform(1,0,0,1, ox, oy);
+  if (alpha !== undefined) cx.globalAlpha = 1;
+}
+
+// Shortest signed distance between two angles, so a swing past PI doesn't
+// smear the long way round the circle.
+function angDelta(a, b){
+  let d = a - b;
+  while (d > Math.PI) d -= TAU;
+  while (d < -Math.PI) d += TAU;
+  return d;
+}
+
+// The gun is floating on its own out there, so a fast turn should drag.
+// Two ghost copies at the previous couple of aim angles, faded, only when
+// the swing is big enough to be worth it.
+function drawGunWithSmear(sp, cxp, cyp, gr, hov){
+  const a0 = player.aim;
+  const swing = Math.abs(angDelta(a0, player.aimTrail[2]));
+  if (swing > 0.22){
+    const ghosts = [[player.aimTrail[1], 0.30], [player.aimTrail[2], 0.16]];
+    for (const [ga, al] of ghosts)
+      drawGunRot(sp, cxp + Math.cos(ga)*gr, cyp + hov + Math.sin(ga)*gr, ga, al);
+  }
+  drawGunRot(sp, cxp + Math.cos(a0)*gr, cyp + hov + Math.sin(a0)*gr, a0);
 }
 
 // The Rinse Cannon's beam: stacked rotated bars — widest and faintest on the
@@ -1681,14 +2036,14 @@ function drawBeam(){
   if (!beamFx || ST.mode !== 'play') return;
   const f = 0.8 + Math.sin(ST.time*44)*0.2;
   const L = beamFx.len;
-  cx.setTransform(1,0,0,1, shakeX + Math.round(beamFx.x), shakeY + Math.round(beamFx.y));
+  cx.setTransform(1,0,0,1, ox + Math.round(beamFx.x), oy + Math.round(beamFx.y));
   cx.rotate(beamFx.ang);
   cx.fillStyle = 'rgba(47,208,255,0.18)'; cx.fillRect(0, -4.0*f, L, 8.0*f);
   cx.fillStyle = 'rgba(47,208,255,0.55)'; cx.fillRect(0, -2.2*f, L, 4.4*f);
   cx.fillStyle = '#a8f4ff';               cx.fillRect(0, -1.2,   L, 2.4);
   cx.fillStyle = '#ffffff';               cx.fillRect(0, -0.5,   L, 1.0);
   cx.fillStyle = 'rgba(255,255,255,0.85)'; cx.fillRect(L-2, -3.0*f, 4, 6.0*f);
-  cx.setTransform(1,0,0,1, shakeX, shakeY);
+  cx.setTransform(1,0,0,1, ox, oy);
 }
 
 // Hero animation: which pose to show, and the hover offset that sells the float.
@@ -1704,24 +2059,31 @@ function heroHover(key){
 }
 function drawHero(key, x, y, face, hover, flash){
   const sp = flash ? HERO_FLASH[key] : HERO[key];
-  cx.setTransform(face, 0, 0, 1, shakeX + Math.round(x), shakeY + Math.round(y + hover));
+  cx.setTransform(face, 0, 0, 1, ox + Math.round(x), oy + Math.round(y + hover));
   cx.drawImage(sp, -sp.width/2, -sp.height/2);
-  cx.setTransform(1, 0, 0, 1, shakeX, shakeY);
+  cx.setTransform(1, 0, 0, 1, ox, oy);
 }
 
 function render(){
-  shakeX = 0; shakeY = 0;
+  sx0 = 0; sy0 = 0;
   if (ST.shake > 0.1){
-    shakeX = Math.round(rand(-ST.shake, ST.shake)*0.5);
-    shakeY = Math.round(rand(-ST.shake, ST.shake)*0.5);
+    sx0 = Math.round(rand(-ST.shake, ST.shake)*0.5);
+    sy0 = Math.round(rand(-ST.shake, ST.shake)*0.5);
   }
   cx.setTransform(1,0,0,1,0,0);
   cx.clearRect(0,0,W,H);
-  cx.setTransform(1,0,0,1,shakeX,shakeY);
-
-  cx.drawImage(bg, 0, 0);
 
   if (ST.mode === 'menu'){ renderMenu(); return; }
+  if (ST.mode === 'help'){ renderHelp(); return; }
+
+  const camX = Math.round(cam.x), camY = Math.round(cam.y);
+  ox = -camX + sx0; oy = -camY + sy0;
+  cx.setTransform(1,0,0,1, ox, oy);
+
+  // only blit the slice of the kitchen you can actually see
+  const bx = clamp(camX-8, 0, WORLD.w-1), by = clamp(camY-8, 0, WORLD.h-1);
+  const bw = Math.min(W+16, WORLD.w-bx), bh = Math.min(H+16, WORLD.h-by);
+  cx.drawImage(bg, bx, by, bw, bh, bx, by, bw, bh);
 
   // pickups
   for (const p of pickups){
@@ -1760,13 +2122,18 @@ function render(){
     // the gun isn't held — it floats out at arm's length and bobs on its own
     const gun = GUNS[player.gunIdx];
     const gr = gunRadius(gun) + Math.sin(ST.time*5.5)*0.9;
-    drawGunRot(SP[gun.sp], player.x + Math.cos(player.aim)*gr,
-                           player.y + hov + Math.sin(player.aim)*gr, player.aim);
+    drawGunWithSmear(SP[gun.sp], player.x, player.y, gr, hov);
     if (player.flash > 0){
       cx.globalAlpha = 0.7;
       drawHero(key, player.x, player.y, player.face, hov, true);
       cx.globalAlpha = 1;
     }
+  }
+
+  // spare barrels, circling and aiming for themselves
+  for (const o of orbs){
+    const b = Math.sin(ST.time*6 + o.ang)*1.1;
+    drawGunRot(SP.gunA, o.x, o.y + b, o.aim || 0);
   }
 
   drawBeam();
@@ -1804,6 +2171,9 @@ function render(){
   }
   cx.globalAlpha = 1;
 
+  // everything from here on is pinned to the screen, not the kitchen
+  cx.setTransform(1,0,0,1,0,0);
+  renderOffscreenMarkers();
   renderHUD();
 
   // red hurt vignette
@@ -1840,16 +2210,24 @@ function renderHUD(){
     cx.fillStyle = '#101018'; cx.fillRect(W/2-bw/2, 14, bw, 4);
     cx.fillStyle = CRIMSON; cx.fillRect(W/2-bw/2, 14, bw * clamp(boss.hp/boss.maxhp,0,1), 4);
   }
-  // kills + time
+  // kills + time + level
   const mm = Math.floor(ST.playTime/60), ss = Math.floor(ST.playTime%60);
   drawText(String(ST.kills) + ' KO', W-8, 6, 1, '#dfe3ea', 'right');
   drawText((mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss, W-8, 14, 1, '#7a7a8e', 'right');
+  drawText('LV ' + player.level, W-8, 22, 1, '#79c7f0', 'right');
   // xp bar
   cx.fillStyle = '#101018'; cx.fillRect(0, H-4, W, 4);
   cx.fillStyle = '#79c7f0'; cx.fillRect(0, H-4, W * clamp(player.xp/player.xpNext, 0, 1), 4);
-  // gun name + level
+  // gun name, and how many spare barrels are out
   drawText(player.gunName, 8, H-13, 1, '#f4c542');
-  drawText('LV ' + player.level, W-8, H-13, 1, '#79c7f0', 'right');
+  if (player.orbs) drawText('+' + player.orbs + ' BARREL' + (player.orbs > 1 ? 'S' : ''), 8, H-22, 1, '#7a7a8e');
+  renderMinimap();
+  // where you are — fades in when you walk into a new part of the kitchen
+  if (ST.zoneTimer > 0){
+    cx.globalAlpha = clamp(ST.zoneTimer, 0, 1) * 0.9;
+    drawText(ST.zone, W/2, 34, 1, '#8d93a4', 'center');
+    cx.globalAlpha = 1;
+  }
   // banner
   if (ST.bannerTimer > 0){
     const a = clamp(ST.bannerTimer, 0, 1);
@@ -1860,22 +2238,239 @@ function renderHUD(){
   }
 }
 
+// The kitchen is nine screens big, so you get a map of it. Walls, whatever
+// is alive, the pickups you left behind, and a box showing what you can see.
+const MM = { w: 78, h: 44 };
+function renderMinimap(){
+  const x0 = W - MM.w - 6, y0 = H - MM.h - 10;
+  const s = MM.w / WORLD.w;
+  cx.globalAlpha = 0.72;
+  cx.fillStyle = '#0b0b10'; cx.fillRect(x0, y0, MM.w, MM.h);
+  cx.fillStyle = '#1c1c26';
+  for (const w of WALLS)
+    cx.fillRect(x0 + w.x*s, y0 + w.y*s, Math.max(1, w.w*s), Math.max(1, w.h*s));
+  cx.globalAlpha = 1;
+  for (const p of pickups){
+    cx.fillStyle = p.kind === 'sud' ? '#3f6f96' : '#7d2233';
+    cx.fillRect(x0 + p.x*s, y0 + p.y*s, 1, 1);
+  }
+  for (const e of enemies){
+    const big = e.type === 'boss';
+    cx.fillStyle = big ? CRIMSON : (e.elite ? '#ffc02a' : '#c4545f');
+    cx.fillRect(x0 + e.x*s - (big?1:0), y0 + e.y*s - (big?1:0), big?3:1, big?3:1);
+  }
+  // what's on screen right now
+  cx.strokeStyle = 'rgba(223,227,234,0.35)'; cx.lineWidth = 1;
+  cx.strokeRect(Math.round(x0 + cam.x*s)+0.5, Math.round(y0 + cam.y*s)+0.5,
+                Math.round(W*s), Math.round(H*s));
+  cx.fillStyle = '#ffffff';
+  cx.fillRect(Math.round(x0 + player.x*s)-1, Math.round(y0 + player.y*s)-1, 2, 2);
+  cx.strokeStyle = '#2a2a36';
+  cx.strokeRect(x0+0.5, y0+0.5, MM.w-1, MM.h-1);
+}
+
+// Little chevrons at the edge of the screen for things you can't see yet.
+function renderOffscreenMarkers(){
+  if (ST.mode !== 'play') return;
+  let shown = 0;
+  for (const e of enemies){
+    if (shown >= 8) break;
+    if (inView(e.x, e.y, 12)) continue;
+    const dx = e.x - (cam.x + W/2), dy = e.y - (cam.y + H/2);
+    const a = Math.atan2(dy, dx);
+    // push out to the screen edge along the aim, then pull back inside
+    const t = Math.min(Math.abs((W/2 - 14) / (Math.cos(a) || 1e-6)),
+                       Math.abs((H/2 - 14) / (Math.sin(a) || 1e-6)));
+    const mx = W/2 + Math.cos(a)*t, my = H/2 + Math.sin(a)*t;
+    const col = e.type === 'boss' ? CRIMSON : (e.elite ? '#ffc02a' : 'rgba(196,84,95,0.75)');
+    cx.setTransform(1,0,0,1, Math.round(mx), Math.round(my));
+    cx.rotate(a);
+    cx.fillStyle = col;
+    cx.fillRect(0,-1,4,2); cx.fillRect(-2,-3,2,6);
+    cx.setTransform(1,0,0,1,0,0);
+    shown++;
+  }
+}
+
+// ================================================================
+// TITLE SCREEN
+// ================================================================
+const MENU = [
+  { label: () => 'START GAME',                          act: () => startRun() },
+  { label: () => 'HOW TO PLAY',                         act: () => { ST.mode = 'help'; SFX.click(); } },
+  { label: () => 'SOUND: ' + (muted ? 'OFF' : 'ON'),    act: () => { setMuted(!muted); SFX.click(); } },
+];
+const MENU_Y = 182, MENU_STEP = 14, MENU_W = 160;
+function menuHit(x, y){
+  for (let i=0;i<MENU.length;i++){
+    const iy = MENU_Y + i*MENU_STEP;
+    if (x > W/2 - MENU_W/2 && x < W/2 + MENU_W/2 && y > iy-4 && y < iy+9) return i;
+  }
+  return -1;
+}
+
+// ---- the slideshow panel ----------------------------------------
+// Slides with a draw() are live: they use the game's own sprites, so they
+// can never go stale. To drop real pixel art in later, just add an entry
+// like { cap:'SOMETHING COOL', src:'art/shot1.png' } — it gets letterboxed
+// into the panel and joins the rotation, no other changes needed.
+const SLIDE_TIME = 3.6, SLIDE_FADE = 0.45;
+const SLIDES = [
+  { cap: 'THE DISHWASHERS HAVE HAD ENOUGH',
+    draw(x, y, w, h, t){
+      const gy = y + h*0.62;
+      drawHeroStatic('idle1', x + 52, gy - 10, 1, Math.sin(t*3)*1.5);
+      drawGunRot(SP.gunB, x + 84, gy - 8 + Math.sin(t*5)*1, 0);
+      for (let i=0;i<3;i++){
+        const px = x + w - 30 - i*46 + Math.sin(t*1.6 + i)*4;
+        drawSpriteC(SP.washer, px, gy - 4 + Math.sin(t*6+i*2)*1.5, 1.6);
+      }
+      for (let i=0;i<5;i++){
+        const bx = x + 96 + ((t*150 + i*38) % (w - 120));
+        drawSpriteRot(SP.pdisc, bx, gy - 12, t*14, 1);
+      }
+    } },
+  { cap: 'FIVE GUNS, ONE VERY LOUD WHISTLE',
+    draw(x, y, w, h, t){
+      const names = ['gunA','gunB','gunC','gunD','gunE'];
+      for (let i=0;i<names.length;i++){
+        const sp = SP[names[i]];
+        const yy = y + 18 + i*18 + Math.sin(t*2.4 + i*0.8)*2;
+        drawGunRot(sp, x + w/2 + Math.cos(t*1.1 + i)*10, yy, 0);
+      }
+    } },
+  { cap: 'THE MEGAWASHER WANTS A WORD',
+    draw(x, y, w, h, t){
+      const bx = x + w/2, by = y + h*0.5;
+      for (let i=0;i<14;i++){
+        const a = t*1.6 + i*TAU/14;
+        const r = 26 + ((t*40 + i*9) % 66);
+        drawSpriteRot(SP.plate, bx + Math.cos(a)*r*1.5, by + Math.sin(a)*r*0.8, a*3);
+      }
+      drawSpriteC(SP.boss, bx, by + Math.sin(t*2)*2, 2.2);
+    } },
+  { cap: 'A WHOLE KITCHEN TO FIGHT THROUGH',
+    draw(x, y, w, h, t){
+      // the real map, shrunk down
+      const s = Math.min(w/WORLD.w, h/WORLD.h);
+      const mw = WORLD.w*s, mh = WORLD.h*s;
+      const mx = x + (w-mw)/2, my = y + (h-mh)/2;
+      cx.drawImage(bg, 0, 0, WORLD.w, WORLD.h, mx, my, mw, mh);
+      for (const z of ZONES)
+        drawText(z.name, mx + (z.x + z.w/2)*s, my + (z.y + z.h/2)*s - 2, 1, 'rgba(223,227,234,0.8)', 'center');
+      // a dot wandering the kitchen so it doesn't look like a still
+      const p = (t*0.22) % 1, a = p*TAU;
+      cx.fillStyle = CRIMSON;
+      cx.fillRect(Math.round(mx + mw*(0.5 + Math.cos(a)*0.3)), Math.round(my + mh*(0.5 + Math.sin(a*1.3)*0.3)), 2, 2);
+    } },
+];
+for (const s of SLIDES) if (s.src){ s.img = new Image(); s.img.src = s.src; }
+
+// the hero rig draws relative to ox/oy like everything else in the world,
+// so the title screen zeroes those out before borrowing him
+function drawHeroStatic(key, x, y, face, hover){
+  const sp = HERO[key];
+  cx.setTransform(face, 0, 0, 1, Math.round(x), Math.round(y + hover));
+  cx.drawImage(sp, -sp.width/2, -sp.height/2);
+  cx.setTransform(1,0,0,1,0,0);
+}
+
+function renderSlides(x, y, w, h){
+  const n = SLIDES.length;
+  const k = ST.time / SLIDE_TIME;
+  const i = Math.floor(k) % n;
+  const f = (k - Math.floor(k)) * SLIDE_TIME;
+  const alpha = clamp(Math.min(f, SLIDE_TIME - f) / SLIDE_FADE, 0, 1);
+  const s = SLIDES[i];
+
+  cx.fillStyle = '#0a0a10'; cx.fillRect(x-2, y-2, w+4, h+4);
+  cx.save();
+  cx.beginPath(); cx.rect(x, y, w, h); cx.clip();
+  cx.fillStyle = '#0e0e16'; cx.fillRect(x, y, w, h);
+  cx.globalAlpha = alpha;
+  if (s.img && s.img.complete && s.img.naturalWidth){
+    const sc = Math.min(w/s.img.naturalWidth, h/s.img.naturalHeight);
+    const iw = s.img.naturalWidth*sc, ih = s.img.naturalHeight*sc;
+    cx.drawImage(s.img, x + (w-iw)/2, y + (h-ih)/2, iw, ih);
+  } else if (s.draw){
+    ox = 0; oy = 0;                     // slides borrow the world draw helpers
+    s.draw(x, y, w, h, ST.time);
+    cx.setTransform(1,0,0,1,0,0);
+  }
+  cx.globalAlpha = 1;
+  cx.restore();
+
+  // caption strip along the bottom of the panel
+  cx.fillStyle = 'rgba(8,8,13,0.82)'; cx.fillRect(x, y+h-13, w, 13);
+  cx.globalAlpha = alpha;
+  drawText(s.cap, x + w/2, y + h - 9, 1, '#dfe3ea', 'center');
+  cx.globalAlpha = 1;
+  cx.strokeStyle = '#2c2c3a'; cx.lineWidth = 2;
+  cx.strokeRect(x-1, y-1, w+2, h+2);
+  // which slide you are on
+  for (let d=0; d<n; d++){
+    cx.fillStyle = d === i ? '#f4c542' : '#33333f';
+    cx.fillRect(Math.round(x + w/2 - (n*6)/2 + d*6), y + h + 5, 3, 3);
+  }
+}
+
 function renderMenu(){
-  cx.fillStyle = 'rgba(6,6,10,0.55)';
-  cx.fillRect(0,0,W,H);
-  const bob = Math.sin(ST.time*2) * 3;
-  drawSpriteC(SP.washer, W/2, 74 + bob, 3);
-  drawText('SUDS OF DOOM', W/2, 116, 3, CRIMSON, 'center');
-  drawText('THE DISHWASHER UPRISING', W/2, 136, 1, '#dfe3ea', 'center');
-  if (Math.floor(ST.time*2) % 2 === 0)
-    drawText(usingTouch ? 'TAP TO START' : 'CLICK TO START', W/2, 158, 1, '#f4c542', 'center');
-  drawText('WASD MOVE + MOUSE AIM + HOLD TO FIRE', W/2, 182, 1, '#7a7a8e', 'center');
-  drawText('TOUCH: DRAG TO MOVE, AUTO-FIRE', W/2, 192, 1, '#7a7a8e', 'center');
-  drawText('P PAUSE + M MUTE', W/2, 202, 1, '#7a7a8e', 'center');
+  // the kitchen drifting past behind the title
+  const px = (ST.time*9) % (WORLD.w - W), py = (WORLD.h - H) * (0.5 + Math.sin(ST.time*0.11)*0.5);
+  cx.drawImage(bg, Math.round(px), Math.round(py), W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.78)'; cx.fillRect(0,0,W,H);
+
+  drawText('SUDS OF DOOM', W/2, 16, 4, CRIMSON, 'center');
+  drawText('THE DISHWASHER UPRISING', W/2, 42, 1, '#8d93a4', 'center');
+
+  renderSlides(90, 58, 300, 108);
+
+  for (let i=0;i<MENU.length;i++){
+    const on = ST.menuSel === i;
+    const iy = MENU_Y + i*MENU_STEP;
+    if (on){
+      cx.fillStyle = 'rgba(232,22,42,0.14)';
+      cx.fillRect(W/2 - MENU_W/2, iy-4, MENU_W, 13);
+      cx.fillStyle = CRIMSON;
+      cx.fillRect(W/2 - MENU_W/2, iy-4, 2, 13);
+      // a chevron, hand-drawn: the pixel font has no '>' glyph
+      const ax = W/2 - MENU_W/2 + 8;
+      for (let r=0;r<3;r++){ cx.fillRect(ax+r, iy+r, 1, 1); cx.fillRect(ax+r, iy+4-r, 1, 1); }
+    }
+    drawText(MENU[i].label(), W/2, iy, 1, on ? '#ffffff' : '#7a7a8e', 'center');
+  }
+
   if (ST.best.wave > 0)
-    drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 222, 1, '#79c7f0', 'center');
-  drawText('A YUNIORS CHILL ZONE GAME', W/2, H-14, 1, '#3a3a48', 'center');
-  if (muted) drawText('MUTED', W-8, 6, 1, '#7a7a8e', 'right');
+    drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 232, 1, '#79c7f0', 'center');
+  drawText(usingTouch ? 'TAP AN OPTION' : 'CLICK, OR ARROWS + ENTER', W/2, 246, 1, '#4a4a5a', 'center');
+  drawText('A YUNIORS CHILL ZONE GAME', W/2, H-8, 1, '#3a3a48', 'center');
+}
+
+function renderHelp(){
+  cx.drawImage(bg, 300, 260, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.86)'; cx.fillRect(0,0,W,H);
+  drawText('HOW TO PLAY', W/2, 18, 3, '#f4c542', 'center');
+  const lines = [
+    ['WASD OR ARROWS', 'MOVE AROUND THE KITCHEN'],
+    ['MOUSE', 'AIM  -  HOLD TO FIRE'],
+    ['TOUCH', 'DRAG TO MOVE, IT AIMS ITSELF'],
+    ['1 2 3', 'PICK AN UPGRADE ON LEVEL UP'],
+    ['P', 'PAUSE'],
+    ['M', 'MUTE'],
+    ['', ''],
+    ['THE GUN', 'HE WHISTLES IT INTO THE AIR.'],
+    ['', 'IT EVOLVES AS YOU TAKE UPGRADES.'],
+    ['COUNTERS', 'STOP BULLETS. USE THEM AS COVER.'],
+    ['THE MAP', 'CORNER MINIMAP SHOWS THE WHOLE KITCHEN.'],
+  ];
+  let y = 48;
+  for (const [k, v] of lines){
+    if (k) drawText(k, 44, y, 1, '#79c7f0');
+    if (v) drawText(v, 150, y, 1, '#dfe3ea');
+    y += 15;
+  }
+  if (Math.floor(ST.time*2) % 2 === 0)
+    drawText(usingTouch ? 'TAP TO GO BACK' : 'ANY KEY OR CLICK TO GO BACK', W/2, H-16, 1, '#7a7a8e', 'center');
 }
 
 function renderLevelUp(){
@@ -1944,10 +2539,12 @@ function tick(dt){
   ST.shake = Math.max(0, ST.shake - dt*14);
   ST.flashRed = Math.max(0, ST.flashRed - dt);
   ST.bannerTimer = Math.max(0, ST.bannerTimer - dt);
+  ST.zoneTimer = Math.max(0, ST.zoneTimer - dt);
   if (ST.mode !== 'play') return;
   ST.playTime += dt;
   updateWaves(dt);
   updatePlayer(dt);
+  updateOrbs(dt);
   updateEnemies(dt);
   updatePBullets(dt);
   updateEBullets(dt);
@@ -1955,6 +2552,10 @@ function tick(dt){
   updatePickups(dt);
   updateParts(dt);
   updateFloaters(dt);
+  updateCam(dt);
+  // announce the room when you cross into a new one
+  const z = zoneAt(player.x, player.y);
+  if (z.name !== ST.zone){ ST.zone = z.name; ST.zoneTimer = 2.4; }
 }
 
 // ================================================================
@@ -1968,7 +2569,13 @@ window.SUDS = {
   forceWave(n){ enemies = []; ebullets = []; boss = null; ST.toSpawn = []; ST.waveState = 'clear'; ST.waveTimer = 0.01; ST.wave = n-1; },
   grantXP(n){ gainXP(n); },
   hurt(n){ player.iframe = 0; hurtPlayer(n||1); },
-  spawn(type, x, y){ return spawnEnemy(type, x===undefined?rand(30,W-30):x, y===undefined?rand(30,H-30):y); },
+  spawn(type, x, y){
+    if (x === undefined){ const p = spawnEdgePos(); x = p.x; y = p.y; }
+    return spawnEnemy(type, x, y);
+  },
+  get pos(){ return { x: Math.round(player.x), y: Math.round(player.y),
+                      zone: zoneAt(player.x, player.y).name }; },
+  warp(x, y){ player.x = clamp(x, 16, WORLD.w-16); player.y = clamp(y, 16, WORLD.h-16); updateCam(0, true); },
   choose(i){ chooseCard(i); },
   gun(i){ player.gunIdx = clamp(i|0, 0, GUNS.length-1); player.gunName = GUNS[player.gunIdx].name; return player.gunName; },
   god(on){ player.iframe = on ? 1e9 : 0; },
@@ -2072,6 +2679,17 @@ requestAnimationFrame(frame);
     player.gun = Object.assign({}, T.gun);
     player.speedMul = 1; player.upgrades = 0;
     player.gunIdx = 0; player.gunName = GUNS[0].name;
+    player.orbs = 0; rebuildOrbs();
+  });
+
+  const mapRow = section('GO TO');
+  for (const z of ZONES) btn(mapRow, z.name.split(' ').pop(), () => {
+    // land somewhere clear in the middle of that area
+    for (let i=0;i<200;i++){
+      const x = z.x + rand(30, z.w-30), y = z.y + rand(30, z.h-30);
+      if (clearSpot(x, y, 14)){ player.x = x; player.y = y; break; }
+    }
+    updateCam(0, true);
   });
 
   const meRow = section('PLAYER');
@@ -2088,7 +2706,11 @@ requestAnimationFrame(frame);
 
   const spawnRow = section('SPAWN');
   for (const t of ['washer','rinser','bubbler','boss'])
-    btn(spawnRow, t.toUpperCase(), () => spawnEnemy(t, rand(50, W-50), rand(50, H-50)));
+    btn(spawnRow, t.toUpperCase(), () => { const p = spawnEdgePos(); spawnEnemy(t, p.x, p.y); });
+
+  const orbRow = section('BARRELS');
+  btn(orbRow, '+1', () => addOrb());
+  btn(orbRow, 'NONE', () => { player.orbs = 0; rebuildOrbs(); });
 
   box.appendChild(readout);
 
@@ -2101,7 +2723,8 @@ requestAnimationFrame(frame);
       'hp ' + Math.max(0, Math.round(player.hp)) + '/' + player.maxhp +
       '   enemies ' + enemies.length + '\n' +
       'dmg ' + (g.damage || 0).toFixed(1) + '  rate ' + (g.rate || 0).toFixed(1) +
-      '  x' + (g.count || 0) + '  pierce ' + (g.pierce || 0);
+      '  x' + (g.count || 0) + '  pierce ' + (g.pierce || 0) + '\n' +
+      Math.round(player.x) + ',' + Math.round(player.y) + '  ' + zoneAt(player.x, player.y).name;
   }
 
   function toggle(){
