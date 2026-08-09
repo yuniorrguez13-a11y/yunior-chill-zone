@@ -1896,5 +1896,143 @@ window.SUDS = {
 resize();
 requestAnimationFrame(frame);
 </script>
+
+<!-- ==================================================================
+     CHEAT MENU — development only.
+     Self-contained: delete this entire <script> block and the menu is
+     gone. Nothing above refers to it.
+     Open it with the ` key or the CHEATS tab in the bottom-right.
+     ================================================================== -->
+<script>
+(function cheatMenu(){
+  const css = document.createElement('style');
+  css.textContent = `
+    #sc-tab, #sc-box { font:11px/1.4 ui-monospace, Menlo, monospace !important; z-index:99999 !important; }
+    #sc-tab {
+      position:fixed !important; right:10px !important; bottom:10px !important;
+      padding:6px 10px !important; cursor:pointer !important; letter-spacing:1px !important;
+      color:#f4c542 !important; background:rgba(8,8,12,.9) !important;
+      border:1px solid rgba(244,197,66,.45) !important; border-radius:5px !important;
+    }
+    #sc-box {
+      position:fixed !important; right:10px !important; top:10px !important;
+      width:214px !important; max-height:calc(100vh - 64px) !important;
+      overflow:auto !important; touch-action:auto !important;
+      padding:8px !important; display:none !important;
+      color:#c9ced9 !important; background:rgba(8,8,12,.94) !important;
+      border:1px solid rgba(232,22,42,.4) !important; border-radius:6px !important;
+    }
+    #sc-box.open { display:block !important; }
+    #sc-box h4 {
+      margin:8px 0 4px !important; font:11px/1.4 ui-monospace, monospace !important;
+      color:#e8162a !important; letter-spacing:1px !important; font-weight:400 !important;
+    }
+    #sc-box h4:first-child { margin-top:0 !important; }
+    #sc-box .g { display:flex !important; flex-wrap:wrap !important; gap:3px !important; }
+    #sc-box button {
+      flex:1 1 auto !important; padding:4px 5px !important; cursor:pointer !important;
+      font:11px/1.2 ui-monospace, monospace !important; white-space:nowrap !important;
+      color:#c9ced9 !important; background:#1b1b26 !important;
+      border:1px solid #33333f !important; border-radius:3px !important;
+    }
+    #sc-box button:hover { background:#26263a !important; color:#fff !important; }
+    #sc-box button.on { background:#f4c542 !important; color:#14141c !important; border-color:#f4c542 !important; }
+    #sc-box pre {
+      margin:8px 0 0 !important; padding:5px !important;
+      color:#79c7f0 !important; background:#101018 !important; border-radius:3px !important;
+      font:10px/1.4 ui-monospace, monospace !important; white-space:pre !important;
+    }
+  `;
+  document.head.appendChild(css);
+
+  const tab = document.createElement('div');
+  tab.id = 'sc-tab';
+  tab.textContent = 'CHEATS  `';
+  const box = document.createElement('div');
+  box.id = 'sc-box';
+  const readout = document.createElement('pre');
+  document.body.appendChild(tab);
+  document.body.appendChild(box);
+
+  // the gun stat block only exists once a run has started
+  const ensure = () => { if (!player.gun) player.gun = Object.assign({}, T.gun); };
+
+  function section(title){
+    const h = document.createElement('h4'); h.textContent = title;
+    const g = document.createElement('div'); g.className = 'g';
+    box.appendChild(h); box.appendChild(g);
+    return g;
+  }
+  function btn(row, label, fn){
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.onclick = () => { ensure(); fn(); b.blur(); paint(); };
+    row.appendChild(b);
+    return b;
+  }
+  function jump(n){
+    enemies.length = 0; ebullets.length = 0; boss = null;
+    ST.toSpawn = []; ST.waveState = 'clear'; ST.waveTimer = 0.01; ST.wave = n - 1;
+  }
+
+  const gunRow = section('GUN');
+  const gunBtns = GUNS.map((g, i) => btn(gunRow, g.name.split(' ')[0], () => {
+    player.gunIdx = i;
+    player.gunName = g.name;
+    player.upgrades = Math.max(player.upgrades, g.need);
+  }));
+
+  const buffRow = section('BUFF');
+  for (const c of CARDS) btn(buffRow, c.name.split(' ')[0], () => {
+    c.apply(player.gun);
+    player.upgrades++;
+  });
+  btn(buffRow, 'RESET', () => {
+    player.gun = Object.assign({}, T.gun);
+    player.speedMul = 1; player.upgrades = 0;
+    player.gunIdx = 0; player.gunName = GUNS[0].name;
+  });
+
+  const meRow = section('PLAYER');
+  btn(meRow, 'HEAL', () => { player.hp = player.maxhp; });
+  btn(meRow, '+HEART', () => { player.maxhp++; player.hp++; });
+  btn(meRow, 'HURT', () => { player.iframe = 0; hurtPlayer(1); });
+  const godBtn = btn(meRow, 'GOD', () => { player.iframe = player.iframe > 1e8 ? 0 : 1e9; });
+
+  const waveRow = section('WAVE');
+  btn(waveRow, '-1', () => jump(Math.max(1, ST.wave - 1)));
+  btn(waveRow, '+1', () => jump(ST.wave + 1));
+  btn(waveRow, 'BOSS', () => jump((Math.floor(ST.wave / 5) + 1) * 5));
+  btn(waveRow, 'CLEAR', () => { enemies.length = 0; ebullets.length = 0; boss = null; });
+
+  const spawnRow = section('SPAWN');
+  for (const t of ['washer','rinser','bubbler','boss'])
+    btn(spawnRow, t.toUpperCase(), () => spawnEnemy(t, rand(50, W-50), rand(50, H-50)));
+
+  box.appendChild(readout);
+
+  function paint(){
+    gunBtns.forEach((b, i) => b.classList.toggle('on', player.gunIdx === i));
+    godBtn.classList.toggle('on', player.iframe > 1e8);
+    const g = player.gun || {};
+    readout.textContent =
+      'wave ' + ST.wave + '   lv ' + player.level + '   ups ' + player.upgrades + '\n' +
+      'hp ' + Math.max(0, Math.round(player.hp)) + '/' + player.maxhp +
+      '   enemies ' + enemies.length + '\n' +
+      'dmg ' + (g.damage || 0).toFixed(1) + '  rate ' + (g.rate || 0).toFixed(1) +
+      '  x' + (g.count || 0) + '  pierce ' + (g.pierce || 0);
+  }
+
+  function toggle(){
+    box.classList.toggle('open');
+    if (box.classList.contains('open')) paint();
+  }
+  tab.onclick = toggle;
+  window.addEventListener('keydown', e => {
+    if (e.key === '`' || e.key === '~'){ e.preventDefault(); toggle(); }
+  });
+  setInterval(() => { if (box.classList.contains('open')) paint(); }, 250);
+})();
+</script>
 </body>
 </html>
