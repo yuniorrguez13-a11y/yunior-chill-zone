@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Suds of Doom — Yuniors Chill Zone</title>
+  <link rel="icon" type="image/png" href="favicon.png">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body {
@@ -83,7 +84,7 @@ const lerp = (a,b,t)=> a+(b-a)*t;
 // ================================================================
 // AUDIO — little WebAudio synth, starts on first click
 // ================================================================
-let AC = null, masterGain = null, muted = false;
+let AC = null, masterGain = null, noiseBuf = null, muted = false;
 try { muted = localStorage.getItem('suds-muted') === '1'; } catch(e){}
 
 function audioInit(){
@@ -93,6 +94,9 @@ function audioInit(){
     masterGain = AC.createGain();
     masterGain.gain.value = muted ? 0 : 0.22;
     masterGain.connect(AC.destination);
+    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const nd = noiseBuf.getChannelData(0);
+    for (let i=0;i<nd.length;i++) nd[i] = Math.random()*2-1;
   } catch(e){ AC = null; }
 }
 function setMuted(m){
@@ -112,23 +116,22 @@ function tone(type, f0, f1, dur, vol, delay){
   o.start(t0); o.stop(t0+dur+0.02);
 }
 function noise(dur, vol, delay){
-  if (!AC || muted) return;
+  if (!AC || muted || !noiseBuf) return;
   const t0 = AC.currentTime + (delay||0);
-  const n = Math.floor(AC.sampleRate * dur);
-  const buf = AC.createBuffer(1, n, AC.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
-  const src = AC.createBufferSource(); src.buffer = buf;
-  const g = AC.createGain(); g.gain.value = vol;
+  const src = AC.createBufferSource(); src.buffer = noiseBuf;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.linearRampToValueAtTime(0.001, t0+dur);
   src.connect(g); g.connect(masterGain);
-  src.start(t0);
+  src.start(t0); src.stop(t0+dur+0.02);
 }
+let lastHitSfx = 0;
 const SFX = {
   shoot(){ tone('square', 760, 320, .06, .12); },
   plate(){ tone('triangle', 340, 220, .05, .10); },
   fork(){ tone('sawtooth', 520, 380, .05, .07); },
   bubble(){ tone('sine', 420, 560, .08, .08); },
-  hitEnemy(){ noise(.03, .10); },
+  hitEnemy(){ const n2 = performance.now(); if (n2 - lastHitSfx < 40) return; lastHitSfx = n2; noise(.03, .10); },
   boom(){ noise(.18, .22); tone('triangle', 130, 40, .25, .25); },
   hurt(){ tone('sawtooth', 240, 70, .22, .22); noise(.08,.12); },
   pickup(){ tone('sine', 620, 880, .07, .10); },
@@ -176,8 +179,9 @@ const FONT = {
   ' ':["..","..","..","..",".."],
 };
 function textWidth(str, scale){
+  // callers pass an already-uppercased string
   let w = 0;
-  for (const ch of str.toUpperCase()){
+  for (const ch of str){
     const g = FONT[ch] || FONT['?'];
     w += (g[0].length + 1) * scale;
   }
@@ -455,13 +459,19 @@ function toGame(clientX, clientY){
 }
 
 window.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;   // don't eat browser shortcuts
   const k = e.key.toLowerCase();
   keys[k] = true;
   if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  if (e.repeat) return;                              // OS auto-repeat must not re-toggle
   if (k === 'm'){ setMuted(!muted); }
   if (k === 'p' && ST.mode === 'play'){ ST.mode = 'pause'; }
   else if (k === 'p' && ST.mode === 'pause'){ ST.mode = 'play'; }
-  if (k === 'r' && ST.mode === 'over'){ audioInit(); startRun(); }
+  if (k === 'r' && ST.mode === 'over'){
+    audioInit();
+    if (AC && AC.state === 'suspended') AC.resume();
+    startRun();
+  }
   if (ST.mode === 'levelup'){
     if (k === '1') chooseCard(0);
     if (k === '2') chooseCard(1);
@@ -480,11 +490,11 @@ cv.addEventListener('mousedown', e => {
   if (AC && AC.state === 'suspended') AC.resume();
   const p = toGame(e.clientX, e.clientY);
   mouse.x = p.x; mouse.y = p.y;
-  if (ST.mode === 'menu'){ startRun(); return; }
-  if (ST.mode === 'over'){ startRun(); return; }
-  if (ST.mode === 'pause'){ ST.mode = 'play'; return; }
-  if (ST.mode === 'levelup'){ clickCard(p.x, p.y); return; }
-  mouse.down = true;
+  if (ST.mode === 'menu' || ST.mode === 'over'){ startRun(); }
+  else if (ST.mode === 'pause'){ ST.mode = 'play'; }
+  else if (ST.mode === 'levelup'){ clickCard(p.x, p.y); }
+  // any click that lands us in play mode counts as held fire
+  if (ST.mode === 'play') mouse.down = true;
 });
 window.addEventListener('mouseup', ()=> { mouse.down = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -496,12 +506,15 @@ cv.addEventListener('touchstart', e => {
   if (AC && AC.state === 'suspended') AC.resume();
   const t0 = e.changedTouches[0];
   const p = toGame(t0.clientX, t0.clientY);
+  // arm the joystick on the FIRST finger only; extra fingers must not steal it
+  if (!touch.active){
+    touch.active = true; touch.id = t0.identifier;
+    touch.sx = t0.clientX; touch.sy = t0.clientY;
+    touch.dx = 0; touch.dy = 0;
+  }
   if (ST.mode === 'menu' || ST.mode === 'over'){ startRun(); return; }
   if (ST.mode === 'pause'){ ST.mode = 'play'; return; }
   if (ST.mode === 'levelup'){ clickCard(p.x, p.y); return; }
-  touch.active = true; touch.id = t0.identifier;
-  touch.sx = t0.clientX; touch.sy = t0.clientY;
-  touch.dx = 0; touch.dy = 0;
 }, {passive:false});
 cv.addEventListener('touchmove', e => {
   e.preventDefault();
@@ -514,23 +527,37 @@ cv.addEventListener('touchmove', e => {
 }, {passive:false});
 function touchEnd(e){
   for (const t0 of e.changedTouches){
-    if (t0.identifier === touch.id){ touch.active = false; touch.dx = 0; touch.dy = 0; }
+    if (t0.identifier === touch.id){ touch.active = false; touch.id = null; touch.dx = 0; touch.dy = 0; }
   }
 }
 cv.addEventListener('touchend', touchEnd);
 cv.addEventListener('touchcancel', touchEnd);
 
+// keyup never arrives for keys released while unfocused — clear everything
+function clearInput(){
+  for (const k in keys) keys[k] = false;
+  mouse.down = false;
+  touch.active = false; touch.id = null; touch.dx = 0; touch.dy = 0;
+}
 document.addEventListener('visibilitychange', ()=>{
-  if (document.hidden && ST.mode === 'play') ST.mode = 'pause';
+  if (document.hidden){
+    if (ST.mode === 'play') ST.mode = 'pause';
+    clearInput();
+  }
 });
-window.addEventListener('blur', ()=>{ if (ST.mode === 'play') ST.mode = 'pause'; });
+window.addEventListener('blur', ()=>{
+  if (ST.mode === 'play') ST.mode = 'pause';
+  clearInput();
+});
 
 // ================================================================
 // GAME STATE
 // ================================================================
 const ST = {
   mode: 'menu',       // menu | play | levelup | pause | over
-  time: 0, wave: 0, kills: 0,
+  time: 0,            // wall clock, drives menu/overlay animation
+  playTime: 0,        // only advances while actually playing — the survival clock
+  wave: 0, kills: 0,
   waveState: 'idle',  // announce | active | clear | bosswarn
   waveTimer: 0, toSpawn: [], spawnTimer: 0,
   shake: 0, flashRed: 0,
@@ -563,7 +590,7 @@ const GUN_NAMES = [
 ];
 
 const CARDS = [
-  { id:'rate',  name:'RAPID CYCLE',    desc:'+30% FIRE RATE',        apply: g => g.rate *= 1.30 },
+  { id:'rate',  name:'RAPID CYCLE',    desc:'+30% FIRE RATE',        apply: g => g.rate = Math.min(20, g.rate*1.30), max: g => g.rate >= 20 },
   { id:'dmg',   name:'HEAVY LOAD',     desc:'+35% DAMAGE',           apply: g => { g.damage *= 1.35; g.size = Math.min(2.2, g.size*1.12); } },
   { id:'split', name:'SPLIT BARREL',   desc:'+1 BULLET',             apply: g => g.count = Math.min(6, g.count+1), max: g => g.count >= 6 },
   { id:'boots', name:'TURBO SNEAKERS', desc:'+12% MOVE SPEED',       apply: () => player.speedMul *= 1.12 },
@@ -574,7 +601,7 @@ const CARDS = [
 
 function startRun(){
   ST.mode = 'play';
-  ST.time = 0; ST.wave = 0; ST.kills = 0;
+  ST.time = 0; ST.playTime = 0; ST.wave = 0; ST.kills = 0;
   ST.waveState = 'clear'; ST.waveTimer = 0.5;
   ST.toSpawn = []; ST.spawnTimer = 0;
   ST.shake = 0; ST.flashRed = 0; ST.banner = ''; ST.bannerTimer = 0;
@@ -731,7 +758,7 @@ function firePlayerGun(dt){
     pbullets.push({
       x: player.x + Math.cos(player.aim)*8, y: player.y + Math.sin(player.aim)*8,
       vx: Math.cos(a)*g.speed*g.bspeedMul, vy: Math.sin(a)*g.speed*g.bspeedMul,
-      dmg: g.damage, size: g.size, pierce: g.pierce, hitList: null,
+      ang: a, dmg: g.damage, size: g.size, pierce: g.pierce, hitList: null,
     });
   }
   ST.shake = Math.min(3, ST.shake + 0.4);
@@ -742,7 +769,7 @@ function eshoot(x, y, angle, speed, kind){
   if (ebullets.length >= T.maxEBullets) ebullets.shift();
   ebullets.push({
     x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
-    kind, spin: rand(0, TAU), age: 0,
+    ang: angle, kind, spin: rand(0, TAU), age: 0,
   });
 }
 
@@ -850,6 +877,9 @@ function updateBoss(e, dt, dx, dy, d){
   const lv = e.bossLvl;
   if (d > 90){ e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt; }
   else { e.t2 += dt; e.x += Math.cos(e.t2*0.5)*8*dt; }
+  // rolling in from the top: descend faster and hold fire until visible
+  // (bullets born above the arena would be culled instantly and never seen)
+  if (e.y < 16){ e.y += 30*dt; return; }
 
   // spiral of plates — the signature move
   e.tSpiral -= dt;
@@ -1122,27 +1152,29 @@ function updateFloaters(dt){
 // ================================================================
 // RENDER
 // ================================================================
+let shakeX = 0, shakeY = 0;
 function drawSpriteC(sp, x, y, scale){
   const s = scale || 1;
   cx.drawImage(sp, Math.round(x - sp.width*s/2), Math.round(y - sp.height*s/2), sp.width*s, sp.height*s);
 }
+// setTransform instead of save/restore: hundreds of rotated bullets per frame
 function drawSpriteRot(sp, x, y, angle, scale){
   const s = scale || 1;
-  cx.save();
-  cx.translate(Math.round(x), Math.round(y));
+  cx.setTransform(1,0,0,1, shakeX + Math.round(x), shakeY + Math.round(y));
   cx.rotate(angle);
   cx.drawImage(sp, -sp.width*s/2, -sp.height*s/2, sp.width*s, sp.height*s);
-  cx.restore();
+  cx.setTransform(1,0,0,1, shakeX, shakeY);
 }
 
 function render(){
+  shakeX = 0; shakeY = 0;
+  if (ST.shake > 0.1){
+    shakeX = Math.round(rand(-ST.shake, ST.shake)*0.5);
+    shakeY = Math.round(rand(-ST.shake, ST.shake)*0.5);
+  }
   cx.setTransform(1,0,0,1,0,0);
   cx.clearRect(0,0,W,H);
-
-  // screen shake
-  if (ST.shake > 0.1){
-    cx.setTransform(1,0,0,1, Math.round(rand(-ST.shake, ST.shake)*0.5), Math.round(rand(-ST.shake, ST.shake)*0.5));
-  }
+  cx.setTransform(1,0,0,1,shakeX,shakeY);
 
   cx.drawImage(bg, 0, 0);
 
@@ -1188,13 +1220,13 @@ function render(){
 
   // player bullets
   for (const b of pbullets){
-    drawSpriteRot(SP.slug, b.x, b.y, Math.atan2(b.vy, b.vx), b.size);
+    drawSpriteRot(SP.slug, b.x, b.y, b.ang, b.size);
   }
 
   // enemy bullets
   for (const b of ebullets){
     if (b.kind === 'plate') drawSpriteRot(SP.plate, b.x, b.y, b.spin);
-    else if (b.kind === 'fork') drawSpriteRot(SP.fork, b.x, b.y, Math.atan2(b.vy, b.vx));
+    else if (b.kind === 'fork') drawSpriteRot(SP.fork, b.x, b.y, b.ang);
     else {
       const puls = 1 + Math.sin(b.age*8)*0.15;
       drawSpriteC(SP.bubble, b.x, b.y, puls);
@@ -1253,7 +1285,7 @@ function renderHUD(){
     cx.fillStyle = CRIMSON; cx.fillRect(W/2-bw/2, 14, bw * clamp(boss.hp/boss.maxhp,0,1), 4);
   }
   // kills + time
-  const mm = Math.floor(ST.time/60), ss = Math.floor(ST.time%60);
+  const mm = Math.floor(ST.playTime/60), ss = Math.floor(ST.playTime%60);
   drawText(String(ST.kills) + ' KO', W-8, 6, 1, '#dfe3ea', 'right');
   drawText((mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss, W-8, 14, 1, '#7a7a8e', 'right');
   // xp bar
@@ -1325,7 +1357,7 @@ function renderGameOver(){
   cx.fillRect(0,0,W,H);
   drawText('YOU GOT WASHED!', W/2, 70, 3, CRIMSON, 'center');
   drawText('WAVE ' + ST.wave + ' + ' + ST.kills + ' KO', W/2, 104, 2, '#fff', 'center');
-  const mm = Math.floor(ST.time/60), ss = Math.floor(ST.time%60);
+  const mm = Math.floor(ST.playTime/60), ss = Math.floor(ST.playTime%60);
   drawText('SURVIVED ' + (mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss, W/2, 124, 1, '#dfe3ea', 'center');
   drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 142, 1, '#79c7f0', 'center');
   if (Math.floor(ST.time*2) % 2 === 0)
@@ -1357,6 +1389,7 @@ function tick(dt){
   ST.flashRed = Math.max(0, ST.flashRed - dt);
   ST.bannerTimer = Math.max(0, ST.bannerTimer - dt);
   if (ST.mode !== 'play') return;
+  ST.playTime += dt;
   updateWaves(dt);
   updatePlayer(dt);
   updateEnemies(dt);
@@ -1374,7 +1407,7 @@ function tick(dt){
 window.SUDS = {
   get state(){ return ST.mode; },
   get stats(){ return { wave: ST.wave, kills: ST.kills, hp: player.hp, level: player.level,
-    enemies: enemies.length, ebullets: ebullets.length, pbullets: pbullets.length, time: ST.time }; },
+    enemies: enemies.length, ebullets: ebullets.length, pbullets: pbullets.length, time: ST.playTime }; },
   start(){ if (ST.mode !== 'play') startRun(); },
   forceWave(n){ enemies = []; ebullets = []; boss = null; ST.toSpawn = []; ST.waveState = 'clear'; ST.waveTimer = 0.01; ST.wave = n-1; },
   grantXP(n){ gainXP(n); },
