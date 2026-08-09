@@ -64,11 +64,18 @@ const T = {
   bodyRadius: 5,            // for enemy contact
   magnetRadius: 26,
   gun: { damage: 6, rate: 4, speed: 170, count: 1, pierce: 0, size: 1, bspeedMul: 1 },
-  washer:  { hp: 20, speed: 22, touch: 1, shootCd: 2.8, range: 150, r: 7 },
-  rinser:  { hp: 16, speed: 30, touch: 1, shootCd: 2.3, r: 7 },
-  bubbler: { hp: 26, speed: 14, touch: 1, shootCd: 3.4, r: 7 },
+  // the dishwashers got bigger, so their hitboxes did too
+  washer:  { hp: 24, speed: 22, touch: 1, shootCd: 2.8, range: 150, r: 9 },
+  rinser:  { hp: 18, speed: 30, touch: 1, shootCd: 2.3, r: 9 },
+  bubbler: { hp: 30, speed: 14, touch: 1, shootCd: 3.4, r: 9 },
+  scrubber:{ hp: 26, speed: 36, touch: 2, r: 10 },              // charges you
+  steamer: { hp: 38, speed: 17, touch: 1, shootCd: 3.0, r: 9 }, // area denial
+  stacker: { hp: 78, speed: 13, touch: 2, shootCd: 2.6, r: 10 },// shielded tank
   boss:    { hp: 550, speed: 12, touch: 2, r: 20 },
-  plateSpeed: 62, forkSpeed: 105, bubbleSpeed: 26,
+  plateSpeed: 62, forkSpeed: 105, bubbleSpeed: 26, steamSpeed: 30,
+  dashSpeed: 4.6,           // scrubber charge, as a multiple of its walk speed
+  shieldArc: 1.05,          // stacker blocks within this many radians of facing
+  shieldMul: 0.15,          // and what gets through when it does
   eliteHPMul: 3, eliteSpeedMul: 1.25,
   maxEBullets: 550, maxPBullets: 300, maxParticles: 380,
 };
@@ -614,67 +621,202 @@ const SP = {};
     ".RRRR.",
   ],{R:'#ff9420',Y:'#ffe8b0'});
 
-  // --- washer: basic angry dishwasher ---
+  // ================================================================
+  // THE DISHWASHERS
+  // All of them got a size and a workout. Bigger chassis, riveted
+  // shoulders, heavy feet, and a dark brow over the eyes — the brow is
+  // what actually makes them read as angry rather than as appliances.
+  // ================================================================
+
+  // --- washer: the heavy. Riveted front-loader with shoulder pods bolted
+  //     on either side — the pods are what break the plain-box silhouette
+  //     and make it read as something that lifts, not something that spins ---
   SP.washer = makeSprite([
-    ".OOOOOOOOOOOOOO.",
-    "OWWWWWWWWWWWWWWO",
-    "OWPPPPPPPPPPPPWO",
-    "OWPRP.YP.....PWO",
-    "OWWWWWWWWWWWWWWO",
-    "OWGDDDDDDDDDDGWO",
-    "OWGDNNNNNNNNDGWO",
-    "OWGDNEKNNKENDGWO",
-    "OWGDNEENNEENDGWO",
-    "OWGDNNNNNNNNDGWO",
-    "OWGDNnnnnnnNDGWO",
-    "OWGDDDDDDDDDDGWO",
-    "OWWWWWWWWWWWWWWO",
-    ".OOOOOOOOOOOOOO.",
-    "..OFF......FF...",
-    "..OFF......FF...",
-  ],{O:'#14161d',W:'#dfe3ea',G:'#aab0bd',P:'#3a3f4c',R:CRIMSON,Y:'#f4c542',
-     D:'#7d8494',N:'#35608c',n:'#5b8fc4',E:'#ffffff',K:'#101018',F:'#14161d'});
+    "....OOOOOOOOOOOOOOOO....",
+    "...OWWWWWWWWWWWWWWWWO...",
+    "..OWWWWWWWWWWWWWWWWWWO..",
+    "..OWGGGGGGGGGGGGGGGGWO..",
+    "..OWGPPPPPPPPPPPPPPGWO..",
+    "..OWGPRRPPYYPPPPPPPGWO..",
+    "..OWGPPPPPPPPPPPPPPGWO..",
+    "..OWGGGGGGGGGGGGGGGGWO..",
+    ".OOWSGgggggggggggggSWOO.",
+    "OAOWSGDDDDDDDDDDDDDSWOAO",
+    "OAOWSGDNKKNNNNNKKNDSWOAO",
+    "OAOWSGDNEKNNNNNKENDSWOAO",
+    "OAOWSGDNEENNNNNEENDSWOAO",
+    "OAOWSGDNNNNNNNNNNNDSWOAO",
+    "OAOWSGDNnnnnnnnnnNDSWOAO",
+    "OAOWSGDNNNNNNNNNNNDSWOAO",
+    "OAOWSGDDDDDDDDDDDDDSWOAO",
+    ".OOWSGgggggggggggggSWOO.",
+    "..OWGGGGGGGGGGGGGGGGWO..",
+    "...OWWWWWWWWWWWWWWWWO...",
+    "....FFFF........FFFF....",
+    "....FFFF........FFFF....",
+  ],{O:'#14161d',W:'#e6eaf1',G:'#c2c8d4',g:'#98a0ae',S:'#f2f5f9',P:'#333844',
+     A:'#8b93a2',R:CRIMSON,Y:'#f4c542',D:'#5c6373',N:'#2c5580',n:'#5b8fc4',
+     E:'#ffffff',K:'#101018',F:'#14161d'});
 
-  // --- rinser: tall silver fork-flinger ---
+  // --- rinser: the tall one. Lean, silver, throws forks ---
   SP.rinser = makeSprite([
-    ".OOOOOOOOOOOO.",
-    "OSSSSSSSSSSSSO",
-    "OSPPPPPPPPPPSO",
-    "OSPY.R.....PSO",
-    "OSSSSSSSSSSSSO",
-    "OSGMMMMMMMMGSO",
-    "OSGMEK..KEMGSO",
-    "OSGMEE..EEMGSO",
-    "OSGMMMMMMMMGSO",
-    "OSGMFFFFFFMGSO",
-    "OSGMMMMMMMMGSO",
-    "OSGMMMFFMMMGSO",
-    "OSGMMMMMMMMGSO",
-    "OSSSSSSSSSSSSO",
-    ".OOOOOOOOOOOO.",
-    "..OZZ....ZZ...",
-    "..OZZ....ZZ...",
-    "..............",
-  ],{O:'#14161d',S:'#c3cad6',G:'#8e96a6',P:'#3a3f4c',Y:'#f4c542',R:CRIMSON,
-     M:'#5a6272',E:'#ffffff',K:'#101018',F:'#e8ecf2',Z:'#14161d'});
+    "...OOOOOOOOOOOO...",
+    "..OSSSSSSSSSSSSO..",
+    ".OSSSSSSSSSSSSSSO.",
+    "OSSPPPPPPPPPPPPSSO",
+    "OSSPRPPYYPPPPPPSSO",
+    "OSSPPPPPPPPPPPPSSO",
+    "OSSSSSSSSSSSSSSSSO",
+    "OSGgggggggggggggSO",
+    "OSGDDDDDDDDDDDDGSO",
+    "OSGDMMMMMMMMMMDGSO",
+    "OSGDMKKMMMMKKMDGSO",
+    "OSGDMEKMMMMKEMDGSO",
+    "OSGDMEEMMMMEEMDGSO",
+    "OSGDMMMMMMMMMMDGSO",
+    "OSGDMFFFFFFFFMDGSO",
+    "OSGDMMMMMMMMMMDGSO",
+    "OSGDMMFFFFFFMMDGSO",
+    "OSGDMMMMMMMMMMDGSO",
+    "OSGDDDDDDDDDDDDGSO",
+    "OSGgggggggggggggSO",
+    "OSSSSSSSSSSSSSSSSO",
+    ".OSSSSSSSSSSSSSSO.",
+    "..OSSSSSSSSSSSSO..",
+    "...OOOOOOOOOOOO...",
+    "...ZZZ......ZZZ...",
+    "...ZZZ......ZZZ...",
+  ],{O:'#14161d',S:'#d3dae6',G:'#9aa2b2',g:'#7d8494',P:'#333844',Y:'#f4c542',
+     R:CRIMSON,D:'#525a6a',M:'#6f7889',E:'#ffffff',K:'#101018',
+     F:'#eef1f6',Z:'#14161d'});
 
-  // --- bubbler: round teal bubble machine ---
+  // --- bubbler: the fat one. Rounder, meaner, still teal ---
   SP.bubbler = makeSprite([
-    "....OOOOOO....",
-    "..OOTTTTTTOO..",
-    ".OTTUUUUUUTTO.",
-    ".OTUuu..uuTTO.",
-    "OTTUu....uUTTO",
-    "OTUU..EK..UUTO",
-    "OTUU..EE..UUTO",
-    "OTTUu....uUTTO",
-    ".OTUuu..uuTTO.",
-    ".OTTUUUUUUTTO.",
-    "..OOTTTTTTOO..",
-    "...OFF..FFO...",
-    "...OFF..FFO...",
-    "..............",
-  ],{O:'#14161d',T:'#2e7d84',U:'#3fa3ac',u:'#7fd4da',E:'#ffffff',K:'#101018',F:'#14161d'});
+    "......OOOOOOOO......",
+    "....OOTTTTTTTTOO....",
+    "...OTTTTTTTTTTTTO...",
+    "..OTTTTTTTTTTTTTTO..",
+    ".OTTTUUUUUUUUUUTTTO.",
+    ".OTTUUUUUUUUUUUUTTO.",
+    "OTTUUUUuuuuuuUUUUTTO",
+    "OTTUUUKKduudKKUUUTTO",
+    "OTTUUUEKduudKEUUUTTO",
+    "OTTUUUEEduudEEUUUTTO",
+    "OTTUUUUuuuuuuUUUUTTO",
+    "OTTUUUUUUUUUUUUUUTTO",
+    ".OTTUUUUnnnnUUUUTTO.",
+    ".OTTTUUUUUUUUUUTTTO.",
+    "..OTTTTTTTTTTTTTTO..",
+    "...OTTTTTTTTTTTTO...",
+    "....OOTTTTTTTTOO....",
+    "......OOOOOOOO......",
+    "....FFF......FFF....",
+    "....FFF......FFF....",
+  ],{O:'#14161d',T:'#2a7178',U:'#3fa3ac',u:'#7fd4da',d:'#1b555b',n:'#a8ecf2',
+     E:'#ffffff',K:'#101018',F:'#14161d'});
+
+  // --- scrubber: low, wide, bright yellow. Winds up and charges ---
+  SP.scrubber = makeSprite([
+    "....OOOOOOOOOOOOOOOO....",
+    "..OOYYYYYYYYYYYYYYYYOO..",
+    ".OYYYYYYYYYYYYYYYYYYYYO.",
+    "OYYPPPPPPPPPPPPPPPPPPYYO",
+    "OYPPKKPPPPPPPPPPPPKKPPYO",
+    "OYPPEKPPPPPPPPPPPPKEPPYO",
+    "OYPPEEPPPPPPPPPPPPEEPPYO",
+    "OYYPPPPPPPPPPPPPPPPPPYYO",
+    "OYYRRRRRRRRRRRRRRRRRRYYO",
+    "OYyyyyyyyyyyyyyyyyyyyyYO",
+    ".OYyyyyyyyyyyyyyyyyyyYO.",
+    "..OOYYYYYYYYYYYYYYYYOO..",
+    "...WWW..WWW..WWW..WWW...",
+    "...WWW..WWW..WWW..WWW...",
+  ],{O:'#14161d',Y:'#f0c020',y:'#b0851a',P:'#2f2a22',R:CRIMSON,
+     E:'#ffffff',K:'#101018',W:'#9aa2b2'});
+
+  // --- steamer: copper boiler. Vents scalding steam ---
+  SP.steamer = makeSprite([
+    "....OOOOOOOOOOOO....",
+    "..OOCCCCCCCCCCCCOO..",
+    ".OCCCCCCCCCCCCCCCCO.",
+    "OCCccccccccccccccCCO",
+    "OCcPPPPPPPPPPPPPPcCO",
+    "OCcPKKPPPPPPPPKKPcCO",
+    "OCcPEKPPPPPPPPKEPcCO",
+    "OCcPEEPPPPPPPPEEPcCO",
+    "OCcPPPPPPPPPPPPPPcCO",
+    "OCCccccccccccccccCCO",
+    "OCCCCCCCCCCCCCCCCCCO",
+    "OCcHHHHHHHHHHHHHHcCO",
+    "OCcHwwHHHHHHHHwwHcCO",
+    "OCcHHHHHHHHHHHHHHcCO",
+    "OCCccccccccccccccCCO",
+    "OCCCCCCCCCCCCCCCCCCO",
+    ".OCCCCCCCCCCCCCCCCO.",
+    "..OOCCCCCCCCCCCCOO..",
+    "....OOOOOOOOOOOO....",
+    "...PP..PP..PP..PP...",
+    "...PP..PP..PP..PP...",
+    "...FF..........FF...",
+  ],{O:'#14161d',C:'#b07a3c',c:'#7d5426',P:'#2f2a22',H:'#c9a227',w:'#f4e0a0',
+     E:'#ffffff',K:'#101018',F:'#14161d'});
+
+  // --- stacker: gunmetal tank. Its plate stack is a separate sprite
+  //     so it can be turned to face you and actually block shots ---
+  SP.stacker = makeSprite([
+    ".....OOOOOOOOOOOOOO.....",
+    "....OGGGGGGGGGGGGGGO....",
+    "...OGGGGGGGGGGGGGGGGO...",
+    "..OGGggggggggggggggGGO..",
+    "..OGgPPPPPPPPPPPPPPgGO..",
+    "..OGgPRRPPPPPPPPRRPgGO..",
+    "..OGgPPPPPPPPPPPPPPgGO..",
+    "..OGGggggggggggggggGGO..",
+    ".OOGgDDDDDDDDDDDDDDgGOO.",
+    "OAOGgDKKKDDDDDDKKKDgGOAO",
+    "OAOGgDKRKDDDDDDKRKDgGOAO",
+    "OAOGgDKKKDDDDDDKKKDgGOAO",
+    "OAOGgDDDDDDDDDDDDDDgGOAO",
+    "OAOGgDVVVVVVVVVVVVDgGOAO",
+    "OAOGgDDDDDDDDDDDDDDgGOAO",
+    "OAOGgDVVVVVVVVVVVVDgGOAO",
+    ".OOGgDDDDDDDDDDDDDDgGOO.",
+    "..OGGggggggggggggggGGO..",
+    "...OGGGGGGGGGGGGGGGGO...",
+    "....OGGGGGGGGGGGGGGO....",
+    ".....OOOOOOOOOOOOOO.....",
+    ".....FFFF......FFFF.....",
+    ".....FFFF......FFFF.....",
+    ".....FFFF......FFFF.....",
+  ],{O:'#14161d',G:'#6b7280',g:'#4a5058',P:'#2b2f38',R:CRIMSON,A:'#565c66',
+     D:'#343a44',V:'#1c2028',K:'#101018',F:'#14161d'});
+
+  // the stacker's shield: a stack of plates seen edge-on, drawn rotated
+  // to whichever way it is facing
+  SP.shield = makeSprite([
+    "..OOO..",
+    ".OPPPO.",
+    "OPPPPPO",
+    "OPpppPO",
+    "OPPPPPO",
+    "OPpppPO",
+    "OPPPPPO",
+    "OPpppPO",
+    "OPPPPPO",
+    "OPpppPO",
+    "OPPPPPO",
+    "OPpppPO",
+    "OPPPPPO",
+    "OPpppPO",
+    "OPPPPPO",
+    "OPpppPO",
+    "OPPPPPO",
+    "OPpppPO",
+    "OPPPPPO",
+    "OPPPPPO",
+    ".OPPPO.",
+    "..OOO..",
+  ],{O:'#14161d',P:'#e6e9ef',p:'#b0b7c4'});
 
   // --- MEGAWASHER boss (drawn 2x at render) ---
   SP.boss = makeSprite([
@@ -735,6 +877,18 @@ const SP = {};
     ".BBB.",
   ],{B:'#6fd8e2',w:'#e8feff'});
 
+  // the steamer's scalding vent — drawn faded, so it reads as a cloud
+  SP.steam = makeSprite([
+    "..WWWW..",
+    ".WwwwwW.",
+    "WwwwwwwW",
+    "WwwwwwwW",
+    "WwwwwwwW",
+    "WwwwwwwW",
+    ".WwwwwW.",
+    "..WWWW..",
+  ],{W:'#b9c2cf',w:'#eef2f7'});
+
   // --- pickups ---
   SP.sud = makeSprite([
     ".BB.",
@@ -753,9 +907,9 @@ const SP = {};
   ],{R:CRIMSON,r:'#ff7080'});
 
   // silhouettes for damage flash + elite tints
-  for (const k of ['washer','rinser','bubbler','boss'])
+  for (const k of ['washer','rinser','bubbler','scrubber','steamer','stacker','boss'])
     SP[k+'_flash'] = makeSilhouette(SP[k], '#ffffff');
-  for (const k of ['washer','rinser','bubbler'])
+  for (const k of ['washer','rinser','bubbler','scrubber','steamer','stacker'])
     SP[k+'_elite'] = makeTint(SP[k], '#ffc02a', 0.45);
 })();
 
@@ -1258,7 +1412,7 @@ function startRun(){
   ST.toSpawn = []; ST.spawnTimer = 0;
   ST.shake = 0; ST.flashRed = 0; ST.banner = ''; ST.bannerTimer = 0;
   ST.levelQueue = 0; ST.cards = [];
-  ST.zone = ''; ST.zoneTimer = 0;
+  ST.zone = ''; ST.zoneTimer = 0; ST.seen = {};
   player.x = SPAWN.x; player.y = SPAWN.y; player.vx = 0; player.vy = 0;
   player.hp = T.playerHP; player.maxhp = T.playerHP;
   player.iframe = 0; player.fireCd = 0; player.flash = 0;
@@ -1307,14 +1461,32 @@ function beginWave(n){
   ST.banner = 'WAVE ' + n; ST.bannerTimer = 1.4;
   const budget = 4 + n * 2;
   const list = [];
-  for (let i=0;i<budget;i++){
-    let type = 'washer';
-    if (n >= 2 && Math.random() < 0.35) type = 'rinser';
-    if (n >= 3 && Math.random() < 0.22) type = 'bubbler';
-    list.push(type);
-  }
+  for (let i=0;i<budget;i++) list.push(rollEnemy(n));
   ST.toSpawn = list;
   ST.spawnTimer = 0;
+}
+
+// Who shows up, and from which wave. `weight` is relative, so raising one
+// number is enough to make that dishwasher more common — nothing else to
+// keep in step. Costlier types unlock later so wave 1 stays gentle.
+const ROSTER = [
+  { type:'washer',   from:1,  weight:40, name:'WASHER' },
+  { type:'rinser',   from:2,  weight:26, name:'RINSER' },
+  { type:'scrubber', from:3,  weight:24, name:'SCRUBBER' },
+  { type:'bubbler',  from:4,  weight:18, name:'BUBBLER' },
+  { type:'steamer',  from:6,  weight:16, name:'STEAMER' },
+  { type:'stacker',  from:8,  weight:13, name:'STACKER' },
+];
+function rollEnemy(n){
+  let total = 0;
+  for (const r of ROSTER) if (n >= r.from) total += r.weight;
+  let pickN = Math.random() * total;
+  for (const r of ROSTER){
+    if (n < r.from) continue;
+    pickN -= r.weight;
+    if (pickN <= 0) return r.type;
+  }
+  return 'washer';
 }
 
 // Enemies come in from just off the edge of what you can see, not the edge
@@ -1359,6 +1531,20 @@ function spawnEnemy(type, x, y){
     t2: rand(0, TAU),                     // wobble phase
     flash: 0,
   };
+  if (type === 'scrubber'){
+    e.st = 'walk';        // walk -> wind -> dash -> rest
+    e.t3 = 0;             // how long is left in the current state
+  }
+  if (type === 'stacker'){
+    e.shield = true;
+    e.face = Math.atan2(player.y - y, player.x - x);
+  }
+  // name-drop each kind the first time you meet it
+  const seen = ST.seen || (ST.seen = {});
+  if (!seen[type]){
+    const row = ROSTER.find(r => r.type === type);
+    if (row){ seen[type] = 1; addFloater(x, y - 22, row.name + '!', '#ffc02a', 1.8); }
+  }
   if (type === 'boss'){
     const bossLvl = Math.floor(n / 5);
     e.hp = e.maxhp = T.boss.hp * (1 + (bossLvl-1) * 0.9);
@@ -1507,8 +1693,9 @@ function fireBeam(g, gun, dt){
     if (idx >= maxTargets) break;
     const e = h.e;
     // the beam spends itself as it burns through: each body behind the first
-    // takes less, so a long line never out-damages the Megablaster
-    const dmg = dps * Math.pow(BEAM_FALLOFF, idx) * dt;
+    // takes less, so a long line never out-damages the Megablaster.
+    // Plate stacks turn it away from the front like anything else.
+    const dmg = dps * Math.pow(BEAM_FALLOFF, idx) * dt * shieldMul(e, player.x, player.y);
     e.hp -= dmg;
     e.flash = 0.08;
     e.bAcc = (e.bAcc || 0) + dmg;
@@ -1549,8 +1736,10 @@ function sweepMuzzle(mx, my, dmg){
     bt = t; best = e;
   }
   if (best){
-    damageEnemy(best, dmg, best.x, best.y);
-    spawnParts(best.x, best.y, 3, '#f4c542', 50);
+    // hit it on the side facing the player, so shields are judged fairly
+    const hx = player.x + ux*bt, hy = player.y + uy*bt;
+    damageEnemy(best, dmg, hx, hy);
+    spawnParts(hx, hy, 3, '#f4c542', 50);
   }
 }
 
@@ -1600,6 +1789,11 @@ function updateEBullets(dt){
         b.vx = Math.cos(ca)*sp; b.vy = Math.sin(ca)*sp;
       }
       if (b.age > 6){ spawnParts(b.x, b.y, 3, '#6fd8e2', 26); ebullets.splice(i,1); continue; }
+    }
+    else if (b.kind === 'steam'){
+      // it billows out, slows down, and hangs around long enough to matter
+      b.vx *= 0.985; b.vy *= 0.985;
+      if (b.age > 2.4){ ebullets.splice(i,1); continue; }
     }
     b.x += b.vx*dt; b.y += b.vy*dt;
     b.spin += dt * 6;
@@ -1665,6 +1859,68 @@ function updateEnemies(dt){
         SFX.bubble();
       }
     }
+    // --- scrubber: walks in, plants itself, winds up, then charges ---
+    else if (e.type === 'scrubber'){
+      e.t3 -= dt;
+      if (e.st === 'walk'){
+        step(e, (dx/d) * e.speed * dt, (dy/d) * e.speed * dt);
+        if (d < 190 && onScreen(e)){ e.st = 'wind'; e.t3 = 0.55; }
+      } else if (e.st === 'wind'){
+        // shuffling on the spot, aiming at where you are right now
+        e.dashA = Math.atan2(dy, dx);
+        step(e, -Math.cos(e.dashA)*14*dt, -Math.sin(e.dashA)*14*dt);
+        if (e.t3 <= 0){ e.st = 'dash'; e.t3 = 0.8; SFX.fork(); }
+      } else if (e.st === 'dash'){
+        const sp = e.speed * T.dashSpeed;
+        const bx = e.x, by = e.y;
+        step(e, Math.cos(e.dashA)*sp*dt, Math.sin(e.dashA)*sp*dt);
+        if (Math.random() < 0.5) spawnParts(e.x, e.y, 1, '#f0c020', 40);
+        // ran into a counter? that's the end of the charge
+        const moved = Math.abs(e.x-bx) + Math.abs(e.y-by);
+        if (e.t3 <= 0 || moved < sp*dt*0.4){
+          e.st = 'rest'; e.t3 = 0.85;
+          if (moved < sp*dt*0.4){ ST.shake = Math.min(4, ST.shake + 1.5); SFX.boom(); }
+        }
+      } else {
+        step(e, (dx/d) * e.speed * 0.25 * dt, (dy/d) * e.speed * 0.25 * dt);
+        if (e.t3 <= 0) e.st = 'walk';
+      }
+    }
+    // --- steamer: hangs back and vents scalding clouds ---
+    else if (e.type === 'steamer'){
+      e.t2 += dt;
+      const want = d > 210 ? 1 : (d < 130 ? -1 : 0);
+      const ax = dx/d, ay = dy/d;
+      step(e, (ax*want - ay*Math.sin(e.t2*0.8)*0.5) * e.speed * dt,
+              (ay*want + ax*Math.sin(e.t2*0.8)*0.5) * e.speed * dt);
+      e.t1 -= dt;
+      if (e.t1 <= 0 && onScreen(e)){
+        e.t1 = T.steamer.shootCd / Math.sqrt(sc);
+        const a0 = Math.atan2(dy, dx), n = 7;
+        for (let k=0;k<n;k++)
+          eshoot(e.x, e.y, a0 + (k/(n-1) - 0.5) * 1.9, T.steamSpeed * rand(0.7, 1.15), 'steam');
+        SFX.bubble();
+      }
+    }
+    // --- stacker: walks straight at you behind a stack of plates.
+    //     The stack only turns so fast, which is the whole fight: get
+    //     around the side before it comes about. ---
+    else if (e.type === 'stacker'){
+      const ta = Math.atan2(dy, dx);
+      let da = ta - e.face;
+      while (da > Math.PI) da -= TAU;
+      while (da < -Math.PI) da += TAU;
+      e.face += clamp(da, -1.5*dt, 1.5*dt);
+      step(e, (dx/d) * e.speed * dt, (dy/d) * e.speed * dt);
+      e.t1 -= dt;
+      if (e.t1 <= 0 && onScreen(e)){
+        e.t1 = T.stacker.shootCd / Math.sqrt(sc);
+        for (let k=-1;k<=1;k+=2)
+          eshoot(e.x + Math.cos(e.face)*14, e.y + Math.sin(e.face)*14,
+                 e.face + k*0.12, T.plateSpeed*1.2, 'plate');
+        SFX.plate();
+      }
+    }
     else if (e.type === 'boss'){
       updateBoss(e, dt, dx, dy, d);
     }
@@ -1721,13 +1977,39 @@ function updateBoss(e, dt, dx, dy, d){
   }
 }
 
+// How much of a shot actually lands. The stacker's plate stack eats almost
+// everything that comes at its front, so you have to get around it.
+function shieldMul(e, fromX, fromY){
+  if (!e.shield) return 1;
+  let d = Math.atan2(fromY - e.y, fromX - e.x) - e.face;
+  while (d > Math.PI) d -= TAU;
+  while (d < -Math.PI) d += TAU;
+  return Math.abs(d) < T.shieldArc ? T.shieldMul : 1;
+}
+
 function damageEnemy(e, dmg, hitX, hitY){
+  const mul = shieldMul(e, hitX, hitY);
+  if (mul < 1){
+    // clang — sparks off the plates instead of biting
+    spawnParts(hitX, hitY, 4, '#e6e9ef', 70);
+    addFloater(hitX, hitY - 6, 'CLANG', '#b0b7c4', 0.5);
+    e.hp -= dmg * mul;
+    e.flash = 0.05;
+    SFX.plate();
+    if (e.hp <= 0) killEnemy(e);
+    return;
+  }
   e.hp -= dmg;
   e.flash = 0.08;
   SFX.hitEnemy();
   addFloater(hitX, hitY - 6, String(Math.round(dmg)), '#f4c542');
   if (e.hp <= 0) killEnemy(e);
 }
+
+const DEATH_COLOR = {
+  washer:'#5b8fc4', rinser:'#d3dae6', bubbler:'#7fd4da',
+  scrubber:'#f0c020', steamer:'#c9a227', stacker:'#e6e9ef', boss:'#79c7f0',
+};
 
 function killEnemy(e){
   const idx = enemies.indexOf(e);
@@ -1736,7 +2018,8 @@ function killEnemy(e){
   ST.shake = Math.min(6, ST.shake + 2);
   const isB = e.type === 'boss';
   spawnParts(e.x, e.y, isB ? 50 : 14, '#dfe3ea', isB ? 120 : 70);
-  spawnParts(e.x, e.y, isB ? 30 : 8, '#79c7f0', isB ? 100 : 55);
+  // each one bursts in its own colour, so you can tell what died at a glance
+  spawnParts(e.x, e.y, isB ? 30 : 8, DEATH_COLOR[e.type] || '#79c7f0', isB ? 100 : 55);
   if (e.elite) spawnParts(e.x, e.y, 10, '#ffc02a', 80);
   if (isB){
     boss = null;
@@ -1746,7 +2029,9 @@ function killEnemy(e){
     addFloater(e.x, e.y - 20, 'MEGAWASHER DOWN!', CRIMSON, 2.2);
   } else {
     SFX.boom();
-    const n = e.elite ? 4 : irand(1,2);
+    // the heavier ones are worth going after
+    const beefy = T[e.type] && T[e.type].hp >= 34;
+    const n = e.elite ? 4 : (beefy ? 3 : irand(1,2));
     for (let k=0;k<n;k++) dropPickup(e.x + rand(-6,6), e.y + rand(-6,6), 'sud');
     const heartChance = e.elite ? 0.35 : 0.03;
     if (Math.random() < heartChance) dropPickup(e.x, e.y, 'heart');
@@ -1881,7 +2166,7 @@ function updatePlayer(dt){
     const cr = T.coreRadius;
     for (let i = ebullets.length-1; i >= 0; i--){
       const b = ebullets[i];
-      const br = b.kind === 'plate' ? 3 : (b.kind === 'bubble' ? 2.5 : 2);
+      const br = b.kind === 'plate' ? 3 : (b.kind === 'bubble' ? 2.5 : (b.kind === 'steam' ? 4 : 2));
       if (dist2(b.x, b.y, player.x, player.y) < (cr+br)*(cr+br)){
         ebullets.splice(i,1);
         hurtPlayer(1);
@@ -2096,13 +2381,30 @@ function render(){
     let sp = SP[e.type], scale = 1;
     if (e.elite && SP[e.type+'_elite']){ sp = SP[e.type+'_elite']; scale = 1.15; }
     if (e.type === 'boss') scale = 2;
-    const wob = Math.sin(ST.time*6 + e.t2) * 1;
-    drawSpriteC(sp, e.x, e.y + wob*0.4, scale);
+    let wob = Math.sin(ST.time*6 + e.t2) * 1;
+    // a scrubber winding up shakes hard, and draws the line it is about to
+    // take — you get half a second to not be standing on it
+    if (e.type === 'scrubber' && e.st === 'wind'){
+      wob = rand(-2, 2);
+      const a = e.dashA || 0;
+      cx.globalAlpha = 0.35 + Math.sin(ST.time*30)*0.2;
+      cx.strokeStyle = CRIMSON; cx.lineWidth = 1;
+      cx.beginPath();
+      cx.moveTo(e.x + Math.cos(a)*14, e.y + Math.sin(a)*14);
+      cx.lineTo(e.x + Math.cos(a)*150, e.y + Math.sin(a)*150);
+      cx.stroke();
+      cx.globalAlpha = 1;
+    }
+    drawSpriteC(sp, e.x + (e.type === 'scrubber' && e.st === 'wind' ? wob : 0),
+                e.y + wob*0.4, scale);
     if (e.flash > 0){
       cx.globalAlpha = 0.85;
       drawSpriteC(SP[e.type+'_flash'], e.x, e.y + wob*0.4, scale);
       cx.globalAlpha = 1;
     }
+    // the plate stack rides in front, turned whichever way it is facing
+    if (e.shield)
+      drawSpriteRot(SP.shield, e.x + Math.cos(e.face)*12, e.y + Math.sin(e.face)*12, e.face);
     // small hp bar for elites
     if (e.elite && e.hp < e.maxhp){
       const w2 = 14;
@@ -2150,6 +2452,12 @@ function render(){
   for (const b of ebullets){
     if (b.kind === 'plate') drawSpriteRot(SP.plate, b.x, b.y, b.spin);
     else if (b.kind === 'fork') drawSpriteRot(SP.fork, b.x, b.y, b.ang);
+    else if (b.kind === 'steam'){
+      // swells as it drifts and thins out as it dies
+      cx.globalAlpha = clamp(Math.min(b.age*3, (2.4 - b.age)*1.6), 0, 1) * 0.8;
+      drawSpriteC(SP.steam, b.x, b.y, 0.7 + b.age*0.45);
+      cx.globalAlpha = 1;
+    }
     else {
       const puls = 1 + Math.sin(b.age*8)*0.15;
       drawSpriteC(SP.bubble, b.x, b.y, puls);
@@ -2321,9 +2629,10 @@ const SLIDES = [
       const gy = y + h*0.62;
       drawHeroStatic('idle1', x + 52, gy - 10, 1, Math.sin(t*3)*1.5);
       drawGunRot(SP.gunB, x + 84, gy - 8 + Math.sin(t*5)*1, 0);
-      for (let i=0;i<3;i++){
-        const px = x + w - 30 - i*46 + Math.sin(t*1.6 + i)*4;
-        drawSpriteC(SP.washer, px, gy - 4 + Math.sin(t*6+i*2)*1.5, 1.6);
+      const line = ['washer','scrubber','stacker'];
+      for (let i=0;i<line.length;i++){
+        const px = x + w - 34 - i*52 + Math.sin(t*1.6 + i)*4;
+        drawSpriteC(SP[line[i]], px, gy - 6 + Math.sin(t*6+i*2)*1.5, 1);
       }
       for (let i=0;i<5;i++){
         const bx = x + 96 + ((t*150 + i*38) % (w - 120));
@@ -2705,8 +3014,8 @@ requestAnimationFrame(frame);
   btn(waveRow, 'CLEAR', () => { enemies.length = 0; ebullets.length = 0; boss = null; });
 
   const spawnRow = section('SPAWN');
-  for (const t of ['washer','rinser','bubbler','boss'])
-    btn(spawnRow, t.toUpperCase(), () => { const p = spawnEdgePos(); spawnEnemy(t, p.x, p.y); });
+  for (const t of ['washer','rinser','scrubber','bubbler','steamer','stacker','boss'])
+    btn(spawnRow, t.slice(0,5).toUpperCase(), () => { const p = spawnEdgePos(); spawnEnemy(t, p.x, p.y); });
 
   const orbRow = section('BARRELS');
   btn(orbRow, '+1', () => addOrb());
