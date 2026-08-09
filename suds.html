@@ -890,6 +890,16 @@ const SP = {};
   ],{W:'#b9c2cf',w:'#eef2f7'});
 
   // --- pickups ---
+  // a broken piece of plate — the currency the store runs on
+  SP.shard = makeSprite([
+    "..OO..",
+    ".OPPO.",
+    "OPPpPO",
+    "OPppPO",
+    ".OPPO.",
+    "..OO..",
+  ],{O:'#8d94a2',P:'#f2f5f9',p:'#c6cdd8'});
+
   SP.sud = makeSprite([
     ".BB.",
     "BwBB",
@@ -1138,6 +1148,7 @@ window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   keys[k] = true;
   if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  if (k === 'tab' && ST.mode === 'store') e.preventDefault();
   if (e.repeat) return;                              // OS auto-repeat must not re-toggle
   if (k === 'm'){ setMuted(!muted); }
   if (ST.mode === 'menu'){
@@ -1151,6 +1162,19 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (ST.mode === 'help'){ ST.mode = 'menu'; return; }
+  if (ST.mode === 'store'){
+    const n = storeItems().length;
+    if (k === 'escape' || k === 'backspace'){ ST.mode = 'menu'; SFX.click(); }
+    else if (k === 'w' || k === 'arrowup')   ST.storeSel = (ST.storeSel + n - 1) % n;
+    else if (k === 's' || k === 'arrowdown') ST.storeSel = (ST.storeSel + 1) % n;
+    else if (k === 'a' || k === 'arrowleft'){ ST.storeTab = (ST.storeTab + TABS.length - 1) % TABS.length; ST.storeSel = 0; }
+    else if (k === 'd' || k === 'arrowright' || k === 'tab'){ ST.storeTab = (ST.storeTab + 1) % TABS.length; ST.storeSel = 0; }
+    else if (k === 'enter' || k === ' ') storeBuy(ST.storeSel);
+    // keep the highlighted row on screen
+    ST.storeTop = clamp(ST.storeTop||0, Math.max(0, ST.storeSel - STORE_ROWS + 1), ST.storeSel);
+    return;
+  }
+  if (k === 's' && ST.mode === 'over'){ openStore(); return; }
   if (k === 'p' && ST.mode === 'play'){ ST.mode = 'pause'; }
   else if (k === 'p' && ST.mode === 'pause'){ ST.mode = 'play'; }
   if (k === 'r' && ST.mode === 'over'){
@@ -1172,6 +1196,9 @@ cv.addEventListener('mousemove', e => {
   if (ST.mode === 'menu'){
     const i = menuHit(p.x, p.y);
     if (i >= 0) ST.menuSel = i;
+  } else if (ST.mode === 'store'){
+    const r = storeRowHit(p.x, p.y);
+    if (r >= 0) ST.storeSel = r;
   }
 });
 cv.addEventListener('mousedown', e => {
@@ -1186,7 +1213,16 @@ cv.addEventListener('mousedown', e => {
     else startRun();               // clicking anywhere else still just plays
   }
   else if (ST.mode === 'help'){ ST.mode = 'menu'; SFX.click(); }
-  else if (ST.mode === 'over'){ startRun(); }
+  else if (ST.mode === 'store'){
+    const t = storeTabHit(p.x, p.y);
+    if (t >= 0){ ST.storeTab = t; ST.storeSel = 0; ST.storeTop = 0; SFX.click(); }
+    else {
+      const r = storeRowHit(p.x, p.y);
+      if (r >= 0){ ST.storeSel = r; storeBuy(r); }
+      else if (p.y > H-30){ ST.mode = 'menu'; SFX.click(); }
+    }
+  }
+  else if (ST.mode === 'over'){ if (overStoreHit(p.x, p.y)) openStore(); else startRun(); }
   else if (ST.mode === 'pause'){ ST.mode = 'play'; }
   else if (ST.mode === 'levelup'){ clickCard(p.x, p.y); }
   // any click that lands us in play mode counts as held fire
@@ -1194,6 +1230,14 @@ cv.addEventListener('mousedown', e => {
 });
 window.addEventListener('mouseup', ()=> { mouse.down = false; });
 cv.addEventListener('contextmenu', e => e.preventDefault());
+
+// scrolling the store list — it will outgrow one page once more guns land
+cv.addEventListener('wheel', e => {
+  if (ST.mode !== 'store') return;
+  e.preventDefault();
+  const n = storeItems().length;
+  ST.storeTop = clamp((ST.storeTop||0) + (e.deltaY > 0 ? 1 : -1), 0, Math.max(0, n - STORE_ROWS));
+}, {passive:false});
 
 cv.addEventListener('touchstart', e => {
   e.preventDefault();
@@ -1215,7 +1259,15 @@ cv.addEventListener('touchstart', e => {
     return;
   }
   if (ST.mode === 'help'){ ST.mode = 'menu'; SFX.click(); return; }
-  if (ST.mode === 'over'){ startRun(); return; }
+  if (ST.mode === 'store'){
+    const tb = storeTabHit(p.x, p.y);
+    if (tb >= 0){ ST.storeTab = tb; ST.storeSel = 0; ST.storeTop = 0; SFX.click(); return; }
+    const r = storeRowHit(p.x, p.y);
+    if (r >= 0){ ST.storeSel = r; storeBuy(r); }
+    else if (p.y > H-30) { ST.mode = 'menu'; SFX.click(); }
+    return;
+  }
+  if (ST.mode === 'over'){ if (overStoreHit(p.x, p.y)) openStore(); else startRun(); return; }
   if (ST.mode === 'pause'){ ST.mode = 'play'; return; }
   if (ST.mode === 'levelup'){ clickCard(p.x, p.y); return; }
 }, {passive:false});
@@ -1275,6 +1327,58 @@ try {
   ST.best.kills = parseInt(localStorage.getItem('suds-best-kills')||'0',10) || 0;
 } catch(e){}
 
+// ================================================================
+// META — the only things that survive a run.
+// Dishwashers drop broken plate shards. Shards buy guns, permanent
+// boosts, and the right to start further into the shift.
+// ================================================================
+const META = {
+  shards: 0,
+  owned: { pea: true },     // gun id -> true
+  boosts: {},               // boost id -> how many levels bought
+  startGun: 'pea',
+  startWave: 1,
+  waves: { 1: true },       // which start waves have been paid for
+};
+function loadMeta(){
+  try {
+    const raw = localStorage.getItem('suds-meta');
+    if (!raw) return;
+    const m = JSON.parse(raw);
+    if (typeof m.shards === 'number') META.shards = Math.max(0, m.shards|0);
+    if (m.owned)  Object.assign(META.owned, m.owned);
+    if (m.boosts) Object.assign(META.boosts, m.boosts);
+    if (m.waves)  Object.assign(META.waves, m.waves);
+    if (m.startGun && GUNS.some(g => g.id === m.startGun && META.owned[g.id])) META.startGun = m.startGun;
+    if (m.startWave && META.waves[m.startWave]) META.startWave = m.startWave|0;
+  } catch(e){}
+  META.owned.pea = true;    // never lose the starter, whatever is in storage
+  META.waves[1] = true;
+}
+function saveMeta(){
+  try { localStorage.setItem('suds-meta', JSON.stringify(META)); } catch(e){}
+}
+
+// Permanent upgrades. Each one can be bought several times; `cost` grows
+// with the level you already have so the cheap ones stay cheap early.
+const BOOSTS = [
+  { id:'hp',     name:'REINFORCED APRON', desc:'+1 MAX HEART',        max:6, cost:l => 70 + l*60 },
+  { id:'dmg',    name:'SHARPER EDGE',     desc:'+8% DAMAGE',          max:8, cost:l => 60 + l*50 },
+  { id:'rate',   name:'OILED TRIGGER',    desc:'+6% FIRE RATE',       max:8, cost:l => 60 + l*50 },
+  { id:'speed',  name:'BETTER SNEAKERS',  desc:'+5% MOVE SPEED',      max:6, cost:l => 55 + l*45 },
+  { id:'magnet', name:'STICKY FINGERS',   desc:'+25% PICKUP RANGE',   max:4, cost:l => 50 + l*40 },
+  { id:'mercy',  name:'THICKER SKIN',     desc:'+15% MERCY TIME',     max:4, cost:l => 65 + l*55 },
+  { id:'greed',  name:'SHARD MAGNET',     desc:'+25% SHARD DROPS',    max:5, cost:l => 80 + l*70 },
+  { id:'barrel', name:'SPARE BARREL',     desc:'START WITH ONE MORE', max:3, cost:l => 180 + l*160 },
+];
+const boostLv = id => META.boosts[id] || 0;
+
+// Start waves you can buy your way into. You can only buy one you have
+// actually reached, and starting deeper hands you matching upgrades so
+// you are not dropped into wave 9 with a popgun.
+const WAVE_TIERS = [1, 3, 5, 7, 9, 11, 13, 15];
+const waveCost = w => (w - 1) * 45;
+
 // where he starts: just north of the middle doorway, in THE LINE
 const SPAWN = { x: 720, y: 200 };
 
@@ -1317,30 +1421,56 @@ function inView(x, y, m){
 // what the level-up cards buff) through its own multipliers, so every card
 // keeps working no matter which gun you are holding. `need` is the number of
 // upgrades that unlocks it.
+// `cost` is what it takes in plate shards at the store. The Peashooter is
+// yours from the start; everything else has to be bought, and stays bought.
 const GUNS = [
-  { need:0,  name:'PEASHOOTER',       sp:'gunA', shot:'slug',
+  { id:'pea',   cost:0,   name:'PEASHOOTER',       sp:'gunA', shot:'slug',
+    blurb:'STEADY LITTLE POPGUN',
     dmg:1.00, rate:1.00, bspd:1.00, add:0, spread:0.00, pierce:0, shake:0.4, life:0 },
-  { need:3,  name:'PLATE PUNISHER',   sp:'gunB', shot:'disc',
+  { id:'plate', cost:120, name:'PLATE PUNISHER',   sp:'gunB', shot:'disc',
+    blurb:'SLOW, HEAVY, HITS LIKE A TRUCK',
     dmg:2.60, rate:0.45, bspd:0.72, add:0, spread:0.04, pierce:0, shake:1.7, life:0 },
-  { need:6,  name:'SUD SHREDDER',     sp:'gunC', shot:'foam',
+  { id:'sud',   cost:210, name:'SUD SHREDDER',     sp:'gunC', shot:'foam',
+    blurb:'SHORT RANGE FOAM, WIDE SPRAY',
     dmg:0.55, rate:0.70, bspd:1.05, add:4, spread:0.60, pierce:0, shake:1.5, life:0.52 },
   // not a projectile gun at all — a held beam. `dps` scales the shared stat
   // block into damage-per-second; `pierce` is how many extra targets deep the
   // beam burns before it stops. Weaker than the Megablaster head-to-head, but
   // it hits everything standing in the line.
-  { need:9,  name:'RINSE CANNON',     sp:'gunD', beam:true,
+  { id:'rinse', cost:340, name:'RINSE CANNON',     sp:'gunD', beam:true,
+    blurb:'HELD BEAM, BURNS THROUGH A LINE',
     dmg:1.00, rate:1.00, bspd:1.00, add:0, spread:0.00, pierce:2, shake:0.9, life:0, dps:1.55 },
   // six barrels, six bullets — and they are stacked parallel on the sprite, so
   // it throws a wall of straight lines rather than a fan. `bank` is how wide
   // that wall is, measured across the aim direction.
-  { need:12, name:'MEGABLASTER 9000', sp:'gunE', shot:'mega',
+  { id:'mega',  cost:560, name:'MEGABLASTER 9000', sp:'gunE', shot:'mega',
+    blurb:'SIX BARRELS. A WALL OF BULLETS.',
     dmg:0.45, rate:1.60, bspd:1.30, add:5, spread:0.00, pierce:0, shake:2.4, life:0, bank:18 },
 ];
 
-function gunFor(upgrades){
-  let i = 0;
-  for (let k=0;k<GUNS.length;k++) if (upgrades >= GUNS[k].need) i = k;
-  return i;
+// Guns no longer unlock on their own. You own a set, you choose which one to
+// start a run with, and you climb the rest of the ones you own as you take
+// upgrades — so buying a gun makes the whole ladder longer, not just better.
+const EVOLVE_EVERY = 3;
+function ownedGuns(){ return GUNS.filter(g => META.owned[g.id]); }
+function gunLadder(){
+  const list = ownedGuns();
+  const at = list.findIndex(g => g.id === META.startGun);
+  return list.slice(at < 0 ? 0 : at);
+}
+// step up the ladder if the upgrade count has earned it
+function evolveGun(quiet){
+  const l = player.ladder;
+  if (!l || !l.length) return;
+  const g = l[Math.min(Math.floor(player.upgrades / EVOLVE_EVERY), l.length - 1)];
+  const gi = GUNS.indexOf(g);
+  if (gi === player.gunIdx) return;
+  player.gunIdx = gi;
+  player.gunName = g.name;
+  if (quiet) return;
+  ST.banner = 'GUN EVOLVED: ' + g.name; ST.bannerTimer = 2.0;
+  SFX.evolve();
+  spawnParts(player.x, player.y, 24, '#f4c542', 90);
 }
 // How far the gun floats out. It follows the sprite's own width, so the
 // Megablaster hangs a lot further from him than the starter pistol does.
@@ -1407,7 +1537,9 @@ function updateOrbs(dt){
 
 function startRun(){
   ST.mode = 'play';
-  ST.time = 0; ST.playTime = 0; ST.wave = 0; ST.kills = 0;
+  ST.time = 0; ST.playTime = 0; ST.kills = 0;
+  ST.wave = Math.max(0, META.startWave - 1);   // beginWave() adds one
+  ST.runShards = 0;
   ST.waveState = 'clear'; ST.waveTimer = 0.5;
   ST.toSpawn = []; ST.spawnTimer = 0;
   ST.shake = 0; ST.flashRed = 0; ST.banner = ''; ST.bannerTimer = 0;
@@ -1424,14 +1556,44 @@ function startRun(){
   player.aim = 0; player.aimTrail = [0,0,0]; player.orbs = 0;
   enemies = []; pbullets = []; ebullets = []; pickups = []; parts = []; floaters = []; orbs = [];
   boss = null; beamFx = null; beamSfxCd = 0;
+
+  // everything bought at the store lands here, before the first enemy
+  player.ladder = gunLadder();
+  player.gunIdx = GUNS.indexOf(player.ladder[0] || GUNS[0]);
+  player.gunName = GUNS[player.gunIdx].name;
+  applyBoosts();
+  // starting deeper in the shift comes with the upgrades you would have had
+  for (let i = 0; i < META.startWave - 1; i++){
+    const pool = CARDS.filter(c => !(c.max && c.max(player.gun)));
+    if (!pool.length) break;
+    pick(pool).apply(player.gun);
+    player.upgrades++;
+  }
+  evolveGun(true);
+
   updateCam(0, true);
   document.body.classList.add('playing');
   SFX.click();
 }
 
+// Permanent boosts, folded in on top of the base stats.
+function applyBoosts(){
+  player.maxhp = T.playerHP + boostLv('hp');
+  player.hp = player.maxhp;
+  player.gun.damage *= 1 + boostLv('dmg')  * 0.08;
+  player.gun.rate   *= 1 + boostLv('rate') * 0.06;
+  player.speedMul   *= 1 + boostLv('speed')* 0.05;
+  player.magnet = T.magnetRadius * (1 + boostLv('magnet') * 0.25);
+  player.mercy  = T.iframes      * (1 + boostLv('mercy')  * 0.15);
+  player.shardMul = 1 + boostLv('greed') * 0.25;
+  player.orbs = boostLv('barrel');
+  rebuildOrbs();
+}
+
 function endRun(){
   ST.mode = 'over';
   document.body.classList.remove('playing');
+  saveMeta();                    // bank whatever he picked up this run
   if (ST.wave > ST.best.wave || (ST.wave === ST.best.wave && ST.kills > ST.best.kills)){
     ST.best.wave = ST.wave; ST.best.kills = ST.kills;
     try {
@@ -2006,6 +2168,20 @@ function damageEnemy(e, dmg, hitX, hitY){
   if (e.hp <= 0) killEnemy(e);
 }
 
+// Broken plate pieces. The tougher the dishwasher, the more of it there is
+// left on the floor. The Shard Magnet boost tilts the odds.
+function dropShards(e){
+  const mul = player.shardMul || 1;
+  let n;
+  if (e.type === 'boss')   n = irand(14, 20);
+  else if (e.elite)        n = irand(2, 4);
+  else if (T[e.type] && T[e.type].hp >= 34) n = Math.random() < 0.75*mul ? irand(1,2) : 0;
+  else                     n = Math.random() < 0.55*mul ? 1 : 0;
+  n = Math.round(n * (e.type === 'boss' ? mul : 1));
+  for (let k=0;k<n;k++)
+    dropPickup(e.x + rand(-9,9), e.y + rand(-7,7), 'shard');
+}
+
 const DEATH_COLOR = {
   washer:'#5b8fc4', rinser:'#d3dae6', bubbler:'#7fd4da',
   scrubber:'#f0c020', steamer:'#c9a227', stacker:'#e6e9ef', boss:'#79c7f0',
@@ -2021,6 +2197,7 @@ function killEnemy(e){
   // each one bursts in its own colour, so you can tell what died at a glance
   spawnParts(e.x, e.y, isB ? 30 : 8, DEATH_COLOR[e.type] || '#79c7f0', isB ? 100 : 55);
   if (e.elite) spawnParts(e.x, e.y, 10, '#ffc02a', 80);
+  dropShards(e);
   if (isB){
     boss = null;
     SFX.bossdie();
@@ -2061,7 +2238,7 @@ function updatePickups(dt){
     p.age += dt;
     p.vx *= 0.92; p.vy *= 0.92;
     const d2 = dist2(p.x, p.y, player.x, player.y);
-    const mr = T.magnetRadius;
+    const mr = player.magnet || T.magnetRadius;
     if (d2 < mr*mr){
       const d = Math.sqrt(d2) || 1;
       const pull = 220 * (1 - d/mr) + 60;
@@ -2071,6 +2248,10 @@ function updatePickups(dt){
     moveCircle(p, p.vx*dt, p.vy*dt, 3);
     if (d2 < 7*7){
       if (p.kind === 'sud'){ gainXP(1); SFX.pickup(); }
+      else if (p.kind === 'shard'){
+        META.shards++; ST.runShards++;
+        SFX.plate();
+      }
       else { player.hp = Math.min(player.maxhp, player.hp + 1); SFX.heart(); addFloater(player.x, player.y-12, '+1 HEART', CRIMSON); }
       pickups.splice(i,1);
     } else if (p.age > 25){
@@ -2109,15 +2290,7 @@ function chooseCard(i){
   c.apply(player.gun);
   player.upgrades++;
   SFX.click();
-  // gun evolution — swaps the whole weapon, not just the label
-  const idx = gunFor(player.upgrades);
-  if (idx !== player.gunIdx){
-    player.gunIdx = idx;
-    player.gunName = GUNS[idx].name;
-    ST.banner = 'GUN EVOLVED: ' + player.gunName; ST.bannerTimer = 2.0;
-    SFX.evolve();
-    spawnParts(player.x, player.y, 24, '#f4c542', 90);
-  }
+  evolveGun();          // climbs the ladder of guns you own
   ST.cards = [];
   if (ST.levelQueue > 0) openLevelUp();
   else ST.mode = 'play';
@@ -2190,7 +2363,7 @@ function updatePlayer(dt){
 
 function hurtPlayer(dmg){
   player.hp -= dmg;
-  player.iframe = T.iframes;
+  player.iframe = player.mercy || T.iframes;
   player.flash = 0.25;
   ST.shake = Math.min(8, ST.shake + 5);
   ST.flashRed = 0.25;
@@ -2360,6 +2533,7 @@ function render(){
 
   if (ST.mode === 'menu'){ renderMenu(); return; }
   if (ST.mode === 'help'){ renderHelp(); return; }
+  if (ST.mode === 'store'){ renderStore(); return; }
 
   const camX = Math.round(cam.x), camY = Math.round(cam.y);
   ox = -camX + sx0; oy = -camY + sy0;
@@ -2373,7 +2547,8 @@ function render(){
   // pickups
   for (const p of pickups){
     const bob = Math.sin((ST.time + p.x) * 4) * 1.5;
-    drawSpriteC(p.kind === 'sud' ? SP.sud : SP.heart, p.x, p.y + bob);
+    drawSpriteC(p.kind === 'sud' ? SP.sud : (p.kind === 'shard' ? SP.shard : SP.heart),
+                p.x, p.y + bob);
   }
 
   // enemies
@@ -2523,6 +2698,9 @@ function renderHUD(){
   drawText(String(ST.kills) + ' KO', W-8, 6, 1, '#dfe3ea', 'right');
   drawText((mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss, W-8, 14, 1, '#7a7a8e', 'right');
   drawText('LV ' + player.level, W-8, 22, 1, '#79c7f0', 'right');
+  // shards banked this run
+  drawSpriteC(SP.shard, W-72, 33);
+  drawText(String(ST.runShards||0), W-8, 30, 1, '#dfe3ea', 'right');
   // xp bar
   cx.fillStyle = '#101018'; cx.fillRect(0, H-4, W, 4);
   cx.fillStyle = '#79c7f0'; cx.fillRect(0, H-4, W * clamp(player.xp/player.xpNext, 0, 1), 4);
@@ -2605,10 +2783,11 @@ function renderOffscreenMarkers(){
 // ================================================================
 const MENU = [
   { label: () => 'START GAME',                          act: () => startRun() },
+  { label: () => 'STORE',                               act: () => openStore() },
   { label: () => 'HOW TO PLAY',                         act: () => { ST.mode = 'help'; SFX.click(); } },
   { label: () => 'SOUND: ' + (muted ? 'OFF' : 'ON'),    act: () => { setMuted(!muted); SFX.click(); } },
 ];
-const MENU_Y = 182, MENU_STEP = 14, MENU_W = 160;
+const MENU_Y = 176, MENU_STEP = 13, MENU_W = 160;
 function menuHit(x, y){
   for (let i=0;i<MENU.length;i++){
     const iy = MENU_Y + i*MENU_STEP;
@@ -2749,10 +2928,152 @@ function renderMenu(){
     drawText(MENU[i].label(), W/2, iy, 1, on ? '#ffffff' : '#7a7a8e', 'center');
   }
 
+  drawSpriteC(SP.shard, W/2 - 26, 234);
+  drawText(String(META.shards) + ' SHARDS', W/2 - 16, 231, 1, '#dfe3ea');
   if (ST.best.wave > 0)
-    drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 232, 1, '#79c7f0', 'center');
-  drawText(usingTouch ? 'TAP AN OPTION' : 'CLICK, OR ARROWS + ENTER', W/2, 246, 1, '#4a4a5a', 'center');
+    drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 243, 1, '#79c7f0', 'center');
+  drawText(usingTouch ? 'TAP AN OPTION' : 'CLICK, OR ARROWS + ENTER', W/2, 253, 1, '#3f4450', 'center');
   drawText('A YUNIORS CHILL ZONE GAME', W/2, H-8, 1, '#3a3a48', 'center');
+}
+
+// ================================================================
+// THE STORE
+// Everything you own is bought here with plate shards. Three tabs,
+// one list, and the same three verbs everywhere: BUY when you can
+// afford it, EQUIP when you own it, and the cost when you cannot.
+// ================================================================
+const TABS = ['GUNS', 'BOOSTS', 'START'];
+const STORE_Y = 56, STORE_ROW = 22, STORE_ROWS = 8;
+
+// One uniform row shape for all three tabs, so the drawing and the
+// clicking never have to know which tab they are looking at.
+function storeItems(){
+  const out = [];
+  if (ST.storeTab === 0){
+    for (const g of GUNS){
+      const own = !!META.owned[g.id];
+      out.push({
+        name: g.name, desc: g.blurb, cost: g.cost, owned: own,
+        on: META.startGun === g.id,
+        act(){
+          if (own){ META.startGun = g.id; SFX.click(); return true; }
+          if (META.shards < g.cost) return false;
+          META.shards -= g.cost; META.owned[g.id] = true; META.startGun = g.id;
+          SFX.evolve(); return true;
+        },
+      });
+    }
+  } else if (ST.storeTab === 1){
+    for (const b of BOOSTS){
+      const lv = boostLv(b.id), maxed = lv >= b.max;
+      const cost = b.cost(lv);
+      out.push({
+        name: b.name + '  ' + lv + '/' + b.max,
+        desc: b.desc, cost: maxed ? -1 : cost, owned: maxed, on: false,
+        act(){
+          if (maxed || META.shards < cost) return false;
+          META.shards -= cost; META.boosts[b.id] = lv + 1;
+          SFX.levelup(); return true;
+        },
+      });
+    }
+  } else {
+    for (const w of WAVE_TIERS){
+      const bought = !!META.waves[w];
+      const cost = waveCost(w);
+      // you can only buy your way into a wave you have actually survived to
+      const reachable = w <= Math.max(1, ST.best.wave);
+      out.push({
+        name: 'START AT WAVE ' + w,
+        desc: bought ? (w > 1 ? 'BEGIN WITH ' + (w-1) + ' UPGRADES' : 'THE HONEST WAY')
+                     : (reachable ? 'BEGIN WITH ' + (w-1) + ' UPGRADES' : 'REACH WAVE ' + w + ' FIRST'),
+        cost: bought ? -1 : (reachable ? cost : -2), owned: bought,
+        on: META.startWave === w,
+        act(){
+          if (bought){ META.startWave = w; SFX.click(); return true; }
+          if (!reachable || META.shards < cost) return false;
+          META.shards -= cost; META.waves[w] = true; META.startWave = w;
+          SFX.levelup(); return true;
+        },
+      });
+    }
+  }
+  return out;
+}
+
+function storeTabHit(x, y){
+  if (y < 26 || y > 40) return -1;
+  for (let i=0;i<TABS.length;i++){
+    const tx = 40 + i*120;
+    if (x >= tx-10 && x <= tx+90) return i;
+  }
+  return -1;
+}
+function storeRowHit(x, y){
+  if (x < 22 || x > W-22) return -1;
+  const i = Math.floor((y - STORE_Y) / STORE_ROW);
+  const n = storeItems().length;
+  if (i < 0 || i >= Math.min(n, STORE_ROWS)) return -1;
+  return i + (ST.storeTop || 0);
+}
+function storeBuy(i){
+  const items = storeItems();
+  const it = items[i];
+  if (!it) return;
+  if (!it.act()){ SFX.hurt(); return; }
+  saveMeta();
+}
+function openStore(){
+  ST.mode = 'store'; ST.storeTab = ST.storeTab || 0;
+  ST.storeSel = 0; ST.storeTop = 0;
+  document.body.classList.remove('playing');
+  SFX.click();
+}
+
+function renderStore(){
+  cx.drawImage(bg, 620, 300, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.88)'; cx.fillRect(0,0,W,H);
+
+  // centred, because the site's back-link sits over the top-left corner
+  drawText('THE BACK OF THE KITCHEN', W/2, 10, 1, '#8d93a4', 'center');
+  drawSpriteC(SP.shard, W-70, 12);
+  drawText(String(META.shards), W-60, 8, 2, '#f2f5f9');
+
+  for (let i=0;i<TABS.length;i++){
+    const on = ST.storeTab === i, tx = 40 + i*120;
+    if (on){ cx.fillStyle = 'rgba(232,22,42,0.18)'; cx.fillRect(tx-10, 26, 100, 14); }
+    drawText(TABS[i], tx, 30, 1, on ? '#ffffff' : '#63636f');
+    if (on){ cx.fillStyle = CRIMSON; cx.fillRect(tx-10, 39, 100, 1); }
+  }
+
+  const items = storeItems();
+  const top = ST.storeTop || 0;
+  for (let r=0; r<Math.min(items.length - top, STORE_ROWS); r++){
+    const it = items[top + r], y = STORE_Y + r*STORE_ROW;
+    const sel = ST.storeSel === top + r;
+    const afford = it.cost >= 0 && META.shards >= it.cost;
+    if (sel){
+      cx.fillStyle = 'rgba(255,255,255,0.06)'; cx.fillRect(22, y-2, W-44, STORE_ROW-2);
+      cx.fillStyle = it.on ? '#f4c542' : CRIMSON; cx.fillRect(22, y-2, 2, STORE_ROW-2);
+    }
+    drawText(it.name, 30, y+1, 1, it.on ? '#f4c542' : (it.owned || afford ? '#ffffff' : '#6a6a78'));
+    drawText(it.desc, 30, y+10, 1, '#5f6472');
+    // right-hand state: what this row will do if you press it
+    if (it.on)            drawText('EQUIPPED', W-30, y+5, 1, '#f4c542', 'right');
+    else if (it.owned)    drawText(ST.storeTab === 1 ? 'MAXED' : 'EQUIP', W-30, y+5, 1, '#79c7f0', 'right');
+    else if (it.cost === -2) drawText('LOCKED', W-30, y+5, 1, '#4a4a5a', 'right');
+    else {
+      drawSpriteC(SP.shard, W-64, y+8);
+      drawText(String(it.cost), W-30, y+5, 1, afford ? '#dfe3ea' : '#6a3a42', 'right');
+    }
+  }
+  if (items.length > STORE_ROWS){
+    drawText('...', W/2, H-40, 1, '#4a4a5a', 'center');
+  }
+
+  cx.fillStyle = 'rgba(255,255,255,0.06)'; cx.fillRect(22, H-26, W-44, 1);
+  drawText('ENTER BUY   TAB SWITCH   ESC BACK', W/2, H-20, 1, '#5f6472', 'center');
+  drawText('SHARDS DROP FROM DEAD DISHWASHERS', W/2, H-11, 1, '#3f4450', 'center');
 }
 
 function renderHelp(){
@@ -2770,7 +3091,8 @@ function renderHelp(){
     ['THE GUN', 'HE WHISTLES IT INTO THE AIR.'],
     ['', 'IT EVOLVES AS YOU TAKE UPGRADES.'],
     ['COUNTERS', 'STOP BULLETS. USE THEM AS COVER.'],
-    ['THE MAP', 'CORNER MINIMAP SHOWS THE WHOLE KITCHEN.'],
+    ['SHARDS', 'BROKEN PLATE. DEAD WASHERS DROP IT.'],
+    ['', 'SPEND IT IN THE STORE. IT KEEPS.'],
   ];
   let y = 48;
   for (const [k, v] of lines){
@@ -2820,9 +3142,19 @@ function renderGameOver(){
   const mm = Math.floor(ST.playTime/60), ss = Math.floor(ST.playTime%60);
   drawText('SURVIVED ' + (mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss, W/2, 124, 1, '#dfe3ea', 'center');
   drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 142, 1, '#79c7f0', 'center');
+  // what he walked away with, and where to spend it
+  drawSpriteC(SP.shard, W/2 - 52, 162);
+  drawText('+' + (ST.runShards||0) + ' SHARDS  (' + META.shards + ' TOTAL)', W/2 - 42, 159, 1, '#dfe3ea');
   if (Math.floor(ST.time*2) % 2 === 0)
-    drawText(usingTouch ? 'TAP TO RETRY' : 'PRESS R OR CLICK TO RETRY', W/2, 172, 1, '#f4c542', 'center');
+    drawText(usingTouch ? 'TAP TO RETRY' : 'PRESS R OR CLICK TO RETRY', W/2, 186, 1, '#f4c542', 'center');
+  drawText(usingTouch ? 'STORE BUTTON BELOW' : 'PRESS S TO VISIT THE STORE', W/2, 202, 1, '#79c7f0', 'center');
+  if (usingTouch){
+    cx.fillStyle = 'rgba(121,199,240,0.15)'; cx.fillRect(W/2-50, 212, 100, 16);
+    cx.strokeStyle = '#79c7f0'; cx.lineWidth = 1; cx.strokeRect(W/2-49.5, 212.5, 99, 15);
+    drawText('STORE', W/2, 217, 1, '#79c7f0', 'center');
+  }
 }
+function overStoreHit(x, y){ return x > W/2-50 && x < W/2+50 && y > 212 && y < 228; }
 
 // ================================================================
 // MAIN LOOP — fixed 60hz update, render per frame
@@ -2890,6 +3222,7 @@ window.SUDS = {
   god(on){ player.iframe = on ? 1e9 : 0; },
 };
 
+loadMeta();
 resize();
 requestAnimationFrame(frame);
 </script>
@@ -2974,10 +3307,21 @@ requestAnimationFrame(frame);
 
   const gunRow = section('GUN');
   const gunBtns = GUNS.map((g, i) => btn(gunRow, g.name.split(' ')[0], () => {
+    // testing a gun implies owning it, or the ladder would snap back
+    META.owned[g.id] = true;
+    player.ladder = gunLadder();
     player.gunIdx = i;
     player.gunName = g.name;
-    player.upgrades = Math.max(player.upgrades, g.need);
   }));
+
+  const cashRow = section('SHARDS');
+  btn(cashRow, '+500', () => { META.shards += 500; saveMeta(); });
+  btn(cashRow, 'ALL GUNS', () => { GUNS.forEach(g => META.owned[g.id] = true); saveMeta(); });
+  btn(cashRow, 'WIPE', () => {
+    META.shards = 0; META.owned = { pea:true }; META.boosts = {};
+    META.startGun = 'pea'; META.startWave = 1; META.waves = { 1:true };
+    saveMeta();
+  });
 
   const buffRow = section('BUFF');
   for (const c of CARDS) btn(buffRow, c.name.split(' ')[0], () => {
