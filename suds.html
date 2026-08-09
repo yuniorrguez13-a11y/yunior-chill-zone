@@ -607,13 +607,6 @@ const SP = {};
     ".WW.",
   ],{W:'#9fe0ff',F:'#ffffff'});
 
-  SP.beam = makeSprite([
-    ".cccccccccc.",
-    "cCWWWWWWWWCc",
-    "cCWWWWWWWWCc",
-    ".cccccccccc.",
-  ],{c:'#0d84b8',C:'#2fd0ff',W:'#a8f4ff'});
-
   SP.mslug = makeSprite([
     ".RRRR.",
     "RRYYRR",
@@ -936,6 +929,8 @@ const player = {
 
 let enemies = [], pbullets = [], ebullets = [], pickups = [], parts = [], floaters = [];
 let boss = null;
+let beamFx = null;      // set each frame the Rinse Cannon is held down
+let beamSfxCd = 0;
 
 // The five guns. Each one runs the same base stat block (player.gun, which is
 // what the level-up cards buff) through its own multipliers, so every card
@@ -948,8 +943,12 @@ const GUNS = [
     dmg:2.60, rate:0.45, bspd:0.72, add:0, spread:0.04, pierce:0, shake:1.7, life:0 },
   { need:6,  name:'SUD SHREDDER',     sp:'gunC', shot:'foam',
     dmg:0.55, rate:0.70, bspd:1.05, add:4, spread:0.60, pierce:0, shake:1.5, life:0.52 },
-  { need:9,  name:'RINSE CANNON',     sp:'gunD', shot:'beam',
-    dmg:1.50, rate:0.85, bspd:2.10, add:0, spread:0.02, pierce:2, shake:0.9, life:0 },
+  // not a projectile gun at all — a held beam. `dps` scales the shared stat
+  // block into damage-per-second; `pierce` is how many extra targets deep the
+  // beam burns before it stops. Weaker than the Megablaster head-to-head, but
+  // it hits everything standing in the line.
+  { need:9,  name:'RINSE CANNON',     sp:'gunD', beam:true,
+    dmg:1.00, rate:1.00, bspd:1.00, add:0, spread:0.00, pierce:2, shake:0.9, life:0, dps:1.55 },
   // six barrels, six bullets — and they are stacked parallel on the sprite, so
   // it throws a wall of straight lines rather than a fan. `bank` is how wide
   // that wall is, measured across the aim direction.
@@ -992,7 +991,7 @@ function startRun(){
   player.gun = Object.assign({}, T.gun);
   player.xp = 0; player.level = 1; player.xpNext = 5;
   enemies = []; pbullets = []; ebullets = []; pickups = []; parts = []; floaters = [];
-  boss = null;
+  boss = null; beamFx = null; beamSfxCd = 0;
   document.body.classList.add('playing');
   SFX.click();
 }
@@ -1126,8 +1125,15 @@ function firePlayerGun(dt){
   if (aimX === undefined){ aimX = mouse.x; aimY = mouse.y; }
   player.aim = Math.atan2(aimY - player.y, aimX - player.x);
 
-  if (!want || player.fireCd > 0) return;
   const gun = GUNS[player.gunIdx];
+  if (gun.beam){
+    beamFx = null;
+    beamSfxCd -= dt;
+    if (want) fireBeam(g, gun, dt);
+    return;
+  }
+
+  if (!want || player.fireCd > 0) return;
   player.fireCd = 1 / (g.rate * gun.rate);
   const n = g.count + gun.add;
   const spd = g.speed * g.bspeedMul * gun.bspd;
@@ -1164,6 +1170,64 @@ function firePlayerGun(dt){
   sweepMuzzle(mx, my, dmg * n);
   ST.shake = Math.min(3, ST.shake + gun.shake*0.5);
   SFX.shoot();
+}
+
+// The Rinse Cannon is a held beam, not a stream of bullets: it burns straight
+// out to the wall, damaging every enemy in the line until it has chewed through
+// its target limit. Damage lands every frame, so the hit sound and the damage
+// numbers are rationed rather than fired 60 times a second.
+const BEAM_FALLOFF = 0.55;   // damage multiplier per extra body burned through
+function fireBeam(g, gun, dt){
+  const ux = Math.cos(player.aim), uy = Math.sin(player.aim);
+  // distance from the player to the wall along the aim
+  const tx = ux > 0 ? (W-4 - player.x)/ux : ux < 0 ? (4 - player.x)/ux : 1e9;
+  const ty = uy > 0 ? (H-4 - player.y)/uy : uy < 0 ? (4 - player.y)/uy : 1e9;
+  const maxLen = Math.max(0, Math.min(tx, ty));
+
+  const half = 2 + g.size;
+  const hits = [];
+  for (const e of enemies){
+    const t = (e.x - player.x)*ux + (e.y - player.y)*uy;
+    if (t < 0 || t > maxLen) continue;
+    const px = player.x + ux*t, py = player.y + uy*t;
+    const rr = e.r + half;
+    if (dist2(px, py, e.x, e.y) > rr*rr) continue;
+    hits.push({ e, t });
+  }
+  hits.sort((a,b) => a.t - b.t);
+
+  const maxTargets = 1 + g.pierce + gun.pierce;
+  const dps = g.damage * g.rate * gun.dps;
+  let len = maxLen, idx = 0;
+  for (const h of hits){
+    if (idx >= maxTargets) break;
+    const e = h.e;
+    // the beam spends itself as it burns through: each body behind the first
+    // takes less, so a long line never out-damages the Megablaster
+    const dmg = dps * Math.pow(BEAM_FALLOFF, idx) * dt;
+    e.hp -= dmg;
+    e.flash = 0.08;
+    e.bAcc = (e.bAcc || 0) + dmg;
+    e.bTick = (e.bTick || 0) + dt;
+    if (e.bTick >= 0.15){
+      addFloater(e.x, e.y - 6, String(Math.round(e.bAcc)), '#a8f4ff');
+      SFX.hitEnemy();
+      e.bAcc = 0; e.bTick = 0;
+    }
+    idx++;
+    if (e.hp <= 0){ killEnemy(e); continue; }
+    if (idx >= maxTargets) len = h.t + e.r;
+  }
+
+  const gr = gunRadius(gun);
+  beamFx = {
+    x: player.x + ux*gr, y: player.y + uy*gr,
+    ang: player.aim, len: Math.max(0, len - gr),
+    capped: len < maxLen,
+  };
+  spawnParts(beamFx.x + ux*beamFx.len, beamFx.y + uy*beamFx.len, 1, '#a8f4ff', 40);
+  ST.shake = Math.min(1.2, ST.shake + gun.shake * dt * 3);
+  if (beamSfxCd <= 0){ SFX.shoot(); beamSfxCd = 0.11; }
 }
 
 // Anything caught between the player and the floating muzzle takes the shot.
@@ -1611,6 +1675,22 @@ function drawGunRot(sp, x, y, angle){
   cx.setTransform(1,0,0,1, shakeX, shakeY);
 }
 
+// The Rinse Cannon's beam: stacked rotated bars — widest and faintest on the
+// outside, white hot down the middle, with a flare where it stops.
+function drawBeam(){
+  if (!beamFx || ST.mode !== 'play') return;
+  const f = 0.8 + Math.sin(ST.time*44)*0.2;
+  const L = beamFx.len;
+  cx.setTransform(1,0,0,1, shakeX + Math.round(beamFx.x), shakeY + Math.round(beamFx.y));
+  cx.rotate(beamFx.ang);
+  cx.fillStyle = 'rgba(47,208,255,0.18)'; cx.fillRect(0, -4.0*f, L, 8.0*f);
+  cx.fillStyle = 'rgba(47,208,255,0.55)'; cx.fillRect(0, -2.2*f, L, 4.4*f);
+  cx.fillStyle = '#a8f4ff';               cx.fillRect(0, -1.2,   L, 2.4);
+  cx.fillStyle = '#ffffff';               cx.fillRect(0, -0.5,   L, 1.0);
+  cx.fillStyle = 'rgba(255,255,255,0.85)'; cx.fillRect(L-2, -3.0*f, 4, 6.0*f);
+  cx.setTransform(1,0,0,1, shakeX, shakeY);
+}
+
 // Hero animation: which pose to show, and the hover offset that sells the float.
 function heroFrame(){
   if (player.flash > 0) return 'hit';
@@ -1689,11 +1769,12 @@ function render(){
     }
   }
 
+  drawBeam();
+
   // player bullets — each gun throws something different
   for (const b of pbullets){
     if (b.shot === 'disc')      drawSpriteRot(SP.pdisc, b.x, b.y, b.ang + ST.time*14, b.size);
     else if (b.shot === 'foam') drawSpriteC(SP.foam, b.x, b.y, b.size);
-    else if (b.shot === 'beam') drawSpriteRot(SP.beam, b.x, b.y, b.ang, b.size);
     else if (b.shot === 'mega') drawSpriteRot(SP.mslug, b.x, b.y, b.ang, b.size);
     else                        drawSpriteRot(SP.slug, b.x, b.y, b.ang, b.size);
   }
