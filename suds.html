@@ -70,7 +70,18 @@ const T = {
   bubbler: { hp: 30, speed: 14, touch: 1, shootCd: 3.4, r: 9 },
   scrubber:{ hp: 26, speed: 36, touch: 2, r: 10 },              // charges you
   steamer: { hp: 38, speed: 17, touch: 1, shootCd: 3.0, r: 9 }, // area denial
-  stacker: { hp: 78, speed: 13, touch: 2, shootCd: 2.6, r: 10 },// shielded tank
+  stacker: { hp: 78, speed: 13, touch: 2, shootCd: 2.6, r: 10 },
+  toaster: { hp: 20, speed: 46, touch: 1, shootCd: 1.7, r: 8 },
+  fryer:   { hp: 54, speed: 15, touch: 1, shootCd: 2.9, r: 10 },
+  kettle:  { hp: 26, speed: 40, touch: 2, r: 8 },
+  mixer:   { hp: 62, speed: 11, touch: 2, shootCd: 3.2, r: 10 },
+  micro:   { hp: 44, speed: 18, touch: 1, shootCd: 3.4, range: 210, r: 9 },
+  chopper: { hp: 34, speed: 42, touch: 1, shootCd: 2.0, r: 9 },
+  toastSpeed: 150, globSpeed: 74, knifeSpeed: 118,
+  kettleFuse: 0.85, kettleBlast: 42, kettleDmg: 2,
+  mixerPull: 52, mixerRange: 150,
+  microBeamDps: 2.4, microWind: 0.9, microBurn: 1.5,
+  slickLife: 8, slickSlow: 0.45,// shielded tank
   boss:    { hp: 550, speed: 12, touch: 2, r: 20 },
   plateSpeed: 62, forkSpeed: 105, bubbleSpeed: 26, steamSpeed: 30,
   dashSpeed: 4.6,           // scrubber charge, as a multiple of its walk speed
@@ -494,6 +505,9 @@ const HERO_FLASH = {};
 for (const k in HERO) HERO_FLASH[k] = makeSilhouette(HERO[k], '#ffffff');
 
 const SP = {};
+// every dishwasher in the building, bosses included
+const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
+               'toaster','fryer','kettle','mixer','micro','chopper','boss'];
 (function bakeSprites(){
   // --- the five floating guns ---
   // Traced from the reference art: background keyed out, cropped, area-averaged
@@ -1096,6 +1110,126 @@ const SP = {};
 
   // the stacker's shield: a stack of plates seen edge-on, drawn rotated
   // to whichever way it is facing
+  // --- the late-shift crew ---
+  SP.toaster = makeSprite([
+    "..OOOOOOOOOOOOOO..",
+    ".OWWWWWWWWWWWWWWO.",
+    "OWCCCCCCCCCCCCCCWO",
+    "OWCKKKKCCCKKKKCCWO",
+    "OWCKRRKCCCKRRKCCWO",
+    "OWCKKKKCCCKKKKCCWO",
+    "OWCCCCCCCCCCCCCCWO",
+    "OWGGGGGGGGGGGGGGWO",
+    "OWGDDDDDDDDDDDDGWO",
+    "OWGDEEDDDDDDEEDGWO",
+    "OWGDEEDDDDDDEEDGWO",
+    "OWGDDDDDDDDDDDDGWO",
+    "OWGDDRRRRRRRRDDGWO",
+    "OWGDDDDDDDDDDDDGWO",
+    "OWGGGGGGGGGGGGGGWO",
+    ".OWWWWWWWWWWWWWWO.",
+    "..OOOOOOOOOOOOOO..",
+    "..FF..........FF..",
+  ],{O:'#14161d',W:'#d8dde6',C:'#9aa3b2',K:'#101018',R:CRIMSON,G:'#b6bdc9',
+     D:'#3a4150',E:'#ffffff',F:'#14161d'});
+
+  SP.fryer = makeSprite([
+    "....OOOOOOOOOOOOOO....",
+    "..OOWWWWWWWWWWWWWWOO..",
+    ".OWWGGGGGGGGGGGGGGWWO.",
+    "OWWGGYYYYYYYYYYYYGGWWO",
+    "OWGGYyyyyyyyyyyyyYGGWO",
+    "OWGYyooooooooooooyYGWO",
+    "OWGYyooOOooooOOooyYGWO",
+    "OWGYyooooooooooooyYGWO",
+    "OWGYyoooOOoooooooyYGWO",
+    "OWGYyooooooooooooyYGWO",
+    "OWGGYyyyyyyyyyyyyYGGWO",
+    "OWWGGYYYYYYYYYYYYGGWWO",
+    ".OWWGGGGGGGGGGGGGGWWO.",
+    "..OOWWWWWWWWWWWWWWOO..",
+    "....OOOOOOOOOOOOOO....",
+    "...FF............FF...",
+  ],{O:'#14161d',W:'#c9cfda',G:'#7d8593',Y:'#8a6b1c',y:'#c79a24',o:'#e8bb3a',F:'#14161d'});
+
+  SP.kettle = makeSprite([
+    "......OOOOOO......",
+    "....OOWWWWWWOO....",
+    "...OWWGGGGGGWWO...",
+    "..OWGGRRRRRRGGWO..",
+    ".OWGGRRRRRRRRGGWO.",
+    ".OWGRRRRRRRRRRGWO.",
+    "OWGRRrrrrrrrrRRGWO",
+    "OWGRRrKKrrKKrrRGWO",
+    "OWGRRrrrrrrrrRRGWO",
+    "OWGRRrrrKKKrrrRGWO",
+    "OWGGRRRRRRRRRRGGWO",
+    ".OWGGRRRRRRRRGGWO.",
+    ".OWWGGRRRRRRGGWWO.",
+    "..OWWGGGGGGGGWWO..",
+    "...OOWWWWWWWWOO...",
+    ".....OOOOOOOO.....",
+    "....FF......FF....",
+  ],{O:'#14161d',W:'#dfe4ec',G:'#9aa3b2',R:'#b8321f',r:'#e0563a',K:'#101018',F:'#14161d'});
+
+  SP.mixer = makeSprite([
+    "....OOOOOOOOOOOO....",
+    "..OOWWWWWWWWWWWWOO..",
+    ".OWWGGGGGGGGGGGGWWO.",
+    "OWWGGDDDDDDDDDDGGWWO",
+    "OWGGDDSSSSSSSSDDGGWO",
+    "OWGDDSSCCCCCCSSDDGWO",
+    "OWGDSSCCccccCCSSDGWO",
+    "OWGDSCCccKKccCCSDGWO",
+    "OWGDSCCccKKccCCSDGWO",
+    "OWGDSSCCccccCCSSDGWO",
+    "OWGDDSSCCCCCCSSDDGWO",
+    "OWGGDDSSSSSSSSDDGGWO",
+    "OWWGGDDDDDDDDDDGGWWO",
+    ".OWWGGGGGGGGGGGGWWO.",
+    "..OOWWWWWWWWWWWWOO..",
+    "....OOOOOOOOOOOO....",
+    "...FF..........FF...",
+  ],{O:'#14161d',W:'#d2d8e2',G:'#8d95a3',D:'#4a5262',S:'#b9c2cf',C:'#6f7e8d',c:'#e6eaf1',K:'#101018',F:'#14161d'});
+
+  SP.micro = makeSprite([
+    "OOOOOOOOOOOOOOOOOOOO",
+    "OWWWWWWWWWWWWWWWWWWO",
+    "OWGGGGGGGGGGGGGGGGWO",
+    "OWGKKKKKKKKKKKKGGGWO",
+    "OWGKppppppppppKGGGWO",
+    "OWGKpPPPPPPPPpKGRRWO",
+    "OWGKpPPPPPPPPpKGRRWO",
+    "OWGKpPPPPPPPPpKGGGWO",
+    "OWGKpPPPPPPPPpKGDDWO",
+    "OWGKpPPPPPPPPpKGDDWO",
+    "OWGKppppppppppKGDDWO",
+    "OWGKKKKKKKKKKKKGGGWO",
+    "OWGGGGGGGGGGGGGGGGWO",
+    "OWWWWWWWWWWWWWWWWWWO",
+    "OOOOOOOOOOOOOOOOOOOO",
+    ".FF..............FF.",
+  ],{O:'#14161d',W:'#cfd5e0',G:'#828b99',K:'#101018',p:'#2a3140',P:'#6ad07a',R:CRIMSON,D:'#3a4150',F:'#14161d'});
+
+  SP.chopper = makeSprite([
+    "..S..S..S..S..S...",
+    "..S..S..S..S..S...",
+    ".OOOOOOOOOOOOOOOO.",
+    "OWWWWWWWWWWWWWWWWO",
+    "OWBBBBBBBBBBBBBBWO",
+    "OWBbbbbbbbbbbbbBWO",
+    "OWBbBBBBBBBBBBbBWO",
+    "OWBbBnnnnnnnnBbBWO",
+    "OWBbBnKKnnKKnBbBWO",
+    "OWBbBnnnnnnnnBbBWO",
+    "OWBbBBBBBBBBBBbBWO",
+    "OWBbbbbbbbbbbbbBWO",
+    "OWBBBBBBBBBBBBBBWO",
+    "OWWWWWWWWWWWWWWWWO",
+    ".OOOOOOOOOOOOOOOO.",
+    "..FF..........FF..",
+  ],{O:'#14161d',W:'#b9a888',B:'#6b4f2c',b:'#8a6a3c',n:'#3a2a16',K:'#101018',S:'#dfe4ec',F:'#14161d'});
+
   SP.shield = makeSprite([
     "..OOO..",
     ".OPPPO.",
@@ -1181,6 +1315,28 @@ const SP = {};
   ],{B:'#6fd8e2',w:'#e8feff'});
 
   // the steamer's scalding vent — drawn faded, so it reads as a cloud
+  SP.toast = makeSprite([
+    ".BBBB.",
+    "BbbbbB",
+    "BbCCbB",
+    "BbbbbB",
+    ".BBBB.",
+  ],{B:'#6b4a1e',b:'#c9923e',C:'#f0c874'});
+
+  SP.glob = makeSprite([
+    ".OOO.",
+    "OyyyO",
+    "OyoyO",
+    "OyyyO",
+    ".OOO.",
+  ],{O:'#7a5c12',y:'#e8bb3a',o:'#fff0b0'});
+
+  SP.knife = makeSprite([
+    "..KKKKKK",
+    "KKSSSSSS",
+    "..KKKKKK",
+  ],{K:'#3a2a16',S:'#dfe4ec'});
+
   SP.steam = makeSprite([
     "..WWWW..",
     ".WwwwwW.",
@@ -2356,11 +2512,10 @@ const SP = {};
   ],{a:'#282828',b:'#181818',c:'#101010',d:'#303030',e:'#202020',f:'#383838',
      g:'#607080',h:'#506078',i:'#a0a0a0'});
 
-  // silhouettes for damage flash + elite tints
-  for (const k of ['washer','rinser','bubbler','scrubber','steamer','stacker','boss'])
-    SP[k+'_flash'] = makeSilhouette(SP[k], '#ffffff');
-  for (const k of ['washer','rinser','bubbler','scrubber','steamer','stacker'])
-    SP[k+'_elite'] = makeTint(SP[k], '#ffc02a', 0.45);
+  // silhouettes for damage flash + elite tints. One list, so adding a
+  // dishwasher and forgetting to tint it cannot happen again.
+  for (const k of KINDS) SP[k+'_flash'] = makeSilhouette(SP[k], '#ffffff');
+  for (const k of KINDS) if (k !== 'boss') SP[k+'_elite'] = makeTint(SP[k], '#ffc02a', 0.45);
 })();
 
 // ================================================================
@@ -3493,6 +3648,12 @@ const ROSTER = [
   { type:'bubbler',  from:4,  weight:18, name:'BUBBLER' },
   { type:'steamer',  from:6,  weight:16, name:'STEAMER' },
   { type:'stacker',  from:8,  weight:13, name:'STACKER' },
+  { type:'toaster',  from:3,  weight:22, name:'TOASTER' },
+  { type:'chopper',  from:5,  weight:18, name:'CHOPPER' },
+  { type:'kettle',   from:7,  weight:15, name:'KETTLE' },
+  { type:'fryer',    from:9,  weight:14, name:'FRYER' },
+  { type:'micro',    from:11, weight:12, name:'MICROWAVE' },
+  { type:'mixer',    from:13, weight:11, name:'MIXER' },
 ];
 function rollEnemy(n){
   let total = 0;
@@ -3556,6 +3717,11 @@ function spawnEnemy(type, x, y){
     e.shield = true;
     e.face = Math.atan2(player.y - y, player.x - x);
   }
+  if (type === 'toaster'){ e.hop = rand(0, TAU); e.burst = 0; }
+  if (type === 'kettle'){ e.fuse = 0; e.armed = false; }
+  if (type === 'micro'){ e.beam = 0; e.wind = 0; e.beamA = 0; }
+  if (type === 'chopper'){ e.orbit = Math.random() < 0.5 ? 1 : -1; }
+  if (type === 'fryer'){ e.drip = rand(0.4, 1.2); }
   // name-drop each kind the first time you meet it
   const seen = ST.seen || (ST.seen = {});
   if (!seen[type]){
@@ -3987,9 +4153,63 @@ function updateEBullets(dt){
 // ================================================================
 // ENEMIES
 // ================================================================
+// --- oil slicks. The fryer leaves them behind; they slow you down and they
+//     stay well after the thing that made them is dead. ---
+let slicks = [];
+function addSlick(x, y){
+  if (slicks.length > 44) slicks.shift();
+  slicks.push({ x, y, r: rand(12, 19), t: T.slickLife, max: T.slickLife });
+}
+function updateSlicks(dt){
+  for (let i = slicks.length-1; i >= 0; i--)
+    if ((slicks[i].t -= dt) <= 0) slicks.splice(i,1);
+}
+function onSlick(x, y){
+  for (const s of slicks) if (dist2(x, y, s.x, s.y) < s.r*s.r) return true;
+  return false;
+}
+
+// A kettle reaching the boil. Shooting one early still sets it off, which is
+// the point of them: they are a threat you have to deal with at a distance.
+function kettleBoom(e){
+  e.gone = true;
+  spawnParts(e.x, e.y, 22, '#e0563a', 130);
+  spawnParts(e.x, e.y, 12, '#ffffff', 90);
+  blasts.push({ x:e.x, y:e.y, r:T.kettleBlast, t:0.3, max:0.3, color:'#e0563a' });
+  ST.shake = Math.min(7, ST.shake + 3);
+  SFX.boom();
+  // it takes the other dishwashers with it, which is worth setting up
+  for (const o of enemies.slice()){
+    if (o === e) continue;
+    if (dist2(o.x, o.y, e.x, e.y) < (T.kettleBlast + o.r)*(T.kettleBlast + o.r))
+      damageEnemy(o, 26, e.x, e.y);
+  }
+  if (player.iframe <= 0 &&
+      dist2(player.x, player.y, e.x, e.y) < (T.kettleBlast+8)*(T.kettleBlast+8))
+    hurtPlayer(T.kettleDmg);
+}
+
+// The microwave's line. It stops at the first counter, so cover really works.
+function microBurn(e, dt){
+  const ux = Math.cos(e.beamA), uy = Math.sin(e.beamA);
+  const len = rayWall(e.x, e.y, ux, uy, 340);
+  e.beamLen = len;
+  const t = (player.x - e.x)*ux + (player.y - e.y)*uy;
+  if (t > 0 && t < len){
+    const px = e.x + ux*t, py = e.y + uy*t;
+    if (dist2(px, py, player.x, player.y) < 100) hurtPlayer(1);
+  }
+  if (Math.random() < 0.5){
+    const s = rand(10, len);
+    spawnParts(e.x + ux*s, e.y + uy*s, 1, '#6ad07a', 20);
+  }
+}
+
 function updateEnemies(dt){
   const sc = waveScale(ST.wave);
+  let blown = false;
   for (const e of enemies){
+    if (e.gone) continue;
     e.flash = Math.max(0, e.flash - dt);
     const dx = player.x - e.x, dy = player.y - e.y;
     const d = Math.hypot(dx, dy) || 1;
@@ -4035,6 +4255,109 @@ function updateEnemies(dt){
         const a0 = rand(0, TAU);
         for (let k=0;k<n;k++) eshoot(e.x, e.y, a0 + k*TAU/n, T.bubbleSpeed, 'bubble');
         SFX.bubble();
+      }
+    }
+    // --- toaster: hops in fast and pops a burst of toast ---
+    else if (e.type === 'toaster'){
+      e.hop += dt * 9;
+      const bounce = Math.abs(Math.sin(e.hop)) * e.speed * 1.5;
+      step(e, (dx/d) * bounce * dt, (dy/d) * bounce * dt);
+      e.t1 -= dt;
+      if (e.burst > 0){
+        // three slices, fast, one after another
+        e.t2 -= dt;
+        if (e.t2 <= 0){
+          e.burst--; e.t2 = 0.11;
+          eshoot(e.x, e.y, Math.atan2(dy, dx) + rand(-0.05,0.05), T.toastSpeed, 'toast');
+          SFX.fork();
+        }
+      } else if (e.t1 <= 0 && d < 240 && onScreen(e)){
+        e.t1 = T.toaster.shootCd / Math.sqrt(sc);
+        e.burst = 3; e.t2 = 0;
+      }
+    }
+    // --- fryer: slow, drips a slick behind it, spits arcs of hot oil ---
+    else if (e.type === 'fryer'){
+      step(e, (dx/d) * e.speed * dt, (dy/d) * e.speed * dt);
+      e.drip -= dt;
+      if (e.drip <= 0){ e.drip = rand(0.7, 1.4); addSlick(e.x, e.y); }
+      e.t1 -= dt;
+      if (e.t1 <= 0 && d < 260 && onScreen(e)){
+        e.t1 = T.fryer.shootCd / Math.sqrt(sc);
+        const a = Math.atan2(dy, dx);
+        for (let k=-2;k<=2;k++) eshoot(e.x, e.y, a + k*0.20, T.globSpeed, 'glob');
+        SFX.bubble();
+      }
+    }
+    // --- kettle: runs you down and goes off. Killing it early still costs you. ---
+    else if (e.type === 'kettle'){
+      const rush = e.armed ? 0.25 : 1;
+      step(e, (dx/d) * e.speed * rush * dt, (dy/d) * e.speed * rush * dt);
+      if (!e.armed && d < 46){
+        e.armed = true; e.fuse = T.kettleFuse;
+        SFX.alarm();
+      }
+      if (e.armed){
+        e.fuse -= dt;
+        e.flash = 0.1;
+        if (e.fuse <= 0){ kettleBoom(e); continue; }
+      }
+    }
+    // --- mixer: parks itself and drags you in ---
+    else if (e.type === 'mixer'){
+      step(e, (dx/d) * e.speed * dt, (dy/d) * e.speed * dt);
+      e.t2 += dt * 5;
+      if (d < T.mixerRange && onScreen(e)){
+        // the pull is strongest right next to it
+        // never quite as fast as he runs, so it is a fight and not a capture
+        const g = T.mixerPull * (1 - d / T.mixerRange);
+        moveCircle(player, -(dx/d) * g * dt, -(dy/d) * g * dt, 6);
+        if (Math.random() < 0.4)
+          spawnParts(player.x - (dx/d)*10, player.y - (dy/d)*10, 1, '#b9c2cf', 30);
+      }
+      e.t1 -= dt;
+      if (e.t1 <= 0 && d < 200 && onScreen(e)){
+        e.t1 = T.mixer.shootCd / Math.sqrt(sc);
+        const a0 = rand(0, TAU);
+        for (let k=0;k<6;k++) eshoot(e.x, e.y, a0 + k*TAU/6, T.forkSpeed*0.8, 'fork');
+        SFX.fork();
+      }
+    }
+    // --- microwave: winds up, then burns a line. Break the line of sight. ---
+    else if (e.type === 'micro'){
+      if (e.beam > 0){
+        e.beam -= dt;
+        // it tracks, but slowly enough that you can walk out of it
+        let da = Math.atan2(dy, dx) - e.beamA;
+        while (da > Math.PI) da -= TAU;
+        while (da < -Math.PI) da += TAU;
+        e.beamA += clamp(da, -0.9*dt, 0.9*dt);
+        microBurn(e, dt);
+        if (e.beam <= 0) e.t1 = T.micro.shootCd / Math.sqrt(sc);
+      } else if (e.wind > 0){
+        e.wind -= dt;
+        e.beamA = Math.atan2(dy, dx);
+        e.flash = 0.08;
+        if (e.wind <= 0){ e.beam = T.microBurn; SFX.alarm(); }
+      } else {
+        const want = d > T.micro.range ? 1 : (d < 120 ? -1 : 0);
+        step(e, (dx/d) * want * e.speed * dt, (dy/d) * want * e.speed * dt);
+        e.t1 -= dt;
+        if (e.t1 <= 0 && d < T.micro.range && onScreen(e)) e.wind = T.microWind;
+      }
+    }
+    // --- chopper: orbits you at knife range and throws them ---
+    else if (e.type === 'chopper'){
+      const ax = dx/d, ay = dy/d, px = -ay, py = ax;
+      const want = d > 140 ? 1 : (d < 90 ? -1 : 0);
+      step(e, (ax*want + px*e.orbit) * e.speed * dt,
+              (ay*want + py*e.orbit) * e.speed * dt);
+      e.t1 -= dt;
+      if (e.t1 <= 0 && onScreen(e)){
+        e.t1 = T.chopper.shootCd / Math.sqrt(sc);
+        const a = Math.atan2(dy, dx);
+        for (let k=-1;k<=1;k+=2) eshoot(e.x, e.y, a + k*0.10, T.knifeSpeed, 'knife');
+        SFX.fork();
       }
     }
     // --- scrubber: walks in, plants itself, winds up, then charges ---
@@ -4105,7 +4428,10 @@ function updateEnemies(dt){
 
     e.x = clamp(e.x, -20, WORLD.w+20);
     e.y = clamp(e.y, -30, WORLD.h+20);
+    if (e.gone) blown = true;
   }
+  // kettles take themselves off the board mid-loop, so they are swept up after
+  if (blown) enemies = enemies.filter(e => !e.gone);
 }
 
 // One enemy step, sliding off the furniture. The Megawasher is flagged
@@ -4201,11 +4527,15 @@ function dropShards(e){
 const DEATH_COLOR = {
   washer:'#5b8fc4', rinser:'#d3dae6', bubbler:'#7fd4da',
   scrubber:'#f0c020', steamer:'#c9a227', stacker:'#e6e9ef', boss:'#79c7f0',
+  toaster:'#f0c874', fryer:'#e8bb3a', kettle:'#e0563a',
+  mixer:'#b9c2cf', micro:'#6ad07a', chopper:'#c9a06a',
 };
 
 function killEnemy(e){
   const idx = enemies.indexOf(e);
   if (idx >= 0) enemies.splice(idx, 1);
+  // a kettle at the boil goes off whether you shot it or not
+  if (e.type === 'kettle' && !e.gone) kettleBoom(e);
   ST.kills++;
   ST.shake = Math.min(6, ST.shake + 2);
   const isB = e.type === 'boss';
@@ -4337,7 +4667,11 @@ function updatePlayer(dt){
   }
   const mag = Math.hypot(mx, my);
   if (mag > 0){ mx /= mag; my /= mag; }
-  const sp = T.playerSpeed * player.speedMul;
+  // hot oil underfoot: you keep moving, you just stop being quick about it
+  const slick = onSlick(player.x, player.y);
+  const sp = T.playerSpeed * player.speedMul * (slick ? T.slickSlow : 1);
+  if (slick && mag > 0 && Math.random() < 0.25)
+    spawnParts(player.x, player.y + 6, 1, '#c79a24', 18);
   // his own collision box is small — he floats, and a big box would snag
   // on every doorway in the kitchen
   moveCircle(player, mx*sp*dt, my*sp*dt, 6);
@@ -4355,7 +4689,8 @@ function updatePlayer(dt){
     const cr = T.coreRadius;
     for (let i = ebullets.length-1; i >= 0; i--){
       const b = ebullets[i];
-      const br = b.kind === 'plate' ? 3 : (b.kind === 'bubble' ? 2.5 : (b.kind === 'steam' ? 4 : 2));
+      const br = b.kind === 'plate' ? 3 : b.kind === 'bubble' ? 2.5 : b.kind === 'steam' ? 4
+               : b.kind === 'glob' ? 2.5 : b.kind === 'toast' ? 2.5 : 2;
       if (dist2(b.x, b.y, player.x, player.y) < (cr+br)*(cr+br)){
         ebullets.splice(i,1);
         hurtPlayer(1);
@@ -4581,6 +4916,40 @@ function render(){
     if (e.elite && SP[e.type+'_elite']){ sp = SP[e.type+'_elite']; scale = 1.15; }
     if (e.type === 'boss') scale = 2;
     let wob = Math.sin(ST.time*6 + e.t2) * 1;
+    // a kettle at the boil rattles and flashes faster the closer it gets
+    if (e.type === 'kettle' && e.armed){
+      wob = rand(-2.5, 2.5);
+      const f = 1 - e.fuse / T.kettleFuse;
+      cx.globalAlpha = 0.25 + f*0.45;
+      cx.strokeStyle = '#e0563a'; cx.lineWidth = 1;
+      cx.beginPath(); cx.arc(e.x, e.y, T.kettleBlast * (0.4 + f*0.6), 0, TAU); cx.stroke();
+      cx.globalAlpha = 1;
+    }
+    // the microwave shows you the line before it burns it
+    if (e.type === 'micro' && (e.wind > 0 || e.beam > 0)){
+      const a = e.beamA || 0;
+      const len = e.beam > 0 ? (e.beamLen || 0) : rayWall(e.x, e.y, Math.cos(a), Math.sin(a), 340);
+      if (e.beam > 0){
+        cx.globalAlpha = 0.85;
+        cx.strokeStyle = '#6ad07a'; cx.lineWidth = 5;
+        cx.beginPath(); cx.moveTo(e.x, e.y); cx.lineTo(e.x+Math.cos(a)*len, e.y+Math.sin(a)*len); cx.stroke();
+        cx.strokeStyle = '#dfffe4'; cx.lineWidth = 2;
+        cx.beginPath(); cx.moveTo(e.x, e.y); cx.lineTo(e.x+Math.cos(a)*len, e.y+Math.sin(a)*len); cx.stroke();
+      } else {
+        cx.globalAlpha = 0.30 + Math.sin(ST.time*26)*0.18;
+        cx.strokeStyle = '#6ad07a'; cx.lineWidth = 1;
+        cx.beginPath(); cx.moveTo(e.x, e.y); cx.lineTo(e.x+Math.cos(a)*len, e.y+Math.sin(a)*len); cx.stroke();
+      }
+      cx.globalAlpha = 1;
+    }
+    // a mixer pulling shows the drag as rings closing on it
+    if (e.type === 'mixer'){
+      const ph = (ST.time*0.9) % 1;
+      cx.globalAlpha = (1-ph) * 0.30;
+      cx.strokeStyle = '#b9c2cf'; cx.lineWidth = 1;
+      cx.beginPath(); cx.arc(e.x, e.y, T.mixerRange * ph, 0, TAU); cx.stroke();
+      cx.globalAlpha = 1;
+    }
     // a scrubber winding up shakes hard, and draws the line it is about to
     // take — you get half a second to not be standing on it
     if (e.type === 'scrubber' && e.st === 'wind'){
@@ -4652,6 +5021,16 @@ function render(){
 
   drawBeam();
 
+  // oil slicks, under everything else because you walk through them
+  for (const s of slicks){
+    cx.globalAlpha = Math.min(1, s.t / 1.5) * 0.55;
+    cx.fillStyle = '#2a2410';
+    cx.beginPath(); cx.arc(s.x, s.y, s.r, 0, TAU); cx.fill();
+    cx.fillStyle = '#6b5a18';
+    cx.beginPath(); cx.arc(s.x - s.r*0.2, s.y - s.r*0.2, s.r*0.45, 0, TAU); cx.fill();
+    cx.globalAlpha = 1;
+  }
+
   // player bullets — each gun throws something different
   for (const b of pbullets){
     if (b.shot === 'disc')         drawSpriteRot(SP.pdisc, b.x, b.y, b.ang + ST.time*14, b.size);
@@ -4703,6 +5082,9 @@ function render(){
   for (const b of ebullets){
     if (b.kind === 'plate') drawSpriteRot(SP.plate, b.x, b.y, b.spin);
     else if (b.kind === 'fork') drawSpriteRot(SP.fork, b.x, b.y, b.ang);
+    else if (b.kind === 'toast') drawSpriteRot(SP.toast, b.x, b.y, b.spin);
+    else if (b.kind === 'glob')  drawSpriteC(SP.glob, b.x, b.y);
+    else if (b.kind === 'knife') drawSpriteRot(SP.knife, b.x, b.y, b.ang);
     else if (b.kind === 'steam'){
       // swells as it drifts and thins out as it dies
       cx.globalAlpha = clamp(Math.min(b.age*3, (2.4 - b.age)*1.6), 0, 1) * 0.8;
@@ -5620,6 +6002,7 @@ function tick(dt){
   updateEBullets(dt);
   collidePlayerBullets();
   updateBlasts(dt);
+  updateSlicks(dt);
   if (arcFx && (arcFx.t -= dt) <= 0) arcFx = null;
   updatePickups(dt);
   updateParts(dt);
