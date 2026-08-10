@@ -598,6 +598,140 @@ const SP = {};
      h:'#101010',i:'#000000',j:'#f88000',k:'#e8e8e8',l:'#a0a0a0',m:'#909090',n:'#b8b8b8',
      o:'#c8c8c8',p:'#f8f8f8'});
 
+  // --- the bought guns: traced from the same reference art as the first
+  //     five, top-down so they read the same way when they swing around ---
+  SP.gunF = makeSprite([
+    ".........aaaaaaaaaa.aaaaaaa..aaaaaaaaaaaa...",
+    ".......aabbbbbbbbbbabbbcbccaaccccccccccccaa.",
+    "......adebbbbbbbbbbfddeddddbdggggggdggggggba",
+    "......agfddddddddddfeeeeeeebgcbbbbffbbbbbdfa",
+    ".aaa..ageeeeeeeeeeeeeebebbebdhhhhbbfghhgcefa",
+    "abeba.ageeeeeeeeeeeeeebebbebdiiiihjfhiiiklfa",
+    "abeeeaadeeeeeeeeeeeeeebebbebdhhhhlmfghhhnefa",
+    "acbbbbcgeeeeeeeeeeeeeeeeeeebdbeeecefbeebcefa",
+    "acfdddbgeeeeeeeeeeeffeeeeeebgcbbbbefbbbbcffa",
+    "aceeeebgeeeeeeeeeefggdebeeebgdddddgddddddgfa",
+    "acebbebgbbebeeeeeegoohbbeeecbfeeeffbffeefeca",
+    "acebbebgbbbbbeeeebgoohbbeeebfddddddedddddfca",
+    "aceeeebgeeeeeeeeebehhfbbeeebgfeeeedffeeffgfa",
+    "aceeeebgeeeeeeeeeebbbbebeeebgeeeecefbeebcffa",
+    "acbbbbcgbeeeeeeeeeeeeeeeeeebdiiiigmfhiiilefa",
+    "abeeeccdbeeeeeeeeeeeeebebbebdiiiikjfhiiiplfa",
+    "abebcabgeeeeeeeeeeeeeebebbebdggggbbfggggcefa",
+    ".acaaacgeeebbbbbbbeeeebebbebdcccccefcccccffa",
+    "..a...ageebbbbbbbbbeeebeffebgeeeeedfeeeeedfa",
+    "......aebcbeeeeeeecbeebeeeecdggggggfgggggdba",
+    ".......aaacbbbbbbecaccccccccaccccccccccccca.",
+    ".........acccbcccccaaaaaaaaa.aaaaaaaaaaaaa..",
+    "..........aaaaaaaaa.........................",
+  ],{a:'#0d0e14',b:'#181818',c:'#000808',d:'#404040',e:'#282828',f:'#303830',g:'#505050',
+     h:'#a8a8a8',i:'#f8f8f8',j:'#a82800',k:'#f84800',l:'#702800',m:'#401808',n:'#780800',
+     o:'#98f8f8',p:'#f83000'});
+
+  SP.gunG = makeSprite([
+    ".........aaaaaaaaaaaaaaaaaaa................",
+    "........abccccdcceffgcgbbccba...............",
+    ".......ahiiiijjbkllfbdmhiiijbaa..aaaaa......",
+    "...aaaajiiiiiihknlfbknnjiiiiibbaabhhhhaa....",
+    "..abhhjihbbbbhhnlfbdnlfhbbbhibbbbiiiiijba...",
+    ".abiiijihbbbbhjnobbonfbhhhhhibbhiiiiiiiiba..",
+    ".abijjjjjiiijhjiiiiiihkhhhhjichiijiiijiija..",
+    ".acjjjjbbbbbhiihkpohhijhjjjjbbiiibbbbbiiiba.",
+    ".acjhhjbbbbhijbbplmdbhjjcbbbchiibhbbbhbiiha.",
+    "abbjhhjbbbhijddbplldkddihhjbciibhcccccbbiia.",
+    "abbjhhjbbhhjdmmokpogplmkibjjhiihccccccchiiba",
+    "abbjjjhbjbjhollpbhbgmlmdjhhjhiibcccccccbjiha",
+    "abbiiijbhbihdmmdjiihompgjjbjjijbcccccccbhiha",
+    "abbiiihcccibbkkbihjigkgbhjbjjihbcccccccbhiha",
+    "abbiiihccbibhddbihjigdkhhjbjjihbcccccccbhiha",
+    "abbiiihbbcjbdmmdjiihplmkjjbjhijbcccccccbhiha",
+    "abbhhhhbhbhhollpbhbgmlmdjhhjhiibcccccccbjiha",
+    "abbjjjjcbhbjdmmddmmgpmmkibhjbiihcccccccbiiba",
+    "abbjhhjbbhbjhkkcpllogkgjhbjbciibhcccccbhiica",
+    ".acjhhibbbhbijhbplmdbhjjcbbbchiihhbbbhhiiha.",
+    ".abjhhibbbbbbiihkodbjijbjijihbiiibhhhbiiiba.",
+    ".abiiihiiiiiihhiijjiidehhhhjichiijiiijiiha..",
+    ".achjjhijbbbbjhoebbkfnohbbbhibbhiiiiiiijca..",
+    "..acbbbijbbbbjjlfbknlfbhbbbhibhbbiiiiihba...",
+    "...aaaahiiiiiijfbknlfbhjiiiijcbcabbbbbca....",
+    ".......abhhhhhhbknnfbkmhhhhhbaaa.aaaaaa.....",
+    "........acccccbceeecceeccccca...............",
+    ".........aaaaaaaaaaaaaaaaaaa................",
+  ],{a:'#0d0e14',b:'#101010',c:'#000000',d:'#484800',e:'#603800',f:'#a07000',g:'#181800',
+     h:'#282828',i:'#484848',j:'#383838',k:'#282800',l:'#f8d800',m:'#d0c000',n:'#f8b800',
+     o:'#787000',p:'#888000'});
+
+  SP.gunH = makeSprite([
+    "....................................aaaaaaa...",
+    "..................................aabcccccdaa.",
+    ".................................abceeeeeeeefa",
+    "....aaaaa......aaaaaaaaaa.......ageeehiiiieeca",
+    "..aajjjjjaaaaaagdfgdgbgbgaaaaaaageeebkaaaabcba",
+    ".akjlllllmmmmllhfciciiiihllllkbieehkaa....ana.",
+    "akkjmljjmljjjjjebefhghicibhdmldeeika......anoa",
+    "akkmjmmjpmmmmmjekhbhfifiifhdjlljmpa......aona.",
+    "akkmjpmjjjjjjjkbkbkbkifigmmlljppppa......aona.",
+    "akkmjpmonjnloolnjnlooifiijpppmmmja........aona",
+    "akkmjpmlopomlolojomooifiijppjjjjja........anna",
+    "akkmjplmmmmmmmkgpfpfbifigmmmlmmmmpa......aona.",
+    "akkjpjjppmmmmmjhkhbibifigdhdjlmpbka.......anoa",
+    "akkjmlmmlmpppppebhghgiiiipibmlbeehka......anoa",
+    ".aapllllljjjjmmhfiggggigimmlmkbieehkaa....ana.",
+    "...apmmmpaaaaaadbddbdbdbgaaaaaaageeedkaaaadcda",
+    "....aaaaa......aaaaaaaaaa.......ageeeehhhheeca",
+    ".................................abheeeeeeehba",
+    "..................................aabiccccdaa.",
+    "....................................aaaaaaa...",
+  ],{a:'#0d0e14',b:'#401000',c:'#b05010',d:'#581800',e:'#f86000',f:'#602808',g:'#702000',
+     h:'#b84000',i:'#983000',j:'#102040',k:'#000810',l:'#204070',m:'#183058',n:'#c868f8',
+     o:'#a038f8',p:'#081830'});
+
+  SP.gunI = makeSprite([
+    "................aaaaa.........................",
+    "...............abbbbba.........aaaaa.a........",
+    "..............acdefecba......aaggchgahaa......",
+    ".............aiiefjfdgcaa...ahgghhhkglgia.....",
+    "..........aaaibbefjfdmcicaaagkkhhhklllhhhaa...",
+    ".....aaa.accmgbcdenecbiggcghhhkhhhhkklolhbga..",
+    "..aaaiiiaigmigmbcbibcigmmbghlohhhhloolpplkha..",
+    ".aibmmmmbmbcmigmmmmmmgmggbghoolkhhloopppokha..",
+    "aimbmmmmmbbbbmimmmmmmiggbhlopopohgghlppooohha.",
+    "abbbggggggiiibbbbbbbbbccbihpopphggiggloololha.",
+    "abiigiiigiiiiibbbbbbbmiimhlllopgmgggigoolllga.",
+    "aimigbibgbmmmmighghhiimbhllkklhmgbbmgmklkklhha",
+    "aimigbbbgbmmmmiggheeemmbbglkklhigbbmgmklkklkga",
+    "abmigiiigiiiiibcbbbbbbbimhlllopgmgggmeookllga.",
+    "accbggggggiiiibbbbbbbbbcghhpopphmgigmkppoolkga",
+    "aiibmmmmmbbbimmmmmmmmmggibhooooplggehopopohha.",
+    ".aibimmmbibcmigmmmmmmggggmllolopplkkkkloplgia.",
+    "..aabmmmbmmimgmbbbibcigmmihglooookkkkhholhhga.",
+    "....aaaaaaicmgbcdnjnbiiggccgllppkhhhhhkkhcaa..",
+    "..........aaaciiefjfdgcccaaghgllllllllhghga...",
+    ".............abbefjfiicaa..aaakghhhkghkgaa....",
+    ".............abcdenecca......agaghihgaga......",
+    "..............aabcccba........a.aaaaa.a.......",
+    "................aaaaa.........................",
+  ],{a:'#0d0e14',b:'#081020',c:'#000810',d:'#004040',e:'#008888',f:'#00c8c8',g:'#203850',
+     h:'#b0b8c0',i:'#102030',j:'#00f8f8',k:'#c0c0c8',l:'#d0d0d0',m:'#182840',n:'#00b0b0',
+     o:'#e8e8e8',p:'#f8f8f8'});
+
+  SP.gunJ = makeSprite([
+    "...aaa.aaaa....aa.......a.............a.................",
+    "..abcbabbbbaaaacbaaaaaaacaaaaaaaaaaaaacaa...............",
+    ".abccbbcbccbbbddeffffffgdhfffffffffffgdgba..............",
+    "abccbcbbbbbcbcccdggggggdcggggggggggggdcdia......aaa.....",
+    "abbiccccccbiijjicjjjjjjkkjjjjjjjjjjjjkklaaaaaaaamnmaaaa.",
+    "abbimoommobbbcpeeeeeeepnngeeeeeeeeeednngeeeeeeeeknjgddba",
+    "abbimoommobibbdpppppppdnndppppppppppjnkdppppppppknmdccba",
+    "abcbccccccbbbjjicjjjjjckkjjjjjjjjjjjokmlaaaaaaaamkoaaaa.",
+    "abccccbbbbbcbjddghhhhhhgdhhhhhhhhhhhhgdgca......aaa.....",
+    ".abcccbccccbiiccpegggggdjggggggggegggdcdba..............",
+    "..abbiabbbbaaaabbaaaaaaabaaaaaaaaaaaaabaa...............",
+    "...aaa.aaaa....aa.......a.............a.................",
+  ],{a:'#0d0e14',b:'#102030',c:'#183048',d:'#305070',e:'#5080b0',f:'#80a8d0',g:'#4870a0',
+     h:'#7098c0',i:'#081020',j:'#404850',k:'#b86800',l:'#000810',m:'#503808',n:'#f88800',
+     o:'#382810',p:'#305888'});
+
   // --- player bullets, one look per gun ---
   SP.pdisc = makeSprite([
     ".oYYYo.",
@@ -620,6 +754,38 @@ const SP = {};
     "RRYYRR",
     ".RRRR.",
   ],{R:'#ff9420',Y:'#ffe8b0'});
+
+  SP.missile = makeSprite([
+    ".WWWWo.",
+    "WWWWWOO",
+    ".WWWWo.",
+  ],{W:'#e8e8e8',O:'#f88000',o:'#c85a06'});
+
+  SP.bomb = makeSprite([
+    ".GGGG.",
+    "GYYYYG",
+    "GYYKYG",
+    "GYYYYG",
+    ".GGGG.",
+  ],{G:'#7e8c1e',Y:'#e8d84a',K:'#3a3f14'});
+
+  SP.saw = makeSprite([
+    "..MMMMM..",
+    ".MMMMMMM.",
+    "MMMMMMMMM",
+    "MMMKKKMMM",
+    "MMMKCKMMM",
+    "MMMKKKMMM",
+    "MMMMMMMMM",
+    ".MMMMMMM.",
+    "..MMMMM..",
+  ],{M:'#dfe4ec',K:'#2a2e38',C:'#2fd0ff'});
+
+  SP.bolt = makeSprite([
+    ".AAAAAAAA.",
+    "AAWWWWWWAA",
+    ".AAAAAAAA.",
+  ],{A:'#f4a020',W:'#ffe8b0'});
 
   // ================================================================
   // THE DISHWASHERS
@@ -1398,6 +1564,8 @@ let orbs = [];          // the spare barrels: { ang, cd }
 let boss = null;
 let beamFx = null;      // set each frame the Rinse Cannon is held down
 let beamSfxCd = 0;
+let blasts = [];        // expanding rings from missiles and grease cans
+let arcFx = null;       // the Arc Welder's last bolt: { pts, t }
 
 // The camera. It sits on the player but leans a little toward where he is
 // aiming, so you get to see what you are shooting at before it reaches you.
@@ -1446,6 +1614,38 @@ const GUNS = [
   { id:'mega',  cost:560, name:'MEGABLASTER 9000', sp:'gunE', shot:'mega',
     blurb:'SIX BARRELS. A WALL OF BULLETS.',
     dmg:0.45, rate:1.60, bspd:1.30, add:5, spread:0.00, pierce:0, shake:2.4, life:0, bank:18 },
+
+  // ---- the late-shift hardware ----
+  // Fired in a slow pair that hunts for itself, so you can shoot round a
+  // counter. `seek` is how hard it turns, `hunt` how far it can see.
+  { id:'soak',  cost:650, name:'SOAK-SEEKER',      sp:'gunF', shot:'missile',
+    blurb:'MISSILES THAT GO LOOKING FOR THEM',
+    dmg:1.55, rate:0.62, bspd:0.66, add:1, spread:0.16, pierce:0, shake:1.4, life:0,
+    seek:5.2, hunt:230, blast:24, bdmg:0.85 },
+  // Lobbed, not shot: it slows to a stop and then goes off. Hitting a body is
+  // a bonus — the point is the puddle of fire where the body was standing.
+  { id:'bomb',  cost:800, name:'GREASE BOMBER',    sp:'gunG', shot:'bomb',
+    blurb:'LOBBED CANS. BIG MESSY BANG.',
+    dmg:1.10, rate:0.50, bspd:0.52, add:0, spread:0.05, pierce:0, shake:2.0, life:1.05,
+    drag:0.965, blast:40, bdmg:2.10 },
+  // No projectile at all: it grabs the nearest one and the current walks down
+  // the queue behind it. `jumps` extra bodies, each taking `falloff` less.
+  { id:'arc',   cost:950, name:'ARC WELDER',       sp:'gunH', chain:true,
+    blurb:'LIGHTNING THAT WALKS DOWN THE LINE',
+    dmg:0.85, rate:1.15, bspd:1.00, add:0, spread:0.00, pierce:0, shake:0.7, life:0,
+    reach:150, jump:95, jumps:4, falloff:0.72 },
+  // Thrown out and reeled back in. It hits on the way out and again on the way
+  // home, so standing still and letting it come back to you is the whole trick.
+  { id:'blade', cost:1150, name:'RETURN BLADE',    sp:'gunI', shot:'saw',
+    blurb:'THROWN OUT, COMES BACK THROUGH THEM',
+    dmg:1.35, rate:0.72, bspd:0.90, add:0, spread:0.07, pierce:99, shake:1.1, life:0,
+    out:0.42, pull:520 },
+  // Hold to wind it up, let go to fire. A full charge is a spear that goes
+  // through everything in the room; a tap is barely worth the trouble.
+  { id:'lance', cost:1400, name:'PRESSURE LANCE',  sp:'gunJ', shot:'bolt', charge:true,
+    blurb:'HOLD TO WIND UP. LET GO TO SKEWER.',
+    dmg:1.20, rate:1.00, bspd:1.65, add:0, spread:0.00, pierce:2, shake:1.0, life:0,
+    windup:0.85, cmin:0.35, cmax:3.4, cpierce:5 },
 ];
 
 // Guns no longer unlock on their own. You own a set, you choose which one to
@@ -1467,6 +1667,7 @@ function evolveGun(quiet){
   if (gi === player.gunIdx) return;
   player.gunIdx = gi;
   player.gunName = g.name;
+  player.charge = 0;      // a half-wound Lance doesn't carry over to the next gun
   if (quiet) return;
   ST.banner = 'GUN EVOLVED: ' + g.name; ST.bannerTimer = 2.0;
   SFX.evolve();
@@ -1554,8 +1755,9 @@ function startRun(){
   player.gun = Object.assign({}, T.gun);
   player.xp = 0; player.level = 1; player.xpNext = 5;
   player.aim = 0; player.aimTrail = [0,0,0]; player.orbs = 0;
+  player.charge = 0;
   enemies = []; pbullets = []; ebullets = []; pickups = []; parts = []; floaters = []; orbs = [];
-  boss = null; beamFx = null; beamSfxCd = 0;
+  boss = null; beamFx = null; beamSfxCd = 0; blasts = []; arcFx = null;
 
   // everything bought at the store lands here, before the first enemy
   player.ladder = gunLadder();
@@ -1783,13 +1985,38 @@ function firePlayerGun(dt){
     if (want) fireBeam(g, gun, dt);
     return;
   }
+  // the Arc Welder never spawns a bullet — it picks its own targets
+  if (gun.chain){
+    if (want && player.fireCd <= 0){
+      player.fireCd = 1 / (g.rate * gun.rate);
+      fireChain(g, gun);
+    }
+    return;
+  }
 
-  if (!want || player.fireCd > 0) return;
+  // The Pressure Lance winds up while the trigger is down and goes off when you
+  // let go — or on its own once it is full, so holding it just repeats the big
+  // shot and touch play (which never "releases") still works.
+  let cmul = 1, cAdd = 0;
+  if (gun.charge){
+    if (want){
+      player.charge = Math.min(gun.windup, (player.charge || 0) + dt);
+      if (player.charge < gun.windup) return;
+    }
+    const held = player.charge || 0;
+    player.charge = 0;
+    if (held <= 0.02) return;
+    const f = clamp(held / gun.windup, 0, 1);
+    cmul = gun.cmin + (gun.cmax - gun.cmin) * f;
+    cAdd = Math.round(gun.cpierce * f);
+  } else {
+    if (!want || player.fireCd > 0) return;
+  }
   player.fireCd = 1 / (g.rate * gun.rate);
   const n = g.count + gun.add;
-  const spd = g.speed * g.bspeedMul * gun.bspd;
-  const dmg = g.damage * gun.dmg;
-  const pierce = g.pierce + gun.pierce;
+  const spd = g.speed * g.bspeedMul * gun.bspd * (gun.charge ? 0.7 + cmul*0.12 : 1);
+  const dmg = g.damage * gun.dmg * cmul;
+  const pierce = g.pierce + gun.pierce + cAdd;
   const spread = (n > 1 ? (0.09 + n*0.03) : 0) + gun.spread;
   const gr = gunRadius(gun);
   const mx = player.x + Math.cos(player.aim)*gr;
@@ -1814,6 +2041,9 @@ function firePlayerGun(dt){
       vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
       ang: a, dmg, size: g.size, pierce, hitList: null,
       shot: gun.shot, life: gun.life,
+      // the gun itself rides along, so the odd shots (homing, lobbed, returning)
+      // can read their own tuning without copying six fields onto every bullet
+      g: gun, age: 0, tgt: null, back: false, spin: rand(0, TAU),
     });
   }
   // The muzzle floats well ahead of him now, so anything standing between the
@@ -1913,24 +2143,138 @@ function eshoot(x, y, angle, speed, kind){
   });
 }
 
+// nearest live dishwasher to a point, inside a radius. `skip` is a list of
+// ones already dealt with, which is how the Arc Welder walks down the queue.
+function nearestEnemy(x, y, radius, skip){
+  let best = null, bd = radius*radius;
+  for (const e of enemies){
+    if (skip && skip.indexOf(e) >= 0) continue;
+    const d = dist2(x, y, e.x, e.y);
+    if (d < bd){ bd = d; best = e; }
+  }
+  return best;
+}
+
+// One bang. Everything inside the circle takes it, hardest at the middle.
+function boom(x, y, radius, dmg, color){
+  // damageEnemy can kill, and killEnemy splices the list out from under us
+  for (const e of enemies.slice()){
+    const d = Math.sqrt(dist2(x, y, e.x, e.y)) - e.r;
+    if (d > radius) continue;
+    damageEnemy(e, dmg * clamp(1 - d/radius, 0.35, 1), x, y);
+  }
+  spawnParts(x, y, 16, color, 130);
+  spawnParts(x, y, 8, '#ffffff', 70);
+  ST.shake = Math.min(6, ST.shake + 2.2);
+  SFX.boom();
+  blasts.push({ x, y, r: radius, t: 0.26, max: 0.26, color });
+}
+
+// The Arc Welder: grab the nearest one, then let the current walk from body to
+// body. Nothing flies — the whole thing lands on the frame it is fired.
+function fireChain(g, gun){
+  const gr = gunRadius(gun);
+  const mx = player.x + Math.cos(player.aim)*gr, my = player.y + Math.sin(player.aim)*gr;
+  let from = nearestEnemy(mx, my, gun.reach);
+  if (!from) return;
+  const done = [], pts = [[mx, my]];
+  let dmg = g.damage * gun.dmg, hops = 0;
+  while (from && hops <= gun.jumps){
+    pts.push([from.x, from.y]);
+    done.push(from);
+    const px = pts[pts.length-2][0], py = pts[pts.length-2][1];
+    damageEnemy(from, dmg, px, py);
+    spawnParts(from.x, from.y, 3, '#c89bff', 60);
+    dmg *= gun.falloff;
+    hops++;
+    from = hops > gun.jumps ? null : nearestEnemy(from.x, from.y, gun.jump, done);
+  }
+  arcFx = { pts, t: 0.13 };
+  ST.shake = Math.min(3, ST.shake + gun.shake*0.5);
+  SFX.shoot();
+}
+
 function updatePBullets(dt){
   for (let i = pbullets.length-1; i >= 0; i--){
     const b = pbullets[i];
+    const gn = b.g;
+    b.age = (b.age || 0) + dt;
+
+    // ---- the awkward ones steer themselves before they move ----
+    if (b.shot === 'missile'){
+      // lost its mark (dead, or it wandered off) — go find another
+      if (!b.tgt || enemies.indexOf(b.tgt) < 0) b.tgt = nearestEnemy(b.x, b.y, gn.hunt);
+      if (b.tgt){
+        let d = Math.atan2(b.tgt.y - b.y, b.tgt.x - b.x) - b.ang;
+        while (d > Math.PI) d -= TAU;
+        while (d < -Math.PI) d += TAU;
+        b.ang += clamp(d, -gn.seek*dt, gn.seek*dt);
+        const sp = Math.hypot(b.vx, b.vy);
+        b.vx = Math.cos(b.ang)*sp; b.vy = Math.sin(b.ang)*sp;
+      }
+      if (Math.random() < 0.7) spawnParts(b.x, b.y, 1, '#aab2c0', 14);
+    }
+    else if (b.shot === 'bomb'){
+      b.vx *= gn.drag; b.vy *= gn.drag;   // it is lobbed, so it runs out of throw
+      b.spin += dt*9;
+    }
+    else if (b.shot === 'saw'){
+      b.spin += dt*26;
+      if (!b.back && b.age >= gn.out) b.back = true;
+      if (b.back){
+        // reel it in — the pull beats the throw, so it turns and comes home
+        const a = Math.atan2(player.y - b.y, player.x - b.x);
+        b.vx += Math.cos(a)*gn.pull*dt;
+        b.vy += Math.sin(a)*gn.pull*dt;
+        const sp = Math.hypot(b.vx, b.vy);
+        if (sp > 300){ b.vx = b.vx/sp*300; b.vy = b.vy/sp*300; }
+        // fair game again on the way back, which is the whole point of it
+        if (b.hitList && b.age > gn.out + 0.15) b.hitList = null;
+        if (dist2(b.x, b.y, player.x, player.y) < 100){ pbullets.splice(i,1); continue; }
+      }
+      b.ang = Math.atan2(b.vy, b.vx);
+    }
+
     b.x += b.vx*dt; b.y += b.vy*dt;
     // short-lived shots (the Sud Shredder's foam) fizzle out instead of flying on
     if (b.life > 0){
       b.life -= dt;
       if (b.life <= 0){
-        spawnParts(b.x, b.y, 2, '#cfe8ff', 24);
+        if (b.shot === 'bomb') boom(b.x, b.y, gn.blast, b.dmg * gn.bdmg, '#e8d84a');
+        else spawnParts(b.x, b.y, 2, '#cfe8ff', 24);
         pbullets.splice(i,1);
         continue;
       }
     }
-    // splat against the kitchen itself
-    if (b.x < 4 || b.x > WORLD.w-4 || b.y < 4 || b.y > WORLD.h-4 || wallAt(b.x, b.y, 0)){
-      spawnParts(b.x, b.y, 2, '#f4c542', 30);
+    // splat against the kitchen itself. A blade on its way home ignores the
+    // furniture, otherwise it gets wedged behind a counter and never returns.
+    const homing = b.shot === 'saw' && b.back;
+    const off = b.x < 4 || b.x > WORLD.w-4 || b.y < 4 || b.y > WORLD.h-4;
+    if (!homing && (off || wallAt(b.x, b.y, 0))){
+      if (b.shot === 'saw'){
+        // clanged off a counter — start the trip home from here
+        b.back = true;
+        b.x -= b.vx*dt; b.y -= b.vy*dt;
+        b.vx *= -0.3; b.vy *= -0.3;
+        spawnParts(b.x, b.y, 4, '#dfe4ec', 60);
+        SFX.plate();
+        continue;
+      }
+      if (b.shot === 'bomb')         boom(b.x, b.y, gn.blast, b.dmg * gn.bdmg, '#e8d84a');
+      else if (b.shot === 'missile') boom(b.x, b.y, gn.blast, b.dmg * gn.bdmg, '#ff9420');
+      else spawnParts(b.x, b.y, 2, '#f4c542', 30);
       pbullets.splice(i,1);
+    } else if (homing && off){
+      b.x = clamp(b.x, 4, WORLD.w-4); b.y = clamp(b.y, 4, WORLD.h-4);
     }
+  }
+}
+
+// expanding rings left behind by anything that goes off
+function updateBlasts(dt){
+  for (let i = blasts.length-1; i >= 0; i--){
+    blasts[i].t -= dt;
+    if (blasts[i].t <= 0) blasts.splice(i,1);
   }
 }
 
@@ -2381,11 +2725,18 @@ function hurtPlayer(dmg){
 function collidePlayerBullets(){
   for (let i = pbullets.length-1; i >= 0; i--){
     const b = pbullets[i];
-    const br = 2.5 * b.size;
+    const br = (b.shot === 'saw' ? 5 : 2.5) * b.size;
     let hit = false;
     for (const e of enemies){
       if (b.hitList && b.hitList.indexOf(e) >= 0) continue;
       if (dist2(b.x, b.y, e.x, e.y) < (e.r+br)*(e.r+br)){
+        // the ones that go off don't bite, they detonate on whatever they touch
+        if (b.shot === 'bomb' || b.shot === 'missile'){
+          boom(b.x, b.y, b.g.blast, b.dmg * b.g.bdmg,
+               b.shot === 'bomb' ? '#e8d84a' : '#ff9420');
+          hit = true;
+          break;
+        }
         damageEnemy(e, b.dmg, b.x, b.y);
         spawnParts(b.x, b.y, 3, '#f4c542', 50);
         if (b.pierce > 0){
@@ -2600,6 +2951,19 @@ function render(){
     const gun = GUNS[player.gunIdx];
     const gr = gunRadius(gun) + Math.sin(ST.time*5.5)*0.9;
     drawGunWithSmear(SP[gun.sp], player.x, player.y, gr, hov);
+    // the Lance winding up: a ring closing around the muzzle, white when full
+    if (gun.charge && player.charge > 0.02){
+      const f = clamp(player.charge / gun.windup, 0, 1);
+      // gr is where the middle of the gun floats — push out to the barrel tip
+      const tip = gr + SP[gun.sp].width*0.42;
+      const mx = player.x + Math.cos(player.aim)*tip, my = player.y + hov + Math.sin(player.aim)*tip;
+      cx.strokeStyle = f >= 1 ? '#ffffff' : '#f4a020';
+      cx.lineWidth = f >= 1 ? 2 : 1.5;
+      cx.beginPath();
+      cx.arc(mx, my, 11 - f*4, -Math.PI/2, -Math.PI/2 + TAU*f);
+      cx.stroke();
+      if (f >= 1 && Math.random() < 0.5) spawnParts(mx, my, 1, '#ffe8b0', 40);
+    }
     if (player.flash > 0){
       cx.globalAlpha = 0.7;
       drawHero(key, player.x, player.y, player.face, hov, true);
@@ -2617,10 +2981,48 @@ function render(){
 
   // player bullets — each gun throws something different
   for (const b of pbullets){
-    if (b.shot === 'disc')      drawSpriteRot(SP.pdisc, b.x, b.y, b.ang + ST.time*14, b.size);
-    else if (b.shot === 'foam') drawSpriteC(SP.foam, b.x, b.y, b.size);
-    else if (b.shot === 'mega') drawSpriteRot(SP.mslug, b.x, b.y, b.ang, b.size);
-    else                        drawSpriteRot(SP.slug, b.x, b.y, b.ang, b.size);
+    if (b.shot === 'disc')         drawSpriteRot(SP.pdisc, b.x, b.y, b.ang + ST.time*14, b.size);
+    else if (b.shot === 'foam')    drawSpriteC(SP.foam, b.x, b.y, b.size);
+    else if (b.shot === 'mega')    drawSpriteRot(SP.mslug, b.x, b.y, b.ang, b.size);
+    else if (b.shot === 'missile') drawSpriteRot(SP.missile, b.x, b.y, b.ang, b.size);
+    else if (b.shot === 'bomb')    drawSpriteRot(SP.bomb, b.x, b.y, b.spin, b.size);
+    else if (b.shot === 'saw')     drawSpriteRot(SP.saw, b.x, b.y, b.spin, b.size);
+    else if (b.shot === 'bolt')    drawSpriteRot(SP.bolt, b.x, b.y, b.ang, b.size);
+    else                           drawSpriteRot(SP.slug, b.x, b.y, b.ang, b.size);
+  }
+
+  // blast rings — one quick expanding circle per bang
+  for (const bl of blasts){
+    const f = 1 - bl.t/bl.max;
+    cx.globalAlpha = (1-f) * 0.9;
+    cx.strokeStyle = bl.color;
+    cx.lineWidth = 2;
+    cx.beginPath();
+    cx.arc(bl.x, bl.y, bl.r * (0.35 + f*0.75), 0, TAU);
+    cx.stroke();
+    cx.globalAlpha = 1;
+  }
+
+  // the Arc Welder's bolt: a jagged line through everything it touched
+  if (arcFx){
+    const f = arcFx.t / 0.13;
+    for (const [wide, col] of [[3.4, '#c89bff'], [1.4, '#f2e6ff']]){
+      cx.globalAlpha = f;
+      cx.strokeStyle = col;
+      cx.lineWidth = wide;
+      cx.beginPath();
+      for (let i=1;i<arcFx.pts.length;i++){
+        const [x0,y0] = arcFx.pts[i-1], [x1,y1] = arcFx.pts[i];
+        cx.moveTo(x0, y0);
+        // three kinked segments per hop, jittered off the straight line
+        for (let s=1;s<=3;s++){
+          const t = s/3, j = s < 3 ? rand(-4,4) : 0;
+          cx.lineTo(x0 + (x1-x0)*t - (y1-y0)*0.02*j, y0 + (y1-y0)*t + (x1-x0)*0.02*j);
+        }
+      }
+      cx.stroke();
+    }
+    cx.globalAlpha = 1;
   }
 
   // enemy bullets
@@ -3190,6 +3592,8 @@ function tick(dt){
   updatePBullets(dt);
   updateEBullets(dt);
   collidePlayerBullets();
+  updateBlasts(dt);
+  if (arcFx && (arcFx.t -= dt) <= 0) arcFx = null;
   updatePickups(dt);
   updateParts(dt);
   updateFloaters(dt);
