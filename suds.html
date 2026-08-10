@@ -2374,12 +2374,19 @@ const SP = {};
 // collision, the minimap and the drawn kitchen all move with it —
 // there is nothing else to keep in sync.
 // ================================================================
-const WORLD = { w: 1440, h: 810 };
 const cam = { x: 0, y: 0 };
 
 // Named areas. Cosmetic: they pick the floor tiles and supply the
 // location caption that fades in when you walk into one.
-const ZONES = [
+// ================================================================
+// THE BUILDING
+// Six rooms, all of it the same restaurant. A map is pure data: the
+// zones give the floor a look and a name, the walls are what you
+// cannot walk through, and decor is the mess lying on top that
+// blocks nothing. Nothing here is bespoke code — adding a seventh
+// room is another entry in MAPS.
+// ================================================================
+const KITCHEN_ZONES = [
   { x:  0, y:  0, w:1440, h:270, floor:'line',  name:'THE LINE' },
   { x:  0, y:270, w: 712, h:270, floor:'prep',  name:'PREP STATION' },
   { x:712, y:270, w: 728, h:270, floor:'pit',   name:'THE DISH PIT' },
@@ -2387,11 +2394,7 @@ const ZONES = [
   { x:542, y:540, w: 898, h:270, floor:'store', name:'DRY STORE' },
 ];
 
-// Solid rectangles. You, the dishwashers and every bullet collide with
-// these — the Megawasher is the one thing that ploughs straight through.
-// Keep the gaps between them around 46px or wider, or the kitchen stops
-// being fun to move through.
-const WALLS = [
+const KITCHEN_WALLS = [
   // --- outer shell ---
   { x:0, y:0, w:1440, h:12, k:'wall' },
   { x:0, y:798, w:1440, h:12, k:'wall' },
@@ -2447,6 +2450,276 @@ const WALLS = [
   { x:1230, y:600, w: 36, h:180, k:'shelf' },
 ];
 
+const KITCHEN_DECOR = [
+  ['dSuds',   960, 300], ['dSuds',  1120, 500], ['dSuds',   860, 470],
+  ['kDrain', 1105, 395], ['kDrain',  790, 300],
+  ['dShards', 990, 480], ['dShards',1240, 285], ['dFoot',   840, 380],
+  ['kMop',   1400, 300],
+  ['dGrease', 300, 150], ['dGrease', 900, 210], ['dGrease',1150, 120],
+  ['dShards', 620, 180], ['kMop',      40, 120],
+  ['dFoot',   360, 470], ['dGrease', 120, 300], ['dShards', 460, 500],
+  ['dDrag',   200, 640], ['dDrag',   420, 720], ['kKegs',    60, 700],
+  ['dFoot',   270, 590],
+  ['kSacks',  600, 690], ['kSacks', 1330, 660], ['kKegs',  1180, 760],
+  ['dDrag',   840, 770], ['dGrease',1000, 620],
+  ['kPlates', 781, 305], ['kPlates', 883, 305], ['kPlates', 985, 305],
+];
+
+// --- 2. THE BANQUET HALL -----------------------------------------
+// Wide and open with almost nothing to hide behind. Two rows of long
+// tables and a colonnade down the middle, so the cover is all thin.
+const HALL_ZONES = [
+  { x:   0, y:  0, w:1600, h:200, floor:'prep',  name:'THE STAGE' },
+  { x:   0, y:200, w:1600, h:460, floor:'line',  name:'THE BANQUET HALL' },
+  { x:   0, y:660, w: 640, h:280, floor:'pit',   name:'SERVICE PASS' },
+  { x: 640, y:660, w: 960, h:280, floor:'store', name:'THE CLOAKROOM' },
+];
+const HALL_WALLS = [
+  { x:0, y:0, w:1600, h:12, k:'wall' }, { x:0, y:928, w:1600, h:12, k:'wall' },
+  { x:0, y:0, w:12, h:940, k:'wall' },  { x:1588, y:0, w:12, h:940, k:'wall' },
+  // the stage: a long counter across the back with two ways round it
+  { x: 120, y:120, w:520, h:30, k:'counter' },
+  { x: 800, y:120, w:520, h:30, k:'counter' },
+  { x: 700, y: 40, w: 34, h:34, k:'pillar' },
+  { x: 880, y: 40, w: 34, h:34, k:'pillar' },
+  // the colonnade
+  { x: 300, y:300, w:34, h:34, k:'pillar' }, { x: 300, y:520, w:34, h:34, k:'pillar' },
+  { x: 780, y:300, w:34, h:34, k:'pillar' }, { x: 780, y:520, w:34, h:34, k:'pillar' },
+  { x:1260, y:300, w:34, h:34, k:'pillar' }, { x:1260, y:520, w:34, h:34, k:'pillar' },
+  // two rows of banquet tables
+  { x: 120, y:250, w:400, h:44, k:'counter' }, { x: 620, y:250, w:400, h:44, k:'counter' },
+  { x:1120, y:250, w:360, h:44, k:'counter' },
+  { x: 120, y:560, w:400, h:44, k:'counter' }, { x: 620, y:560, w:400, h:44, k:'counter' },
+  { x:1120, y:560, w:360, h:44, k:'counter' },
+  { x: 500, y:390, w:200, h:80, k:'island' },
+  { x: 940, y:390, w:200, h:80, k:'island' },
+  // the wall down to the pass, three doorways
+  { x:  12, y:648, w:220, h:16, k:'wall' },
+  { x: 340, y:648, w:300, h:16, k:'wall' },
+  { x: 760, y:648, w:400, h:16, k:'wall' },
+  { x:1280, y:648, w:308, h:16, k:'wall' },
+  // service pass and cloakroom
+  { x: 620, y:664, w:16, h:100, k:'wall' }, { x: 620, y:840, w:16, h:88, k:'wall' },
+  { x: 120, y:740, w:110, h:70, k:'sink' }, { x: 300, y:740, w:110, h:70, k:'sink' },
+  { x: 760, y:720, w:220, h:36, k:'shelf' }, { x: 760, y:830, w:220, h:36, k:'shelf' },
+  { x:1120, y:720, w:220, h:36, k:'shelf' }, { x:1120, y:830, w:220, h:36, k:'shelf' },
+  { x:1440, y:700, w: 36, h:180, k:'shelf' },
+];
+const HALL_DECOR = [
+  ['dGrease', 400, 180], ['dShards', 900, 340], ['dShards',1350, 470],
+  ['dFoot',   660, 420], ['dDrag',   240, 470], ['dSuds',   210, 800],
+  ['kDrain',  260, 830], ['kMop',    1560, 260], ['kKegs',   1520, 800],
+  ['kSacks', 1040, 790], ['dGrease',1180, 620], ['dShards', 560, 700],
+  ['kPlates', 60, 700],  ['kPlates',1400, 300],
+];
+
+// --- 3. THE LOADING BAY ------------------------------------------
+// Everything is crates. Lots of tight cover, terrible sight lines.
+const BAY_ZONES = [
+  { x:   0, y:  0, w: 760, h:300, floor:'store', name:'THE DOCK' },
+  { x: 760, y:  0, w: 740, h:300, floor:'cold',  name:'CHILL TRAILER' },
+  { x:   0, y:300, w:1500, h:300, floor:'store', name:'THE LOADING BAY' },
+  { x:   0, y:600, w: 700, h:260, floor:'prep',  name:'GOODS IN' },
+  { x: 700, y:600, w: 800, h:260, floor:'pit',   name:'THE WASH DOWN' },
+];
+const BAY_WALLS = [
+  { x:0, y:0, w:1500, h:12, k:'wall' }, { x:0, y:848, w:1500, h:12, k:'wall' },
+  { x:0, y:0, w:12, h:860, k:'wall' },  { x:1488, y:0, w:12, h:860, k:'wall' },
+  { x: 748, y: 12, w:16, h:110, k:'wall' }, { x: 748, y:190, w:16, h:110, k:'wall' },
+  // the dock: stacked crates in rough rows
+  { x:  90, y: 70, w:56, h:56, k:'crate' }, { x: 170, y: 70, w:56, h:56, k:'crate' },
+  { x: 130, y:170, w:56, h:56, k:'crate' }, { x: 330, y: 60, w:56, h:56, k:'crate' },
+  { x: 410, y:140, w:56, h:56, k:'crate' }, { x: 330, y:210, w:56, h:56, k:'crate' },
+  { x: 560, y: 90, w:56, h:56, k:'crate' }, { x: 620, y:190, w:56, h:56, k:'crate' },
+  // the chill trailer
+  { x: 840, y: 70, w:44, h:180, k:'rack' }, { x: 980, y: 70, w:44, h:180, k:'rack' },
+  { x:1120, y: 70, w:44, h:180, k:'rack' }, { x:1300, y: 70, w:44, h:180, k:'rack' },
+  // the bay itself: long shelving runs with gaps
+  { x:  80, y:340, w:300, h:36, k:'shelf' }, { x: 460, y:340, w:300, h:36, k:'shelf' },
+  { x: 900, y:340, w:300, h:36, k:'shelf' },
+  { x:  80, y:520, w:300, h:36, k:'shelf' }, { x: 560, y:520, w:300, h:36, k:'shelf' },
+  { x: 960, y:520, w:380, h:36, k:'shelf' },
+  { x: 700, y:420, w:56, h:56, k:'crate' }, { x: 800, y:430, w:56, h:56, k:'crate' },
+  { x:1240, y:420, w:56, h:56, k:'crate' },
+  { x: 400, y:430, w:34, h:34, k:'pillar' }, { x:1100, y:430, w:34, h:34, k:'pillar' },
+  // the wall down to goods in
+  { x:  12, y:588, w:240, h:16, k:'wall' }, { x: 360, y:588, w:340, h:16, k:'wall' },
+  { x: 820, y:588, w:340, h:16, k:'wall' }, { x:1280, y:588, w:208, h:16, k:'wall' },
+  { x: 688, y:604, w:16, h:90, k:'wall' },  { x: 688, y:770, w:16, h:78, k:'wall' },
+  { x: 100, y:660, w:170, h:52, k:'counter' }, { x: 380, y:660, w:170, h:52, k:'counter' },
+  { x: 100, y:770, w:170, h:52, k:'counter' },
+  { x: 820, y:660, w:110, h:70, k:'sink' },  { x:1000, y:660, w:110, h:70, k:'sink' },
+  { x: 880, y:770, w:180, h:60, k:'island' },
+  { x:1220, y:640, w:36, h:180, k:'shelf' },
+];
+const BAY_DECOR = [
+  ['kSacks',  260, 130], ['kSacks',  480, 230], ['kKegs',   700, 120],
+  ['dDrag',   240, 250], ['dDrag',   520, 400], ['dGrease', 300, 470],
+  ['dFoot',   900, 180], ['dFoot',   640, 470], ['dShards',1160, 250],
+  ['kDrain',  980, 760], ['dSuds',   940, 700], ['dSuds',  1120, 800],
+  ['dShards', 760, 720], ['kMop',    1440, 660], ['kKegs',  1400, 470],
+  ['kSacks', 1340, 120], ['dGrease',1300, 700], ['kPlates', 300, 830],
+];
+
+// --- 4. THE STAFF CANTEEN ----------------------------------------
+// Booth seating: dense, boxy cover in a grid. Good for kiting.
+const CANTEEN_ZONES = [
+  { x:   0, y:  0, w:1400, h:260, floor:'prep',  name:'THE SERVERY' },
+  { x:   0, y:260, w: 900, h:320, floor:'line',  name:'STAFF CANTEEN' },
+  { x: 900, y:260, w: 500, h:320, floor:'cold',  name:'THE VENDING WALL' },
+  { x:   0, y:580, w:1400, h:260, floor:'store', name:'THE BACK BOOTHS' },
+];
+const CANTEEN_WALLS = [
+  { x:0, y:0, w:1400, h:12, k:'wall' }, { x:0, y:828, w:1400, h:12, k:'wall' },
+  { x:0, y:0, w:12, h:840, k:'wall' },  { x:1388, y:0, w:12, h:840, k:'wall' },
+  // the servery counter, one long run with a till gap
+  { x: 100, y: 90, w:380, h:26, k:'counter' }, { x: 580, y: 90, w:380, h:26, k:'counter' },
+  { x:1060, y: 90, w:260, h:26, k:'counter' },
+  { x: 200, y:170, w:110, h:70, k:'sink' }, { x: 700, y:170, w:180, h:60, k:'island' },
+  { x:1100, y:170, w:150, h:60, k:'island' },
+  { x:  12, y:248, w:200, h:16, k:'wall' }, { x: 320, y:248, w:300, h:16, k:'wall' },
+  { x: 720, y:248, w:340, h:16, k:'wall' }, { x:1160, y:248, w:228, h:16, k:'wall' },
+  // booths: pairs of benches in a grid
+  { x: 100, y:310, w:150, h:30, k:'counter' }, { x: 100, y:400, w:150, h:30, k:'counter' },
+  { x: 340, y:310, w:150, h:30, k:'counter' }, { x: 340, y:400, w:150, h:30, k:'counter' },
+  { x: 580, y:310, w:150, h:30, k:'counter' }, { x: 580, y:400, w:150, h:30, k:'counter' },
+  { x: 100, y:480, w:150, h:30, k:'counter' }, { x: 340, y:480, w:150, h:30, k:'counter' },
+  { x: 580, y:480, w:150, h:30, k:'counter' },
+  { x: 820, y:300, w:34, h:34, k:'pillar' },  { x: 820, y:500, w:34, h:34, k:'pillar' },
+  // vending wall
+  { x: 940, y:300, w:44, h:150, k:'rack' }, { x:1040, y:300, w:44, h:150, k:'rack' },
+  { x:1140, y:300, w:44, h:150, k:'rack' }, { x:1260, y:300, w:44, h:150, k:'rack' },
+  { x: 960, y:520, w:220, h:36, k:'shelf' },
+  { x:  12, y:568, w:260, h:16, k:'wall' }, { x: 380, y:568, w:320, h:16, k:'wall' },
+  { x: 800, y:568, w:300, h:16, k:'wall' }, { x:1200, y:568, w:188, h:16, k:'wall' },
+  // back booths
+  { x: 120, y:640, w:170, h:52, k:'counter' }, { x: 400, y:640, w:170, h:52, k:'counter' },
+  { x: 680, y:640, w:170, h:52, k:'counter' }, { x: 960, y:640, w:170, h:52, k:'counter' },
+  { x: 120, y:750, w:170, h:52, k:'counter' }, { x: 400, y:750, w:170, h:52, k:'counter' },
+  { x: 680, y:750, w:170, h:52, k:'counter' }, { x: 960, y:750, w:170, h:52, k:'counter' },
+  { x:1240, y:640, w: 36, h:180, k:'shelf' },
+];
+const CANTEEN_DECOR = [
+  ['dGrease', 420, 200], ['dSuds',   240, 220], ['kDrain',  260, 250],
+  ['dShards', 520, 360], ['dShards', 760, 460], ['dFoot',   300, 440],
+  ['kMop',     60, 200], ['dDrag',   880, 400], ['dGrease',1000, 470],
+  ['kKegs',  1340, 470], ['kSacks',  900, 800], ['dShards',1300, 720],
+  ['dGrease', 620, 800], ['dFoot',   240, 700], ['kPlates', 980, 130],
+];
+
+// --- 5. THE COLD STORE -------------------------------------------
+// A rack maze. Tight lanes, blind corners, nothing is far away.
+const COLD_ZONES = [
+  { x:   0, y:  0, w:1320, h:300, floor:'cold', name:'THE COLD STORE' },
+  { x:   0, y:300, w: 660, h:300, floor:'cold', name:'DEEP FREEZE' },
+  { x: 660, y:300, w: 660, h:300, floor:'pit',  name:'THE THAW ROOM' },
+  { x:   0, y:600, w:1320, h:300, floor:'store',name:'THE BACK STOCK' },
+];
+const COLD_WALLS = [
+  { x:0, y:0, w:1320, h:12, k:'wall' }, { x:0, y:888, w:1320, h:12, k:'wall' },
+  { x:0, y:0, w:12, h:900, k:'wall' },  { x:1308, y:0, w:12, h:900, k:'wall' },
+  // top: five rack aisles
+  { x: 110, y: 60, w:44, h:180, k:'rack' }, { x: 260, y: 60, w:44, h:180, k:'rack' },
+  { x: 410, y: 60, w:44, h:180, k:'rack' }, { x: 560, y: 60, w:44, h:180, k:'rack' },
+  { x: 760, y: 60, w:44, h:180, k:'rack' }, { x: 910, y: 60, w:44, h:180, k:'rack' },
+  { x:1060, y: 60, w:44, h:180, k:'rack' }, { x:1210, y: 60, w:44, h:180, k:'rack' },
+  { x:  12, y:288, w:240, h:16, k:'wall' }, { x: 360, y:288, w:280, h:16, k:'wall' },
+  { x: 760, y:288, w:280, h:16, k:'wall' }, { x:1160, y:288, w:148, h:16, k:'wall' },
+  // deep freeze: cross-hatched racks
+  { x: 100, y:340, w:220, h:36, k:'shelf' }, { x: 400, y:340, w:220, h:36, k:'shelf' },
+  { x: 100, y:520, w:220, h:36, k:'shelf' }, { x: 400, y:520, w:220, h:36, k:'shelf' },
+  { x: 260, y:410, w:44, h:90, k:'rack' },
+  { x: 640, y:304, w:16, h:100, k:'wall' }, { x: 640, y:480, w:16, h:104, k:'wall' },
+  // thaw room
+  { x: 740, y:360, w:110, h:70, k:'sink' }, { x: 920, y:360, w:110, h:70, k:'sink' },
+  { x: 800, y:480, w:180, h:60, k:'island' },
+  { x:1120, y:340, w:36, h:180, k:'shelf' },
+  { x:  12, y:588, w:260, h:16, k:'wall' }, { x: 380, y:588, w:300, h:16, k:'wall' },
+  { x: 780, y:588, w:280, h:16, k:'wall' }, { x:1180, y:588, w:128, h:16, k:'wall' },
+  // back stock: crates and shelving
+  { x: 120, y:660, w:56, h:56, k:'crate' }, { x: 220, y:740, w:56, h:56, k:'crate' },
+  { x: 340, y:660, w:56, h:56, k:'crate' }, { x: 460, y:760, w:56, h:56, k:'crate' },
+  { x: 620, y:650, w:220, h:36, k:'shelf' }, { x: 620, y:780, w:220, h:36, k:'shelf' },
+  { x: 960, y:650, w:220, h:36, k:'shelf' }, { x: 960, y:780, w:220, h:36, k:'shelf' },
+  { x: 900, y:700, w:34, h:34, k:'pillar' },
+];
+const COLD_DECOR = [
+  ['dDrag',   200, 270], ['dDrag',   680, 260], ['dFoot',   340, 150],
+  ['dFoot',   860, 200], ['kKegs',    60, 160], ['kKegs',  1280, 160],
+  ['dSuds',   840, 440], ['kDrain',   880, 430], ['dShards', 700, 520],
+  ['dGrease', 300, 470], ['kSacks',  540, 700], ['kSacks', 1240, 720],
+  ['dShards', 800, 730], ['kMop',      60, 800], ['dGrease',1100, 560],
+];
+
+// --- 6. THE BOILER ROOM ------------------------------------------
+// Cramped, hot and full of pillars. The smallest map in the building.
+const BOILER_ZONES = [
+  { x:   0, y:  0, w:1200, h:260, floor:'line', name:'THE BOILER ROOM' },
+  { x:   0, y:260, w: 600, h:260, floor:'pit',  name:'THE SUMP' },
+  { x: 600, y:260, w: 600, h:260, floor:'line', name:'PLANT ACCESS' },
+  { x:   0, y:520, w:1200, h:240, floor:'prep', name:'THE UNDERCROFT' },
+];
+const BOILER_WALLS = [
+  { x:0, y:0, w:1200, h:12, k:'wall' }, { x:0, y:748, w:1200, h:12, k:'wall' },
+  { x:0, y:0, w:12, h:760, k:'wall' },  { x:1188, y:0, w:12, h:760, k:'wall' },
+  // a forest of pillars
+  { x: 140, y: 70, w:34, h:34, k:'pillar' }, { x: 320, y: 70, w:34, h:34, k:'pillar' },
+  { x: 500, y: 70, w:34, h:34, k:'pillar' }, { x: 680, y: 70, w:34, h:34, k:'pillar' },
+  { x: 860, y: 70, w:34, h:34, k:'pillar' }, { x:1040, y: 70, w:34, h:34, k:'pillar' },
+  { x: 230, y:170, w:34, h:34, k:'pillar' }, { x: 410, y:170, w:34, h:34, k:'pillar' },
+  { x: 590, y:170, w:34, h:34, k:'pillar' }, { x: 770, y:170, w:34, h:34, k:'pillar' },
+  { x: 950, y:170, w:34, h:34, k:'pillar' },
+  { x:  12, y:248, w:180, h:16, k:'wall' }, { x: 300, y:248, w:240, h:16, k:'wall' },
+  { x: 660, y:248, w:240, h:16, k:'wall' }, { x:1020, y:248, w:168, h:16, k:'wall' },
+  // the sump
+  { x: 100, y:320, w:110, h:70, k:'sink' }, { x: 100, y:420, w:110, h:70, k:'sink' },
+  { x: 320, y:340, w:180, h:120, k:'island' },
+  { x: 580, y:264, w:16, h:90, k:'wall' }, { x: 580, y:430, w:16, h:90, k:'wall' },
+  // plant access
+  { x: 660, y:300, w:44, h:150, k:'rack' }, { x: 780, y:300, w:44, h:150, k:'rack' },
+  { x: 940, y:320, w:220, h:36, k:'shelf' }, { x: 940, y:430, w:220, h:36, k:'shelf' },
+  { x:  12, y:508, w:220, h:16, k:'wall' }, { x: 340, y:508, w:260, h:16, k:'wall' },
+  { x: 700, y:508, w:260, h:16, k:'wall' }, { x:1060, y:508, w:128, h:16, k:'wall' },
+  // undercroft
+  { x: 120, y:580, w:56, h:56, k:'crate' }, { x: 240, y:660, w:56, h:56, k:'crate' },
+  { x: 400, y:580, w:170, h:52, k:'counter' }, { x: 400, y:670, w:170, h:52, k:'counter' },
+  { x: 700, y:580, w:220, h:36, k:'shelf' },  { x: 700, y:680, w:220, h:36, k:'shelf' },
+  { x:1040, y:560, w:36, h:180, k:'shelf' },
+  { x: 980, y:620, w:34, h:34, k:'pillar' },
+];
+const BOILER_DECOR = [
+  ['dGrease', 260, 130], ['dGrease', 620, 200], ['dGrease', 900, 130],
+  ['dDrag',   440, 220], ['dShards', 760, 110], ['kMop',     60, 200],
+  ['dSuds',   240, 470], ['kDrain',  250, 440], ['dSuds',   440, 300],
+  ['dShards', 540, 470], ['dFoot',   680, 470], ['kKegs',  1120, 200],
+  ['kSacks',  620, 640], ['dGrease', 880, 700], ['dShards', 180, 720],
+  ['kPlates', 860, 300],
+];
+
+// The building, in the order you fight through it.
+const MAPS = [
+  { id:'kitchen', name:'THE KITCHEN',      w:1440, h:810, spawn:{x:720,y:200},
+    zones:KITCHEN_ZONES, walls:KITCHEN_WALLS, decor:KITCHEN_DECOR, line:'store' },
+  { id:'hall',    name:'THE BANQUET HALL', w:1600, h:940, spawn:{x:800,y:430},
+    zones:HALL_ZONES,    walls:HALL_WALLS,    decor:HALL_DECOR },
+  { id:'bay',     name:'THE LOADING BAY',  w:1500, h:860, spawn:{x:400,y:450},
+    zones:BAY_ZONES,     walls:BAY_WALLS,     decor:BAY_DECOR,     line:'store' },
+  { id:'canteen', name:'THE STAFF CANTEEN',w:1400, h:840, spawn:{x:820,y:420},
+    zones:CANTEEN_ZONES, walls:CANTEEN_WALLS, decor:CANTEEN_DECOR },
+  { id:'cold',    name:'THE COLD STORE',   w:1320, h:900, spawn:{x:680,y:450},
+    zones:COLD_ZONES,    walls:COLD_WALLS,    decor:COLD_DECOR },
+  { id:'boiler',  name:'THE BOILER ROOM',  w:1200, h:760, spawn:{x:600,y:400},
+    zones:BOILER_ZONES,  walls:BOILER_WALLS,  decor:BOILER_DECOR },
+];
+
+// The live map. Everything in the game reads these four, so swapping a map is
+// pointing them somewhere else and baking the background again.
+let MAPI = 0;
+let WORLD = { w: MAPS[0].w, h: MAPS[0].h };
+let ZONES = MAPS[0].zones;
+let WALLS = MAPS[0].walls;
+let SPAWN = MAPS[0].spawn;
+
 // Is the box of half-size `pad` centred on (x,y) inside anything solid?
 function wallAt(x, y, pad){
   const p = pad || 0;
@@ -2496,8 +2769,11 @@ function zoneAt(x, y){
 // --- the whole kitchen, baked once into one big canvas ---
 const bg = document.createElement('canvas');
 bg.width = WORLD.w; bg.height = WORLD.h;
-(function bakeWorld(){
+
+function bakeWorld(map){
   const g = bg.getContext('2d');
+  g.setTransform(1,0,0,1,0,0);
+  g.clearRect(0, 0, bg.width, bg.height);
   const FLOOR = { line:'flLine', prep:'flPrep', pit:'flPit', cold:'flCold', store:'flStore' };
   // Which sprite fills which kind of wall rect. `tile` pieces repeat along the
   // rect's long axis (a counter run, a wall, shelving); the rest are traced at
@@ -2513,7 +2789,7 @@ bg.width = WORLD.w; bg.height = WORLD.h;
     wall:   { sp:'kWall',     tile:1 },
   };
   const t = 24;
-  for (const z of ZONES){
+  for (const z of map.zones){
     const sp = SP[FLOOR[z.floor]] || SP.flLine;
     const nv = (sp.width / t) | 0;
     for (let y = z.y; y < z.y+z.h; y += t) for (let x = z.x; x < z.x+z.w; x += t){
@@ -2534,7 +2810,7 @@ bg.width = WORLD.w; bg.height = WORLD.h;
   // The dry store art has a painted safety line across it. A line that repeats
   // every 24 pixels is not a line, so it is tiled out of the floor and painted
   // once, the full width of the room.
-  const dry = ZONES.find(z => z.floor === 'store');
+  const dry = map.line && map.zones.find(z => z.floor === map.line);
   if (dry){
     g.fillStyle = '#4f4614'; g.fillRect(dry.x+10, dry.y+130, dry.w-20, 5);
     g.fillStyle = '#7d6e20'; g.fillRect(dry.x+10, dry.y+130, dry.w-20, 3);
@@ -2559,10 +2835,11 @@ bg.width = WORLD.w; bg.height = WORLD.h;
   }
 
   g.imageSmoothingEnabled = false;
-  for (const w of WALLS){
+  for (const w of map.walls){
     const k = WK[w.k] || WK.wall;
     // the dish pit island is a different piece of furniture to the prep island
-    const key = (w.k === 'island' && w.x > 700) ? 'kPitIsle' : k.sp;
+    // the dish pit island is a different piece of furniture to the prep one
+    const key = (w.k === 'island' && w.x > map.w*0.5) ? 'kPitIsle' : k.sp;
     const sp = SP[key];
     g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(w.x+3, w.y+5, w.w, w.h);
     if (!sp){ g.fillStyle = '#2e2e3a'; g.fillRect(w.x, w.y, w.w, w.h); continue; }
@@ -2576,35 +2853,48 @@ bg.width = WORLD.w; bg.height = WORLD.h;
   }
 
   // ---- the mess. None of this blocks anything, it is all just floor. ----
-  // Placed by hand rather than scattered at random, so the rooms stay readable
-  // and nothing lands on top of a counter.
-  const DECOR = [
-    // dish pit: drains, spills and the debris of the job
-    ['dSuds',   960, 300], ['dSuds',  1120, 500], ['dSuds',   860, 470],
-    ['kDrain', 1105, 395], ['kDrain',  790, 300],
-    ['dShards', 990, 480], ['dShards',1240, 285], ['dFoot',   840, 380],
-    ['kMop',   1400, 300],
-    // the line: grease, and a mop nobody put away
-    ['dGrease', 300, 150], ['dGrease', 900, 210], ['dGrease',1150, 120],
-    ['dShards', 620, 180], ['kMop',      40, 120],
-    // prep: flour and footprints
-    ['dFoot',   360, 470], ['dGrease', 120, 300], ['dShards', 460, 500],
-    // freezer: drag marks and a stack of kegs by the door
-    ['dDrag',   200, 640], ['dDrag',   420, 720], ['kKegs',    60, 700],
-    ['dFoot',   270, 590],
-    // dry store: sacks, kegs, scrapes
-    ['kSacks',  600, 690], ['kSacks', 1330, 660], ['kKegs',  1180, 760],
-    ['dDrag',   840, 770], ['dGrease',1000, 620],
-  ];
+  const DECOR = map.decor || [];
   for (const [key, x, y] of DECOR){
     const sp = SP[key];
     if (!sp) continue;
     g.drawImage(sp, Math.round(x - sp.width/2), Math.round(y - sp.height/2));
   }
-  // plate racks along the back of the dish pit, where the plates end up
-  for (let i = 0; i < 3; i++)
-    g.drawImage(SP.kPlates, 730 + i*102, 292);
-})();
+}
+
+// Point the world at a different room and bake it. Everything else in the game
+// reads WORLD / ZONES / WALLS / SPAWN, so this is the whole of "changing map".
+function loadMap(i){
+  MAPI = ((i % MAPS.length) + MAPS.length) % MAPS.length;
+  const m = MAPS[MAPI];
+  WORLD = { w: m.w, h: m.h };
+  ZONES = m.zones; WALLS = m.walls; SPAWN = m.spawn;
+  if (bg.width !== m.w || bg.height !== m.h){ bg.width = m.w; bg.height = m.h; }
+  bakeWorld(m);
+  return m;
+}
+
+// Which room the shift is in on a given wave. You work your way through the
+// building and then start round again, so a long run tours the whole place.
+const WAVES_PER_ROOM = 5;
+function mapForWave(n){ return Math.floor((n - 1) / WAVES_PER_ROOM) % MAPS.length; }
+
+// Move the fight to another room: clear the floor, rebake, and put him in the
+// doorway. Everything living is left behind, which is also how it should feel.
+function gotoMap(i, announce){
+  loadMap(i);
+  player.x = SPAWN.x; player.y = SPAWN.y; player.vx = 0; player.vy = 0;
+  enemies = []; ebullets = []; pbullets = []; pickups = [];
+  parts = []; blasts = []; arcFx = null; boss = null;
+  ST.zone = ''; ST.zoneTimer = 0; ST.seen = {};
+  updateCam(0, true);
+  if (announce){
+    ST.banner = MAPS[MAPI].name;
+    ST.bannerTimer = 2.6;
+    SFX.evolve();
+  }
+}
+
+loadMap(0);
 
 // ================================================================
 // INPUT
@@ -2889,7 +3179,6 @@ const WAVE_TIERS = [1, 3, 5, 7, 9, 11, 13, 15];
 const waveCost = w => (w - 1) * 45;
 
 // where he starts: just north of the middle doorway, in THE LINE
-const SPAWN = { x: 720, y: 200 };
 
 const player = {
   x: SPAWN.x, y: SPAWN.y, vx: 0, vy: 0,
@@ -3091,6 +3380,7 @@ function startRun(){
   ST.mode = 'play';
   ST.time = 0; ST.playTime = 0; ST.kills = 0;
   ST.wave = Math.max(0, META.startWave - 1);   // beginWave() adds one
+  gotoMap(mapForWave(Math.max(1, META.startWave)), false);
   ST.runShards = 0;
   ST.waveState = 'clear'; ST.waveTimer = 0.5;
   ST.toSpawn = []; ST.spawnTimer = 0;
@@ -3173,6 +3463,9 @@ function isBossWave(n){ return n % 5 === 0; }
 
 function beginWave(n){
   ST.wave = n;
+  // walked into the next room of the building
+  const want = mapForWave(n);
+  if (want !== MAPI && !ST.tut) gotoMap(want, true);
   if (isBossWave(n)){
     ST.waveState = 'bosswarn';
     ST.waveTimer = 2.2;
