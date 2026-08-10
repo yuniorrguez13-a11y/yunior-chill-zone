@@ -149,6 +149,10 @@ function noise(dur, vol, delay){
 let lastHitSfx = 0;
 const SFX = {
   shoot(){ tone('square', 760, 320, .06, .12); },
+  dash(){ tone('sine', 420, 900, .10, .06); noise(.07, .05); },
+  // the streak sound climbs a semitone at a time, so a long chain sings
+  streak(n){ tone('triangle', 300 * Math.pow(1.0595, n*2), 0, .07, .07); },
+  crit(){ tone('square', 1400, 900, .07, .09); },
   // the reason the gun floats. Three notes, up and then a long fall.
   whistle(){
     tone('sine',  700,  900, .18, .05, 0);
@@ -3138,6 +3142,9 @@ function gotoMap(i, announce){
   enemies = []; ebullets = []; pbullets = []; pickups = [];
   parts = []; blasts = []; arcFx = null; boss = null;
   ST.zone = ''; ST.zoneTimer = 0; ST.seen = {};
+  seedVents(MAPS[MAPI]);
+  seedStation(MAPS[MAPI]);
+  applyMod(rollMod());
   updateCam(0, true);
   if (announce){
     ST.banner = MAPS[MAPI].name;
@@ -3183,6 +3190,7 @@ window.addEventListener('keydown', e => {
   if (k === 'tab' && ST.mode === 'store') e.preventDefault();
   if (e.repeat) return;                              // OS auto-repeat must not re-toggle
   if (k === 'm'){ setMuted(!muted); }
+  if ((k === 'shift' || k === 'q') && ST.mode === 'play'){ tryDash(); }
   if (ST.mode === 'menu'){
     if (k === 'w' || k === 'arrowup')   ST.menuSel = (ST.menuSel + MENU.length - 1) % MENU.length;
     if (k === 's' || k === 'arrowdown') ST.menuSel = (ST.menuSel + 1) % MENU.length;
@@ -3260,6 +3268,7 @@ cv.addEventListener('mousemove', e => {
   }
 });
 cv.addEventListener('mousedown', e => {
+  if (e.button === 2 && ST.mode === 'play'){ tryDash(); return; }
   if (e.button !== 0) return;
   audioInit();
   if (AC && AC.state === 'suspended') AC.resume();
@@ -3405,6 +3414,8 @@ const ST = {
   story: false, chapter: 0, chapSel: 0, storyBeat: 'before', beatLine: 0,
   objDone: 0, objTimer: 0, beatDelay: 0, bossBeaten: false,
   marker: null, trolley: null, objFailed: false,
+  combo: 0, comboT: 0, comboBest: 0, stop: 0, mod: null, crits: 0,
+  shakeOn: true, dmgNums: true,
   best: { wave: 0, kills: 0 },
 };
 try {
@@ -3477,6 +3488,7 @@ const player = {
   xp: 0, level: 1, xpNext: 5,
   aimTrail: [0,0,0],      // recent aim angles, for the gun's motion smear
   recoil: 0,              // counts down after each shot, drives the shoot pose
+  dashT: 0, dashCd: 0, dashA: 0,
   whistling: 0,           // counts down while he is doing the thing
   orbs: 0,                // spare barrels floating around him
 };
@@ -4778,7 +4790,11 @@ function shieldMul(e, fromX, fromY){
   return Math.abs(d) < T.shieldArc ? T.shieldMul : 1;
 }
 
+const CRIT_CHANCE = 0.12, CRIT_MUL = 2.2;
 function damageEnemy(e, dmg, hitX, hitY){
+  // a crit is worth showing: bigger number, brighter, its own sound
+  let crit = false;
+  if (Math.random() < CRIT_CHANCE){ crit = true; dmg *= CRIT_MUL; ST.crits++; }
   const mul = shieldMul(e, hitX, hitY);
   if (mul < 1){
     // clang — sparks off the plates instead of biting
@@ -4791,16 +4807,22 @@ function damageEnemy(e, dmg, hitX, hitY){
     return;
   }
   e.hp -= dmg;
-  e.flash = 0.08;
+  e.flash = crit ? 0.16 : 0.08;
   SFX.hitEnemy();
-  addFloater(hitX, hitY - 6, String(Math.round(dmg)), '#f4c542');
+  if (crit){
+    SFX.crit();
+    spawnParts(hitX, hitY, 5, '#fff0a0', 80);
+    if (ST.dmgNums) addFloater(hitX, hitY - 8, String(Math.round(dmg)) + '!', '#fff0a0', 0.9);
+  } else if (ST.dmgNums){
+    addFloater(hitX, hitY - 6, String(Math.round(dmg)), '#f4c542');
+  }
   if (e.hp <= 0) killEnemy(e);
 }
 
 // Broken plate pieces. The tougher the dishwasher, the more of it there is
 // left on the floor. The Shard Magnet boost tilts the odds.
 function dropShards(e){
-  const mul = player.shardMul || 1;
+  const mul = (player.shardMul || 1) * comboMul();
   let n;
   if (isBoss(e))           n = irand(14, 20);
   else if (e.elite)        n = irand(2, 4);
@@ -4829,6 +4851,8 @@ const DEATH_COLOR = {
 };
 
 function killEnemy(e){
+  bumpCombo();
+  hitstop(isBoss(e) ? 0.16 : 0.035);
   const idx = enemies.indexOf(e);
   if (idx >= 0) enemies.splice(idx, 1);
   // a kettle at the boil goes off whether you shot it or not
@@ -5013,6 +5037,11 @@ function updatePlayer(dt){
 }
 
 function hurtPlayer(dmg){
+  // whatever was nearest is the best guess at what just hit him
+  let near = null, nd = 1e9;
+  for (const e of enemies){ const d = dist2(e.x, e.y, player.x, player.y); if (d < nd){ nd = d; near = e; } }
+  if (near) markHit(near.x, near.y);
+  ST.combo = 0; ST.comboT = 0;
   player.hp -= dmg;
   player.iframe = player.mercy || T.iframes;
   player.flash = 0.25;
@@ -5193,7 +5222,7 @@ function drawHero(key, x, y, face, hover, flash){
 
 function render(){
   sx0 = 0; sy0 = 0;
-  if (ST.shake > 0.1){
+  if (ST.shake > 0.1 && ST.shakeOn){
     sx0 = Math.round(rand(-ST.shake, ST.shake)*0.5);
     sy0 = Math.round(rand(-ST.shake, ST.shake)*0.5);
   }
@@ -5362,7 +5391,15 @@ function render(){
     drawGunRot(SP.gunA, o.x, o.y + b, o.aim || 0);
   }
 
+  renderVents();
+  renderStation();
   if (ST.story) renderObjectiveProps();
+  // the dash trail, drawn behind him
+  for (const g of ghosts){
+    cx.globalAlpha = (g.t / g.max) * 0.45;
+    drawHero(g.key, g.x, g.y, g.face, 0);
+    cx.globalAlpha = 1;
+  }
   drawBeam();
 
   // oil slicks, under everything else because you walk through them
@@ -5459,7 +5496,12 @@ function render(){
   // everything from here on is pinned to the screen, not the kitchen
   cx.setTransform(1,0,0,1,0,0);
   renderOffscreenMarkers();
+  renderDark();
+  renderLowHealth();
+  renderHitMarks();
   renderHUD();
+  renderCombo();
+  renderDashPip();
   if (ST.tut) renderTutorial();
   if (ST.story) renderObjective();
 
@@ -6095,6 +6137,224 @@ function renderStory(){
 }
 
 
+
+// ================================================================
+// THE FEEL LAYER
+// Dash, combo, hitstop, crits, damage direction, low health — the
+// things that are not new content but change how the game plays.
+// ================================================================
+
+// ---- 1. DASH. Shift or right mouse. Costs nothing, but it has a cooldown
+//         and it is the only way to leave a bad spot in a hurry. ----
+const DASH = { time: 0.17, speed: 340, cd: 1.05, iframes: 0.30 };
+function tryDash(){
+  if (ST.mode !== 'play' || player.dashCd > 0 || player.dashT > 0) return;
+  let ax = 0, ay = 0;
+  if (keys['a'] || keys['arrowleft'])  ax -= 1;
+  if (keys['d'] || keys['arrowright']) ax += 1;
+  if (keys['w'] || keys['arrowup'])    ay -= 1;
+  if (keys['s'] || keys['arrowdown'])  ay += 1;
+  if (usingTouch && touch.active){ ax = touch.dx; ay = touch.dy; }
+  // no direction held: dash where he is looking
+  if (!ax && !ay){ ax = Math.cos(player.aim); ay = Math.sin(player.aim); }
+  const m = Math.hypot(ax, ay) || 1;
+  player.dashA = Math.atan2(ay/m, ax/m);
+  player.dashT = DASH.time;
+  player.dashCd = DASH.cd;
+  player.iframe = Math.max(player.iframe, DASH.iframes);
+  SFX.dash();
+}
+function updateDash(dt){
+  player.dashCd = Math.max(0, player.dashCd - dt);
+  if (player.dashT > 0){
+    player.dashT -= dt;
+    const s = DASH.speed * (0.35 + player.dashT / DASH.time);
+    moveCircle(player, Math.cos(player.dashA)*s*dt, Math.sin(player.dashA)*s*dt, 6);
+    // a trail of him, fading
+    if (Math.random() < 0.9)
+      ghosts.push({ x: player.x, y: player.y, face: player.face,
+                    key: heroFrame(), t: 0.22, max: 0.22 });
+  }
+}
+let ghosts = [];
+function updateGhosts(dt){
+  for (let i = ghosts.length-1; i >= 0; i--)
+    if ((ghosts[i].t -= dt) <= 0) ghosts.splice(i,1);
+}
+
+// ---- 2. COMBO. Kills inside a window stack up and pay more shards. ----
+const COMBO_WINDOW = 2.6;
+function bumpCombo(){
+  ST.combo++;
+  ST.comboT = COMBO_WINDOW;
+  if (ST.combo > ST.comboBest) ST.comboBest = ST.combo;
+  // the pitch climbs with the streak, which is most of the reward
+  if (ST.combo > 1) SFX.streak(Math.min(ST.combo, 16));
+}
+function comboMul(){ return 1 + Math.min(ST.combo, 25) * 0.06; }
+function updateCombo(dt){
+  if (ST.comboT > 0){
+    ST.comboT -= dt;
+    if (ST.comboT <= 0){
+      if (ST.combo >= 6) addFloater(player.x, player.y - 26, ST.combo + ' STREAK', '#ffc02a', 1.4);
+      ST.combo = 0;
+    }
+  }
+}
+
+// ---- 3. HITSTOP. A couple of frames of freeze on a kill, more on a boss.
+//         Nothing sells a hit like the game stopping for a moment. ----
+function hitstop(s){ ST.stop = Math.max(ST.stop, s); }
+
+// ---- 4. DAMAGE DIRECTION. An arc at the screen edge pointing at whatever
+//         just hit you, because off-screen damage is otherwise a mystery. ----
+let hitMarks = [];
+function markHit(x, y){ hitMarks.push({ a: Math.atan2(y - player.y, x - player.x), t: 0.9 }); }
+function updateHitMarks(dt){
+  for (let i = hitMarks.length-1; i >= 0; i--)
+    if ((hitMarks[i].t -= dt) <= 0) hitMarks.splice(i,1);
+}
+function renderHitMarks(){
+  for (const m of hitMarks){
+    cx.globalAlpha = (m.t / 0.9) * 0.75;
+    cx.strokeStyle = CRIMSON; cx.lineWidth = 4;
+    cx.beginPath();
+    cx.arc(W/2, H/2, Math.min(W,H)/2 - 6, m.a - 0.22, m.a + 0.22);
+    cx.stroke();
+    cx.globalAlpha = 1;
+  }
+}
+
+// ---- 5. LOW HEALTH. A red vignette and a heartbeat under two hearts. ----
+function renderLowHealth(){
+  if (ST.mode !== 'play' || player.hp > 2 || player.hp <= 0) return;
+  const p = 0.5 + Math.sin(ST.time * (player.hp <= 1 ? 7 : 4.5)) * 0.5;
+  const g = cx.createRadialGradient(W/2, H/2, H*0.28, W/2, H/2, H*0.75);
+  g.addColorStop(0, 'rgba(232,22,42,0)');
+  g.addColorStop(1, 'rgba(232,22,42,' + (0.16 + p*0.20).toFixed(3) + ')');
+  cx.fillStyle = g;
+  cx.fillRect(0, 0, W, H);
+}
+
+// ---- 6. STEAM VENTS. Every room gets a few. They huff on a cycle and you
+//         learn the rhythm; standing in one is your own fault. ----
+let vents = [];
+function seedVents(map){
+  vents = [];
+  const n = 3 + (MAPI % 3);
+  for (let i = 0; i < n*14 && vents.length < n; i++){
+    const x = rand(60, map.w-60), y = rand(60, map.h-60);
+    if (!clearSpot(x, y, 26)) continue;
+    if (vents.some(v => dist2(v.x, v.y, x, y) < 200*200)) continue;
+    vents.push({ x, y, t: rand(0, 3.4), period: rand(3.2, 4.6), on: 0 });
+  }
+}
+function updateVents(dt){
+  for (const v of vents){
+    v.t += dt;
+    if (v.t > v.period){ v.t = 0; v.on = 0.9; SFX.bubble(); }
+    if (v.on > 0){
+      v.on -= dt;
+      if (Math.random() < 0.8) spawnParts(v.x + rand(-8,8), v.y + rand(-8,8), 1, '#c9ced9', 30);
+      if (player.iframe <= 0 && dist2(player.x, player.y, v.x, v.y) < 20*20) hurtPlayer(1);
+      for (const e of enemies.slice())
+        if (dist2(e.x, e.y, v.x, v.y) < 20*20) damageEnemy(e, 9*dt, v.x, v.y);
+    }
+  }
+}
+function renderVents(){
+  for (const v of vents){
+    const warn = v.t > v.period - 0.7 && v.on <= 0;
+    cx.globalAlpha = v.on > 0 ? 0.55 : (warn ? 0.20 + Math.sin(ST.time*24)*0.12 : 0.12);
+    cx.strokeStyle = v.on > 0 ? '#e6eaf1' : '#79c7f0';
+    cx.lineWidth = v.on > 0 ? 3 : 1;
+    cx.beginPath(); cx.arc(v.x, v.y, v.on > 0 ? 20 : 12, 0, TAU); cx.stroke();
+    cx.globalAlpha = 0.5;
+    cx.fillStyle = '#2a2e38';
+    cx.fillRect(v.x-5, v.y-5, 10, 10);
+    cx.globalAlpha = 1;
+  }
+}
+
+// ---- 7. HEALTH STATION. One per room, one use. Somewhere to aim for. ----
+let station = null;
+function seedStation(map){
+  station = null;
+  for (let i = 0; i < 300; i++){
+    const x = rand(60, map.w-60), y = rand(60, map.h-60);
+    if (!clearSpot(x, y, 22)) continue;
+    if (dist2(x, y, map.spawn.x, map.spawn.y) < 260*260) continue;
+    station = { x, y, used: false };
+    return;
+  }
+}
+function updateStation(dt){
+  if (!station || station.used) return;
+  if (dist2(player.x, player.y, station.x, station.y) < 18*18 && player.hp < player.maxhp){
+    station.used = true;
+    player.hp = Math.min(player.maxhp, player.hp + 2);
+    addFloater(player.x, player.y - 16, '+2 HEARTS', '#6ad07a', 1.6);
+    spawnParts(station.x, station.y, 18, '#6ad07a', 70);
+    SFX.heart();
+  }
+}
+function renderStation(){
+  if (!station) return;
+  const c = station.used ? '#3f4450' : '#6ad07a';
+  cx.strokeStyle = c; cx.lineWidth = 1;
+  cx.strokeRect(station.x-8.5, station.y-8.5, 17, 17);
+  cx.fillStyle = c;
+  cx.fillRect(station.x-5, station.y-1.5, 10, 3);
+  cx.fillRect(station.x-1.5, station.y-5, 3, 10);
+  if (!station.used){
+    cx.globalAlpha = 0.25 + Math.sin(ST.time*3)*0.15;
+    cx.strokeStyle = c;
+    cx.beginPath(); cx.arc(station.x, station.y, 14, 0, TAU); cx.stroke();
+    cx.globalAlpha = 1;
+  }
+}
+
+// ---- 8. ROOM MODIFIERS. Each room rolls one, so the same room is not the
+//         same fight twice. ----
+const MODS = [
+  { id:'none',  name:'',                 desc:'' },
+  { id:'dark',  name:'THE LIGHTS ARE OUT',desc:'YOU CANNOT SEE FAR' },
+  { id:'wet',   name:'WET FLOOR',         desc:'EVERYTHING SLIDES' },
+  { id:'swarm', name:'RUSH HOUR',         desc:'MORE OF THEM, WEAKER' },
+  { id:'elite', name:'SPLIT SHIFT',       desc:'FEWER OF THEM, NASTIER' },
+  { id:'steam', name:'THE PIPES WENT',    desc:'VENTS EVERYWHERE' },
+];
+function rollMod(){
+  // no modifier at all on the first room of a run, and never in the tutorial
+  if (ST.tut || ST.wave <= 2) return MODS[0];
+  return Math.random() < 0.55 ? MODS[0] : pick(MODS.slice(1));
+}
+function applyMod(m){
+  ST.mod = m;
+  if (m.id === 'steam'){
+    const extra = 5;
+    for (let i = 0; i < extra*14 && vents.length < 3 + extra; i++){
+      const x = rand(60, WORLD.w-60), y = rand(60, WORLD.h-60);
+      if (!clearSpot(x, y, 26)) continue;
+      vents.push({ x, y, t: rand(0,3), period: rand(2.6,3.8), on: 0 });
+    }
+  }
+  if (m.id !== 'none'){
+    ST.banner = m.name; ST.bannerTimer = 2.4;
+    addFloater(player.x, player.y - 30, m.desc, '#79c7f0', 2.4);
+  }
+}
+// the dark modifier: everything outside a radius around him gets painted over
+function renderDark(){
+  if (!ST.mod || ST.mod.id !== 'dark') return;
+  const sx = player.x - cam.x, sy = player.y - cam.y;
+  const g = cx.createRadialGradient(sx, sy, 40, sx, sy, 150);
+  g.addColorStop(0, 'rgba(4,4,8,0)');
+  g.addColorStop(0.7, 'rgba(4,4,8,0.72)');
+  g.addColorStop(1, 'rgba(4,4,8,0.94)');
+  cx.fillStyle = g; cx.fillRect(0,0,W,H);
+}
+
 // ================================================================
 // STORY MODE
 // Twelve chapters through the building. A chapter is data: which room,
@@ -6381,6 +6641,29 @@ function renderObjective(){
   cx.lineWidth = 1;
   cx.strokeRect(W/2 - w/2 + 0.5, 30.5, w-1, 12);
   drawText(t, W/2, 34, 1, ST.objDone ? '#6ad07a' : '#dfe3ea', 'center');
+}
+
+// the streak counter, and the dash cooldown pip
+function renderCombo(){
+  if (ST.combo < 2) return;
+  const a = Math.min(1, ST.comboT / 0.6);
+  cx.globalAlpha = a;
+  drawText('x' + ST.combo, W - 8, 40, 2, ST.combo >= 10 ? '#ffc02a' : '#dfe3ea', 'right');
+  cx.fillStyle = ST.combo >= 10 ? '#ffc02a' : '#79c7f0';
+  cx.fillRect(W - 46, 54, 38 * (ST.comboT / COMBO_WINDOW), 2);
+  cx.globalAlpha = 1;
+}
+function renderDashPip(){
+  if (ST.mode !== 'play') return;
+  const ready = player.dashCd <= 0;
+  const x = 8, y = H - 30;
+  cx.fillStyle = ready ? '#79c7f0' : '#2f333c';
+  cx.fillRect(x, y, 22, 3);
+  if (!ready){
+    cx.fillStyle = '#4a5262';
+    cx.fillRect(x, y, 22 * (1 - player.dashCd / DASH.cd), 3);
+  }
+  drawText('DASH', x, y - 8, 1, ready ? '#79c7f0' : '#3f4450');
 }
 
 function renderChapters(){
@@ -6701,6 +6984,8 @@ function tick(dt){
   ST.bannerTimer = Math.max(0, ST.bannerTimer - dt);
   ST.zoneTimer = Math.max(0, ST.zoneTimer - dt);
   if (ST.mode !== 'play') return;
+  // hitstop: a couple of frames of nothing at all, which is what sells a kill
+  if (ST.stop > 0){ ST.stop -= dt; return; }
   ST.playTime += dt;
   if (ST.tut) updateTutorial(dt);
   else if (ST.story){ if (!ST.objDone) updateWaves(dt); updateStory(dt); }
@@ -6714,6 +6999,12 @@ function tick(dt){
   collidePlayerBullets();
   updateBlasts(dt);
   updateSlicks(dt);
+  updateDash(dt);
+  updateGhosts(dt);
+  updateCombo(dt);
+  updateHitMarks(dt);
+  updateVents(dt);
+  updateStation(dt);
   if (arcFx && (arcFx.t -= dt) <= 0) arcFx = null;
   updatePickups(dt);
   updateParts(dt);
