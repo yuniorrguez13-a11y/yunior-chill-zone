@@ -1205,6 +1205,149 @@ const SP = {};
     "...R...",
   ],{R:CRIMSON,r:'#ff7080'});
 
+  // --- the floors: one strip per room, four 24x24 variants side by side.
+  //     Every variant shares the same outer ring of pixels, so they butt up
+  //     against each other in any order without a seam showing. ---
+  SP.flLine = makeSprite([
+    "aabcbabbdbbbbbefbabbbgaaaabcbabbdbbbbbefbabbbgaaaabcbabbdbbbbbefbabbbgaaaabcbabbdbbbbbefbabbbgaa",
+    "aghibgjcckiiilllibhckhbaabhjcjicbjcgliiiibbjficaabcjjhhjcfbbcgjhjfgcjjcaadjjcebcbcbejjjjccffhcba",
+    "cliilllllihilllllllliihccfjillllliilllllllliiilcccjhhhjhhhhhhhhhhhjjhhjccbjhhhjfcffjjjcfjjhhhhcc",
+    "cillllliiiiiiillliiiilccccjilillillllllliilihiiccbjhhhhhjjhjjhhjhjjjjjjccbjhjhhhjjjhjjjjhhhjhhjc",
+    "billllllliiiillllllillkbbflllllllllllllillllilibbchhhhhjfjjhhhhhjjhhjhjbbfhhhhjjjjjjhjhhhjjhhjfb",
+    "clliilllllliilillllllllccilllllllllllllllilllliccjhhhhjffffjhhhjjjhhjhjccfhhhjffjjffjhhhhjfjhjjc",
+    "bllikilllllllllllllllllbbilllilllllllliillllllibbjhhhhjfjjfjhjhhhhhhjjcbbjhhhjfcffcfjhhhjfjjhhfb",
+    "bilkkillllllllllllllllibbllllllllllllliilllllikbbjhhjhhjjjjjhhhhhhjhhhhbbchhhjjjccfhhhhjjffjhhjb",
+    "cilikilllllllillikillllccillllllllllllllllliiifccchhhhhjjhjhhhhhhhhhjjjccbjjjhhjjcchhhhhhjjjhhjc",
+    "bkliiilllllllllikhhillfbbiiikillliillllikiikiiibbchhhhhhhjhhhjhhhhhhhhjbbcjfjhhhhjjhhhhhhhhjjhfb",
+    "bfillllllllllliikkiiiifbbilkkillliillllliiikkiibbhhhhhhhhjjhjjhhhjfjhhhbbejjjhhhhhhhhhhhhhhhjhcb",
+    "bflllllllllllliikiillllbbiikiillllllllllikihkiibbjhhhjjhhhhhhhhhjffjjhhbbejjjhhhhhhhhhhhhjhhjhjb",
+    "biiiilllllllliiiikilllibbiliilllllllllllikiikiibbjhjjffjhhhhhhhhjfjjjhjbbjjhhjhhhhhjjhhhhfhhhjjb",
+    "clllllllllllliklliillllccilikillllllllllliiiilkccjjjcfjjhhhhhhhhhjjhhhfccjjjjjhhhhhjjhhhhjhjhjjc",
+    "bilillllllllllllllllillbbbllilllliillllllliillkbbjhjfmjhhhhhhhhhhhhhhhjbbfjfjhhhhhhhhhhhhhhjhhjb",
+    "clliillllkillllliilllliccclllillikiillllllliiliccjhhjjjhhhhhjjjhhhhhhhhccjjjhhhhhhhjjjhhhhhjjhhc",
+    "blllliilliilllllllllllibbilllilikiiilllllllillibbjhhjjhhhhhjjjjhhhhhjhhbbjjjhhhhhhhjjcfjhhhjjhjb",
+    "bjllilllllilllllllllilfbbllllllliiilllllllllliibbhhhhhhhhjjhjjhhhjhhjhjbbjjhhhhhhhjjjfcjjhhjhhfb",
+    "bgillllllllllllllllliijbbillliklliillllllillllibbjhhhhhhhhhhhhhhjfjhhhcbbjhjhhhhhjfcjcfcjhhjjhjb",
+    "bciiliililliiillllllilcbbillllilllllllllliilllibbecjhhhhhhhjhhhhhjjhjhjbbjjfjhhhjhjccjjfjhhhjhfb",
+    "billlllliiiiikilllllilkbbllllllllllliillllillllbbgcjjjhhhhhhhhhhhhhhhhcbbjjfjhhhhhhjffjjjhhhjhcb",
+    "billlllllikikillllllllcbbcfjllllllllllllllllllkbbjjhhhhhhhhhhhhhhhhhhhfbbfhjjhhhhhhjjfjhhhhhjhjb",
+    "dffiiiiiijjkilfcjjjikicddccciiiggiiiiiffjjikkkcddbcccjjhhfbejhhjjhffhcbddbcjjjhjhjhjjchjjfhjjjcd",
+    "aabcbabbdbbbbbefbabbbgaaaabcbabbdbbbbbefbabbbgaaaabcbabbdbbbbbefbabbbgaaaabcbabbdbbbbbefbabbbgaa",
+  ],{a:'#080808',b:'#101008',c:'#181810',d:'#100808',e:'#181010',f:'#201810',
+     g:'#181008',h:'#282018',i:'#302820',j:'#202018',k:'#282820',l:'#303020',
+     m:'#201818'});
+
+  SP.flPrep = makeSprite([
+    "aaaabaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaa",
+    "acccccddddddcddccdcdcccaaccccddcddcdcdecddddddcaadcccdddddddcddcdcdccccaaccccddddddddddcdcddcdda",
+    "adddcddddcddcddccddddddaacddcdddcdefcddcdddddddaacddccdddddccddcccdddddaacddcddcdddccddcddddddda",
+    "adddcddddcdfcdddcddddcdaadddcddddcefcddddddcdddaaddccddcdcddcddddddcdcdaadddcdddddddcdddddccdcda",
+    "adccdccddccecdccddccddcaaddccccdddcdddcdddccddcaaccccccdcccdddcdddccddcaacccddcdcdcdddcdddcdcdca",
+    "addcddcdccccdccddcddcddaaddccdcdcdccdcccddcccccaacdccdcdccdcdccdddcccddaaddccdcdcddcdccdddcdccda",
+    "acccddcdddecdcdddcdecddaacccddcdddfcfcdddcddcddaacccddcddddcdcdddcdddedaacccddcddddcdcdddcddcdda",
+    "addddcccdccddcddccdcdddaacddddccdccddcddcdddccdaaddddcccccdddddccddccddaadddddccdccddcdcccdcccda",
+    "accdddcdddccddcccdccdccaaccddccdddcccdcccdccddcaaccddccddddccdcccdccddcaaccddccddddccdcccdccddca",
+    "bccdddcdcddcddcccddcdccbbccddcddcdcccdccccccdccbbdccddcdcdddddddccccdccbbdcdddddcddddddccddddddb",
+    "bddddddcccccccccddddcfcbbddddddcccccccccddcdcddbbdddddccccccdccddecddddbbddddddccccddcccddddddcb",
+    "acdcccccddddcccddccdcdcaacccccccddddcdcddccdcddaadccccccddddddcddccfcdcaaccccdccddddcddddcddcdda",
+    "acfcfddcddccccddcddcdccaacdceddcdccdcddccddcddcaadfddceddccdccdccdccddcaacdddcdcddddcddccddcddca",
+    "addccddcccdcccdddddddccaacdccddcdddcccddddddddcaacdccddcdddcccddddcfdcdaacdccddccddcddddddddddda",
+    "adcdddddccddcdcddccccdcaadddddfdccddddcdddcccdcaadddccddcdddcdcdddcccdcaadcdddedcdddddcddcccddda",
+    "addcddcddccfcdcccdcdcddaadddddcddddddddccdddcddaadddddcddcddddcccdcddddaadddddcdddddcddccdddccda",
+    "acddcddddcccdcddccdddcdaadccdddddcdcdcddccdddddaaddddddddddcdcddccdcdcdaacddcddddcdddcddccdddcda",
+    "aceeddeccccddcccccccddcaaddecceccddcdccdccdcdcdaadddccdccddcdccdccdcdccaaddedcdccddddcdfccddddda",
+    "addcdecddddcdccddccccdcaaddcddcddddcddcddddcddcaaddcddcddddcddcddcccddcaadddddcddddcddcddcccddca",
+    "adccddcccccddcdcccdccccaacccedcccccddcdcccddcccaadddddcccdddddccccddcccaacccddccdccddcccccddccca",
+    "adddcdddcddddcdccddcdccaadddddeccccddcdccdddddcaaddddddccccddcddcddddccaaddddddccccddcdccdddcdca",
+    "adccdccdcddcddcdccdccdcaadccccdddcdcddcdcddcdddaadcccddddddcddcdcddccdcaadcddddddcdcddcdcccccdca",
+    "acedddccddcccdcddcddcddaacddcddcddcccdcddcddcddaadddccdcdccccdcddcfdddcaadeddcccccccddcddcddcdda",
+    "aaaabaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaa",
+  ],{a:'#282828',b:'#202020',c:'#403838',d:'#383838',e:'#303030',f:'#383830'});
+
+  SP.flPit = makeSprite([
+    "abbaacaaacccaadeeaaaaeeaabbaacaaacccaadeeaaaaeeaabbaacaaacccaadeeaaaaeeaabbaacaaacccaadeeaaaaeea",
+    "bbfbgghhhghgggggghgggggbbbhbghbbbbggbbbbhbbhghbbbhgggggggggggggggggggffbbiaiccicccaaaccaeddaaabb",
+    "bbfbggggggggeeeeeggggggbbaaacaaccaddaccccciiaagbbgggggggggggggbbgggggbfbbaccccicccccaacaeacaccgb",
+    "ahgadeddadeaccccaaaccaaaadedaciiiaaaaciiiiiciagaaaicciiaaaaaadeadaaddgbaaicccciccccccccaeiccciga",
+    "aggeddedaaeaccccccciiadaaaeaacciiccacciiiccacceaaaacciiicaddddeddddaeggaaiccciiccaaciiaedciiiiga",
+    "dggedddacaaacccciiiiiaadddeacccccccccciaacadacgddjaccciicaaaaddaaedadegddicccciccadaadeaiciicagd",
+    "aggeeddacccccccciiiiiccaaadaaccccccccciaacadaagaadacccciccccaddaaddadegaaccccciccaeeeeaciciicaga",
+    "dhgeeaaciaaccccciiiiiicddaaaaccccccccccccccaacgdddacccciiicccaddddddegbddcccccicaceeeccccccccced",
+    "dggddacccaaacccccccciiaddaaacccccccccccccacaaagddaacccciaacccaddddddaehddacccccccaeecccccccccced",
+    "aggaaccccaacaaccacccciaaaaaacccccccciiicaaaaddgaaaaccccadacccadddddaaebaaaccccccaedcciicccccaaea",
+    "aggaccccccaiiciiacaaiiiaaaccccccccacciicaedddaeaaaacccccaaccaaadddaaagbaaicccceegkdcciiiiaadaaea",
+    "abgacccccciiiaiiicaaiicaaacccacccccccccaddedddkaaaaccccccaaadaddddacagbaaicccaeegaaciiiiccaddaea",
+    "abgacciiiiicccccaiaacicaaacccccccaaccccaaeeeddeaaaaacccccaddddjjdaaacebaaiideedaeaacciiiiaadaaga",
+    "aggaacciiiicccccciiacccaaicacccccadacaaaeeeedaeaaadaaccccaddddddjdaaaebaaddedaaaedcccciccadddaga",
+    "cggadaiiiiaccciiiicaccccciadacccaddacaddddadddeccaaaciiiaaddddaadeaaaebcceacccccdedaccaaaaddddgc",
+    "cggadaiiiiacciiiiciccccccadddaacaaaacaadddadddkccaacciiiadddddaaeedaagbccecccccccaeaccadaaadddgc",
+    "cgbadaccciaccciiiciicccccaddaaaaacccadeedeeddagccaaaaiiicadaddddeeaaagbccaccccccccedcaddaaddddec",
+    "aghaacccccaaccicciiccccaaaeaaaaaaaacaedddeedddgaadddaacccaaaadaaddacagbaacccciiicaedccaaaddddaea",
+    "aggacccccciiccccciiacccaadedaaaaaaacaaaddddaadeaaddddaacccaaaaaaaaacaebaacciiiiicaeccccaadddaaea",
+    "chgaccaccciiicciiicccccccdeddaaaaaacccadeddaaaeccadddaaacccaaacccaacaebccaciiiiccaacccaddddaaaec",
+    "ahgciaaccccciiiciicccaaaadadeaacaaacccaeeedaacgaaddddddaccccacccccccaelaaaiiiaaccccccadeeddaccea",
+    "cggiiaaciicccccccccaaddccaeeedaccaacccadeddaaagccddddddaaacccccciicaaehccaciaaaacccccadeedddaaec",
+    "aggaccciiiiicccccccaaddaaaeeddaaaaaaacaaaaaaaabaadddddaadacccaaaciiaaehaabggggggeeeeeeeeeeeeegba",
+    "abbaacaaacccaadeeaaaaeeaabbaacaaacccaadeeaaaaeeaabbaacaaacccaadeeaaaaeeaabbaacaaacccaadeeaaaaeea",
+  ],{a:'#303840',b:'#182028',c:'#304040',d:'#283840',e:'#283038',f:'#182020',
+     g:'#202830',h:'#202828',i:'#384048',j:'#283040',k:'#203038',l:'#202028'});
+
+  SP.flCold = makeSprite([
+    "abcdedecccacccceccdccacaabcdedecccacccceccdccacaabcdedecccacccceccdccacaabcdedecccacccceccdccaca",
+    "cffegggggffgffffffggfffccggfgggffgggggggggfgffeccggggggffggfffffffgggggccgffgggggfgggfffffgghfic",
+    "cffgggggggggggggggggggfccfffgggggggggggggggggffccfgggggggggggggggggggggccgggggggggggggggggggggfc",
+    "cegffggggggggggggggggggccfgggggggggggggggggggggccfgfggggggggfggffggggggccgggggggggggfggffggggggc",
+    "dggffggggggggggfgggggggddgggfffggggggggggggggggddfgfgggggggfgggffggggggddgggggggggggggggfggggggd",
+    "cfgggggggggggggfgggggggccgggfffggggggggggggggggccggggggggggggggggggggggccggggggggggggggggggggggc",
+    "efggggggggggffffgggggggeefgggggggggggggggggggggeeggggggggggggggggggggggeegggfgggggggggggggggggge",
+    "eggfgggggggggfffgggggggeefgggggggggggggfgggggggeeggfgggggggggggggggggggeefggggggggggggggggggggfe",
+    "dfgggggggggggggggggggggddfgggggggggggggffggggggddfgfgggggggggggggfggggfddfgggggggggggggggggggffd",
+    "cfgggggggggggggggggggggccfgggggggggggggggggggggccggggggggggggggggfgggggccfggggggggggggggggggffgc",
+    "iggggggggggggggggggggggiifgggggggggggggggggggggiiggggggggggggggggggggggiigggggggggggggggggggggfi",
+    "dggggggggggggggggggggggddggggggggggggggggggggggddggggggggggggggggggggggddgggggggggggggggeddggggd",
+    "cfgggggggggggggggggggggccggggggggggggggggggggggccggggggggggggggggggggggccgggggggggggggacjjcceggc",
+    "cfgggggggggggggggggggggccfgggggggggggggggggggggccggggggggggggggggggggggccggggfggggggggcbbbbkcegc",
+    "efggggggggggggggfegggggeeggggggggggggggggggggggeeggggggggggggggggggggggeeggggggggggggcjbbbbbjege",
+    "dgggggggffggggggffgggggddgggggggggggggggggggggfddfgggfgggggggggffggggggddggggggggggggddbbbbbcegd",
+    "dfggggggffggggggggggggfddggggggggffgggggggggfgfddggfffggggggggggfggggggddggggggggfgggcjcbbbbccgd",
+    "dfggggggggggggggggggggfddgggggggggggggggggggggfddggfffgggggggggggggggggddfgggggffffgfcecjbbbcegd",
+    "cffggfggggggggggggggggfccgggfggggggggggggggggggccgggggggggggggggggggggfccgfggggflffggfhcbbbbbdgc",
+    "cggggfffgggggggggggggggccfgggggggggggggggggggggccfggggggggggggggggggggfccfgggggfffgggggcdbbdeigc",
+    "afgggfffggggggggggggfggaafggggggggfggggggggggggaafgggggggfggggggggggffgaaffggggggggggggcjbbcfgga",
+    "jfggggggggggggggggggffgjjggggggggggggggggggggggjjgggggggggggggggggggfffjjgfgggggggggggfaeideggfj",
+    "aeegggggggggggggffgffgfaagggggggggggggggggfggffaaggggggggffggggggggggfgaagggffgggfggggffffffgffa",
+    "abcdedecccacccceccdccacaabcdedecccacccceccdccacaabcdedecccacccceccdccacaabcdedecccacccceccdccaca",
+  ],{a:'#303840',b:'#383838',c:'#383840',d:'#384040',e:'#384048',f:'#404850',
+     g:'#484850',h:'#404848',i:'#404048',j:'#303838',k:'#303038',l:'#384850'});
+
+  SP.flStore = makeSprite([
+    "aaaaaaaaaaaabaacaaaaaaaaaaaaaaaaaaaabaacaaaaaaaaaaaaaaaaaaaabaacaaaaaaaaaaaaaaaaaaaabaacaaaaaaaa",
+    "aaaaaaaabcbaaaaaaaaaaaaaaaaadaaeaaaaaaaaaaaaaaaaaabbabaafaaaaaaadaaaaaaaaaaaaaaaaaaaaaabcaaaaaaa",
+    "gabaaaaccaaaaaaabaaaaaaggaaaaaaaaaaaaaaaaaaaaaaggddagbabaaaaaaaaaaaaaaaggaaaaaaaaaaaaaaacaaaaaag",
+    "baaaaaaaaaabcaaagaaaaaabbaaacaaaaaaaaaaaaaaaaaabbdddccfaaaaaafdaaaaaaaabbaaaaaaaaaaaaaaaaaaaaaab",
+    "aabaaaggcbbcgbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaddfaaaaafdfaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "ggggggggbaaaaaaaaaaaaadggaaaaaaaaaaaaaaaaaaaaaaggadaabaadafdaaaaaaaaaaaggaaaaaaaaaaaaaaaaaaaaaag",
+    "ccbbbaaaaaaaaaaaaaaaaaaccaaaaaaaaaaaaaaaaaaaaaaccdababadadddaaaaaaaaaaaccaaacgbgaaaaaaaaaaaaaaac",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaabaaaaaaaaaaaaaaaaaaaaadabadddddaaaaaaaaaaaaaaaaaggghaaaaaaaaaacaaaaa",
+    "bgabgcaaabaaaaaaaaaaaaabbaaaaaaaaaaaaaaaaaaaaaabbaaaaddffaaaaaaaaaaaaaabbgagaggaaaaaaaaaaaaaaaab",
+    "baaacfdfdaaaaaaaaaaaaaabbaaaaaaaaaaaaaaaaaaaaaabbaafdfabaaaaaaaaaaaaaaabbeeaaaagaaaaaaaaaaaaaaab",
+    "ggggggaaaaaaaaaaaaaaaaaggaaaaaaaaaaaaaaaaaaaaaaggaddfacaaaaaaaaaaaaaaaaggabgbcaaaaaaaaaaaaaaaaag",
+    "aaaadaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaafdacaaaaaaaaaaaaaaaaaaaacccacaaaaaaaaaaaaaaaaaa",
+    "aabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaafagbaaaaaaaaaaaaaaaaaaaahacaaaaaaaaaaaaaaaaaaaa",
+    "bgcccgbgaaaaaaaaaaaaaaabbaaaaaaaaaaaaaaaaaaaaadbbbbaaaaaaaaaaaaaaaaaaaabbccbcbaaaaaaaaaaaaaaaaab",
+    "abhgggaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcaaacaaaaaaaaaaaaaaaaaaaaaaaaaabaggaaaaaaaaaaaaaaaa",
+    "cahiigaaaaaaaaaaaaaaaaaccaadaaaaaaaaaaaaaaaagaaccaaaaaaaaaaaaaaaaaaaaaaccbaaaagcaaaaaaaaaaaaaaac",
+    "gchhhgghgaaaaaaaaaaaaaaggaaaadadaaabaaaaabaaaaaggaaaaaaacaabaaaaaaaaaaagggaaaaaaaaaaaaaaaabcaaag",
+    "bgggggggcaaaaaaaaaaaaaabbaafdfaaaaabaaabcgcaaccbbaaaaaaacgbaaaaaaaaaaaabbgaaaaaaaaaaaaaabaaaaaab",
+    "aaaaaaaaaabaaaaaaaaaaaaaaaaaaaaaaaaaabgcaaaaggbaaaaaaaaaacgaaaaaaaaaaaaaagcaaaaaaaaaaabggcaaaaaa",
+    "aaaaaaaaaaaaaabcaaaaaaaaaaaaddaaaaaacggaaabccbaaaaaaaaaaaabgaaaaaaaaaaaaaacbaaaaaaaaaaccgcaaaaaa",
+    "aaaaaaaaaaaaaabcaaaaaaaaafdaaabaafagcaaacggcaaaaaaaaaaabgaaaaaaaaaaaaaaaabaaaaaaaaaaaaccadaaaaaa",
+    "aaaaaaaaaaaaaaaaaaaaabgaaaafeafddagaaaabggaaaabaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbaaaaaa",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaafaacacgcfdacgggbabgbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaccacgaaaaaa",
+    "aaaaaaaaaaaabaacaaaaaaaaaaaaaaaaaaaabaacaaaaaaaaaaaaaaaaaaaabaacaaaaaaaaaaaaaaaaaaaabaacaaaaaaaa",
+  ],{a:'#403830',b:'#383830',c:'#383828',d:'#484038',e:'#404030',f:'#484030',
+     g:'#383028',h:'#303028',i:'#302820'});
+
   // silhouettes for damage flash + elite tints
   for (const k of ['washer','rinser','bubbler','scrubber','steamer','stacker','boss'])
     SP[k+'_flash'] = makeSilhouette(SP[k], '#ffffff');
@@ -1347,13 +1490,7 @@ const bg = document.createElement('canvas');
 bg.width = WORLD.w; bg.height = WORLD.h;
 (function bakeWorld(){
   const g = bg.getContext('2d');
-  const FLOOR = {
-    line:  ['#15151c','#191922','#1e1e28'],
-    prep:  ['#171720','#1c1c26','#23232e'],
-    pit:   ['#131a1f','#172026','#1d2830'],
-    cold:  ['#141b24','#18212c','#202c38'],
-    store: ['#1a1720','#1f1b27','#26202f'],
-  };
+  const FLOOR = { line:'flLine', prep:'flPrep', pit:'flPit', cold:'flCold', store:'flStore' };
   const WK = {
     counter:['#3a3f4c','#525968','#22252e'],
     island: ['#3f4450','#5a6170','#24272f'],
@@ -1366,17 +1503,30 @@ bg.width = WORLD.w; bg.height = WORLD.h;
   };
   const t = 24;
   for (const z of ZONES){
-    const col = FLOOR[z.floor] || FLOOR.line;
+    const sp = SP[FLOOR[z.floor]] || SP.flLine;
+    const nv = (sp.width / t) | 0;
     for (let y = z.y; y < z.y+z.h; y += t) for (let x = z.x; x < z.x+z.w; x += t){
       const gx = (x/t)|0, gy = (y/t)|0;
-      g.fillStyle = (gx+gy) % 2 ? col[0] : col[1];
-      g.fillRect(x, y, Math.min(t, z.x+z.w-x), Math.min(t, z.y+z.h-y));
-      if ((gx*7+gy*13) % 11 === 0){ g.fillStyle = col[2]; g.fillRect(x+4, y+14, 6, 2); }
-      if ((gx*5+gy*3) % 13 === 0){ g.fillStyle = '#101016'; g.fillRect(x+14, y+5, 2, 5); }
+      // The last variant of each strip is the damaged one — the cracked tile,
+      // the frost patch. Weighted so it turns up about once in sixteen rather
+      // than one time in four, otherwise the whole floor looks broken.
+      const q = ((gx*73856093) ^ (gy*19349663)) >>> 0;
+      const r = q % 16;
+      const v = r < 5 ? 0 : r < 10 ? 1 : r < 15 ? 2 : nv - 1;
+      const cw = Math.min(t, z.x+z.w-x), ch = Math.min(t, z.y+z.h-y);
+      g.drawImage(sp, v*t, 0, cw, ch, x, y, cw, ch);
     }
     // a seam so you can feel where one area ends and the next begins
     g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 2;
     g.strokeRect(z.x+1, z.y+1, z.w-2, z.h-2);
+  }
+  // The dry store art has a painted safety line across it. A line that repeats
+  // every 24 pixels is not a line, so it is tiled out of the floor and painted
+  // once, the full width of the room.
+  const dry = ZONES.find(z => z.floor === 'store');
+  if (dry){
+    g.fillStyle = '#4f4614'; g.fillRect(dry.x+10, dry.y+130, dry.w-20, 5);
+    g.fillStyle = '#7d6e20'; g.fillRect(dry.x+10, dry.y+130, dry.w-20, 3);
   }
   for (const w of WALLS){
     const c = WK[w.k] || WK.wall;
