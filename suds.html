@@ -83,6 +83,9 @@ const T = {
   microBeamDps: 2.4, microWind: 0.9, microBurn: 1.5,
   slickLife: 8, slickSlow: 0.45,// shielded tank
   boss:    { hp: 550, speed: 12, touch: 2, r: 20 },
+  btrap:   { hp: 760, speed:  0, touch: 2, r: 24 },
+  bburner: { hp: 680, speed: 20, touch: 2, r: 21 },
+  bchef:   { hp: 900, speed: 26, touch: 3, r: 22 },
   plateSpeed: 62, forkSpeed: 105, bubbleSpeed: 26, steamSpeed: 30,
   dashSpeed: 4.6,           // scrubber charge, as a multiple of its walk speed
   shieldArc: 1.05,          // stacker blocks within this many radians of facing
@@ -507,7 +510,8 @@ for (const k in HERO) HERO_FLASH[k] = makeSilhouette(HERO[k], '#ffffff');
 const SP = {};
 // every dishwasher in the building, bosses included
 const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
-               'toaster','fryer','kettle','mixer','micro','chopper','boss'];
+               'toaster','fryer','kettle','mixer','micro','chopper',
+               'boss','btrap','bburner','bchef'];
 (function bakeSprites(){
   // --- the five floating guns ---
   // Traced from the reference art: background keyed out, cropped, area-averaged
@@ -1110,6 +1114,84 @@ const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
 
   // the stacker's shield: a stack of plates seen edge-on, drawn rotated
   // to whichever way it is facing
+  // --- the ones at the end of a shift ---
+  SP.btrap = makeSprite([
+    "...........OOOO...........",
+    ".......OOOWWWWWWOOO.......",
+    "......OWWWGGGGGGWWWO......",
+    "....OOWGGGDDDDDDGGGWOO....",
+    "...OWWGGDDyyyyyyDDGGWWO...",
+    "..OOWGDDyyooooooyyDDGWOO..",
+    "..OWGDDyooooooooooyDDGWO..",
+    ".OWGGDyOOOooooooOOOyDGGWO.",
+    ".OWGDyOOOOooooooOOOOyDGWO.",
+    ".OWGDyOOOOKoKKoKOOOOyDGWO.",
+    "OWGDDyooooKoKKoKooooyDDGWO",
+    "OWGDyoooooKoKKoKoooooyDGWO",
+    "OWGDDyooooKoKKoKooooyDDGWO",
+    ".OWGDyooooKoKKoKooooyDGWO.",
+    ".OWGDyooooooooooooooyDGWO.",
+    ".OWGGDyooooooooooooyDGGWO.",
+    "..OWGDDyooooooooooyDDGWO..",
+    "..OOWGDDyyooooooyyDDGWOO..",
+    "...OWWGGDDyyyyyyDDGGWWO...",
+    "....OOWGGGDDDDDDGGGWOO....",
+    "......OWWWGGGGGGWWWO......",
+    ".......OOOWWWWWWOOO.......",
+    "...........OOOO...........",
+  ],{O:'#14161d',W:'#a89870',G:'#6d6144',D:'#3d3624',y:'#8a6b1c',o:'#c79a24',K:'#101018'});
+
+  SP.bburner = makeSprite([
+    "OOOOOOOOOOOOOOOOOOOOOOOO",
+    "OWWWWWWWWWWWWWWWWWWWWWWO",
+    "OWGGGGGGGGGGGGGGGGGGGGWO",
+    "OWGKKKKKKGGGGKKKKKKKKGWO",
+    "OWGKRRRRKGGGGKRRRRRRKGWO",
+    "OWGKRrrRKGGGGKRrrrrRKGWO",
+    "OWGKRrYrRKGGGKRrYYrRKGWO",
+    "OWGKRrrRKGGGGKRrrrrRKGWO",
+    "OWGKRRRRKGGGGKRRRRRRKGWO",
+    "OWGKKKKKKGGGGKKKKKKKKGWO",
+    "OWGGGGGGGGGGGGGGGGGGGGWO",
+    "OWGGGGGGGGGGGGGGGGGGGGWO",
+    "OWGKKKKKKGGGGKKKKKKKKGWO",
+    "OWGKRRRRKGGGGKRRRRRRKGWO",
+    "OWGKRrYrRKGGGKRrYYrRKGWO",
+    "OWGKRrrRKGGGGKRrrrrRKGWO",
+    "OWGKRRRRKGGGGKRRRRRRKGWO",
+    "OWGKKKKKKGGGGKKKKKKKKGWO",
+    "OWGGGGGGGGGGGGGGGGGGGGWO",
+    "OWWWWWWWWWWWWWWWWWWWWWWO",
+    "OOOOOOOOOOOOOOOOOOOOOOOO",
+  ],{O:'#14161d',W:'#b9c2cf',G:'#5c6373',K:'#101018',R:'#b8321f',r:'#e0563a',Y:'#ffd070'});
+
+  SP.bchef = makeSprite([
+    ".........OOOOOOOO.........",
+    "........OWWWWWWWWO........",
+    ".......OWWWWWWWWWWO.......",
+    "......OWWWWWWWWWWWWO......",
+    "......OWWWWWWWWWWWWO......",
+    ".......OOOOOOOOOOOO.......",
+    "........OsssssssO.........",
+    "........OsKssssKsO........",
+    "........OsssssssO.........",
+    ".......OssKKKKKssO........",
+    "........OsssssssO.........",
+    ".....OOOOOOOOOOOOOOOO.....",
+    "...OOWWWWWWWWWWWWWWWWOO...",
+    "..OWWWWWWWWWWWWWWWWWWWWO..",
+    ".OWWWWWRRWWWWWWRRWWWWWWWO.",
+    "OWWWWWWRRWWWWWWRRWWWWWWWWO",
+    "OWWWWWWWWWWWWWWWWWWWWWWWWO",
+    "OsWWWWWWWWWWWWWWWWWWWWWWsO",
+    "OsWWWWWWWWWWWWWWWWWWWWWWsO",
+    "OsOWWWWWWWWWWWWWWWWWWWWOsO",
+    "OsO.OWWWWWWWWWWWWWWWWO.OsO",
+    ".O..OWWWWWWWWWWWWWWWWO..O.",
+    "....OKKKKOOOOOOKKKKKO.....",
+    "....OKKKKO....OKKKKKO.....",
+  ],{O:'#14161d',W:'#e6eaf1',s:'#f4c894',K:'#2c3140',R:CRIMSON});
+
   // --- the late-shift crew ---
   SP.toaster = makeSprite([
     "..OOOOOOOOOOOOOO..",
@@ -3624,7 +3706,9 @@ function beginWave(n){
   if (isBossWave(n)){
     ST.waveState = 'bosswarn';
     ST.waveTimer = 2.2;
-    ST.banner = 'WARNING! MEGAWASHER APPROACHES'; ST.bannerTimer = 2.2;
+    ST.bossType = bossForWave(n);
+    ST.banner = 'WARNING! ' + BOSS_NAME[ST.bossType] + ' APPROACHES';
+    ST.bannerTimer = 2.2;
     SFX.alarm();
     return;
   }
@@ -3728,14 +3812,18 @@ function spawnEnemy(type, x, y){
     const row = ROSTER.find(r => r.type === type);
     if (row){ seen[type] = 1; addFloater(x, y - 22, row.name + '!', '#ffc02a', 1.8); }
   }
-  if (type === 'boss'){
+  if (isBoss(e)){
+    const cycle = Math.floor(bossIndexFor(n) / BOSSES.length);   // how many times round
     const bossLvl = Math.floor(n / 5);
-    e.hp = e.maxhp = T.boss.hp * (1 + (bossLvl-1) * 0.9);
-    e.speed = T.boss.speed;
-    e.r = T.boss.r; e.touch = T.boss.touch;
-    e.spiralA = 0; e.tSpiral = 1.2; e.tVolley = 2.6; e.tRing = 4.0;
+    const bt = T[type];
+    e.hp = e.maxhp = bt.hp * (1 + cycle * 0.85) * (1 + (bossLvl-1) * 0.10);
+    e.speed = bt.speed; e.r = bt.r; e.touch = bt.touch;
     e.bossLvl = bossLvl;
-    e.ghost = true;          // the Megawasher goes through the furniture
+    e.spiralA = 0; e.tSpiral = 1.2; e.tVolley = 2.6; e.tRing = 4.0;
+    e.ghost = type !== 'btrap';   // the grease trap is plumbed in and cannot move
+    e.phase = 1;
+    e.tA = 1.4; e.tB = 2.8; e.tC = 4.2; e.sweep = rand(0, TAU);
+    e.dash = 0; e.wind = 0; e.dashA = 0; e.spin = 1;
     boss = e;
   }
   enemies.push(e);
@@ -3751,7 +3839,7 @@ function updateWaves(dt){
   } else if (ST.waveState === 'bosswarn'){
     if (ST.waveTimer <= 0){
       const p = spawnEdgePos();
-      spawnEnemy('boss', clamp(p.x, 40, WORLD.w-40), clamp(p.y, 40, WORLD.h-40));
+      spawnEnemy(ST.bossType || 'boss', clamp(p.x, 40, WORLD.w-40), clamp(p.y, 40, WORLD.h-40));
       ST.waveState = 'active';
     }
   } else if (ST.waveState === 'active'){
@@ -4197,7 +4285,7 @@ function microBurn(e, dt){
   const t = (player.x - e.x)*ux + (player.y - e.y)*uy;
   if (t > 0 && t < len){
     const px = e.x + ux*t, py = e.y + uy*t;
-    if (dist2(px, py, player.x, player.y) < 100) hurtPlayer(1);
+    if (player.iframe <= 0 && dist2(px, py, player.x, player.y) < 100) hurtPlayer(1);
   }
   if (Math.random() < 0.5){
     const s = rand(10, len);
@@ -4422,7 +4510,7 @@ function updateEnemies(dt){
         SFX.plate();
       }
     }
-    else if (e.type === 'boss'){
+    else if (isBoss(e)){
       updateBoss(e, dt, dx, dy, d);
     }
 
@@ -4446,6 +4534,25 @@ function step(e, dx, dy){
 function onScreen(e){ return inView(e.x, e.y, -8); }
 
 function updateBoss(e, dt, dx, dy, d){
+  // each of the four fights is its own function; they only share the arrival
+  // rule, which is that nothing shoots until you can actually see it
+  if (e.type !== 'boss'){
+    if (!inView(e.x, e.y, 40) && e.speed > 0){
+      e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt;
+      return;
+    }
+    // half health is where each of them changes its mind
+    if (e.phase === 1 && e.hp < e.maxhp*0.5){
+      e.phase = 2;
+      ST.banner = BOSS_NAME[e.type] + ' IS ANGRY'; ST.bannerTimer = 1.6;
+      ST.shake = Math.min(8, ST.shake + 5);
+      SFX.alarm();
+      spawnParts(e.x, e.y, 30, DEATH_COLOR[e.type] || '#fff', 110);
+    }
+    if (e.type === 'btrap')   return bossGreaseTrap(e, dt, dx, dy, d);
+    if (e.type === 'bburner') return bossSixBurner(e, dt, dx, dy, d);
+    if (e.type === 'bchef')   return bossHeadChef(e, dt, dx, dy, d);
+  }
   const lv = e.bossLvl;
   if (d > 90){ e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt; }
   else { e.t2 += dt; e.x += Math.cos(e.t2*0.5)*8*dt; }
@@ -4478,6 +4585,132 @@ function updateBoss(e, dt, dx, dy, d){
     const a0 = rand(0, TAU);
     for (let k=0;k<n;k++) eshoot(e.x, e.y, a0 + k*TAU/n, T.bubbleSpeed*1.15, 'bubble');
     SFX.bubble();
+  }
+}
+
+// --- THE GREASE TRAP -------------------------------------------------
+// Bolted to the floor, so the whole fight is about the room rather than it.
+// It floods the place with slicks and keeps sending things at you.
+function bossGreaseTrap(e, dt, dx, dy, d){
+  const p2 = e.phase === 2;
+  e.t2 += dt;
+  // belches oil in a widening ring of slicks
+  e.tA -= dt;
+  if (e.tA <= 0){
+    e.tA = p2 ? 1.5 : 2.4;
+    const n = p2 ? 7 : 5, a0 = rand(0, TAU), rad = 46 + Math.sin(e.t2*0.6)*26;
+    for (let k=0;k<n;k++)
+      addSlick(clamp(e.x + Math.cos(a0+k*TAU/n)*rad, 20, WORLD.w-20),
+               clamp(e.y + Math.sin(a0+k*TAU/n)*rad, 20, WORLD.h-20));
+    SFX.bubble();
+  }
+  // spits fat, in a spinning fan
+  e.tB -= dt;
+  if (e.tB <= 0){
+    e.tB = p2 ? 0.55 : 0.9;
+    e.sweep += 0.5;
+    const arms = p2 ? 5 : 3;
+    for (let k=0;k<arms;k++) eshoot(e.x, e.y, e.sweep + k*TAU/arms, T.globSpeed*1.15, 'glob');
+  }
+  // and calls the staff
+  e.tC -= dt;
+  if (e.tC <= 0){
+    e.tC = p2 ? 5.5 : 8;
+    const kinds = p2 ? ['fryer','kettle','toaster'] : ['toaster','washer'];
+    for (let k=0;k<(p2?3:2);k++){
+      const a = rand(0, TAU), r = 60;
+      spawnEnemy(pick(kinds), clamp(e.x+Math.cos(a)*r, 24, WORLD.w-24),
+                              clamp(e.y+Math.sin(a)*r, 24, WORLD.h-24));
+    }
+    ST.banner = 'THE TRAP IS BACKING UP'; ST.bannerTimer = 1.2;
+  }
+}
+
+// --- THE SIX BURNER --------------------------------------------------
+// Four burning lines pinned to it, turning. You read the rotation and walk
+// through the gaps; standing still is what kills you.
+function bossSixBurner(e, dt, dx, dy, d){
+  const p2 = e.phase === 2;
+  if (d > 130){ e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt; }
+  e.sweep += dt * (p2 ? 0.95 : 0.62) * (e.spin || 1);
+  const arms = p2 ? 5 : 4;
+  e.flameArms = arms;
+  // the flames are checked, not fired: they are attached to the boss
+  for (let k=0;k<arms;k++){
+    const a = e.sweep + k*TAU/arms;
+    const ux = Math.cos(a), uy = Math.sin(a);
+    const len = rayWall(e.x, e.y, ux, uy, 190);
+    const t = (player.x - e.x)*ux + (player.y - e.y)*uy;
+    if (t > 12 && t < len){
+      const px = e.x + ux*t, py = e.y + uy*t;
+      if (player.iframe <= 0 && dist2(px, py, player.x, player.y) < 64) hurtPlayer(1);
+    }
+    if (Math.random() < 0.5)
+      spawnParts(e.x + ux*rand(14,len), e.y + uy*rand(14,len), 1,
+                 Math.random()<0.5 ? '#e0563a' : '#ffd070', 26);
+  }
+  // every so often it reverses, which is the whole tell
+  e.tA -= dt;
+  if (e.tA <= 0){
+    e.tA = p2 ? 3.4 : 5;
+    e.spin = -(e.spin || 1);
+    ST.shake = Math.min(5, ST.shake + 2);
+    SFX.alarm();
+  }
+  // and lobs a pan of hot fat at where you are standing
+  e.tB -= dt;
+  if (e.tB <= 0){
+    e.tB = p2 ? 1.8 : 2.8;
+    const a = Math.atan2(dy, dx);
+    for (let k=-1;k<=1;k++) eshoot(e.x, e.y, a + k*0.24, T.globSpeed*1.3, 'glob');
+    SFX.bubble();
+  }
+}
+
+// --- THE HEAD CHEF ---------------------------------------------------
+// The last thing in the building, and the only one that hunts you properly:
+// it closes the distance, fans knives, and calls the brigade.
+function bossHeadChef(e, dt, dx, dy, d){
+  const p2 = e.phase === 2;
+  if (e.dash > 0){
+    e.dash -= dt;
+    e.x += Math.cos(e.dashA) * e.speed * 7 * dt;
+    e.y += Math.sin(e.dashA) * e.speed * 7 * dt;
+    if (Math.random() < 0.8) spawnParts(e.x, e.y, 1, '#e6eaf1', 40);
+  } else if (e.wind > 0){
+    e.wind -= dt;
+    e.dashA = Math.atan2(dy, dx);
+    e.flash = 0.08;
+    if (e.wind <= 0){ e.dash = 0.42; SFX.fork(); }
+  } else {
+    if (d > 100){ e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt; }
+    e.tA -= dt;
+    if (e.tA <= 0){ e.tA = p2 ? 2.6 : 4.0; e.wind = 0.5; }
+  }
+  // knife fan
+  e.tB -= dt;
+  if (e.tB <= 0){
+    e.tB = p2 ? 1.3 : 2.1;
+    const a = Math.atan2(dy, dx), n = p2 ? 9 : 6;
+    for (let k=0;k<n;k++) eshoot(e.x, e.y, a + (k/(n-1)-0.5)*1.0, T.knifeSpeed, 'knife');
+    SFX.fork();
+  }
+  // the brigade
+  e.tC -= dt;
+  if (e.tC <= 0){
+    e.tC = p2 ? 6 : 9;
+    const kinds = p2 ? ['chopper','micro','mixer'] : ['chopper','rinser'];
+    for (let k=0;k<(p2?3:2);k++){
+      const a = rand(0, TAU);
+      spawnEnemy(pick(kinds), clamp(e.x+Math.cos(a)*70, 24, WORLD.w-24),
+                              clamp(e.y+Math.sin(a)*70, 24, WORLD.h-24));
+    }
+    ST.banner = 'CHEF CALLS THE BRIGADE'; ST.bannerTimer = 1.2;
+  }
+  // in phase two it throws a ring of plates whenever it lands a dash
+  if (p2 && e.dash > 0 && e.dash < dt*2){
+    const a0 = rand(0, TAU);
+    for (let k=0;k<12;k++) eshoot(e.x, e.y, a0 + k*TAU/12, T.plateSpeed, 'plate');
   }
 }
 
@@ -4515,20 +4748,30 @@ function damageEnemy(e, dmg, hitX, hitY){
 function dropShards(e){
   const mul = player.shardMul || 1;
   let n;
-  if (e.type === 'boss')   n = irand(14, 20);
+  if (isBoss(e))           n = irand(14, 20);
   else if (e.elite)        n = irand(2, 4);
   else if (T[e.type] && T[e.type].hp >= 34) n = Math.random() < 0.75*mul ? irand(1,2) : 0;
   else                     n = Math.random() < 0.55*mul ? 1 : 0;
-  n = Math.round(n * (e.type === 'boss' ? mul : 1));
+  n = Math.round(n * (isBoss(e) ? mul : 1));
   for (let k=0;k<n;k++)
     dropPickup(e.x + rand(-9,9), e.y + rand(-7,7), 'shard');
 }
+
+const BOSSES = ['boss','btrap','bburner','bchef'];
+const BOSS_NAME = { boss:'THE MEGAWASHER', btrap:'THE GREASE TRAP',
+                    bburner:'THE SIX BURNER', bchef:'THE HEAD CHEF' };
+// which one turns up on a given boss wave — they cycle, so a long run meets
+// all four and then starts again with more health on each
+function bossIndexFor(n){ return Math.max(0, Math.floor(n/5) - 1); }
+function bossForWave(n){ return BOSSES[bossIndexFor(n) % BOSSES.length]; }
+const isBoss = e => BOSSES.indexOf(e.type) >= 0;
 
 const DEATH_COLOR = {
   washer:'#5b8fc4', rinser:'#d3dae6', bubbler:'#7fd4da',
   scrubber:'#f0c020', steamer:'#c9a227', stacker:'#e6e9ef', boss:'#79c7f0',
   toaster:'#f0c874', fryer:'#e8bb3a', kettle:'#e0563a',
   mixer:'#b9c2cf', micro:'#6ad07a', chopper:'#c9a06a',
+  btrap:'#c79a24', bburner:'#e0563a', bchef:'#e6eaf1',
 };
 
 function killEnemy(e){
@@ -4538,7 +4781,7 @@ function killEnemy(e){
   if (e.type === 'kettle' && !e.gone) kettleBoom(e);
   ST.kills++;
   ST.shake = Math.min(6, ST.shake + 2);
-  const isB = e.type === 'boss';
+  const isB = isBoss(e);
   spawnParts(e.x, e.y, isB ? 50 : 14, '#dfe3ea', isB ? 120 : 70);
   // each one bursts in its own colour, so you can tell what died at a glance
   spawnParts(e.x, e.y, isB ? 30 : 8, DEATH_COLOR[e.type] || '#79c7f0', isB ? 100 : 55);
@@ -4549,7 +4792,7 @@ function killEnemy(e){
     SFX.bossdie();
     for (let k=0;k<10;k++) dropPickup(e.x + rand(-18,18), e.y + rand(-14,14), 'sud');
     dropPickup(e.x, e.y, 'heart');
-    addFloater(e.x, e.y - 20, 'MEGAWASHER DOWN!', CRIMSON, 2.2);
+    addFloater(e.x, e.y - 20, (BOSS_NAME[e.type] || 'THE BOSS') + ' DOWN!', CRIMSON, 2.2);
   } else {
     SFX.boom();
     // the heavier ones are worth going after
@@ -4914,7 +5157,7 @@ function render(){
   for (const e of enemies){
     let sp = SP[e.type], scale = 1;
     if (e.elite && SP[e.type+'_elite']){ sp = SP[e.type+'_elite']; scale = 1.15; }
-    if (e.type === 'boss') scale = 2;
+    if (isBoss(e)) scale = 2;
     let wob = Math.sin(ST.time*6 + e.t2) * 1;
     // a kettle at the boil rattles and flashes faster the closer it gets
     if (e.type === 'kettle' && e.armed){
@@ -4941,6 +5184,35 @@ function render(){
         cx.beginPath(); cx.moveTo(e.x, e.y); cx.lineTo(e.x+Math.cos(a)*len, e.y+Math.sin(a)*len); cx.stroke();
       }
       cx.globalAlpha = 1;
+    }
+    // the Six Burner's flame arms, drawn from the boss outward
+    if (e.type === 'bburner' && e.flameArms){
+      for (let k=0;k<e.flameArms;k++){
+        const a = e.sweep + k*TAU/e.flameArms;
+        const ux = Math.cos(a), uy = Math.sin(a);
+        const len = rayWall(e.x, e.y, ux, uy, 190);
+        cx.globalAlpha = 0.85;
+        cx.strokeStyle = '#b8321f'; cx.lineWidth = 7;
+        cx.beginPath(); cx.moveTo(e.x+ux*12, e.y+uy*12);
+        cx.lineTo(e.x+ux*len, e.y+uy*len); cx.stroke();
+        cx.strokeStyle = '#e0563a'; cx.lineWidth = 4;
+        cx.beginPath(); cx.moveTo(e.x+ux*12, e.y+uy*12);
+        cx.lineTo(e.x+ux*len, e.y+uy*len); cx.stroke();
+        cx.strokeStyle = '#ffd070'; cx.lineWidth = 1.5;
+        cx.beginPath(); cx.moveTo(e.x+ux*12, e.y+uy*12);
+        cx.lineTo(e.x+ux*len, e.y+uy*len); cx.stroke();
+        cx.globalAlpha = 1;
+      }
+    }
+    // the Head Chef winds up before a dash, same read as a scrubber
+    if (e.type === 'bchef' && e.wind > 0){
+      const a = e.dashA || 0;
+      cx.globalAlpha = 0.35 + Math.sin(ST.time*30)*0.2;
+      cx.strokeStyle = CRIMSON; cx.lineWidth = 2;
+      cx.beginPath();
+      cx.moveTo(e.x + Math.cos(a)*20, e.y + Math.sin(a)*20);
+      cx.lineTo(e.x + Math.cos(a)*200, e.y + Math.sin(a)*200);
+      cx.stroke(); cx.globalAlpha = 1;
     }
     // a mixer pulling shows the drag as rings closing on it
     if (e.type === 'mixer'){
@@ -5144,7 +5416,8 @@ function renderHUD(){
     }
   }
   // wave
-  const label = boss ? 'MEGAWASHER' : (ST.wave > 0 ? 'WAVE ' + ST.wave : '');
+  const label = boss ? (BOSS_NAME[boss.type] || 'BOSS')
+                     : (ST.wave > 0 ? 'WAVE ' + ST.wave : '');
   if (label) drawText(label, W/2, 6, 1, boss ? CRIMSON : '#dfe3ea', 'center');
   // boss hp bar
   if (boss){
@@ -5200,7 +5473,7 @@ function renderMinimap(){
     cx.fillRect(x0 + p.x*s, y0 + p.y*s, 1, 1);
   }
   for (const e of enemies){
-    const big = e.type === 'boss';
+    const big = isBoss(e);
     cx.fillStyle = big ? CRIMSON : (e.elite ? '#ffc02a' : '#c4545f');
     cx.fillRect(x0 + e.x*s - (big?1:0), y0 + e.y*s - (big?1:0), big?3:1, big?3:1);
   }
@@ -5227,7 +5500,7 @@ function renderOffscreenMarkers(){
     const t = Math.min(Math.abs((W/2 - 14) / (Math.cos(a) || 1e-6)),
                        Math.abs((H/2 - 14) / (Math.sin(a) || 1e-6)));
     const mx = W/2 + Math.cos(a)*t, my = H/2 + Math.sin(a)*t;
-    const col = e.type === 'boss' ? CRIMSON : (e.elite ? '#ffc02a' : 'rgba(196,84,95,0.75)');
+    const col = isBoss(e) ? CRIMSON : (e.elite ? '#ffc02a' : 'rgba(196,84,95,0.75)');
     cx.setTransform(1,0,0,1, Math.round(mx), Math.round(my));
     cx.rotate(a);
     cx.fillStyle = col;
