@@ -3201,6 +3201,23 @@ window.addEventListener('keydown', e => {
              || k === ' ' || k === 'enter')                                     storyGo(1);
     return;
   }
+  if (ST.mode === 'beat'){
+    if (k === 'escape'){ ST.mode = 'chapters'; SFX.click(); }
+    else if (k === 'enter' || k === ' ' || k === 'e') beatAdvance();
+    return;
+  }
+  if (ST.mode === 'ending'){ if (k === 'escape' || k === 'enter' || k === ' '){ ST.mode='menu'; SFX.click(); } return; }
+  if (ST.mode === 'chapters'){
+    const open = chaptersOpen();
+    if (k === 'escape' || k === 'backspace'){ ST.mode = 'menu'; SFX.click(); }
+    else if (k === 'w' || k === 'arrowup')   ST.chapSel = (ST.chapSel + CHAPTERS.length - 1) % CHAPTERS.length;
+    else if (k === 's' || k === 'arrowdown') ST.chapSel = (ST.chapSel + 1) % CHAPTERS.length;
+    else if (k === 'enter' || k === ' '){
+      if (ST.chapSel < open) startChapter(ST.chapSel);
+      else SFX.plate();
+    }
+    return;
+  }
   // the tutorial is skippable at any point, and skipping still counts as done
   if (ST.mode === 'play' && ST.tut && (k === 'escape' || k === 'backspace')){ tutFinish(); return; }
   if (ST.mode === 'store'){
@@ -3258,6 +3275,13 @@ cv.addEventListener('mousedown', e => {
     if (p.y > H-26){ ST.mode = 'menu'; SFX.click(); }
     else storyGo(p.x < W*0.3 ? -1 : 1);
   }
+  else if (ST.mode === 'beat') beatAdvance();
+  else if (ST.mode === 'ending'){ ST.mode = 'menu'; SFX.click(); }
+  else if (ST.mode === 'chapters'){
+    const i = chapterHit(p.y);
+    if (i >= 0 && i < chaptersOpen()){ ST.chapSel = i; startChapter(i); }
+    else if (p.y > H-22){ ST.mode = 'menu'; SFX.click(); }
+  }
   else if (ST.mode === 'store'){
     const t = storeTabHit(p.x, p.y);
     if (t >= 0){ ST.storeTab = t; ST.storeSel = 0; ST.storeTop = 0; SFX.click(); }
@@ -3307,6 +3331,14 @@ cv.addEventListener('touchstart', e => {
   if (ST.mode === 'story'){
     if (p.y > H-26){ ST.mode = 'menu'; SFX.click(); }
     else storyGo(p.x < W*0.3 ? -1 : 1);
+    return;
+  }
+  if (ST.mode === 'beat'){ beatAdvance(); return; }
+  if (ST.mode === 'ending'){ ST.mode = 'menu'; SFX.click(); return; }
+  if (ST.mode === 'chapters'){
+    const i = chapterHit(p.y);
+    if (i >= 0 && i < chaptersOpen()){ ST.chapSel = i; startChapter(i); }
+    else if (p.y > H-22){ ST.mode = 'menu'; SFX.click(); }
     return;
   }
   if (ST.mode === 'store'){
@@ -3370,6 +3402,9 @@ const ST = {
   levelQueue: 0, cards: [],
   zone: '', zoneTimer: 0,     // location caption when you walk into a new area
   menuSel: 0,                 // which main-menu item is highlighted
+  story: false, chapter: 0, chapSel: 0, storyBeat: 'before', beatLine: 0,
+  objDone: 0, objTimer: 0, beatDelay: 0, bossBeaten: false,
+  marker: null, trolley: null, objFailed: false,
   best: { wave: 0, kills: 0 },
 };
 try {
@@ -3390,6 +3425,7 @@ const META = {
   startWave: 1,
   waves: { 1: true },       // which start waves have been paid for
   tutorial: false,          // whether he has already been shown the ropes
+  story: 0,                 // how many story chapters are finished
 };
 function loadMeta(){
   try {
@@ -4807,6 +4843,7 @@ function killEnemy(e){
   dropShards(e);
   if (isB){
     boss = null;
+    ST.bossBeaten = true;
     SFX.bossdie();
     for (let k=0;k<10;k++) dropPickup(e.x + rand(-18,18), e.y + rand(-14,14), 'sud');
     dropPickup(e.x, e.y, 'heart');
@@ -5166,6 +5203,9 @@ function render(){
   if (ST.mode === 'menu'){ renderMenu(); return; }
   if (ST.mode === 'help'){ renderHelp(); return; }
   if (ST.mode === 'story'){ renderStory(); return; }
+  if (ST.mode === 'chapters'){ renderChapters(); return; }
+  if (ST.mode === 'beat'){ renderBeat(); return; }
+  if (ST.mode === 'ending'){ renderEnding(); return; }
   if (ST.mode === 'store'){ renderStore(); return; }
 
   const camX = Math.round(cam.x), camY = Math.round(cam.y);
@@ -5322,6 +5362,7 @@ function render(){
     drawGunRot(SP.gunA, o.x, o.y + b, o.aim || 0);
   }
 
+  if (ST.story) renderObjectiveProps();
   drawBeam();
 
   // oil slicks, under everything else because you walk through them
@@ -5420,6 +5461,7 @@ function render(){
   renderOffscreenMarkers();
   renderHUD();
   if (ST.tut) renderTutorial();
+  if (ST.story) renderObjective();
 
   // red hurt vignette
   if (ST.flashRed > 0){
@@ -5548,6 +5590,7 @@ const MENU = [
   // a brand new player gets walked through it first, then dropped straight
   // into a real shift — after that START GAME just starts the game
   { label: () => 'START GAME',                          act: () => META.tutorial ? startRun() : startTutorial(true) },
+  { label: () => 'STORY MODE',                          act: () => { ST.mode='chapters'; ST.chapSel = Math.min(chaptersOpen()-1, CHAPTERS.length-1); SFX.click(); } },
   { label: () => 'STORE',                               act: () => openStore() },
   { label: () => 'TUTORIAL',                            act: () => startTutorial(false) },
   { label: () => 'THE STORY',                           act: () => openStory() },
@@ -6051,6 +6094,367 @@ function renderStory(){
   drawText(usingTouch ? 'TAP THE BOTTOM TO LEAVE' : 'ESC TO GO BACK', W/2, 261, 1, '#3f4450', 'center');
 }
 
+
+// ================================================================
+// STORY MODE
+// Twelve chapters through the building. A chapter is data: which room,
+// what has to happen, and what he says either side of it. The
+// objective types are the only code — everything else is a table.
+// Copy is written without apostrophes; the pixel font has no glyph.
+// ================================================================
+const OBJ = {
+  survive: { label: c => 'SURVIVE ' + c.n + ' WAVES' },
+  kill:    { label: c => 'PUT DOWN ' + c.n + ' OF THEM' },
+  boss:    { label: c => 'BEAT ' + (BOSS_NAME[c.boss] || 'IT') },
+  reach:   { label: () => 'GET TO THE MARKER' },
+  hold:    { label: c => 'HOLD THE MARKER FOR ' + c.n + ' SECONDS' },
+  clear:   { label: () => 'CLEAR THE ROOM' },
+  escort:  { label: c => 'KEEP THE TROLLEY ALIVE FOR ' + c.n + ' SECONDS' },
+};
+
+const CHAPTERS = [
+  { id:1,  map:0, title:'CLOCKING OFF', obj:'survive', n:2, gun:'pea',
+    before:['10:47 PM. EVERYONE ELSE LEFT AN HOUR AGO.',
+            'SOMETHING IN THE DISH PIT JUST MOVED ON ITS OWN.',
+            'PROBABLY NOTHING.'],
+    after: ['IT WAS NOT NOTHING.'] },
+
+  { id:2,  map:0, title:'THE FIRST RACK', obj:'kill', n:14,
+    before:['THEY COME OUT OF THE RACKS IN THREES.',
+            'THE DOOR TO THE CAR PARK IS LOCKED FROM OUTSIDE.',
+            'SO. THE LONG WAY THEN.'],
+    after: ['THAT IS FOURTEEN. THERE ARE FOUR HUNDRED IN THIS BUILDING.'] },
+
+  { id:3,  map:0, title:'SOMETHING BIGGER', obj:'boss', boss:'boss',
+    before:['THE FLOOR IS SHAKING AND IT IS NOT THE EXTRACTOR.',
+            'WHATEVER IS COMING THROUGH THE WALL IS NOT COMING ROUND IT.'],
+    after: ['ONE DOWN. HE IS STARTING TO ENJOY THIS, WHICH IS WORRYING.'] },
+
+  { id:4,  map:1, title:'THE BANQUET HALL', obj:'reach',
+    before:['THE HALL IS SET FOR TWO HUNDRED AND NOBODY IS COMING.',
+            'THE SERVICE DOOR IS ACROSS THE FLOOR. NOTHING BUT TABLES.'],
+    after: ['ACROSS. THE TABLES ARE THINNER COVER THAN THEY LOOK.'] },
+
+  { id:5,  map:1, title:'SERVICE PASS', obj:'hold', n:26,
+    before:['THE PASS IS THE ONLY WAY THROUGH AND THEY KNOW IT.',
+            'HOLD IT UNTIL THE SHUTTER FINISHES LIFTING.'],
+    after: ['THE SHUTTER IS UP. DO NOT LOOK BACK AT THE HALL.'] },
+
+  { id:6,  map:2, title:'GOODS IN', obj:'clear',
+    before:['THE LOADING BAY. CRATES TO THE CEILING AND NO SIGHT LINES.',
+            'SOMETHING IS BREATHING BEHIND THE PALLETS.'],
+    after: ['THE BAY IS CLEAR. THE TRAILER DOOR IS OPEN, WHICH IT SHOULD NOT BE.'] },
+
+  { id:7,  map:2, title:'THE TRAP', obj:'boss', boss:'btrap',
+    before:['THE GREASE TRAP HAS NOT BEEN EMPTIED SINCE MARCH.',
+            'IT HAS OPINIONS ABOUT THAT.'],
+    after: ['IT IS STILL BUBBLING. HE IS NOT GOING BACK TO CHECK.'] },
+
+  { id:8,  map:3, title:'STAFF ONLY', obj:'survive', n:4,
+    before:['THE CANTEEN. HIS LOCKER IS IN HERE.',
+            'HIS COAT IS IN THE LOCKER. HE IS GOING TO NEED IT.'],
+    after: ['GOT THE COAT. LOST THE LOCKER, THE DOOR AND MOST OF A BOOTH.'] },
+
+  { id:9,  map:4, title:'DEEP FREEZE', obj:'escort', n:30,
+    before:['THE COLD STORE. MINUS TWENTY AND THE LIGHTS ARE ON A TIMER.',
+            'THE TROLLEY HAS THE ONLY MASTER KEY IN THE BUILDING ON IT.'],
+    after: ['THE KEY IS HIS. HIS HANDS HAVE STOPPED WORKING PROPERLY.'] },
+
+  { id:10, map:4, title:'THE SIX BURNER', obj:'boss', boss:'bburner',
+    before:['SOMETHING HAS DRAGGED THE RANGE DOWN HERE.',
+            'ALL SIX RINGS ARE LIT AND IT IS TURNING.'],
+    after: ['THE RINGS ARE OUT. THE ROOM IS STILL TOO WARM.'] },
+
+  { id:11, map:5, title:'THE UNDERCROFT', obj:'kill', n:40,
+    before:['THE BOILER ROOM. EVERY MACHINE IN THE BUILDING RUNS OFF THIS.',
+            'AND EVERY MACHINE IN THE BUILDING IS DOWN HERE WAITING.'],
+    after: ['THE PLANT ROOM DOOR IS OPEN. SOMEBODY IS STANDING IN IT.'] },
+
+  { id:12, map:5, title:'THE HEAD CHEF', obj:'boss', boss:'bchef',
+    before:['HE IS STILL IN HIS WHITES. HE HAS BEEN HERE THE WHOLE TIME.',
+            'HE SAYS THE MACHINES NEVER STOPPED. HE SAYS NOBODY EVER LET THEM.',
+            'HE SAYS THE NEW GUY IS LATE FOR HIS SHIFT.'],
+    after: ['06:12 AM. THE FIRST DELIVERY IS DUE AT SEVEN.',
+            'HE PUTS THE GUN DOWN. IT STAYS UP.',
+            'HE PUTS THE KETTLE ON INSTEAD. THE NORMAL ONE.'] },
+];
+
+function chapterDone(i){ return (META.story || 0) > i; }
+function chaptersOpen(){ return Math.min(CHAPTERS.length, (META.story || 0) + 1); }
+
+// ---- running a chapter -------------------------------------------
+function startChapter(i){
+  const c = CHAPTERS[i];
+  if (!c) return;
+  ST.chapter = i;
+  ST.storyBeat = 'before';
+  ST.beatLine = 0;
+  ST.mode = 'beat';
+  SFX.click();
+}
+
+// the fight itself, once the talking is done
+function beginChapterFight(){
+  const c = CHAPTERS[ST.chapter];
+  startRun();
+  ST.story = true;
+  ST.bossBeaten = false;
+  ST.wave = 0;
+  ST.kills = 0;
+  ST.objDone = 0;
+  ST.objTimer = 0;
+  ST.waveState = 'clear'; ST.waveTimer = 1.2;
+  gotoMap(c.map, false);
+  // a story chapter always starts you on the gun the chapter says, if any
+  if (c.gun){
+    player.ladder = [GUNS.find(g => g.id === c.gun) || GUNS[0]];
+    player.gunIdx = GUNS.indexOf(player.ladder[0]);
+    player.gunName = GUNS[player.gunIdx].name;
+  }
+  // objectives that need something in the room get it here
+  ST.marker = null; ST.trolley = null;
+  if (c.obj === 'reach' || c.obj === 'hold'){
+    const far = farSpot();
+    ST.marker = { x: far.x, y: far.y, on: false };
+  }
+  if (c.obj === 'escort'){
+    ST.trolley = { x: player.x + 30, y: player.y + 20, hp: 12, maxhp: 12, flash: 0 };
+  }
+  if (c.obj === 'boss'){
+    ST.bossType = c.boss;
+    ST.waveState = 'bosswarn'; ST.waveTimer = 2.4;
+    ST.banner = 'WARNING! ' + BOSS_NAME[c.boss] + ' APPROACHES'; ST.bannerTimer = 2.4;
+    SFX.alarm();
+  }
+  ST.banner = ST.banner || ('CHAPTER ' + c.id + ' - ' + c.title);
+  ST.bannerTimer = ST.bannerTimer || 2.2;
+}
+
+// somewhere on the far side of the room from the player, on actual floor
+function farSpot(){
+  let best = { x: SPAWN.x, y: SPAWN.y }, bd = -1;
+  for (let k = 0; k < 400; k++){
+    const x = rand(40, WORLD.w-40), y = rand(40, WORLD.h-40);
+    if (!clearSpot(x, y, 20)) continue;
+    const d = dist2(x, y, player.x, player.y);
+    if (d > bd){ bd = d; best = { x, y }; }
+  }
+  return best;
+}
+
+function objectiveText(){
+  const c = CHAPTERS[ST.chapter];
+  if (!c) return '';
+  const o = OBJ[c.obj];
+  let t = o.label(c);
+  if (c.obj === 'survive') t += '   ' + Math.min(ST.wave, c.n) + '/' + c.n;
+  if (c.obj === 'kill')    t += '   ' + Math.min(ST.kills, c.n) + '/' + c.n;
+  if (c.obj === 'hold')    t += '   ' + Math.ceil(Math.max(0, c.n - ST.objTimer)) + 'S';
+  if (c.obj === 'escort')  t += '   ' + Math.ceil(Math.max(0, c.n - ST.objTimer)) + 'S';
+  if (c.obj === 'clear')   t += '   ' + enemies.length + ' LEFT';
+  return t;
+}
+
+function updateStory(dt){
+  const c = CHAPTERS[ST.chapter];
+  if (!c || ST.objDone) return;
+  let done = false;
+
+  if (c.obj === 'survive') done = ST.wave > c.n;
+  else if (c.obj === 'kill') done = ST.kills >= c.n;
+  else if (c.obj === 'boss') done = ST.bossBeaten;
+  else if (c.obj === 'clear') done = ST.wave >= 1 && enemies.length === 0 && !ST.toSpawn.length;
+  else if (c.obj === 'reach'){
+    if (ST.marker && dist2(player.x, player.y, ST.marker.x, ST.marker.y) < 20*20) done = true;
+  }
+  else if (c.obj === 'hold'){
+    const on = ST.marker && dist2(player.x, player.y, ST.marker.x, ST.marker.y) < 34*34;
+    if (ST.marker) ST.marker.on = on;
+    if (on) ST.objTimer += dt;
+    done = ST.objTimer >= c.n;
+  }
+  else if (c.obj === 'escort'){
+    const t = ST.trolley;
+    if (t){
+      t.flash = Math.max(0, t.flash - dt);
+      // it follows him at a walking pace, and the dishwashers go for it
+      const dx = player.x - t.x, dy = player.y - t.y, d = Math.hypot(dx,dy) || 1;
+      if (d > 34) moveCircle(t, (dx/d)*46*dt, (dy/d)*46*dt, 8);
+      for (const e of enemies){
+        if (dist2(e.x, e.y, t.x, t.y) < (e.r+10)*(e.r+10)){
+          if (t.flash <= 0){
+            t.hp--; t.flash = 0.8;
+            spawnParts(t.x, t.y, 8, '#c9a06a', 60);
+            SFX.hurt();
+            if (t.hp <= 0){ ST.objFailed = true; }
+          }
+        }
+      }
+      ST.objTimer += dt;
+      done = ST.objTimer >= c.n;
+    }
+  }
+
+  if (ST.objFailed){
+    ST.objFailed = false;
+    ST.banner = 'THE TROLLEY IS GONE'; ST.bannerTimer = 2;
+    endRun();
+    return;
+  }
+  if (done){
+    ST.objDone = 1;
+    ST.banner = 'OBJECTIVE COMPLETE'; ST.bannerTimer = 1.8;
+    SFX.levelup();
+    // bank the chapter and go to the outro after a beat
+    if ((META.story || 0) <= ST.chapter){ META.story = ST.chapter + 1; saveMeta(); }
+    ST.beatDelay = 1.8;
+  }
+  if (ST.beatDelay > 0){
+    ST.beatDelay -= dt;
+    if (ST.beatDelay <= 0){
+      ST.storyBeat = 'after';
+      ST.beatLine = 0;
+      ST.mode = 'beat';
+    }
+  }
+}
+
+// ---- the talking screens -----------------------------------------
+function beatLines(){
+  const c = CHAPTERS[ST.chapter];
+  if (!c) return [];
+  return ST.storyBeat === 'before' ? c.before : c.after;
+}
+function beatAdvance(){
+  const lines = beatLines();
+  if (ST.beatLine < lines.length - 1){ ST.beatLine++; SFX.click(); return; }
+  SFX.click();
+  if (ST.storyBeat === 'before'){ beginChapterFight(); return; }
+  // finished the chapter
+  const next = ST.chapter + 1;
+  ST.story = false;
+  if (next < CHAPTERS.length){ ST.chapter = next; ST.mode = 'chapters'; ST.chapSel = next; }
+  else { ST.mode = 'ending'; }
+}
+
+function renderBeat(){
+  const c = CHAPTERS[ST.chapter];
+  cx.drawImage(bg, 200, 200, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.90)'; cx.fillRect(0,0,W,H);
+  drawText('CHAPTER ' + c.id, W/2, 40, 2, '#79c7f0', 'center');
+  drawText(c.title, W/2, 62, 3, '#f4c542', 'center');
+  cx.fillStyle = 'rgba(244,197,66,0.35)'; cx.fillRect(W/2-130, 88, 260, 1);
+  const lines = beatLines();
+  let y = 112;
+  for (let i = 0; i <= ST.beatLine && i < lines.length; i++){
+    drawText(lines[i], W/2, y, 1, i === ST.beatLine ? '#ffffff' : '#8d93a4', 'center');
+    y += 14;
+  }
+  if (ST.storyBeat === 'before'){
+    drawText(OBJ[c.obj].label(c), W/2, 196, 1, '#f4c542', 'center');
+  }
+  if (Math.floor(ST.time*2) % 2 === 0)
+    drawText(ST.beatLine < lines.length-1 ? 'CLICK OR SPACE TO CONTINUE'
+                                         : (ST.storyBeat === 'before' ? 'CLICK OR SPACE TO BEGIN'
+                                                                     : 'CLICK OR SPACE'),
+             W/2, 236, 1, '#7a7a8e', 'center');
+}
+
+// which chapter row a click landed on
+function chapterHit(y){
+  const top = Math.max(0, Math.min(ST.chapSel - 4, CHAPTERS.length - 9));
+  for (let r = 0; r < Math.min(9, CHAPTERS.length - top); r++){
+    const ry = 56 + r*20;
+    if (y > ry-5 && y < ry+13) return top + r;
+  }
+  return -1;
+}
+
+// the objective strip along the top while a chapter is running
+function renderObjective(){
+  const t = objectiveText();
+  if (!t) return;
+  const w = textWidth(t, 1) + 16;
+  cx.fillStyle = 'rgba(6,6,10,0.75)';
+  cx.fillRect(W/2 - w/2, 30, w, 13);
+  cx.strokeStyle = ST.objDone ? '#6ad07a' : '#f4c542';
+  cx.lineWidth = 1;
+  cx.strokeRect(W/2 - w/2 + 0.5, 30.5, w-1, 12);
+  drawText(t, W/2, 34, 1, ST.objDone ? '#6ad07a' : '#dfe3ea', 'center');
+}
+
+function renderChapters(){
+  cx.drawImage(bg, 400, 260, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.90)'; cx.fillRect(0,0,W,H);
+  drawText('STORY MODE', W/2, 14, 3, '#f4c542', 'center');
+  const open = chaptersOpen();
+  drawText(open >= CHAPTERS.length && chapterDone(CHAPTERS.length-1)
+           ? 'THE WHOLE NIGHT, START TO FINISH'
+           : 'CHAPTER ' + open + ' OF ' + CHAPTERS.length, W/2, 38, 1, '#8d93a4', 'center');
+  const top = Math.max(0, Math.min(ST.chapSel - 4, CHAPTERS.length - 9));
+  for (let r = 0; r < Math.min(9, CHAPTERS.length - top); r++){
+    const i = top + r, c = CHAPTERS[i];
+    const y = 56 + r*20;
+    const locked = i >= open;
+    const sel = ST.chapSel === i;
+    if (sel){
+      cx.fillStyle = 'rgba(232,22,42,0.14)'; cx.fillRect(40, y-5, W-80, 18);
+      cx.fillStyle = CRIMSON; cx.fillRect(40, y-5, 2, 18);
+    }
+    const col = locked ? '#3f4450' : (sel ? '#ffffff' : '#9aa3b2');
+    drawText(String(c.id).padStart(2,'0'), 52, y, 1, locked ? '#2f333c' : '#79c7f0');
+    drawText(locked ? 'LOCKED' : c.title, 76, y, 1, col);
+    // one or the other on the right, never both on top of each other
+    if (chapterDone(i))   drawText('DONE', W-52, y, 1, '#6ad07a', 'right');
+    else if (!locked)     drawText(OBJ[c.obj].label(c), W-52, y, 1, '#5a5a6e', 'right');
+  }
+  drawText('ESC BACK', W/2, 252, 1, '#3f4450', 'center');
+}
+
+function renderEnding(){
+  cx.fillStyle = '#06060a'; cx.fillRect(0,0,W,H);
+  const t = ST.time;
+  drawText('THE SHIFT IS OVER', W/2, 60, 3, '#f4c542', 'center');
+  const lines = [
+    'HE FINISHED THE NIGHT.',
+    'NOBODY WILL BELIEVE HIM AND HE IS NOT GOING TO TRY.',
+    '',
+    'THE ROTA ON THE WALL STILL SAYS NEW GUY.',
+    'HE HAS DECIDED HE IS FINE WITH THAT.',
+  ];
+  let y = 108;
+  for (const l of lines){ if (l) drawText(l, W/2, y, 1, '#dfe3ea', 'center'); y += 14; }
+  drawText('SUDS OF DOOM', W/2, 196, 2, CRIMSON, 'center');
+  if (Math.floor(t*2) % 2 === 0)
+    drawText('ESC TO GO BACK', W/2, 236, 1, '#7a7a8e', 'center');
+}
+
+// the marker and the trolley are objective props, drawn in the world
+function renderObjectiveProps(){
+  if (ST.marker){
+    const m = ST.marker, p = (ST.time*1.4) % 1;
+    cx.globalAlpha = (1-p) * 0.8;
+    cx.strokeStyle = m.on ? '#6ad07a' : '#f4c542'; cx.lineWidth = 2;
+    cx.beginPath(); cx.arc(m.x, m.y, 8 + p*26, 0, TAU); cx.stroke();
+    cx.globalAlpha = 0.9;
+    cx.strokeStyle = m.on ? '#6ad07a' : '#f4c542'; cx.lineWidth = 1;
+    cx.beginPath(); cx.arc(m.x, m.y, 9, 0, TAU); cx.stroke();
+    cx.globalAlpha = 1;
+  }
+  if (ST.trolley){
+    const t = ST.trolley;
+    cx.fillStyle = t.flash > 0 ? '#ffffff' : '#8a6a3c';
+    cx.fillRect(Math.round(t.x-9), Math.round(t.y-7), 18, 14);
+    cx.fillStyle = '#3a2a16';
+    cx.fillRect(Math.round(t.x-9), Math.round(t.y-7), 18, 3);
+    // its health, over its head
+    for (let i=0;i<t.maxhp;i++){
+      cx.fillStyle = i < t.hp ? '#6ad07a' : '#2f333c';
+      cx.fillRect(Math.round(t.x-9+i*1.6), Math.round(t.y-12), 1, 3);
+    }
+  }
+}
+
 // ================================================================
 // THE STORE
 // Everything you own is bought here with plate shards. Three tabs,
@@ -6298,7 +6702,9 @@ function tick(dt){
   ST.zoneTimer = Math.max(0, ST.zoneTimer - dt);
   if (ST.mode !== 'play') return;
   ST.playTime += dt;
-  if (ST.tut) updateTutorial(dt); else updateWaves(dt);
+  if (ST.tut) updateTutorial(dt);
+  else if (ST.story){ if (!ST.objDone) updateWaves(dt); updateStory(dt); }
+  else updateWaves(dt);
   updateWhistle(dt);
   updatePlayer(dt);
   updateOrbs(dt);
