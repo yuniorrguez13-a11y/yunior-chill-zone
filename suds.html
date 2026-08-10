@@ -135,6 +135,12 @@ function noise(dur, vol, delay){
 let lastHitSfx = 0;
 const SFX = {
   shoot(){ tone('square', 760, 320, .06, .12); },
+  // the reason the gun floats. Three notes, up and then a long fall.
+  whistle(){
+    tone('sine',  700,  900, .18, .05, 0);
+    tone('sine',  920,  920, .13, .05, .20);
+    tone('sine', 1180,  760, .34, .05, .35);
+  },
   plate(){ tone('triangle', 340, 220, .05, .10); },
   fork(){ tone('sawtooth', 520, 380, .05, .07); },
   bubble(){ tone('sine', 420, 560, .08, .08); },
@@ -1445,6 +1451,15 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (ST.mode === 'help'){ ST.mode = 'menu'; return; }
+  if (ST.mode === 'story'){
+    if (k === 'escape' || k === 'backspace' || k === 'q'){ ST.mode = 'menu'; SFX.click(); }
+    else if (k === 'a' || k === 'arrowleft'  || k === 'w' || k === 'arrowup')   storyGo(-1);
+    else if (k === 'd' || k === 'arrowright' || k === 's' || k === 'arrowdown'
+             || k === ' ' || k === 'enter')                                     storyGo(1);
+    return;
+  }
+  // the tutorial is skippable at any point, and skipping still counts as done
+  if (ST.mode === 'play' && ST.tut && (k === 'escape' || k === 'backspace')){ tutFinish(); return; }
   if (ST.mode === 'store'){
     const n = storeItems().length;
     if (k === 'escape' || k === 'backspace'){ ST.mode = 'menu'; SFX.click(); }
@@ -1496,6 +1511,10 @@ cv.addEventListener('mousedown', e => {
     else startRun();               // clicking anywhere else still just plays
   }
   else if (ST.mode === 'help'){ ST.mode = 'menu'; SFX.click(); }
+  else if (ST.mode === 'story'){
+    if (p.y > H-26){ ST.mode = 'menu'; SFX.click(); }
+    else storyGo(p.x < W*0.3 ? -1 : 1);
+  }
   else if (ST.mode === 'store'){
     const t = storeTabHit(p.x, p.y);
     if (t >= 0){ ST.storeTab = t; ST.storeSel = 0; ST.storeTop = 0; SFX.click(); }
@@ -1542,6 +1561,11 @@ cv.addEventListener('touchstart', e => {
     return;
   }
   if (ST.mode === 'help'){ ST.mode = 'menu'; SFX.click(); return; }
+  if (ST.mode === 'story'){
+    if (p.y > H-26){ ST.mode = 'menu'; SFX.click(); }
+    else storyGo(p.x < W*0.3 ? -1 : 1);
+    return;
+  }
   if (ST.mode === 'store'){
     const tb = storeTabHit(p.x, p.y);
     if (tb >= 0){ ST.storeTab = tb; ST.storeSel = 0; ST.storeTop = 0; SFX.click(); return; }
@@ -1622,6 +1646,7 @@ const META = {
   startGun: 'pea',
   startWave: 1,
   waves: { 1: true },       // which start waves have been paid for
+  tutorial: false,          // whether he has already been shown the ropes
 };
 function loadMeta(){
   try {
@@ -1918,6 +1943,15 @@ function applyBoosts(){
 }
 
 function endRun(){
+  if (ST.tut){
+    // there is no losing the tutorial — patch him up and carry on
+    player.hp = player.maxhp;
+    player.iframe = Math.max(player.iframe, 2);
+    ST.flashRed = 0.4;
+    addFloater(player.x, player.y - 16, 'PATCHED UP', '#79c7f0', 1.6);
+    SFX.heart();
+    return;
+  }
   ST.mode = 'over';
   document.body.classList.remove('playing');
   saveMeta();                    // bank whatever he picked up this run
@@ -2175,6 +2209,7 @@ function firePlayerGun(dt){
   // two would never be hit. Sweep that gap by hand.
   sweepMuzzle(mx, my, dmg * n);
   ST.shake = Math.min(3, ST.shake + gun.shake*0.5);
+  if (ST.tut) ST.tut.shots++;
   SFX.shoot();
 }
 
@@ -3027,6 +3062,7 @@ function render(){
 
   if (ST.mode === 'menu'){ renderMenu(); return; }
   if (ST.mode === 'help'){ renderHelp(); return; }
+  if (ST.mode === 'story'){ renderStory(); return; }
   if (ST.mode === 'store'){ renderStore(); return; }
 
   const camX = Math.round(cam.x), camY = Math.round(cam.y);
@@ -3204,6 +3240,7 @@ function render(){
   cx.setTransform(1,0,0,1,0,0);
   renderOffscreenMarkers();
   renderHUD();
+  if (ST.tut) renderTutorial();
 
   // red hurt vignette
   if (ST.flashRed > 0){
@@ -3328,12 +3365,16 @@ function renderOffscreenMarkers(){
 // TITLE SCREEN
 // ================================================================
 const MENU = [
-  { label: () => 'START GAME',                          act: () => startRun() },
+  // a brand new player gets walked through it first, then dropped straight
+  // into a real shift — after that START GAME just starts the game
+  { label: () => 'START GAME',                          act: () => META.tutorial ? startRun() : startTutorial(true) },
   { label: () => 'STORE',                               act: () => openStore() },
+  { label: () => 'TUTORIAL',                            act: () => startTutorial(false) },
+  { label: () => 'THE STORY',                           act: () => openStory() },
   { label: () => 'HOW TO PLAY',                         act: () => { ST.mode = 'help'; SFX.click(); } },
   { label: () => 'SOUND: ' + (muted ? 'OFF' : 'ON'),    act: () => { setMuted(!muted); SFX.click(); } },
 ];
-const MENU_Y = 176, MENU_STEP = 13, MENU_W = 160;
+const MENU_Y = 156, MENU_STEP = 12, MENU_W = 160;
 function menuHit(x, y){
   for (let i=0;i<MENU.length;i++){
     const iy = MENU_Y + i*MENU_STEP;
@@ -3457,7 +3498,7 @@ function renderMenu(){
   drawText('SUDS OF DOOM', W/2, 16, 4, CRIMSON, 'center');
   drawText('THE DISHWASHER UPRISING', W/2, 42, 1, '#8d93a4', 'center');
 
-  renderSlides(90, 58, 300, 108);
+  renderSlides(96, 56, 288, 92);
 
   for (let i=0;i<MENU.length;i++){
     const on = ST.menuSel === i;
@@ -3480,6 +3521,353 @@ function renderMenu(){
     drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 243, 1, '#79c7f0', 'center');
   drawText(usingTouch ? 'TAP AN OPTION' : 'CLICK, OR ARROWS + ENTER', W/2, 253, 1, '#3f4450', 'center');
   drawText('A YUNIORS CHILL ZONE GAME', W/2, H-8, 1, '#3a3a48', 'center');
+}
+
+// ================================================================
+// THE TUTORIAL
+// A scripted shift with the waves switched off. Every step either
+// waits for you to do a thing or waits out a clock, so there is no
+// step anybody can get stuck on. Nothing here can kill you.
+// Note for anything drawn on screen: the pixel font has no
+// apostrophe, so all of this copy is written without one.
+// ================================================================
+function tutSpot(){
+  // somewhere in the dish pit with room to swing; walk outward until it is clear
+  for (let r = 0; r < 240; r += 12)
+    for (const [dx, dy] of [[0,0],[r,0],[-r,0],[0,r],[0,-r]])
+      if (clearSpot(1010+dx, 400+dy, 26)) return { x: 1010+dx, y: 400+dy };
+  return { x: SPAWN.x, y: SPAWN.y };
+}
+
+// scatter n things on the floor around him, never inside the furniture
+function tutRing(n, radius, fn){
+  let made = 0;
+  for (let i = 0; i < n*10 && made < n; i++){
+    const a = rand(0, TAU), d = radius + rand(-18, 18);
+    const x = player.x + Math.cos(a)*d, y = player.y + Math.sin(a)*d;
+    if (!clearSpot(x, y, 14)) continue;
+    fn(x, y); made++;
+  }
+}
+
+const TUT = [
+  { title:'NIGHT SHIFT', hold:5.5, body:[
+      'EVERY DISHWASHER IN THE BUILDING WOKE UP ANGRY.',
+      'EVERYONE ELSE CLOCKED OUT AT TEN.',
+      'IT IS YOU, A FLOATING GUN, AND A LOT OF PLATES.' ] },
+
+  { title:'GET MOVING', body:[
+      'WASD OR THE ARROW KEYS.',
+      'ON A PHONE, DRAG ANYWHERE AND HE FOLLOWS YOUR THUMB.' ],
+    done: () => ST.tut.moved > 100 },
+
+  { title:'THE GUN IS NOT HELD', body:[
+      'HE WHISTLES SO HARD IT HOVERS. IT POINTS WHERE YOU POINT.',
+      'MOVE THE MOUSE TO AIM. HOLD THE BUTTON TO FIRE.' ],
+    done: () => ST.tut.shots >= 12 },
+
+  { title:'THERE THEY ARE', enter(){ tutRing(3, 100, (x,y) => spawnEnemy('washer', x, y)); },
+    body:[ 'THREE WASHERS. THEY THROW PLATES AT YOUR HEAD.',
+           'KEEP MOVING AND PUT THEM DOWN.' ],
+    done: () => enemies.length === 0 },
+
+  { title:'SUDS ARE XP', enter(){ tutRing(7, 44, (x,y) => dropPickup(x, y, 'sud')); },
+    body:[ 'THE BLUE DROPS ARE SUDS. WALK OVER THEM TO PICK THEM UP.',
+           'ENOUGH SUDS AND YOU LEVEL UP.' ],
+    done: () => !pickups.some(p => p.kind === 'sud') },
+
+  { title:'PICK AN UPGRADE',
+    enter(){ if (ST.mode === 'play') gainXP(player.xpNext + 1); },
+    body:[ 'THREE CARDS. PRESS 1, 2 OR 3, OR CLICK ONE.',
+           'THEY STACK ALL SHIFT. THEY DO NOT CARRY OVER TO THE NEXT.' ],
+    done: () => player.upgrades > 0 },
+
+  { title:'THE COUNTERS ARE COVER',
+    enter(){ tutRing(3, 140, (x,y) => spawnEnemy('washer', x, y)); },
+    body:[ 'PLATES DO NOT GO THROUGH FURNITURE. NEITHER DO YOURS.',
+           'PUT A SINK BETWEEN YOU AND THEM AND MAKE THEM COME TO YOU.' ],
+    done: () => enemies.length === 0 },
+
+  { title:'BROKEN PLATE', enter(){ tutRing(5, 44, (x,y) => dropPickup(x, y, 'shard')); },
+    body:[ 'SHARDS ARE THE ONLY THING THAT SURVIVES YOUR DEATH.',
+           'SPEND THEM IN THE STORE ON GUNS, BOOSTS AND A HEAD START.' ],
+    done: () => !pickups.some(p => p.kind === 'shard') },
+
+  { title:'THE LADDER', hold:7, body:[
+      'EVERY THREE UPGRADES YOU CLIMB TO THE NEXT GUN YOU OWN.',
+      'BUY MORE GUNS AND THE CLIMB GETS LONGER.',
+      'THE ONE YOU EQUIP IN THE STORE IS WHERE THE CLIMB STARTS.' ] },
+
+  { title:'THAT IS THE JOB', hold:7, body:[
+      'HEARTS ARE TOP LEFT. LOSE THEM ALL AND THE SHIFT ENDS.',
+      'P PAUSES. M MUTES. THE STORE OPENS AGAIN WHEN YOU DIE.',
+      'GO ON THEN.' ] },
+];
+
+// `thenPlay` is the first-time path: finish the tutorial and fall straight
+// into a real shift, rather than being dumped back at the menu.
+function startTutorial(thenPlay){
+  startRun();
+  ST.tut = { i: -1, t: 0, moved: 0, shots: 0, lx: 0, ly: 0, then: !!thenPlay };
+  ST.wave = 0; ST.waveState = 'idle'; ST.waveTimer = 1e9; ST.toSpawn = [];
+  ST.banner = ''; ST.bannerTimer = 0;
+  enemies = []; pickups = []; pbullets = []; ebullets = []; boss = null;
+  // the tutorial ignores everything the store ever sold you, so it teaches the
+  // same lesson to a brand new player and to somebody replaying it at wave 40
+  player.gun = Object.assign({}, T.gun);
+  player.ladder = [GUNS[0]]; player.gunIdx = 0; player.gunName = GUNS[0].name;
+  player.upgrades = 0; player.xp = 0; player.level = 1; player.xpNext = 5;
+  player.maxhp = T.playerHP; player.hp = player.maxhp;
+  player.orbs = 0; rebuildOrbs();
+  player.magnet = T.magnetRadius; player.mercy = T.iframes; player.shardMul = 1;
+  player.charge = 0;
+  const s = tutSpot();
+  player.x = s.x; player.y = s.y;
+  ST.tut.lx = player.x; ST.tut.ly = player.y;
+  updateCam(0, true);
+  tutStep();
+}
+
+function tutStep(){
+  ST.tut.i++;
+  ST.tut.t = 0; ST.tut.shots = 0; ST.tut.moved = 0;
+  const s = TUT[ST.tut.i];
+  if (!s){ tutFinish(); return; }
+  if (s.enter) s.enter();
+  SFX.click();
+}
+
+function tutFinish(){
+  const then = ST.tut && ST.tut.then;
+  ST.tut = null;
+  META.tutorial = true; saveMeta();
+  if (then){
+    startRun();
+    ST.banner = 'SHIFT STARTS NOW'; ST.bannerTimer = 2.2;
+  } else {
+    ST.mode = 'menu'; ST.menuSel = 0; SFX.click();
+    document.body.classList.remove('playing');
+  }
+}
+
+function updateTutorial(dt){
+  const s = TUT[ST.tut.i];
+  if (!s) return;
+  ST.tut.t += dt;
+  ST.tut.moved += Math.hypot(player.x - ST.tut.lx, player.y - ST.tut.ly);
+  ST.tut.lx = player.x; ST.tut.ly = player.y;
+  // a step with a clock reads itself out; a step with a job waits for the job
+  const ok = s.hold ? ST.tut.t >= s.hold : !!(s.done && s.done());
+  if (ok && ST.tut.t > 0.4) tutStep();
+}
+
+function renderTutorial(){
+  const s = TUT[ST.tut.i];
+  if (!s) return;
+  // clears the XP bar, the gun name and the barrel count along the bottom
+  const h = 24 + s.body.length*10;
+  const y0 = H - h - 26;
+  cx.fillStyle = 'rgba(6,6,10,0.86)';
+  cx.fillRect(18, y0, W-36, h);
+  cx.strokeStyle = '#f4c542'; cx.lineWidth = 1;
+  cx.strokeRect(18.5, y0+0.5, W-37, h-1);
+  drawText(s.title, W/2, y0+6, 2, '#f4c542', 'center');
+  let y = y0 + 20;
+  for (const l of s.body){ drawText(l, W/2, y, 1, '#dfe3ea', 'center'); y += 10; }
+  drawText((ST.tut.i+1) + '/' + TUT.length, 24, y0+6, 1, '#5a5a6e');
+  drawText('ESC SKIPS', W-24, y0+6, 1, '#5a5a6e', 'right');
+}
+
+// ---- he whistles when he has nothing to do ----------------------
+// It is the reason the gun floats in the first place, so it should turn up
+// on its own now and then and not only in the story.
+let idleT = 0, whistleCd = 0;
+function updateWhistle(dt){
+  whistleCd -= dt;
+  if (player.moving || mouse.down || keys[' '] || enemies.length){ idleT = 0; return; }
+  idleT += dt;
+  if (idleT > 4.5 && whistleCd <= 0){
+    whistleCd = 8;
+    SFX.whistle();
+    spawnParts(player.x + 9, player.y - 14, 5, '#cfe8ff', 20);
+  }
+}
+
+// ================================================================
+// THE FILE
+// The story, the cast, and the things people have found. Every page
+// is written without an apostrophe — the pixel font has no glyph for
+// one and would draw a question mark instead.
+// ================================================================
+const STORY = [
+  { t:'THE NEW GUY', l:[
+    'NOBODY EVER LEARNED HIS NAME. HE STARTED ON A TUESDAY,',
+    'HE WAS PUT STRAIGHT ON THE DISH PIT, AND THAT WAS THAT.',
+    'THE ROTA ON THE WALL JUST SAYS NEW GUY IN BIRO.',
+    '',
+    'HE IS NINETEEN. HE HAS AN APRON, A PAIR OF SNEAKERS HE',
+    'PAID TOO MUCH FOR, AND A WHISTLE THAT CAN CRACK A GLASS',
+    'AT SIX METRES.',
+    '',
+    'HE IS ALSO THE ONLY ONE WHO STAYED LATE.' ] },
+
+  { t:'THE WHISTLE', sps:['gunA'], l:[
+    'HE DOES NOT HOLD THE GUN. HE HAS NEVER HELD IT.',
+    '',
+    'HE WHISTLES, AND IT GOES UP, AND IT STAYS UP, AND IT',
+    'POINTS AT WHATEVER HE IS LOOKING AT. NOBODY HAS ASKED',
+    'HIM TO EXPLAIN THIS AND HE HAS NOT OFFERED.',
+    '',
+    'IF YOU STAND STILL WITH NOTHING LEFT TO SHOOT, YOU CAN',
+    'HEAR HIM DOING IT.' ] },
+
+  { t:'WHAT WENT WRONG', sps:['washer'], l:[
+    'THE OFFICIAL LINE IS A POWER SURGE.',
+    '',
+    'WHAT ACTUALLY HAPPENED IS THAT THIS KITCHEN HAS RUN',
+    'EVERY MACHINE ON THE HOTTEST CYCLE, EVERY NIGHT, FOR',
+    'ELEVEN YEARS, AND NOT ONE OF THEM HAS EVER BEEN',
+    'DESCALED. AT 10:47 PM THE FIRST ONE DECIDED IT HAD',
+    'DONE ITS LAST RACK.',
+    '',
+    'THE REST AGREED WITHIN THE MINUTE.' ] },
+
+  { t:'THE KITCHEN', l:[
+    'FIVE ROOMS. WALK INTO ONE AND IT TELLS YOU WHERE',
+    'YOU ARE.',
+    '',
+    'THE LINE          THE LONG RUN ALONG THE TOP.',
+    'PREP STATION      TABLES AND AN ISLAND TO CIRCLE.',
+    'THE DISH PIT      WHERE HE WORKS. WHERE IT STARTED.',
+    'WALK-IN FREEZER   TIGHT, RACKED, ONE WAY IN.',
+    'DRY STORE         CRATES AND SHELVING TO BREAK LINES.',
+    '',
+    'ALL OF IT IS COVER. PLATES DO NOT GO THROUGH A SINK.' ] },
+
+  { t:'THE CAST', sps:['washer','rinser','scrubber'], l:[
+    'WASHER',
+    '  THE STANDARD ISSUE. LOBS A PLATE AND KEEPS COMING.',
+    '',
+    'RINSER',
+    '  LIGHTER, FASTER, THROWS FORKS. ANNOYING IN PAIRS.',
+    '',
+    'SCRUBBER',
+    '  NO GUN AT ALL. IT WINDS UP AND CHARGES YOU. LISTEN',
+    '  FOR THE WIND UP AND STEP OUT OF THE WAY.' ] },
+
+  { t:'THE CAST, CONTINUED', sps:['bubbler','steamer','stacker'], l:[
+    'BUBBLER',
+    '  SLOW. FILLS THE ROOM WITH BUBBLES THAT FOLLOW YOU',
+    '  FOR THREE SECONDS AND THEN GIVE UP.',
+    '',
+    'STEAMER',
+    '  VENTS CLOUDS THAT SWELL AS THEY DRIFT. DO NOT STAND',
+    '  IN THE FOG WAITING TO SEE WHAT HAPPENS.',
+    '',
+    'STACKER',
+    '  CARRIES A WALL OF PLATES ON ITS FRONT AND EATS 85',
+    '  PERCENT OF ANYTHING THAT HITS THEM. YOU GET A CLANG',
+    '  AND ALMOST NO DAMAGE. GO ROUND THE BACK.' ] },
+
+  { t:'THE MEGAWASHER', sps:['boss'], l:[
+    'IT COMES EVERY FIFTH WAVE AND IT DOES NOT CARE ABOUT',
+    'THE FURNITURE. IT GOES THROUGH THE COUNTERS, THE',
+    'TABLES AND THE SHELVING IN A STRAIGHT LINE.',
+    '',
+    'IT THROWS PLATES IN SPIRALS, SO CIRCLING IT IS SAFER',
+    'THAN BACKING AWAY FROM IT.',
+    '',
+    'IT IS ALSO WHERE THE SHARDS ARE. ONE OF THESE IS',
+    'WORTH A WHOLE WAVE OF EVERYTHING ELSE.' ] },
+
+  { t:'THE ARSENAL', sps:['gunE'], l:[
+    'NONE OF IT CAME WITH THE BUILDING.',
+    '',
+    'THE PEASHOOTER WAS IN THE LOST PROPERTY BOX. THE',
+    'PLATE PUNISHER IS A PLATE RACK THAT LEARNED A TRADE.',
+    'THE SUD SHREDDER IS THE PRESSURE HOSE, ANGRIER.',
+    '',
+    'THE REST ARRIVED IN A PALLET NOBODY ORDERED, ADDRESSED',
+    'TO THE DISH PIT, ON THE MORNING AFTER IT STARTED.',
+    'THE PAPERWORK SAID KITCHEN EQUIPMENT.' ] },
+
+  { t:'THE GUY IN THE CANNON', sps:['buff','weak'], l:[
+    'THE GAINS CANNON DOES NOT FIRE A BULLET. IT FIRES A',
+    'MAN, AND HE IS ENORMOUS, AND HE GOES THROUGH ANYTHING',
+    'IN THE ROOM.',
+    '',
+    'HE HAS THREE SECONDS.',
+    '',
+    'AFTER THAT THE STEROIDS ARE OUT OF HIM AND HE IS THE',
+    'MOST UNBUFF MAN ALIVE, DRIFTING SADLY ACROSS THE',
+    'KITCHEN AND DOING ROUGHLY NOTHING.',
+    '',
+    'SO DO NOT FIRE HIM ACROSS THE ROOM. LET THEM COME.' ] },
+
+  { t:'THINGS PEOPLE HAVE FOUND', l:[
+    'STAND STILL WITH THE ROOM CLEAR AND HE WHISTLES.',
+    '',
+    'SWING THE AIM FAST AND THE GUN LEAVES A SMEAR BEHIND',
+    'IT. IT IS DOING A REAL 180, NOT SNAPPING ROUND.',
+    '',
+    'A STACKER HIT IN THE PLATES SAYS CLANG. A STACKER HIT',
+    'IN THE BACK DOES NOT.',
+    '',
+    'OPEN THE BROWSER CONSOLE AND TYPE SUDS.POS - THE WHOLE',
+    'GAME IS SITTING RIGHT THERE.',
+    '',
+    'THE BLADE COMES BACK THROUGH THEM. STANDING STILL AND',
+    'LETTING IT RETURN IS DOUBLE DAMAGE, NOT A MISTAKE.' ] },
+];
+
+// Only shown when the cheat block is actually still on the page — delete that
+// script and this page quietly stops existing.
+const STORY_CHEATS = { t:'STAFF ONLY', l:[
+  'THERE IS A CHEAT MENU ON THIS BUILD.',
+  '',
+  'PRESS THE BACKTICK KEY - THE ONE ABOVE TAB - AND IT',
+  'OPENS. GUNS, SHARDS, BUFFS, WAVES, ANY ENEMY YOU LIKE,',
+  'AND A WARP TO ANY OF THE FIVE ROOMS.',
+  '',
+  'IT WILL HAPPILY RUIN YOUR BEST WAVE FOR YOU.' ] };
+
+function storyPages(){ return window.SUDS_CHEATS ? STORY.concat([STORY_CHEATS]) : STORY; }
+function openStory(){ ST.mode = 'story'; ST.storyPage = 0; SFX.click(); }
+function storyGo(d){
+  const n = storyPages().length;
+  const was = ST.storyPage || 0;
+  ST.storyPage = clamp(was + d, 0, n - 1);
+  if (ST.storyPage !== was) SFX.click();
+}
+
+function renderStory(){
+  const pages = storyPages();
+  const p = pages[ST.storyPage] || pages[0];
+  cx.drawImage(bg, 620, 300, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.91)'; cx.fillRect(0,0,W,H);
+
+  drawText(p.t, W/2, 14, 2, '#f4c542', 'center');
+  cx.fillStyle = 'rgba(244,197,66,0.35)';
+  cx.fillRect(W/2 - 120, 28, 240, 1);
+
+  let y = 40;
+  for (const l of p.l){ if (l) drawText(l, 30, y, 1, '#dfe3ea'); y += 10; }
+
+  // the cast pages carry their own mugshots, stacked down the right
+  if (p.sps){
+    let sy = 56;
+    for (const key of p.sps){
+      const sp = SP[key];
+      if (!sp) continue;
+      drawSpriteC(sp, 408, sy + sp.height, 2);
+      sy += sp.height*2 + 14;
+    }
+  }
+
+  drawText('PAGE ' + (ST.storyPage+1) + ' OF ' + pages.length, W/2, 236, 1, '#5a5a6e', 'center');
+  drawText(usingTouch ? 'TAP RIGHT FOR NEXT, LEFT FOR BACK'
+                      : 'LEFT AND RIGHT ARROWS TURN THE PAGE', W/2, 250, 1, '#79c7f0', 'center');
+  drawText(usingTouch ? 'TAP THE BOTTOM TO LEAVE' : 'ESC TO GO BACK', W/2, 261, 1, '#3f4450', 'center');
 }
 
 // ================================================================
@@ -3729,7 +4117,8 @@ function tick(dt){
   ST.zoneTimer = Math.max(0, ST.zoneTimer - dt);
   if (ST.mode !== 'play') return;
   ST.playTime += dt;
-  updateWaves(dt);
+  if (ST.tut) updateTutorial(dt); else updateWaves(dt);
+  updateWhistle(dt);
   updatePlayer(dt);
   updateOrbs(dt);
   updateEnemies(dt);
@@ -3783,6 +4172,9 @@ requestAnimationFrame(frame);
      ================================================================== -->
 <script>
 (function cheatMenu(){
+  // THE FILE hides its STAFF ONLY page unless this block is still on the page,
+  // so deleting this whole script also deletes the page that documents it.
+  window.SUDS_CHEATS = true;
   const css = document.createElement('style');
   css.textContent = `
     #sc-tab, #sc-box { font:11px/1.4 ui-monospace, Menlo, monospace !important; z-index:99999 !important; }
