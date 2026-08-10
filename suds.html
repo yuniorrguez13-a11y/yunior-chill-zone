@@ -3144,6 +3144,10 @@ function gotoMap(i, announce){
   ST.zone = ''; ST.zoneTimer = 0; ST.seen = {};
   seedVents(MAPS[MAPI]);
   seedStation(MAPS[MAPI]);
+  seedProps(MAPS[MAPI]);
+  ST.roomsSeen[MAPS[MAPI].id] = 1;
+  META.stats = META.stats || {}; META.stats.rooms = META.stats.rooms || {};
+  META.stats.rooms[MAPS[MAPI].id] = 1;
   applyMod(rollMod());
   updateCam(0, true);
   if (announce){
@@ -3215,6 +3219,20 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (ST.mode === 'ending'){ if (k === 'escape' || k === 'enter' || k === ' '){ ST.mode='menu'; SFX.click(); } return; }
+  if (ST.mode === 'stats'){ ST.mode = 'menu'; SFX.click(); return; }
+  if (ST.mode === 'achv'){
+    if (k === 'escape' || k === 'backspace' || k === 'enter'){ ST.mode = 'menu'; SFX.click(); }
+    else if (k === 'w' || k === 'arrowup')   ST.achvTop = Math.max(0, (ST.achvTop||0) - 1);
+    else if (k === 's' || k === 'arrowdown') ST.achvTop = Math.min(Math.max(0, ACHIEVEMENTS.length-9), (ST.achvTop||0) + 1);
+    return;
+  }
+  if (ST.mode === 'options'){
+    if (k === 'escape' || k === 'backspace'){ ST.mode = 'menu'; SFX.click(); }
+    else if (k === 'w' || k === 'arrowup'){   ST.optSel = (ST.optSel + OPTIONS.length - 1) % OPTIONS.length; ST.wipeArm = 0; }
+    else if (k === 's' || k === 'arrowdown'){ ST.optSel = (ST.optSel + 1) % OPTIONS.length; ST.wipeArm = 0; }
+    else if (k === 'enter' || k === ' ' || k === 'a' || k === 'd'){ OPTIONS[ST.optSel].act(); SFX.click(); }
+    return;
+  }
   if (ST.mode === 'chapters'){
     const open = chaptersOpen();
     if (k === 'escape' || k === 'backspace'){ ST.mode = 'menu'; SFX.click(); }
@@ -3284,6 +3302,13 @@ cv.addEventListener('mousedown', e => {
     if (p.y > H-26){ ST.mode = 'menu'; SFX.click(); }
     else storyGo(p.x < W*0.3 ? -1 : 1);
   }
+  else if (ST.mode === 'stats'){ ST.mode = 'menu'; SFX.click(); }
+  else if (ST.mode === 'achv'){ ST.mode = 'menu'; SFX.click(); }
+  else if (ST.mode === 'options'){
+    const i = optionHit(p.y);
+    if (i >= 0){ if (i !== ST.optSel) ST.wipeArm = 0; ST.optSel = i; OPTIONS[i].act(); SFX.click(); }
+    else if (p.y > H-22){ ST.mode = 'menu'; SFX.click(); }
+  }
   else if (ST.mode === 'beat') beatAdvance();
   else if (ST.mode === 'ending'){ ST.mode = 'menu'; SFX.click(); }
   else if (ST.mode === 'chapters'){
@@ -3340,6 +3365,13 @@ cv.addEventListener('touchstart', e => {
   if (ST.mode === 'story'){
     if (p.y > H-26){ ST.mode = 'menu'; SFX.click(); }
     else storyGo(p.x < W*0.3 ? -1 : 1);
+    return;
+  }
+  if (ST.mode === 'stats' || ST.mode === 'achv'){ ST.mode = 'menu'; SFX.click(); return; }
+  if (ST.mode === 'options'){
+    const i = optionHit(p.y);
+    if (i >= 0){ if (i !== ST.optSel) ST.wipeArm = 0; ST.optSel = i; OPTIONS[i].act(); SFX.click(); }
+    else if (p.y > H-22){ ST.mode = 'menu'; SFX.click(); }
     return;
   }
   if (ST.mode === 'beat'){ beatAdvance(); return; }
@@ -3415,6 +3447,7 @@ const ST = {
   objDone: 0, objTimer: 0, beatDelay: 0, bossBeaten: false,
   marker: null, trolley: null, objFailed: false,
   combo: 0, comboT: 0, comboBest: 0, stop: 0, mod: null, crits: 0,
+  roomsSeen: {}, cleanWave: true, recap: null, optSel: 0, wipeArm: 0, achvTop: 0,
   shakeOn: true, dmgNums: true,
   best: { wave: 0, kills: 0 },
 };
@@ -3437,6 +3470,9 @@ const META = {
   waves: { 1: true },       // which start waves have been paid for
   tutorial: false,          // whether he has already been shown the ropes
   story: 0,                 // how many story chapters are finished
+  diff: 0,                  // which difficulty
+  achv: {}, stats: {},      // what he has unlocked, and the running totals
+  shake: 1, dmgNums: 1,
 };
 function loadMeta(){
   try {
@@ -3707,6 +3743,12 @@ function startRun(){
   player.gunIdx = GUNS.indexOf(player.ladder[0] || GUNS[0]);
   player.gunName = GUNS[player.gunIdx].name;
   applyBoosts();
+  const D = diff();
+  player.maxhp = Math.max(1, player.maxhp + D.hp);
+  player.hp = player.maxhp;
+  ST.roomsSeen = {}; ST.cleanWave = true; ST.recap = null;
+  ST.combo = 0; ST.comboT = 0; ST.crits = 0;
+  bumpStat('runs');
   // starting deeper in the shift comes with the upgrades you would have had
   for (let i = 0; i < META.startWave - 1; i++){
     const pool = CARDS.filter(c => !(c.max && c.max(player.gun)));
@@ -3746,6 +3788,15 @@ function endRun(){
     return;
   }
   ST.mode = 'over';
+  bumpStat('deaths');
+  bumpStat('time', Math.round(ST.playTime));
+  let near = null, nd = 1e9;
+  for (const e of enemies){ const d = dist2(e.x, e.y, player.x, player.y); if (d < nd){ nd = d; near = e; } }
+  ST.recap = {
+    by: near ? (BOSS_NAME[near.type] || (ROSTER.find(r=>r.type===near.type)||{}).name || 'THE KITCHEN') : 'THE KITCHEN',
+    room: MAPS[MAPI].name, combo: ST.comboBest || 0, crits: ST.crits || 0,
+  };
+  checkAchievements();
   document.body.classList.remove('playing');
   saveMeta();                    // bank whatever he picked up this run
   if (ST.wave > ST.best.wave || (ST.wave === ST.best.wave && ST.kills > ST.best.kills)){
@@ -3779,8 +3830,12 @@ function beginWave(n){
   }
   ST.waveState = 'announce';
   ST.waveTimer = 1.4;
+  if (ST.cleanWave && n > 1) bumpStat('cleanWaves');
+  ST.cleanWave = true;
   ST.banner = 'WAVE ' + n; ST.bannerTimer = 1.4;
-  const budget = 4 + n * 2;
+  let budget = 4 + n * 2;
+  if (ST.mod && ST.mod.id === 'swarm') budget = Math.round(budget * 1.6);   // more, weaker
+  if (ST.mod && ST.mod.id === 'elite') budget = Math.round(budget * 0.65);  // fewer, nastier
   const list = [];
   for (let i=0;i<budget;i++) list.push(rollEnemy(n));
   ST.toSpawn = list;
@@ -3845,12 +3900,17 @@ function waveScale(n){ return 1 + (n-1) * 0.15; }
 function spawnEnemy(type, x, y){
   const n = ST.wave, sc = waveScale(n);
   const base = T[type];
-  const elite = type !== 'boss' && n >= 4 && Math.random() < (0.10 + n*0.012);
+  // SPLIT SHIFT makes nearly everything elite; RUSH HOUR makes nearly nothing
+  let eliteChance = 0.10 + n*0.012;
+  if (ST.mod && ST.mod.id === 'elite') eliteChance = 0.75;
+  if (ST.mod && ST.mod.id === 'swarm') eliteChance = 0.02;
+  const elite = BOSSES.indexOf(type) < 0 && n >= 4 && Math.random() < eliteChance;
+  const D = diff();
   const e = {
     type, x, y,
-    hp: base.hp * sc * (elite ? T.eliteHPMul : 1),
-    maxhp: base.hp * sc * (elite ? T.eliteHPMul : 1),
-    speed: base.speed * (1 + (n-1)*0.03) * (elite ? T.eliteSpeedMul : 1),
+    hp: base.hp * sc * (elite ? T.eliteHPMul : 1) * D.dmg,
+    maxhp: base.hp * sc * (elite ? T.eliteHPMul : 1) * D.dmg,
+    speed: base.speed * (1 + (n-1)*0.03) * (elite ? T.eliteSpeedMul : 1) * D.spd,
     r: base.r * (elite ? 1.2 : 1),
     touch: base.touch + (elite ? 1 : 0),
     elite,
@@ -4237,6 +4297,11 @@ function updatePBullets(dt){
         pbullets.splice(i,1);
         continue;
       }
+    }
+    // a crate in the way takes the shot, and eventually bursts open
+    if (b.shot !== 'saw' && hitProps(b.x, b.y, b.dmg)){
+      spawnParts(b.x, b.y, 3, '#8a6a3c', 40);
+      pbullets.splice(i,1); continue;
     }
     // splat against the kitchen itself. A blade on its way home ignores the
     // furniture, otherwise it gets wedged behind a counter and never returns.
@@ -4810,6 +4875,7 @@ function damageEnemy(e, dmg, hitX, hitY){
   e.flash = crit ? 0.16 : 0.08;
   SFX.hitEnemy();
   if (crit){
+    bumpStat('crits');
     SFX.crit();
     spawnParts(hitX, hitY, 5, '#fff0a0', 80);
     if (ST.dmgNums) addFloater(hitX, hitY - 8, String(Math.round(dmg)) + '!', '#fff0a0', 0.9);
@@ -4822,7 +4888,7 @@ function damageEnemy(e, dmg, hitX, hitY){
 // Broken plate pieces. The tougher the dishwasher, the more of it there is
 // left on the floor. The Shard Magnet boost tilts the odds.
 function dropShards(e){
-  const mul = (player.shardMul || 1) * comboMul();
+  const mul = (player.shardMul || 1) * comboMul() * diff().shards;
   let n;
   if (isBoss(e))           n = irand(14, 20);
   else if (e.elite)        n = irand(2, 4);
@@ -4853,6 +4919,14 @@ const DEATH_COLOR = {
 function killEnemy(e){
   bumpCombo();
   hitstop(isBoss(e) ? 0.16 : 0.035);
+  bumpStat('kills');
+  META.stats = META.stats || {};
+  if (ST.combo > (META.stats.bestCombo || 0)) META.stats.bestCombo = ST.combo;
+  if (isBoss(e)){
+    bumpStat('bosses');
+    META.stats.bossKinds = META.stats.bossKinds || {};
+    META.stats.bossKinds[e.type] = 1;
+  }
   const idx = enemies.indexOf(e);
   if (idx >= 0) enemies.splice(idx, 1);
   // a kettle at the boil goes off whether you shot it or not
@@ -4917,7 +4991,7 @@ function updatePickups(dt){
     if (d2 < 7*7){
       if (p.kind === 'sud'){ gainXP(1); SFX.pickup(); }
       else if (p.kind === 'shard'){
-        META.shards++; ST.runShards++;
+        META.shards++; ST.runShards++; bumpStat('shardsEver');
         SFX.plate();
       }
       else { player.hp = Math.min(player.maxhp, player.hp + 1); SFX.heart(); addFloater(player.x, player.y-12, '+1 HEART', CRIMSON); }
@@ -4992,6 +5066,12 @@ function updatePlayer(dt){
   // hot oil underfoot: you keep moving, you just stop being quick about it
   const slick = onSlick(player.x, player.y);
   const sp = T.playerSpeed * player.speedMul * (slick ? T.slickSlow : 1);
+  // WET FLOOR: he keeps going for a moment after he stops steering
+  if (ST.mod && ST.mod.id === 'wet'){
+    player.sx = (player.sx || 0) * 0.94 + mx * 0.06;
+    player.sy = (player.sy || 0) * 0.94 + my * 0.06;
+    mx = player.sx; my = player.sy;
+  }
   if (slick && mag > 0 && Math.random() < 0.25)
     spawnParts(player.x, player.y + 6, 1, '#c79a24', 18);
   // his own collision box is small — he floats, and a big box would snag
@@ -5041,7 +5121,7 @@ function hurtPlayer(dmg){
   let near = null, nd = 1e9;
   for (const e of enemies){ const d = dist2(e.x, e.y, player.x, player.y); if (d < nd){ nd = d; near = e; } }
   if (near) markHit(near.x, near.y);
-  ST.combo = 0; ST.comboT = 0;
+  ST.combo = 0; ST.comboT = 0; ST.cleanWave = false;
   player.hp -= dmg;
   player.iframe = player.mercy || T.iframes;
   player.flash = 0.25;
@@ -5233,6 +5313,9 @@ function render(){
   if (ST.mode === 'help'){ renderHelp(); return; }
   if (ST.mode === 'story'){ renderStory(); return; }
   if (ST.mode === 'chapters'){ renderChapters(); return; }
+  if (ST.mode === 'options'){ renderOptions(); return; }
+  if (ST.mode === 'stats'){ renderStats(); return; }
+  if (ST.mode === 'achv'){ renderAchievements(); return; }
   if (ST.mode === 'beat'){ renderBeat(); return; }
   if (ST.mode === 'ending'){ renderEnding(); return; }
   if (ST.mode === 'store'){ renderStore(); return; }
@@ -5391,6 +5474,7 @@ function render(){
     drawGunRot(SP.gunA, o.x, o.y + b, o.aim || 0);
   }
 
+  renderProps();
   renderVents();
   renderStation();
   if (ST.story) renderObjectiveProps();
@@ -5502,6 +5586,7 @@ function render(){
   renderHUD();
   renderCombo();
   renderDashPip();
+  renderToasts();
   if (ST.tut) renderTutorial();
   if (ST.story) renderObjective();
 
@@ -5635,11 +5720,14 @@ const MENU = [
   { label: () => 'STORY MODE',                          act: () => { ST.mode='chapters'; ST.chapSel = Math.min(chaptersOpen()-1, CHAPTERS.length-1); SFX.click(); } },
   { label: () => 'STORE',                               act: () => openStore() },
   { label: () => 'TUTORIAL',                            act: () => startTutorial(false) },
-  { label: () => 'THE STORY',                           act: () => openStory() },
+  { label: () => 'THE FILE',                             act: () => openStory() },
   { label: () => 'HOW TO PLAY',                         act: () => { ST.mode = 'help'; SFX.click(); } },
-  { label: () => 'SOUND: ' + (muted ? 'OFF' : 'ON'),    act: () => { setMuted(!muted); SFX.click(); } },
+  { label: () => 'ACHIEVEMENTS  ' + unlockedCount() + '/' + ACHIEVEMENTS.length,
+                                                        act: () => { ST.mode = 'achv'; ST.achvTop = 0; SFX.click(); } },
+  { label: () => 'THE RECORD',                          act: () => { ST.mode = 'stats'; SFX.click(); } },
+  { label: () => 'OPTIONS',                             act: () => { ST.mode = 'options'; ST.optSel = 0; ST.wipeArm = 0; SFX.click(); } },
 ];
-const MENU_Y = 156, MENU_STEP = 12, MENU_W = 160;
+const MENU_Y = 132, MENU_STEP = 11, MENU_W = 190;
 function menuHit(x, y){
   for (let i=0;i<MENU.length;i++){
     const iy = MENU_Y + i*MENU_STEP;
@@ -5763,7 +5851,7 @@ function renderMenu(){
   drawText('SUDS OF DOOM', W/2, 16, 4, CRIMSON, 'center');
   drawText('THE DISHWASHER UPRISING', W/2, 42, 1, '#8d93a4', 'center');
 
-  renderSlides(96, 56, 288, 92);
+  renderSlides(112, 50, 256, 74);
 
   for (let i=0;i<MENU.length;i++){
     const on = ST.menuSel === i;
@@ -5784,7 +5872,8 @@ function renderMenu(){
   drawText(String(META.shards) + ' SHARDS', W/2 - 16, 231, 1, '#dfe3ea');
   if (ST.best.wave > 0)
     drawText('BEST: WAVE ' + ST.best.wave + ' + ' + ST.best.kills + ' KO', W/2, 243, 1, '#79c7f0', 'center');
-  drawText(usingTouch ? 'TAP AN OPTION' : 'CLICK, OR ARROWS + ENTER', W/2, 253, 1, '#3f4450', 'center');
+  // the tip earns the line more than the controls hint did
+  drawText(tipOfNow(), W/2, 253, 1, '#4a5262', 'center');
   drawText('A YUNIORS CHILL ZONE GAME', W/2, H-8, 1, '#3a3a48', 'center');
 }
 
@@ -6355,6 +6444,188 @@ function renderDark(){
   cx.fillStyle = g; cx.fillRect(0,0,W,H);
 }
 
+
+// ================================================================
+// THE META LAYER
+// Difficulty, achievements, statistics, options, and the screens
+// for all of it. Everything here persists in META.
+// ================================================================
+
+// ---- 9. DIFFICULTY. Picked on the menu, remembered, and it scales the
+//         things that actually matter rather than just hit points. ----
+const DIFFS = [
+  { id:0, name:'DISH PORTER', desc:'THE NORMAL SHIFT',      hp:0,  dmg:1.00, spd:1.00, shards:1.00 },
+  { id:1, name:'DOUBLE SHIFT', desc:'TOUGHER, PAYS BETTER', hp:-1, dmg:1.30, spd:1.12, shards:1.35 },
+  { id:2, name:'LOCK IN',      desc:'ONE HEART. NO MERCY.', hp:-99,dmg:1.55, spd:1.25, shards:1.90 },
+];
+const diff = () => DIFFS[Math.min(META.diff || 0, DIFFS.length-1)];
+
+// ---- 10. ACHIEVEMENTS. Checked once a second; unlocking one says so. ----
+const ACHIEVEMENTS = [
+  { id:'first',   name:'FIRST BLOOD',      desc:'PUT DOWN YOUR FIRST DISHWASHER',
+    test: s => s.kills >= 1 },
+  { id:'wave10',  name:'STILL STANDING',   desc:'REACH WAVE 10',
+    test: s => s.bestWave >= 10 },
+  { id:'wave25',  name:'ALL NIGHT',        desc:'REACH WAVE 25',
+    test: s => s.bestWave >= 25 },
+  { id:'boss1',   name:'ONE DOWN',         desc:'BEAT THE MEGAWASHER',
+    test: s => s.bosses >= 1 },
+  { id:'boss4',   name:'THE WHOLE BRIGADE',desc:'BEAT ALL FOUR BOSSES',
+    test: s => s.bossKinds >= 4 },
+  { id:'combo20', name:'ON A ROLL',        desc:'A STREAK OF 20',
+    test: s => s.bestCombo >= 20 },
+  { id:'rich',    name:'PLATE COLLECTOR',  desc:'BANK 2000 SHARDS IN TOTAL',
+    test: s => s.shardsEver >= 2000 },
+  { id:'allguns', name:'THE ARMOURY',      desc:'OWN EVERY GUN',
+    test: () => GUNS.every(g => META.owned[g.id]) },
+  { id:'story',   name:'CLOCKED OFF',      desc:'FINISH THE STORY',
+    test: () => (META.story||0) >= CHAPTERS.length },
+  { id:'tour',    name:'THE GRAND TOUR',   desc:'SEE ALL SIX ROOMS IN ONE RUN',
+    test: s => s.roomsThisRun >= 6 },
+  { id:'noHit',   name:'UNTOUCHED',        desc:'CLEAR A WAVE WITHOUT BEING HIT',
+    test: s => s.cleanWaves >= 1 },
+  { id:'gains',   name:'HE HAD THREE SECONDS', desc:'KILL SOMETHING WITH A DEFLATED DUDE',
+    test: s => s.noodleKills >= 1 },
+];
+function unlockedCount(){ return ACHIEVEMENTS.filter(a => META.achv && META.achv[a.id]).length; }
+function checkAchievements(){
+  const s = META.stats || {};
+  const view = {
+    kills: s.kills||0, bestWave: ST.best.wave||0, bosses: s.bosses||0,
+    bossKinds: Object.keys(s.bossKinds||{}).length, bestCombo: s.bestCombo||0,
+    shardsEver: s.shardsEver||0, roomsThisRun: Object.keys(ST.roomsSeen||{}).length,
+    cleanWaves: s.cleanWaves||0, noodleKills: s.noodleKills||0,
+  };
+  META.achv = META.achv || {};
+  for (const a of ACHIEVEMENTS){
+    if (META.achv[a.id]) continue;
+    let ok = false;
+    try { ok = a.test(view); } catch(e){}
+    if (ok){
+      META.achv[a.id] = 1;
+      saveMeta();
+      pushToast('UNLOCKED: ' + a.name, '#ffc02a');
+      SFX.levelup();
+    }
+  }
+}
+
+// ---- 11. TOASTS. Small corner notifications that stack and slide off. ----
+let toasts = [];
+function pushToast(text, color){ toasts.push({ text, color: color || '#dfe3ea', t: 3.2 }); }
+function updateToasts(dt){
+  for (let i = toasts.length-1; i >= 0; i--) if ((toasts[i].t -= dt) <= 0) toasts.splice(i,1);
+}
+function renderToasts(){
+  let y = 60;
+  for (const t of toasts){
+    const a = Math.min(1, t.t / 0.5);
+    cx.globalAlpha = a;
+    const w = textWidth(t.text, 1) + 12;
+    cx.fillStyle = 'rgba(6,6,10,0.82)'; cx.fillRect(W - w - 6, y, w, 12);
+    cx.strokeStyle = t.color; cx.lineWidth = 1;
+    cx.strokeRect(W - w - 5.5, y + 0.5, w - 1, 11);
+    drawText(t.text, W - 12, y + 4, 1, t.color, 'right');
+    cx.globalAlpha = 1;
+    y += 15;
+  }
+}
+
+// ---- 12. STATISTICS, kept forever. ----
+function bumpStat(k, n){
+  META.stats = META.stats || {};
+  META.stats[k] = (META.stats[k] || 0) + (n === undefined ? 1 : n);
+}
+function statLines(){
+  const s = META.stats || {};
+  const mm = Math.floor((s.time||0)/60), hh = Math.floor(mm/60);
+  return [
+    ['SHIFTS WORKED',    String(s.runs||0)],
+    ['DISHWASHERS DOWN', String(s.kills||0)],
+    ['BOSSES BEATEN',    String(s.bosses||0)],
+    ['BEST WAVE',        String(ST.best.wave||0)],
+    ['BEST STREAK',      String(s.bestCombo||0)],
+    ['CRITS LANDED',     String(s.crits||0)],
+    ['SHARDS EARNED',    String(s.shardsEver||0)],
+    ['TIME ON SHIFT',    (hh?hh+'H ':'') + (mm%60) + 'M'],
+    ['DEATHS',           String(s.deaths||0)],
+    ['ROOMS VISITED',    String(Object.keys(s.rooms||{}).length) + '/' + MAPS.length],
+  ];
+}
+
+// ---- 13. OPTIONS. ----
+const OPTIONS = [
+  { name:() => 'SOUND: ' + (muted ? 'OFF' : 'ON'),          act: () => setMuted(!muted) },
+  { name:() => 'SCREEN SHAKE: ' + (ST.shakeOn ? 'ON':'OFF'),act: () => { ST.shakeOn = !ST.shakeOn; META.shake = ST.shakeOn?1:0; saveMeta(); } },
+  { name:() => 'DAMAGE NUMBERS: ' + (ST.dmgNums ? 'ON':'OFF'), act: () => { ST.dmgNums = !ST.dmgNums; META.dmgNums = ST.dmgNums?1:0; saveMeta(); } },
+  { name:() => 'DIFFICULTY: ' + diff().name,                act: () => { META.diff = ((META.diff||0)+1) % DIFFS.length; saveMeta(); } },
+  { name:() => 'WIPE ALL PROGRESS',                          act: () => { ST.wipeArm = (ST.wipeArm||0)+1;
+      if (ST.wipeArm >= 2){ try{ localStorage.removeItem('suds-meta'); }catch(e){} location.reload(); } } },
+];
+
+// ---- 14. TIPS on the menu, so the front page teaches something. ----
+const TIPS = [
+  'COUNTERS STOP BULLETS. BOTH WAYS.',
+  'SHIFT DASHES. IT MAKES YOU BRIEFLY UNTOUCHABLE.',
+  'A STACKER EATS SHOTS FROM THE FRONT. GO ROUND THE BACK.',
+  'KILLS IN A ROW PAY MORE SHARDS. KEEP THE STREAK ALIVE.',
+  'GETTING HIT RESETS YOUR STREAK.',
+  'KETTLES GO OFF WHETHER YOU SHOOT THEM OR NOT. USE THAT.',
+  'THE MICROWAVE BEAM STOPS AT THE FIRST COUNTER.',
+  'STAND STILL WITH THE ROOM CLEAR AND HE WHISTLES.',
+  'THE BLADE HITS AGAIN ON THE WAY HOME. LET IT COME BACK.',
+  'OIL SLICKS OUTLIVE THE FRYER THAT LEFT THEM.',
+  'EVERY ROOM HAS ONE HEALTH STATION. ONE USE.',
+  'THE GAINS CANNON GUY HAS EXACTLY THREE SECONDS.',
+  'SHARDS SURVIVE YOUR DEATH. NOTHING ELSE DOES.',
+];
+function tipOfNow(){ return TIPS[Math.floor(ST.time / 6) % TIPS.length]; }
+
+// ---- 15. DEATH RECAP: what actually finished you off. ----
+function renderRecap(){
+  const r = ST.recap;
+  if (!r) return;
+  drawText('KILLED BY ' + r.by, W/2, 172, 1, '#c4545f', 'center');
+  drawText('IN ' + r.room + '   STREAK ' + r.combo + '   ' + r.crits + ' CRITS',
+           W/2, 182, 1, '#5a5a6e', 'center');
+}
+
+// ---- 16. DESTRUCTIBLE CRATES. Shoot the scenery, get paid. ----
+let props = [];
+function seedProps(map){
+  props = [];
+  for (const w of map.walls){
+    if (w.k !== 'crate') continue;
+    props.push({ x: w.x + w.w/2, y: w.y + w.h/2, r: Math.max(w.w, w.h)/2, hp: 26, flash: 0, dead: false });
+  }
+}
+function hitProps(x, y, dmg){
+  for (const p of props){
+    if (p.dead) continue;
+    if (dist2(x, y, p.x, p.y) > p.r*p.r) continue;
+    p.hp -= dmg; p.flash = 0.1;
+    if (p.hp <= 0){
+      p.dead = true;
+      spawnParts(p.x, p.y, 16, '#8a6a3c', 80);
+      SFX.boom();
+      for (let k = 0; k < irand(2,4); k++) dropPickup(p.x + rand(-8,8), p.y + rand(-8,8), 'shard');
+      if (Math.random() < 0.25) dropPickup(p.x, p.y, 'heart');
+    }
+    return true;
+  }
+  return false;
+}
+function renderProps(){
+  for (const p of props){
+    if (!p.dead) continue;
+    // the wreckage stays, so you can see what you have already opened
+    cx.globalAlpha = 0.5;
+    cx.fillStyle = '#3a2a16';
+    cx.fillRect(Math.round(p.x - p.r), Math.round(p.y + p.r - 5), Math.round(p.r*2), 5);
+    cx.globalAlpha = 1;
+  }
+}
+
 // ================================================================
 // STORY MODE
 // Twelve chapters through the building. A chapter is data: which room,
@@ -6666,6 +6937,63 @@ function renderDashPip(){
   drawText('DASH', x, y - 8, 1, ready ? '#79c7f0' : '#3f4450');
 }
 
+// ---- the three flat list screens: options, stats, achievements ----
+function renderOptions(){
+  cx.drawImage(bg, 300, 200, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.90)'; cx.fillRect(0,0,W,H);
+  drawText('OPTIONS', W/2, 20, 3, '#f4c542', 'center');
+  for (let i=0;i<OPTIONS.length;i++){
+    const y = 74 + i*22, sel = ST.optSel === i;
+    if (sel){
+      cx.fillStyle = 'rgba(232,22,42,0.14)'; cx.fillRect(70, y-6, W-140, 19);
+      cx.fillStyle = CRIMSON; cx.fillRect(70, y-6, 2, 19);
+    }
+    const danger = i === OPTIONS.length-1;
+    drawText(OPTIONS[i].name(), W/2, y, 1,
+             danger ? (ST.wipeArm ? CRIMSON : '#8a5560') : (sel ? '#ffffff' : '#9aa3b2'), 'center');
+  }
+  if (ST.wipeArm) drawText('PRESS AGAIN TO WIPE EVERYTHING', W/2, 74 + OPTIONS.length*22, 1, CRIMSON, 'center');
+  drawText(diff().desc, W/2, 210, 1, '#79c7f0', 'center');
+  drawText('ESC BACK', W/2, 240, 1, '#3f4450', 'center');
+}
+function optionHit(y){
+  for (let i=0;i<OPTIONS.length;i++){ const oy = 74 + i*22; if (y > oy-6 && y < oy+13) return i; }
+  return -1;
+}
+
+function renderStats(){
+  cx.drawImage(bg, 500, 300, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.92)'; cx.fillRect(0,0,W,H);
+  drawText('THE RECORD', W/2, 18, 3, '#f4c542', 'center');
+  const rows = statLines();
+  let y = 54;
+  for (const [k,v] of rows){
+    drawText(k, 70, y, 1, '#8d93a4');
+    drawText(v, W-70, y, 1, '#dfe3ea', 'right');
+    y += 16;
+  }
+  drawText('ESC BACK', W/2, 246, 1, '#3f4450', 'center');
+}
+
+function renderAchievements(){
+  cx.drawImage(bg, 700, 200, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.92)'; cx.fillRect(0,0,W,H);
+  drawText('ACHIEVEMENTS', W/2, 14, 2, '#f4c542', 'center');
+  drawText(unlockedCount() + ' OF ' + ACHIEVEMENTS.length, W/2, 32, 1, '#8d93a4', 'center');
+  const top = ST.achvTop || 0;
+  for (let r=0;r<Math.min(9, ACHIEVEMENTS.length - top); r++){
+    const a = ACHIEVEMENTS[top+r], got = META.achv && META.achv[a.id];
+    const y = 50 + r*21;
+    cx.fillStyle = got ? 'rgba(106,208,122,0.10)' : 'rgba(255,255,255,0.03)';
+    cx.fillRect(36, y-5, W-72, 19);
+    drawText(got ? a.name : '???', 46, y, 1, got ? '#6ad07a' : '#4a5262');
+    drawText(a.desc, W-46, y, 1, got ? '#8d93a4' : '#343a46', 'right');
+  }
+  if (ACHIEVEMENTS.length > 9)
+    drawText('W / S TO SCROLL', W/2, 238, 1, '#3f4450', 'center');
+  drawText('ESC BACK', W/2, 252, 1, '#3f4450', 'center');
+}
+
 function renderChapters(){
   cx.drawImage(bg, 400, 260, W, H, 0, 0, W, H);
   cx.fillStyle = 'rgba(6,6,10,0.90)'; cx.fillRect(0,0,W,H);
@@ -6949,6 +7277,7 @@ function renderGameOver(){
   drawText('+' + (ST.runShards||0) + ' SHARDS  (' + META.shards + ' TOTAL)', W/2 - 42, 159, 1, '#dfe3ea');
   if (Math.floor(ST.time*2) % 2 === 0)
     drawText(usingTouch ? 'TAP TO RETRY' : 'PRESS R OR CLICK TO RETRY', W/2, 186, 1, '#f4c542', 'center');
+  renderRecap();
   drawText(usingTouch ? 'STORE BUTTON BELOW' : 'PRESS S TO VISIT THE STORE', W/2, 202, 1, '#79c7f0', 'center');
   if (usingTouch){
     cx.fillStyle = 'rgba(121,199,240,0.15)'; cx.fillRect(W/2-50, 212, 100, 16);
@@ -7005,6 +7334,9 @@ function tick(dt){
   updateHitMarks(dt);
   updateVents(dt);
   updateStation(dt);
+  updateToasts(dt);
+  ST.achvT = (ST.achvT || 0) + dt;
+  if (ST.achvT > 1){ ST.achvT = 0; checkAchievements(); }
   if (arcFx && (arcFx.t -= dt) <= 0) arcFx = null;
   updatePickups(dt);
   updateParts(dt);
@@ -7039,6 +7371,9 @@ window.SUDS = {
 };
 
 loadMeta();
+seedProps(MAPS[MAPI]);
+ST.shakeOn = (META.shake === undefined) ? true : !!META.shake;
+ST.dmgNums = (META.dmgNums === undefined) ? true : !!META.dmgNums;
 resize();
 requestAnimationFrame(frame);
 </script>
