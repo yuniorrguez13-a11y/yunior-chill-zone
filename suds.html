@@ -732,6 +732,40 @@ const SP = {};
      h:'#7098c0',i:'#081020',j:'#404850',k:'#b86800',l:'#000810',m:'#503808',n:'#f88800',
      o:'#382810',p:'#305888'});
 
+  SP.gunK = makeSprite([
+    "............aaaaa.............................",
+    "...........abccbba............................",
+    "..........abcbbbcba...........................",
+    ".........abcbcbcbcda..........................",
+    ".........acbcefcccba..........................",
+    ".........acbccgcccba..................aaa.....",
+    "....aaa..abccbbcbcda.................agggaa...",
+    "...acccaaaabcbbbcbaaaaaaaaaaaaaaaaaaaghiifga..",
+    "..aegegebccbbbbbecbcejeeeeggeeeejeecklikkihga.",
+    ".aeeeeecbccbeggeccbffmkkkkmmkkkjmkkfliggggkka.",
+    "aeeeeeecccgnooooogflmpllllmplllppnlklfgbbggiea",
+    "aeecceebbeoooooooogoppooooppoooppollogbddbgkga",
+    "abcgocccbnooonnooongppoooompoooppohllgddddgkga",
+    "aeeioeeeenoonggnoonejmihhhmmhhhmmikhieddddgkga",
+    "aeeioeeecnookggkoonefmihhhmmhhhmmikhieddddgkga",
+    "aceioeeeenoooffooonefmiiiijmiiimmkfiieddddgkga",
+    "acekocccbfnoooooonkefmkkkkjmkkkjmkfkigddddgiga",
+    "aceeeecbbgknoooonkfgmmihhhjmhhhmmiifhgbddbfiga",
+    "aceeeeebccgfknnkfgefmmihhhjmiiimmiifhfgddgfiea",
+    "abceeeecbcbggggggcbgfjffffjjffffjffgiigggfifa.",
+    ".adceeecdbbdbccbdbdcejeeeeggeeeejeecgkiiiikea.",
+    "..abbbbaaaabcbbbcbaaaaaaaaaaaaaaaaaaegkkkfea..",
+    "...aaaa..abcbbcbbcba................aaceeba...",
+    ".........acbcegcccba..................aaaa....",
+    ".........acbccecccba..........................",
+    ".........abcbcbcbcda..........................",
+    "..........abcbbbcba...........................",
+    "...........abbbbda............................",
+    "............aaaaa.............................",
+  ],{a:'#0d0e14',b:'#101010',c:'#202020',d:'#000000',e:'#283038',f:'#708090',g:'#586870',
+     h:'#b0c0d0',i:'#a0b0b8',j:'#f85090',k:'#8898a8',l:'#c0d0d8',m:'#f868b0',n:'#d0c0a8',
+     o:'#e8d8c0',p:'#f890c8'});
+
   // --- player bullets, one look per gun ---
   SP.pdisc = makeSprite([
     ".oYYYo.",
@@ -786,6 +820,55 @@ const SP = {};
     "AAWWWWWWAA",
     ".AAAAAAAA.",
   ],{A:'#f4a020',W:'#ffe8b0'});
+
+  // The Gains Cannon's payload. Same guy twice: the one that comes out of
+  // the barrel, and the one he is three seconds later.
+  SP.buff = makeSprite([
+    ".......aaa..............",
+    "......abcbaaa...........",
+    "......acdefdgaa.........",
+    "......ahddfffciaa.......",
+    ".......aagedffffga......",
+    ".........ahdffdfeca.....",
+    "..........agddefffca....",
+    "......aa..acfdffffda....",
+    ".aaaaajjaakldefedlmhaaa.",
+    "aiicdiiibmnnnmmnnledhjja",
+    "ajjhcjjihnnnnnnnmeffebja",
+    "aiicdiiiiknnmmmmmleehja.",
+    ".aaaaajaaakleeffelmhaa..",
+    "......a...acedffffea....",
+    "..........agddefffca....",
+    ".........ahdffdeeca.....",
+    ".......aagedfeefha......",
+    "......ahddeffchba.......",
+    "......acdefdgaaa........",
+    "......ahgbaaa...........",
+    ".......aaa..............",
+  ],{a:'#0d0e14',b:'#705030',c:'#b88048',d:'#d89858',e:'#e8a868',f:'#f8b070',g:'#a07048',
+     h:'#886038',i:'#504030',j:'#401008',k:'#d87018',l:'#d88838',m:'#e08028',n:'#f89028'});
+
+  SP.weak = makeSprite([
+    "...............a............",
+    "..............abaa..........",
+    "..............accda.........",
+    "...............aacea........",
+    ".................acba.......",
+    ".aaa..............aca....a..",
+    "aeefaa.....aa.....acaaaaaga.",
+    "affbccaaaaahiaaaaaebabcbgaja",
+    ".aaaaabeeeekllllmmkieddccfga",
+    "......aafffklllllkddddgddfa.",
+    "......aafeehllllmmniecbcea..",
+    ".aaaaaccfffgnihaaagcaaaaa...",
+    "affebcaaaaaaaaa...aca.......",
+    ".aefaa............aca.......",
+    "..aa...........aaaca........",
+    "..............aececa........",
+    "..............aecea.........",
+    "...............aaa..........",
+  ],{a:'#0d0e14',b:'#906030',c:'#a06838',d:'#c88040',e:'#785028',f:'#180800',g:'#681808',
+     h:'#904810',i:'#a85010',j:'#801810',k:'#b85818',l:'#f88018',m:'#e87018',n:'#d06010'});
 
   // ================================================================
   // THE DISHWASHERS
@@ -1646,6 +1729,14 @@ const GUNS = [
     blurb:'HOLD TO WIND UP. LET GO TO SKEWER.',
     dmg:1.20, rate:1.00, bspd:1.65, add:0, spread:0.00, pierce:2, shake:1.0, life:0,
     windup:0.85, cmin:0.35, cmax:3.4, cpierce:5 },
+  // He goes off the end of the barrel enormous and ploughs through the whole
+  // room. Three seconds later the steroids wear off and he is a noodle, so he
+  // is devastating in your face and completely useless across the kitchen.
+  // `buffT` is how long the gains last, in seconds.
+  { id:'gains', cost:1600, name:'GAINS CANNON',     sp:'gunK', shot:'dude',
+    blurb:'LAUNCHES A GUY. HE HAS THREE SECONDS.',
+    dmg:2.60, rate:0.45, bspd:0.48, add:0, spread:0.03, pierce:99, shake:2.2, life:4.8,
+    buffT:3.0, limpDmg:0.09, limpSpd:0.35 },
 ];
 
 // Guns no longer unlock on their own. You own a set, you choose which one to
@@ -2218,6 +2309,23 @@ function updatePBullets(dt){
       b.vx *= gn.drag; b.vy *= gn.drag;   // it is lobbed, so it runs out of throw
       b.spin += dt*9;
     }
+    else if (b.shot === 'dude'){
+      b.ang = Math.atan2(b.vy, b.vx);
+      if (!b.limp && b.age >= gn.buffT){
+        // the gains run out mid-flight
+        b.limp = true;
+        b.dmg *= gn.limpDmg;
+        b.vx *= gn.limpSpd; b.vy *= gn.limpSpd;
+        b.hitList = null;             // the noodle gets to flop into them again
+        spawnParts(b.x, b.y, 12, '#e8a86a', 55);
+        addFloater(b.x, b.y - 10, 'NO STEROIDS', '#b0b7c4', 1.1);
+        SFX.bubble();
+      }
+      if (b.limp){
+        b.vx *= 0.985; b.vy *= 0.985;         // sad drift
+        b.wob = Math.sin(b.age*11)*0.30;      // flailing
+      }
+    }
     else if (b.shot === 'saw'){
       b.spin += dt*26;
       if (!b.back && b.age >= gn.out) b.back = true;
@@ -2241,6 +2349,7 @@ function updatePBullets(dt){
       b.life -= dt;
       if (b.life <= 0){
         if (b.shot === 'bomb') boom(b.x, b.y, gn.blast, b.dmg * gn.bdmg, '#e8d84a');
+        else if (b.shot === 'dude') spawnParts(b.x, b.y, 6, '#e8a86a', 30);
         else spawnParts(b.x, b.y, 2, '#cfe8ff', 24);
         pbullets.splice(i,1);
         continue;
@@ -2725,7 +2834,7 @@ function hurtPlayer(dmg){
 function collidePlayerBullets(){
   for (let i = pbullets.length-1; i >= 0; i--){
     const b = pbullets[i];
-    const br = (b.shot === 'saw' ? 5 : 2.5) * b.size;
+    const br = (b.shot === 'saw' ? 5 : b.shot === 'dude' ? (b.limp ? 3 : 8) : 2.5) * b.size;
     let hit = false;
     for (const e of enemies){
       if (b.hitList && b.hitList.indexOf(e) >= 0) continue;
@@ -2988,6 +3097,7 @@ function render(){
     else if (b.shot === 'bomb')    drawSpriteRot(SP.bomb, b.x, b.y, b.spin, b.size);
     else if (b.shot === 'saw')     drawSpriteRot(SP.saw, b.x, b.y, b.spin, b.size);
     else if (b.shot === 'bolt')    drawSpriteRot(SP.bolt, b.x, b.y, b.ang, b.size);
+    else if (b.shot === 'dude')    drawSpriteRot(b.limp ? SP.weak : SP.buff, b.x, b.y, b.ang + (b.wob||0), b.size);
     else                           drawSpriteRot(SP.slug, b.x, b.y, b.ang, b.size);
   }
 
