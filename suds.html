@@ -6175,18 +6175,7 @@ const STORY = [
     'LETTING IT RETURN IS DOUBLE DAMAGE, NOT A MISTAKE.' ] },
 ];
 
-// Only shown when the cheat block is actually still on the page — delete that
-// script and this page quietly stops existing.
-const STORY_CHEATS = { t:'STAFF ONLY', l:[
-  'THERE IS A CHEAT MENU ON THIS BUILD.',
-  '',
-  'PRESS THE BACKTICK KEY - THE ONE ABOVE TAB - AND IT',
-  'OPENS. GUNS, SHARDS, BUFFS, WAVES, ANY ENEMY YOU LIKE,',
-  'AND A WARP TO ANY OF THE FIVE ROOMS.',
-  '',
-  'IT WILL HAPPILY RUIN YOUR BEST WAVE FOR YOU.' ] };
-
-function storyPages(){ return window.SUDS_CHEATS ? STORY.concat([STORY_CHEATS]) : STORY; }
+function storyPages(){ return STORY; }
 function openStory(){ ST.mode = 'story'; ST.storyPage = 0; SFX.click(); }
 function storyGo(d){
   const n = storyPages().length;
@@ -7382,23 +7371,15 @@ requestAnimationFrame(frame);
      CHEAT MENU — development only.
      Self-contained: delete this entire <script> block and the menu is
      gone. Nothing above refers to it.
-     Open it with the ` key or the CHEATS tab in the bottom-right.
+     There is no button and no key for this. The only way in is to open
+     the browser console and run:  sudsCheats()
      ================================================================== -->
 <script>
 (function cheatMenu(){
-  // THE FILE hides its STAFF ONLY page unless this block is still on the page,
-  // so deleting this whole script also deletes the page that documents it.
-  window.SUDS_CHEATS = true;
   const css = document.createElement('style');
   css.textContent = `
-    #sc-tab, #sc-box { font:11px/1.4 ui-monospace, Menlo, monospace !important; z-index:99999 !important; }
-    #sc-tab {
-      position:fixed !important; right:10px !important; bottom:10px !important;
-      padding:6px 10px !important; cursor:pointer !important; letter-spacing:1px !important;
-      color:#f4c542 !important; background:rgba(8,8,12,.9) !important;
-      border:1px solid rgba(244,197,66,.45) !important; border-radius:5px !important;
-    }
     #sc-box {
+      font:11px/1.4 ui-monospace, Menlo, monospace !important; z-index:99999 !important;
       position:fixed !important; right:10px !important; top:10px !important;
       width:214px !important; max-height:calc(100vh - 64px) !important;
       overflow:auto !important; touch-action:auto !important;
@@ -7429,13 +7410,9 @@ requestAnimationFrame(frame);
   `;
   document.head.appendChild(css);
 
-  const tab = document.createElement('div');
-  tab.id = 'sc-tab';
-  tab.textContent = 'CHEATS  `';
   const box = document.createElement('div');
   box.id = 'sc-box';
   const readout = document.createElement('pre');
-  document.body.appendChild(tab);
   document.body.appendChild(box);
 
   // the gun stat block only exists once a run has started
@@ -7534,14 +7511,21 @@ requestAnimationFrame(frame);
       Math.round(player.x) + ',' + Math.round(player.y) + '  ' + zoneAt(player.x, player.y).name;
   }
 
-  function toggle(){
-    box.classList.toggle('open');
-    if (box.classList.contains('open')) paint();
+  // Once the panel is up you can shut it again without going back to the
+  // console — but nothing on the page can open it in the first place.
+  const closeRow = section('');
+  btn(closeRow, 'CLOSE', () => box.classList.remove('open'));
+
+  function toggle(on){
+    const want = on === undefined ? !box.classList.contains('open') : !!on;
+    box.classList.toggle('open', want);
+    if (want) paint();
+    return want ? 'cheat menu open' : 'cheat menu closed';
   }
-  tab.onclick = toggle;
-  window.addEventListener('keydown', e => {
-    if (e.key === '`' || e.key === '~'){ e.preventDefault(); toggle(); }
-  });
+
+  // The only door. Type sudsCheats() in the browser console.
+  window.sudsCheats = toggle;
+
   setInterval(() => { if (box.classList.contains('open')) paint(); }, 250);
 })();
 </script>
