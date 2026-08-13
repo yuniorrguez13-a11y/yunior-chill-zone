@@ -87,6 +87,8 @@ const T = {
   bburner: { hp: 680, speed: 20, touch: 2, r: 21 },
   bchef:   { hp: 900, speed: 26, touch: 3, r: 22 },
   bwash:   { hp: 1500, speed: 11, touch: 3, r: 26 },
+  chead:   { hp: 3200, speed: 46, touch: 3, r: 15 },
+  cblock:  { hp: 700,  speed: 0,  touch: 2, r: 12 },
   plateSpeed: 62, forkSpeed: 105, bubbleSpeed: 26, steamSpeed: 30,
   dashSpeed: 4.6,           // scrubber charge, as a multiple of its walk speed
   shieldArc: 1.05,          // stacker blocks within this many radians of facing
@@ -672,7 +674,7 @@ const SP = {};
 // every dishwasher in the building, bosses included
 const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
                'toaster','fryer','kettle','mixer','micro','chopper',
-               'boss','btrap','bburner','bchef','bwash'];
+               'boss','btrap','bburner','bchef','bwash','chead','cblock'];
 (function bakeSprites(){
   // --- the five floating guns ---
   // Traced from the reference art: background keyed out, cropped, area-averaged
@@ -3216,6 +3218,51 @@ const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
     '.......aaaaaaaa.......',
   ], {a:'#0d0e14', b:'#706868', c:'#909088', d:'#080808', e:'#484848', f:'#282828', g:'#181818', h:'#585858', i:'#a8a0a0'});
 
+  // --- THE BLOCKCHAIN — a serpent of linked cubes, drawn in code.
+  //     One head, one body block; the fight chains as many body
+  //     blocks as it wants, so the length is free. ---
+  function chainCube(size, head){
+    const c = document.createElement('canvas');
+    c.width = size + 2; c.height = size + 2;
+    const g = c.getContext('2d');
+    const o = 1;
+    g.fillStyle = '#0c0e12'; g.fillRect(0, 0, size+2, size+2);          // rim
+    g.fillStyle = '#16181c'; g.fillRect(o, o, size, size);              // body
+    g.fillStyle = '#22262c'; g.fillRect(o+2, o+2, size-4, size-4);      // face
+    // circuit traces: a fixed little maze, same on every block
+    g.strokeStyle = '#37ff6a'; g.lineWidth = 1;
+    const t = size / 24;
+    g.beginPath();
+    g.moveTo(o+3*t, o+4*t);  g.lineTo(o+9*t, o+4*t);  g.lineTo(o+9*t, o+9*t);
+    g.moveTo(o+size-4*t, o+3*t); g.lineTo(o+size-4*t, o+8*t); g.lineTo(o+size-9*t, o+8*t);
+    g.moveTo(o+4*t, o+size-5*t); g.lineTo(o+11*t, o+size-5*t);
+    g.moveTo(o+size-3*t, o+size-8*t); g.lineTo(o+size-8*t, o+size-8*t); g.lineTo(o+size-8*t, o+size-3*t);
+    g.stroke();
+    g.fillStyle = '#37ff6a';
+    g.fillRect(o+9*t-1, o+9*t-1, 2, 2);
+    g.fillRect(o+11*t-1, o+size-5*t-1, 2, 2);
+    if (head){
+      // two furious rectangular eyes and a jagged LED mouth
+      g.fillStyle = '#0c0e12';
+      g.fillRect(o+5*t, o+7*t, 5*t, 7*t); g.fillRect(o+size-10*t, o+7*t, 5*t, 7*t);
+      g.fillStyle = '#37ff6a';
+      g.fillRect(o+6*t, o+9*t, 3*t, 4*t); g.fillRect(o+size-9*t, o+9*t, 3*t, 4*t);
+      g.fillStyle = '#0c0e12';
+      g.fillRect(o+5*t, o+size-8*t, size-10*t, 4*t);
+      g.fillStyle = '#37ff6a';
+      for (let k=0;k<5;k++) g.fillRect(o+(6+k*3)*t, o+size-(k%2?7:6)*t, 2*t, 2*t);
+    } else {
+      // a padlock etched on the face: these blocks cannot be mined yet
+      g.strokeStyle = '#2bc853'; g.lineWidth = 1.5;
+      const mx2 = o + size/2;
+      g.strokeRect(mx2-4, o+size/2-1, 8, 7);
+      g.beginPath(); g.arc(mx2, o+size/2-1, 3, Math.PI, 0); g.stroke();
+    }
+    return c;
+  }
+  SP.chead = chainCube(30, true);
+  SP.cblock = chainCube(22, false);
+
   // --- fused guns: parent A with parent B bolted on top, gold-rimmed
   //     so a fusion reads as a fusion at a glance ---
   function fuseSprite(aKey, bKey){
@@ -3885,6 +3932,7 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (ST.mode === 'ending'){ if (k === 'escape' || k === 'enter' || k === ' '){ ST.mode='menu'; SFX.click(); } return; }
+  if (ST.mode === 'chainwin'){ if (k === 'escape' || k === 'enter' || k === ' '){ ST.mode='menu'; SFX.click(); } return; }
   if (ST.mode === 'stats'){ ST.mode = 'menu'; SFX.click(); return; }
   if (ST.mode === 'achv'){
     if (k === 'escape' || k === 'backspace' || k === 'enter'){ ST.mode = 'menu'; SFX.click(); }
@@ -3901,11 +3949,14 @@ window.addEventListener('keydown', e => {
   }
   if (ST.mode === 'chapters'){
     const open = chaptersOpen();
+    // one extra row at the bottom once THE BLOCKCHAIN is unlockable
+    const rows = CHAPTERS.length + (chainUnlockable() ? 1 : 0);
     if (k === 'escape' || k === 'backspace'){ ST.mode = 'menu'; SFX.click(); }
-    else if (k === 'w' || k === 'arrowup')   ST.chapSel = (ST.chapSel + CHAPTERS.length - 1) % CHAPTERS.length;
-    else if (k === 's' || k === 'arrowdown') ST.chapSel = (ST.chapSel + 1) % CHAPTERS.length;
+    else if (k === 'w' || k === 'arrowup')   ST.chapSel = (ST.chapSel + rows - 1) % rows;
+    else if (k === 's' || k === 'arrowdown') ST.chapSel = (ST.chapSel + 1) % rows;
     else if (k === 'enter' || k === ' '){
-      if (ST.chapSel < open) startChapter(ST.chapSel);
+      if (ST.chapSel === CHAPTERS.length) startBlockchain();
+      else if (ST.chapSel < open) startChapter(ST.chapSel);
       else SFX.plate();
     }
     return;
@@ -3977,9 +4028,11 @@ cv.addEventListener('mousedown', e => {
   }
   else if (ST.mode === 'beat') beatAdvance();
   else if (ST.mode === 'ending'){ ST.mode = 'menu'; SFX.click(); }
+  else if (ST.mode === 'chainwin'){ ST.mode = 'menu'; SFX.click(); }
   else if (ST.mode === 'chapters'){
     const i = chapterHit(p.y);
-    if (i >= 0 && i < chaptersOpen()){ ST.chapSel = i; startChapter(i); }
+    if (i === CHAPTERS.length && chainUnlockable()){ ST.chapSel = i; startBlockchain(); }
+    else if (i >= 0 && i < chaptersOpen()){ ST.chapSel = i; startChapter(i); }
     else if (p.y > H-22){ ST.mode = 'menu'; SFX.click(); }
   }
   else if (ST.mode === 'store'){
@@ -4050,9 +4103,11 @@ cv.addEventListener('touchstart', e => {
   }
   if (ST.mode === 'beat'){ beatAdvance(); return; }
   if (ST.mode === 'ending'){ ST.mode = 'menu'; SFX.click(); return; }
+  if (ST.mode === 'chainwin'){ ST.mode = 'menu'; SFX.click(); return; }
   if (ST.mode === 'chapters'){
     const i = chapterHit(p.y);
-    if (i >= 0 && i < chaptersOpen()){ ST.chapSel = i; startChapter(i); }
+    if (i === CHAPTERS.length && chainUnlockable()){ ST.chapSel = i; startBlockchain(); }
+    else if (i >= 0 && i < chaptersOpen()){ ST.chapSel = i; startChapter(i); }
     else if (p.y > H-22){ ST.mode = 'menu'; SFX.click(); }
     return;
   }
@@ -4615,7 +4670,8 @@ function updateHoles(dt){
     for (const e of enemies){
       const d = Math.sqrt(dist2(e.x, e.y, hle.x, hle.y)) || 1;
       if (d > hle.r) continue;
-      const f = (hle.pull * (1 - d/hle.r) + 40) * (isBoss(e) ? 0.25 : 1);
+      const big = isBoss(e) || e.type === 'chead' || e.type === 'cblock';
+      const f = (hle.pull * (1 - d/hle.r) + 40) * (big ? 0.25 : 1);
       moveCircle(e, (hle.x-e.x)/d * f * dt, (hle.y-e.y)/d * f * dt, e.r);
       e.hp -= 4 * dt;
       if (e.hp <= 0) killEnemy(e);
@@ -6011,6 +6067,21 @@ function updateEnemies(dt){
         SFX.plate();
       }
     }
+    else if (e.type === 'chead'){
+      updateChainHead(e, dt, dx, dy, d);
+    }
+    else if (e.type === 'cblock'){
+      // positioned by the head; its own job is the queued ring burst
+      if (e.ringIn !== undefined && e.ringIn > 0){
+        e.ringIn -= dt;
+        e.flash = 0.06;
+        if (e.ringIn <= 0){
+          const n = 8, a0 = rand(0, TAU);
+          for (let k=0;k<n;k++) eshoot(e.x, e.y, a0 + k*TAU/n, T.bubbleSpeed*1.4, 'bubble');
+          e.ringIn = undefined;
+        }
+      }
+    }
     else if (isBoss(e)){
       updateBoss(e, dt, dx, dy, d);
     }
@@ -6324,6 +6395,165 @@ function bossOriginal(e, dt, dx, dy, d){
   }
 }
 
+// ================================================================
+// THE BLOCKCHAIN — the secret mega boss. A serpent of twelve linked
+// blocks and a head. Only the LAST block in the chain can be mined;
+// break it and the next one unlocks and the whole fight escalates —
+// thirteen phases end to end. The head is only vulnerable once every
+// block is gone, and it steals shards on contact. Beating it puts
+// THE WEAPON TO RULE THEM ALL on sale. Entered from the bottom of
+// the STORY MODE list once ten guns are owned.
+// ================================================================
+let chainHead = null;
+function chainUnlockable(){ return ownedGuns().length >= 10; }
+function chainSegsAlive(){ return enemies.filter(e => e.type === 'cblock'); }
+function chainTail(){
+  let best = null;
+  for (const s of chainSegsAlive()) if (!best || s.seg > best.seg) best = s;
+  return best;
+}
+function chainPhase(){ return 13 - chainSegsAlive().length; }
+
+function startBlockchain(){
+  startRun();
+  ST.story = false;
+  ST.chain = true;
+  gotoMap(1, false);                  // the hall: the biggest floor there is
+  ST.waveState = 'idle'; ST.toSpawn = [];
+  const N = 12, hx = WORLD.w/2, hy = 150;
+  const head = spawnEnemy('chead', hx, hy);
+  head.hp = head.maxhp = T.chead.hp;
+  head.hist = [[hx, hy]];
+  head.tA = 1.6; head.tB = 5; head.tC = 8; head.tD = 12;
+  head.dash = 0; head.stealCd = 0;
+  for (let i = 0; i < N; i++){
+    const s = spawnEnemy('cblock', hx, hy - (i+1)*26);
+    s.seg = i;
+    s.hp = s.maxhp = T.cblock.hp + i * 130;
+  }
+  chainHead = head;
+  boss = head;                        // boss bar + boss music
+  ST.chainMax = 0;
+  for (const e of enemies) ST.chainMax += e.hp;
+  ST.banner = 'THE BLOCKCHAIN'; ST.bannerTimer = 3;
+  SFX.alarm();
+}
+
+function updateChainHead(e, dt, dx, dy, d){
+  const p = chainPhase();
+  // sinuous hunt, faster with every mined block; sometimes a straight charge
+  const spd = (e.dash > 0 ? 2.3 : 1) * (T.chead.speed + p*6);
+  if (e.dash > 0) e.dash -= dt;
+  e.wob = (e.wob || 0) + dt * 2.4;
+  const aim = Math.atan2(dy, dx) + (e.dash > 0 ? 0 : Math.sin(e.wob) * 0.75);
+  e.x = clamp(e.x + Math.cos(aim) * spd * dt, 30, WORLD.w-30);
+  e.y = clamp(e.y + Math.sin(aim) * spd * dt, 30, WORLD.h-30);
+  // the body follows the head's own trail, one block every 26px of it
+  const hist = e.hist;
+  if (dist2(hist[0][0], hist[0][1], e.x, e.y) > 4) hist.unshift([e.x, e.y]);
+  if (hist.length > 900) hist.length = 900;
+  const segs = chainSegsAlive().sort((a,b) => a.seg - b.seg);
+  let need = 26, hi = 1, acc = 0, px = e.x, py = e.y, si = 0;
+  while (si < segs.length && hi < hist.length){
+    const qx = hist[hi][0], qy = hist[hi][1];
+    const step = Math.hypot(qx - px, qy - py);
+    if (acc + step >= need){
+      const f = (need - acc) / (step || 1);
+      segs[si].x = px + (qx - px) * f;
+      segs[si].y = py + (qy - py) * f;
+      si++; need += 26;
+    }
+    acc += step; px = qx; py = qy; hi++;
+  }
+  for (; si < segs.length; si++){
+    const prev = si === 0 ? e : segs[si-1];
+    segs[si].x = prev.x; segs[si].y = prev.y + 24;
+  }
+  // head contact steals shards on top of the touch damage
+  e.stealCd -= dt;
+  if (e.stealCd <= 0){
+    for (const P of alivePlayers()){
+      if (dist2(P.x, P.y, e.x, e.y) < (e.r+10)*(e.r+10)){
+        e.stealCd = 0.8;
+        const take = Math.min(META.shards, 5 + p);
+        if (take > 0){
+          META.shards -= take;
+          addFloater(P.x, P.y - 16, '-' + take + ' SHARDS', '#37ff6a', 1.4);
+        }
+      }
+    }
+  }
+  if (!inView(e.x, e.y, 40)) return;
+  // attacks, stacking up with the phase
+  e.tA -= dt;
+  if (e.tA <= 0){
+    e.tA = Math.max(0.10, 0.30 - p*0.015);
+    e.spiralA = (e.spiralA || 0) + 0.5;
+    const arms = 1 + Math.floor(p/4);
+    for (let k=0;k<arms;k++)
+      eshoot(e.x, e.y, e.spiralA + k*TAU/arms, T.plateSpeed * (0.8 + p*0.04), 'plate');
+  }
+  e.tB -= dt;
+  if (e.tB <= 0){ e.tB = Math.max(2.6, 5 - p*0.2); e.dash = 0.55; SFX.alarm(); }
+  if (p >= 3){
+    e.tC -= dt;
+    if (e.tC <= 0){
+      e.tC = Math.max(3.5, 7 - p*0.3);
+      let dly = 0;
+      for (const s of chainSegsAlive()){
+        if (!inView(s.x, s.y, 20)) continue;
+        s.ringIn = 0.12 + dly;              // staggered down the body
+        dly += 0.10;
+      }
+      SFX.bubble();
+    }
+  }
+  if (p >= 6){
+    e.tD -= dt;
+    if (e.tD <= 0){
+      e.tD = 11;
+      for (let k=0;k<2;k++){
+        const q = spawnEdgePos();
+        spawnEnemy(pick(['toaster','chopper','scrubber']), q.x, q.y);
+      }
+      ST.banner = 'THE CHAIN VALIDATES'; ST.bannerTimer = 1.2;
+    }
+  }
+  if (p >= 9 && Math.random() < dt * 1.2)
+    eshoot(clamp(rand(cam.x, cam.x+W), 10, WORLD.w-10), Math.max(12, cam.y - 8),
+           Math.PI/2 + rand(-0.3, 0.3), T.knifeSpeed*0.8, 'knife');
+}
+
+// bounced shots against a block that is not the tail yet
+function chainLockedPing(e){
+  e.lockT = e.lockT || 0;
+  if (ST.time - e.lockT < 0.5) return;
+  e.lockT = ST.time;
+  addFloater(e.x, e.y - 14, 'LOCKED', '#2bc853', 0.6);
+  spawnParts(e.x, e.y, 2, '#2bc853', 40);
+}
+
+function renderChainWin(){
+  cx.fillStyle = '#06060a'; cx.fillRect(0,0,W,H);
+  const t = ST.time - (ST.winT0 || 0);
+  drawText('THE BLOCKCHAIN IS BROKEN', W/2, 64, 2, '#37ff6a', 'center');
+  const lines = [
+    'EVERY BLOCK MINED. THE LEDGER IS SUDS.',
+    'SOMETHING HEAVY JUST WENT ON SALE.' ];
+  let y = 104;
+  for (let i=0;i<lines.length;i++){
+    const a = clamp((t - 0.8 - i*1.1) / 0.6, 0, 1);
+    if (a > 0){ cx.globalAlpha = a; drawText(lines[i], W/2, y, 1, '#dfe3ea', 'center'); cx.globalAlpha = 1; }
+    y += 14;
+  }
+  if (t > 3){
+    drawText('THE WEAPON TO RULE THEM ALL', W/2, 158, 2, '#f4c542', 'center');
+    drawText('WAITING IN THE STORE', W/2, 178, 1, '#8d93a4', 'center');
+  }
+  if (t > 4 && Math.floor(ST.time*2) % 2 === 0)
+    drawText('CLICK OR ESC', W/2, 232, 1, '#7a7a8e', 'center');
+}
+
 // How much of a shot actually lands. The stacker's plate stack eats almost
 // everything that comes at its front, so you have to get around it.
 function shieldMul(e, fromX, fromY){
@@ -6336,6 +6566,10 @@ function shieldMul(e, fromX, fromY){
 
 const CRIT_CHANCE = 0.12, CRIT_MUL = 2.2;
 function damageEnemy(e, dmg, hitX, hitY){
+  // THE BLOCKCHAIN only lets you mine the last block in the chain, and
+  // the head only once every block is gone
+  if (e.type === 'cblock' && e !== chainTail()){ chainLockedPing(e); return; }
+  if (e.type === 'chead' && chainSegsAlive().length){ chainLockedPing(e); return; }
   // a crit is worth showing: bigger number, brighter, its own sound
   let crit = false;
   if (Math.random() < CRIT_CHANCE){ crit = true; dmg *= CRIT_MUL; ST.crits++; }
@@ -6382,7 +6616,8 @@ function dropShards(e){
 const BOSSES = ['boss','btrap','bburner','bchef','bwash'];
 const BOSS_NAME = { boss:'THE MEGAWASHER', btrap:'THE GREASE TRAP',
                     bburner:'THE SIX BURNER', bchef:'THE HEAD CHEF',
-                    bwash:'THE ORIGINAL DISHWASHER' };
+                    bwash:'THE ORIGINAL DISHWASHER',
+                    chead:'THE BLOCKCHAIN', cblock:'A BLOCK OF THE CHAIN' };
 // which one turns up on a given boss wave — they cycle, so a long run meets
 // all four and then starts again with more health on each
 function bossIndexFor(n){ return Math.max(0, Math.floor(n/5) - 1); }
@@ -6412,6 +6647,25 @@ function killEnemy(e){
   if (idx >= 0) enemies.splice(idx, 1);
   // a kettle at the boil goes off whether you shot it or not
   if (e.type === 'kettle' && !e.gone) kettleBoom(e);
+  // THE BLOCKCHAIN, block by block
+  if (e.type === 'cblock' && ST.chain){
+    ST.banner = 'BLOCK MINED - ' + chainSegsAlive().length + ' LEFT';
+    ST.bannerTimer = 1.4;
+    SFX.evolve();
+    for (let k=0;k<6;k++) dropPickup(e.x + rand(-10,10), e.y + rand(-10,10), 'shard');
+  }
+  if (e.type === 'chead' && ST.chain){
+    META.chainDead = 1; saveMeta();
+    boss = null; chainHead = null; ST.chain = false;
+    spawnParts(e.x, e.y, 80, '#37ff6a', 160);
+    spawnParts(e.x, e.y, 40, '#ffffff', 110);
+    for (let k=0;k<24;k++) dropPickup(e.x + rand(-30,30), e.y + rand(-24,24), 'shard');
+    enemies.length = 0; ebullets.length = 0;
+    pushToast('THE WEAPON TO RULE THEM ALL IS FOR SALE', '#f4c542');
+    ST.mode = 'chainwin'; ST.winT0 = ST.time;
+    document.body.classList.remove('playing');
+    SFX.bossdie();
+  }
   ST.kills++;
   ST.shake = Math.min(6, ST.shake + 2);
   const isB = isBoss(e);
@@ -6729,7 +6983,8 @@ function collidePlayerBullets(){
           break;
         }
         // the router: light damage, heavy ping
-        if (b.shot === 'lag') e.lag = b.g.lagT * (isBoss(e) ? 0.3 : 1);
+        if (b.shot === 'lag')
+          e.lag = b.g.lagT * (isBoss(e) || e.type === 'chead' || e.type === 'cblock' ? 0.3 : 1);
         damageEnemy(e, b.dmg, b.x, b.y);
         spawnParts(b.x, b.y, 3, '#f4c542', 50);
         if (b.pierce > 0){
@@ -6898,6 +7153,7 @@ function render(){
   if (ST.mode === 'achv'){ renderAchievements(); return; }
   if (ST.mode === 'beat'){ renderBeat(); return; }
   if (ST.mode === 'ending'){ renderEnding(); return; }
+  if (ST.mode === 'chainwin'){ renderChainWin(); return; }
   if (ST.mode === 'store'){ renderStore(); return; }
 
   const camX = Math.round(cam.x), camY = Math.round(cam.y);
@@ -6914,6 +7170,31 @@ function render(){
     const bob = Math.sin((ST.time + p.x) * 4) * 1.5;
     drawSpriteC(p.kind === 'sud' ? SP.sud : (p.kind === 'shard' ? SP.shard : SP.heart),
                 p.x, p.y + bob);
+  }
+
+  // the chain's links, drawn under the blocks, and the mining marker
+  if (ST.chain && chainHead){
+    const segs = chainSegsAlive().sort((a,b) => a.seg - b.seg);
+    for (const [wide, col, al] of [[4, '#0c0e12', 1], [1.5, '#2bc853', 0.7]]){
+      cx.globalAlpha = al;
+      cx.strokeStyle = col; cx.lineWidth = wide;
+      cx.beginPath();
+      let prev = chainHead;
+      for (const s of segs){ cx.moveTo(prev.x, prev.y); cx.lineTo(s.x, s.y); prev = s; }
+      cx.stroke();
+    }
+    cx.globalAlpha = 1;
+    const tail = chainTail();
+    if (tail){
+      cx.globalAlpha = 0.6 + Math.sin(ST.time*8)*0.3;
+      cx.strokeStyle = '#37ff6a'; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.arc(tail.x, tail.y, 16 + Math.sin(ST.time*8)*2, 0, TAU); cx.stroke();
+    } else {
+      cx.globalAlpha = 0.6 + Math.sin(ST.time*10)*0.3;
+      cx.strokeStyle = CRIMSON; cx.lineWidth = 2;
+      cx.beginPath(); cx.arc(chainHead.x, chainHead.y, 20, 0, TAU); cx.stroke();
+    }
+    cx.globalAlpha = 1;
   }
 
   // enemies
@@ -7275,8 +7556,16 @@ function renderHUD(){
   const label = boss ? (BOSS_NAME[boss.type] || 'BOSS')
                      : (ST.wave > 0 ? 'WAVE ' + ST.wave : '');
   if (label) drawText(label, W/2, 6, 1, boss ? CRIMSON : '#dfe3ea', 'center');
-  // boss hp bar
-  if (boss){
+  // boss hp bar — the blockchain shows the WHOLE ledger, not just the head
+  if (boss && ST.chain){
+    let tot = 0;
+    for (const e2 of enemies)
+      if (e2.type === 'chead' || e2.type === 'cblock') tot += Math.max(0, e2.hp);
+    const bw = 140;
+    cx.fillStyle = '#101018'; cx.fillRect(W/2-bw/2, 14, bw, 4);
+    cx.fillStyle = '#37ff6a'; cx.fillRect(W/2-bw/2, 14, bw * clamp(tot/(ST.chainMax||1),0,1), 4);
+    drawText('BLOCK ' + chainPhase() + '/13', W/2, 21, 1, '#37ff6a', 'center');
+  } else if (boss){
     const bw = 140;
     cx.fillStyle = '#101018'; cx.fillRect(W/2-bw/2, 14, bw, 4);
     cx.fillStyle = CRIMSON; cx.fillRect(W/2-bw/2, 14, bw * clamp(boss.hp/boss.maxhp,0,1), 4);
@@ -8636,6 +8925,8 @@ function renderBeat(){
 
 // which chapter row a click landed on
 function chapterHit(y){
+  // the fixed row at the bottom is THE BLOCKCHAIN
+  if (chainUnlockable() && y > 231 && y < 245) return CHAPTERS.length;
   const top = Math.max(0, Math.min(ST.chapSel - 4, CHAPTERS.length - 9));
   for (let r = 0; r < Math.min(9, CHAPTERS.length - top); r++){
     const ry = 56 + r*20;
@@ -8792,6 +9083,19 @@ function renderChapters(){
     // one or the other on the right, never both on top of each other
     if (chapterDone(i))   drawText('DONE', W-52, y, 1, '#6ad07a', 'right');
     else if (!locked)     drawText(OBJ[c.obj].label(c), W-52, y, 1, '#5a5a6e', 'right');
+  }
+  // the row that should not be here: THE BLOCKCHAIN, once ten guns are owned
+  if (chainUnlockable()){
+    const sel = ST.chapSel === CHAPTERS.length;
+    const y = 238;
+    if (sel){
+      cx.fillStyle = 'rgba(55,255,106,0.10)'; cx.fillRect(40, y-5, W-80, 16);
+      cx.fillStyle = '#37ff6a'; cx.fillRect(40, y-5, 2, 16);
+    }
+    drawText('??', 52, y, 1, '#37ff6a');
+    drawText('THE BLOCKCHAIN', 76, y, 1, sel ? '#ffffff' : '#37ff6a');
+    drawText(META.chainDead ? 'BROKEN' : 'A VERY BAD IDEA', W-52, y, 1,
+             META.chainDead ? '#6ad07a' : '#5a5a6e', 'right');
   }
   drawText('ESC BACK', W/2, 252, 1, '#3f4450', 'center');
 }
@@ -9174,7 +9478,7 @@ function tick(dt){
   ST.playTime += dt;
   if (ST.tut) updateTutorial(dt);
   else if (ST.story){ if (!ST.objDone) updateWaves(dt); updateStory(dt); }
-  else updateWaves(dt);
+  else if (!ST.chain) updateWaves(dt);   // the chain IS the wave
   updateWhistle(dt);
   // cleared once per tick, not per player — both beams get to paint
   beamFx = null;
