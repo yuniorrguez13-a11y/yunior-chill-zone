@@ -4266,9 +4266,12 @@ function isBossWave(n){ return n % 5 === 0; }
 
 function beginWave(n){
   ST.wave = n;
-  // walked into the next room of the building
+  // walked into the next room of the building — but a story chapter pins
+  // its own room. Letting the wave clock change maps mid-chapter yanked
+  // the player back to the kitchen and left the marker stranded in the
+  // coordinates of a room he was no longer in.
   const want = mapForWave(n);
-  if (want !== MAPI && !ST.tut) gotoMap(want, true);
+  if (want !== MAPI && !ST.tut && !ST.story) gotoMap(want, true);
   // OVERTIME: from wave 31 a new house rule lands every five waves
   let newMut = false;
   if (!ST.story && !ST.tut && n >= 31){
