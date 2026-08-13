@@ -4291,6 +4291,7 @@ const META = {
   coop: 0,                  // local co-op on/off
   chainDead: 0,             // THE BLOCKCHAIN has been broken
   ekber: 0,                 // every texture is Uncle Ekber
+  btc: 0, btcCost: 0,       // the fictional bag, and what was paid for it
 };
 function loadMeta(){
   try {
@@ -4309,6 +4310,8 @@ function loadMeta(){
     if (m.coop !== undefined) META.coop = m.coop ? 1 : 0;
     if (m.chainDead) META.chainDead = 1;
     if (m.ekber !== undefined) META.ekber = m.ekber ? 1 : 0;
+    if (typeof m.btc === 'number' && m.btc >= 0 && isFinite(m.btc)) META.btc = m.btc;
+    if (typeof m.btcCost === 'number' && m.btcCost >= 0 && isFinite(m.btcCost)) META.btcCost = m.btcCost;
     // saveMeta writes ALL of META, but loading is a whitelist — these were
     // missing, so story progress, achievements, stats, the tutorial flag
     // and the difficulty all quietly reset on every page refresh
@@ -9351,6 +9354,8 @@ const ACHIEVEMENTS = [
     test: s => s.petShards >= 100 },
   { id:'fusion',  name:'FUSION CUISINE',   desc:'OWN A FUSED GUN',
     test: () => GUNS.some(g => g.fuse && META.owned[g.id]) },
+  { id:'hands',   name:'DIAMOND HANDS',    desc:'MAKE 500 SHARDS TRADING BITCOIN',
+    test: s => s.btcProfit >= 500 },
 ];
 function unlockedCount(){ return ACHIEVEMENTS.filter(a => META.achv && META.achv[a.id]).length; }
 function checkAchievements(){
@@ -9360,6 +9365,7 @@ function checkAchievements(){
     bossKinds: Object.keys(s.bossKinds||{}).length, bestCombo: s.bestCombo||0,
     shardsEver: s.shardsEver||0, roomsThisRun: Object.keys(ST.roomsSeen||{}).length,
     cleanWaves: s.cleanWaves||0, noodleKills: s.noodleKills||0, petShards: s.petShards||0,
+    btcProfit: s.btcProfit||0,
   };
   META.achv = META.achv || {};
   for (const a of ACHIEVEMENTS){
@@ -10041,12 +10047,76 @@ function renderObjectiveProps(){
 }
 
 // ================================================================
+// THE SHARD MARKET — invest your shards in (fictional) Bitcoin at
+// the (real, live) Bitcoin price. One shard is one dollar, because
+// this is a video game about dishwashers. 0.10 percent commission
+// on the way in AND the way out, like a real exchange, because the
+// house always wins. Holdings ride along in the save.
+// ================================================================
+const BTC = { price: 0, t: 0, state: 'idle' };   // idle | loading | live | fail
+function btcFetch(force){
+  if (BTC.state === 'loading') return;
+  if (!force && BTC.price && performance.now() - BTC.t < 60000) return;
+  BTC.state = 'loading';
+  const done = v => {
+    const p = parseFloat(v);
+    if (!isFinite(p) || p <= 0){ fail(); return; }
+    BTC.price = p; BTC.t = performance.now(); BTC.state = 'live';
+  };
+  const fail = () => { BTC.state = BTC.price ? 'live' : 'fail'; };
+  try {
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd')
+      .then(r => r.json()).then(j => done(j.bitcoin.usd))
+      .catch(() => {
+        fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot')
+          .then(r => r.json()).then(j => done(j.data.amount))
+          .catch(fail);
+      });
+  } catch(e){ fail(); }
+}
+const BTC_FEE = 0.001;    // 0.10 percent, each direction
+function btcBuy(sh){
+  sh = Math.min(sh, META.shards);
+  if (sh < 10 || !BTC.price) return false;
+  META.shards -= sh;
+  META.btc = (META.btc || 0) + (sh * (1 - BTC_FEE)) / BTC.price;
+  META.btcCost = (META.btcCost || 0) + sh;
+  SFX.plate();
+  return true;
+}
+function btcSell(frac){
+  const amt = (META.btc || 0) * frac;
+  if (!BTC.price || amt <= 0) return false;
+  const out = Math.floor(amt * BTC.price * (1 - BTC_FEE));
+  if (out < 1) return false;
+  const basisSold = (META.btcCost || 0) * frac;
+  bumpStat('btcProfit', out - Math.round(basisSold));
+  META.btc -= amt;
+  META.btcCost = (META.btcCost || 0) * (1 - frac);
+  if (META.btc < 1e-12){ META.btc = 0; META.btcCost = 0; }
+  META.shards += out;
+  SFX.levelup();
+  return true;
+}
+// the pixel font has no dollar sign, so the market trades in USD
+function fmtUsd(v){
+  const s = String(Math.round(v));
+  let out = '';
+  for (let i = 0; i < s.length; i++){
+    if (i > 0 && (s.length - i) % 3 === 0) out += ',';
+    out += s[i];
+  }
+  return out + ' USD';
+}
+function btcWorth(){ return (META.btc || 0) * (BTC.price || 0) * (1 - BTC_FEE); }
+
+// ================================================================
 // THE STORE
 // Everything you own is bought here with plate shards. Three tabs,
 // one list, and the same three verbs everywhere: BUY when you can
 // afford it, EQUIP when you own it, and the cost when you cannot.
 // ================================================================
-const TABS = ['GUNS', 'BOOSTS', 'START', 'EXTRAS'];
+const TABS = ['GUNS', 'BOOSTS', 'START', 'EXTRAS', 'MARKET'];
 const STORE_Y = 56, STORE_ROW = 22, STORE_ROWS = 8;
 
 // One uniform row shape for all three tabs, so the drawing and the
@@ -10119,6 +10189,64 @@ function storeItems(){
         },
       });
     }
+  } else if (ST.storeTab === 4){
+    // THE MARKET. Keep the price warm while the tab is open.
+    btcFetch();
+    const live = BTC.price > 0;
+    const age = live ? Math.round((performance.now() - BTC.t) / 1000) : 0;
+    out.push({
+      name: 'BITCOIN  ' + (live ? fmtUsd(BTC.price)
+            : BTC.state === 'fail' ? 'MARKET OFFLINE' : 'FETCHING...'),
+      desc: live ? 'LIVE PRICE, ' + age + 'S AGO - TAP TO REFRESH'
+                 : 'NEEDS THE INTERNET - TAP TO RETRY',
+      cost: -1, owned: false, on: false, right: '',
+      act(){ btcFetch(true); SFX.click(); return true; },
+    });
+    for (const amt of [100, 500]){
+      out.push({
+        name: 'INVEST ' + amt + ' SHARDS',
+        desc: 'FEE 0.10 PERCENT - ONE SHARD IS ONE DOLLAR',
+        cost: -1, owned: false, on: false,
+        right: META.shards >= amt && live ? 'BUY' : '---',
+        act(){ return btcBuy(amt); },
+      });
+    }
+    out.push({
+      name: 'INVEST EVERYTHING',
+      desc: 'ALL ' + META.shards + ' SHARDS. NO REFUNDS. FEE APPLIES.',
+      cost: -1, owned: false, on: false,
+      right: META.shards >= 10 && live ? 'YOLO' : '---',
+      act(){ return btcBuy(META.shards); },
+    });
+    const bag = META.btc || 0;
+    for (const [label, frac] of [['SELL HALF', 0.5], ['SELL EVERYTHING', 1]]){
+      const gets = Math.floor(bag * frac * (BTC.price || 0) * (1 - BTC_FEE));
+      out.push({
+        name: label,
+        desc: 'FEE 0.10 PERCENT ON THE WAY OUT TOO',
+        cost: -1, owned: false, on: false,
+        right: bag > 0 && live && gets >= 1 ? '+' + gets : '---',
+        act(){ return btcSell(frac); },
+      });
+    }
+    const worth = Math.floor(btcWorth());
+    const paid = Math.round(META.btcCost || 0);
+    const pl = worth - paid;
+    out.push({
+      name: 'YOUR BAG: ' + bag.toFixed(8) + ' BTC',
+      desc: bag > 0 ? 'WORTH ' + worth + ' SHARDS - YOU PAID ' + paid
+                    : 'EMPTY. THE SAFEST PORTFOLIO THERE IS.',
+      cost: -1, owned: false, on: false,
+      right: bag > 0 ? (pl >= 0 ? '+' + pl : String(pl)) : '',
+      rightCol: pl >= 0 ? '#6ad07a' : '#e8162a',
+      act(){ SFX.click(); return true; },
+    });
+    out.push({
+      name: 'THIS IS NOT FINANCIAL ADVICE',
+      desc: 'THE BITCOIN IS FICTIONAL. THE PRICE IS REAL.',
+      cost: -1, owned: false, on: false, right: '',
+      act(){ SFX.plate(); return true; },
+    });
   } else {
     for (const w of WAVE_TIERS){
       const bought = !!META.waves[w];
@@ -10146,8 +10274,8 @@ function storeItems(){
 function storeTabHit(x, y){
   if (y < 26 || y > 40) return -1;
   for (let i=0;i<TABS.length;i++){
-    const tx = 34 + i*108;
-    if (x >= tx-8 && x <= tx+90) return i;
+    const tx = 24 + i*88;
+    if (x >= tx-7 && x <= tx+76) return i;
   }
   return -1;
 }
@@ -10169,6 +10297,7 @@ function openStore(){
   ST.mode = 'store'; ST.storeTab = ST.storeTab || 0;
   ST.storeSel = 0; ST.storeTop = 0;
   document.body.classList.remove('playing');
+  btcFetch();          // warm the market up while he shops
   SFX.click();
 }
 
@@ -10182,10 +10311,10 @@ function renderStore(){
   drawText(String(META.shards), W-60, 8, 2, '#f2f5f9');
 
   for (let i=0;i<TABS.length;i++){
-    const on = ST.storeTab === i, tx = 34 + i*108;
-    if (on){ cx.fillStyle = 'rgba(232,22,42,0.18)'; cx.fillRect(tx-8, 26, 98, 14); }
+    const on = ST.storeTab === i, tx = 24 + i*88;
+    if (on){ cx.fillStyle = 'rgba(232,22,42,0.18)'; cx.fillRect(tx-7, 26, 83, 14); }
     drawText(TABS[i], tx, 30, 1, on ? '#ffffff' : '#63636f');
-    if (on){ cx.fillStyle = CRIMSON; cx.fillRect(tx-8, 39, 98, 1); }
+    if (on){ cx.fillStyle = CRIMSON; cx.fillRect(tx-7, 39, 83, 1); }
   }
 
   const items = storeItems();
@@ -10201,7 +10330,10 @@ function renderStore(){
     drawText(it.name, 30, y+1, 1, it.on ? '#f4c542' : (it.owned || afford ? '#ffffff' : '#6a6a78'));
     drawText(it.desc, 30, y+10, 1, '#5f6472');
     // right-hand state: what this row will do if you press it
-    if (it.on)            drawText('EQUIPPED', W-30, y+5, 1, '#f4c542', 'right');
+    if (it.right !== undefined){
+      if (it.right) drawText(it.right, W-30, y+5, 1, it.rightCol || '#79c7f0', 'right');
+    }
+    else if (it.on)       drawText('EQUIPPED', W-30, y+5, 1, '#f4c542', 'right');
     else if (it.owned)    drawText(ST.storeTab === 1 ? 'MAXED' : 'EQUIP', W-30, y+5, 1, '#79c7f0', 'right');
     else if (it.cost === -2) drawText('LOCKED', W-30, y+5, 1, '#4a4a5a', 'right');
     else {
