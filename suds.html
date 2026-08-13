@@ -7548,6 +7548,7 @@ function beginChapterFight(){
   ST.kills = 0;
   ST.objDone = 0;
   ST.objTimer = 0;
+  ST.beatDelay = 0;
   ST.waveState = 'clear'; ST.waveTimer = 1.2;
   gotoMap(c.map, false);
   // a story chapter always starts you on the gun the chapter says, if any
@@ -7602,7 +7603,20 @@ function objectiveText(){
 
 function updateStory(dt){
   const c = CHAPTERS[ST.chapter];
-  if (!c || ST.objDone) return;
+  if (!c) return;
+  // The outro is queued: this countdown has to run AFTER the objective is
+  // done, so it cannot live below the objDone early-return. It used to,
+  // and every chapter soft-locked on OBJECTIVE COMPLETE.
+  if (ST.beatDelay > 0){
+    ST.beatDelay -= dt;
+    if (ST.beatDelay <= 0){
+      ST.storyBeat = 'after';
+      ST.beatLine = 0;
+      ST.mode = 'beat';
+    }
+    return;
+  }
+  if (ST.objDone) return;
   let done = false;
 
   if (c.obj === 'survive') done = ST.wave > c.n;
@@ -7652,17 +7666,9 @@ function updateStory(dt){
     ST.objDone = 1;
     ST.banner = 'OBJECTIVE COMPLETE'; ST.bannerTimer = 1.8;
     SFX.levelup();
-    // bank the chapter and go to the outro after a beat
+    // bank the chapter; the countdown at the top takes it to the outro
     if ((META.story || 0) <= ST.chapter){ META.story = ST.chapter + 1; saveMeta(); }
     ST.beatDelay = 1.8;
-  }
-  if (ST.beatDelay > 0){
-    ST.beatDelay -= dt;
-    if (ST.beatDelay <= 0){
-      ST.storyBeat = 'after';
-      ST.beatLine = 0;
-      ST.mode = 'beat';
-    }
   }
 }
 
