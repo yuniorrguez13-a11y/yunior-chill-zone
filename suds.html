@@ -4974,7 +4974,7 @@ function startRun(){
   boss = null; beamFx = null; beamSfxCd = 0; blasts = []; arcFx = null;
   strikes = []; holes = []; drops = []; critters = [];
   honkFx = null; pawFx = []; wreckFx = []; ST.sunT = 0;
-  ST.chain = false;
+  ST.chain = false; chainFx = []; chainHead = null;
   spawnPet();
 
   // everything bought at the store lands here, before the first enemy
@@ -6071,14 +6071,17 @@ function updateEnemies(dt){
       updateChainHead(e, dt, dx, dy, d);
     }
     else if (e.type === 'cblock'){
-      // positioned by the head; its own job is the queued ring burst
-      if (e.ringIn !== undefined && e.ringIn > 0){
-        e.ringIn -= dt;
+      // positioned by the head; its own job is THE HALVING — every block
+      // flashes, then every block fires a pinch of forks straight at you
+      if (e.halvIn !== undefined && e.halvIn > 0){
+        e.halvIn -= dt;
         e.flash = 0.06;
-        if (e.ringIn <= 0){
-          const n = 8, a0 = rand(0, TAU);
-          for (let k=0;k<n;k++) eshoot(e.x, e.y, a0 + k*TAU/n, T.bubbleSpeed*1.4, 'bubble');
-          e.ringIn = undefined;
+        if (e.halvIn <= 0){
+          const HP3 = player2 ? nearestPlayer(e.x, e.y) : player;
+          const a = Math.atan2(HP3.y - e.y, HP3.x - e.x);
+          for (let k=-1;k<=1;k+=2) eshoot(e.x, e.y, a + k*0.06, T.forkSpeed*1.1, 'fork');
+          e.halvIn = undefined;
+          SFX.fork();
         }
       }
     }
@@ -6432,6 +6435,7 @@ function startBlockchain(){
     s.hp = s.maxhp = T.cblock.hp + i * 130;
   }
   chainHead = head;
+  chainFx = [];
   boss = head;                        // boss bar + boss music
   ST.chainMax = 0;
   for (const e of enemies) ST.chainMax += e.hp;
@@ -6439,16 +6443,288 @@ function startBlockchain(){
   SFX.alarm();
 }
 
+// ---- the pattern book. Undertale rules: every attack has a NAME, a
+// telegraph you can read, and a way out if you move. `from` is the
+// phase where the chain learns it. ----
+const CHAIN_PATTERNS = [
+  { id:'grid',  from:1,  name:'PROOF OF WORK' },
+  { id:'dip',   from:1,  name:'BUY THE DIP' },
+  { id:'rug',   from:2,  name:'RUG PULL' },
+  { id:'crash', from:4,  name:'MARKET CRASH' },
+  { id:'halv',  from:5,  name:'THE HALVING' },
+  { id:'hodl',  from:6,  name:'HODL' },
+  { id:'blink', from:8,  name:'FIFTY ONE PERCENT' },
+  { id:'moon',  from:10, name:'TO THE MOON' },
+];
+const CHAIN_TAUNTS = [
+  'NOT YOUR KEYS. NOT YOUR HEARTS.',
+  'THIS IS FINANCIAL ADVICE',
+  'YOU CALL THAT MINING',
+  'ZERO CONFIRMATIONS',
+  'GAS FEES APPLY',
+  'DIAMOND HANDS. IRON EVERYTHING.',
+];
+let chainFx = [];    // telegraphs and live hazards: beams, columns, rugs, the hodl zone
+
+function castTelegraph(e, id, p){
+  if (id === 'grid'){
+    // lines across the view with real gaps between them. Read, then stand
+    // in the gap. More lines as the chain shortens; verticals join late.
+    const nH = Math.min(4, 2 + (p >> 2));
+    const ys = [];
+    for (let k = 0; k < nH*8 && ys.length < nH; k++){
+      const y = rand(cam.y + 20, cam.y + H - 20);
+      if (ys.every(q => Math.abs(q - y) > 62)) ys.push(y);
+    }
+    for (const y of ys) chainFx.push({ kind:'beam', dir:'h', pos:y, warn:0.85, on:0.5 });
+    if (p >= 7){
+      const x = rand(cam.x + 40, cam.x + W - 40);
+      chainFx.push({ kind:'beam', dir:'v', pos:x, warn:0.85, on:0.5 });
+    }
+  }
+  else if (id === 'dip'){
+    // a wall of plates with ONE gap, swept across the view. A second wall
+    // comes the other way once the chain is short enough.
+    chainFx.push({ kind:'dip', side: Math.random() < 0.5 ? 0 : 1, t: 0.55 });
+    if (p >= 8) chainFx.push({ kind:'dip', side: Math.random() < 0.5 ? 0 : 1, t: 1.35 });
+  }
+  else if (id === 'rug'){
+    for (const P of alivePlayers())
+      chainFx.push({ kind:'rug', x: P.x, y: P.y, warn: 0.7, r: 44 });
+  }
+  else if (id === 'crash'){
+    const n = Math.min(5, 3 + (p >> 2));
+    for (let k = 0; k < n; k++)
+      chainFx.push({ kind:'col', x: cam.x + W * (k + 0.5 + rand(-0.2, 0.2)) / n,
+                     warn: 0.8, dur: 1.3, rt: 0 });
+  }
+  else if (id === 'halv'){
+    for (const s of chainSegsAlive()) s.halvIn = 0.55;
+  }
+  else if (id === 'hodl'){
+    const P = pick(alivePlayers());
+    chainFx.push({ kind:'hodl', x: P.x + rand(-30,30), y: P.y + rand(-30,30),
+                   t: 2.8, r: 30, burn: 0 });
+  }
+  else if (id === 'blink'){
+    const P = pick(alivePlayers());
+    const a = Math.atan2(P.y - e.y, P.x - e.x);
+    e.blinkX = clamp(P.x + Math.cos(a)*70, 40, WORLD.w-40);
+    e.blinkY = clamp(P.y + Math.sin(a)*70, 40, WORLD.h-40);
+    chainFx.push({ kind:'mark', x: e.blinkX, y: e.blinkY, warn: 0.75 });
+  }
+  else if (id === 'moon'){
+    e.moonPhase = 0;
+  }
+}
+
+function castPattern(e, id, p){
+  // returns how long the cast holds the head in place
+  if (id === 'grid')  return 1.6;
+  if (id === 'dip')   return 1.4;
+  if (id === 'rug')   return 1.7;
+  if (id === 'crash') return 1.6;
+  if (id === 'halv')  return 0.7;
+  if (id === 'hodl')  return 1.2;
+  if (id === 'blink'){
+    // it is already standing where you were running to
+    e.x = e.blinkX; e.y = e.blinkY;
+    spawnParts(e.x, e.y, 20, '#37ff6a', 90);
+    const n = 12;
+    for (let k=0;k<n;k++) eshoot(e.x, e.y, k*TAU/n, T.bubbleSpeed*1.6, 'bubble');
+    ST.shake = Math.min(6, ST.shake + 3);
+    SFX.boom();
+    return 0.4;
+  }
+  if (id === 'moon')  return 1.9;
+  return 1;
+}
+
+function castTick(e, id, p, dt){
+  if (id === 'rug'){
+    // pulses two and three chase where you ran to
+    e.subT = (e.subT || 0) - dt;
+    if (e.subT <= 0){
+      e.subT = 0.55;
+      for (const P of alivePlayers())
+        chainFx.push({ kind:'rug', x: P.x, y: P.y, warn: 0.62, r: 44 });
+    }
+  }
+  if (id === 'moon'){
+    e.subT = (e.subT || 0) + dt;
+    if (e.moonPhase === 0){
+      // straight up and gone
+      e.y -= 700 * dt;
+      if (e.subT > 0.5 || e.y < cam.y - 60){
+        e.moonPhase = 1;
+        const P = pick(alivePlayers());
+        e.blinkX = clamp(P.x, 60, WORLD.w-60);
+        e.blinkY = clamp(P.y, 60, WORLD.h-60);
+        chainFx.push({ kind:'rug', x: e.blinkX, y: e.blinkY, warn: 0.9, r: 62, moon: true });
+      }
+    } else if (e.moonPhase === 1 && e.subT > 1.45){
+      e.moonPhase = 2;
+      e.x = e.blinkX; e.y = e.blinkY;
+      const n = 14;
+      for (let k=0;k<n;k++) eshoot(e.x, e.y, k*TAU/n, T.plateSpeed*1.1, 'plate');
+      ST.shake = Math.min(9, ST.shake + 6);
+      SFX.boom();
+    }
+  }
+  // near the end the spiral never stops, even mid-pattern
+  if (p >= 11){
+    e.tA -= dt;
+    if (e.tA <= 0){
+      e.tA = 0.22;
+      e.spiralA = (e.spiralA || 0) + 0.6;
+      eshoot(e.x, e.y, e.spiralA, T.plateSpeed, 'plate');
+    }
+  }
+}
+
+// the hazards live on their own clock, so a lagged head cannot save you
+function updateChainFx(dt){
+  for (let i = chainFx.length-1; i >= 0; i--){
+    const f = chainFx[i];
+    if (f.kind === 'beam'){
+      if (f.warn > 0){ f.warn -= dt; continue; }
+      f.on -= dt;
+      if (f.on <= 0){ chainFx.splice(i,1); continue; }
+      for (const P of alivePlayers()){
+        if (P.iframe > 0) continue;
+        const near = f.dir === 'h' ? Math.abs(P.y - f.pos) < 7 : Math.abs(P.x - f.pos) < 7;
+        if (near) hurtPlayer(P, 1);
+      }
+    }
+    else if (f.kind === 'dip'){
+      f.t -= dt;
+      if (f.t > 0) continue;
+      chainFx.splice(i,1);
+      const n = Math.ceil(H / 22) + 1;
+      const gap = irand(1, n - 3);
+      const x0 = f.side === 0 ? cam.x - 12 : cam.x + W + 12;
+      const ang = f.side === 0 ? 0 : Math.PI;
+      for (let k=0;k<n;k++){
+        if (k === gap || k === gap+1) continue;    // the way through
+        eshoot(clamp(x0, 8, WORLD.w-8), clamp(cam.y + k*22, 8, WORLD.h-8),
+               ang, 105, 'plate');
+      }
+      SFX.plate();
+    }
+    else if (f.kind === 'col'){
+      if (f.warn > 0){ f.warn -= dt; continue; }
+      f.dur -= dt;
+      if (f.dur <= 0){ chainFx.splice(i,1); continue; }
+      f.rt -= dt;
+      if (f.rt <= 0){
+        f.rt = 0.12;
+        eshoot(clamp(f.x + rand(-6,6), 8, WORLD.w-8), Math.max(10, cam.y - 8),
+               Math.PI/2, T.knifeSpeed*0.9, 'knife');
+      }
+    }
+    else if (f.kind === 'rug'){
+      f.warn -= dt;
+      if (f.warn > 0) continue;
+      chainFx.splice(i,1);
+      for (const P of alivePlayers())
+        if (P.iframe <= 0 && dist2(P.x, P.y, f.x, f.y) < f.r*f.r) hurtPlayer(P, f.moon ? 2 : 1);
+      blasts.push({ x:f.x, y:f.y, r:f.r, t:0.26, max:0.26, color:'#37ff6a' });
+      spawnParts(f.x, f.y, 14, '#37ff6a', 110);
+      ST.shake = Math.min(6, ST.shake + 2);
+      SFX.boom();
+    }
+    else if (f.kind === 'hodl'){
+      f.t -= dt;
+      if (f.t <= 0){ chainFx.splice(i,1); continue; }
+      const P = nearestPlayer(f.x, f.y);
+      const d = Math.hypot(P.x - f.x, P.y - f.y) || 1;
+      f.x += (P.x - f.x)/d * 95 * dt;
+      f.y += (P.y - f.y)/d * 95 * dt;
+      if (d < f.r){
+        f.burn += dt;
+        if (f.burn > 0.35 && P.iframe <= 0){ hurtPlayer(P, 1); f.burn = 0; }
+      } else f.burn = Math.max(0, f.burn - dt);
+    }
+    else if (f.kind === 'mark'){
+      f.warn -= dt;
+      if (f.warn <= 0) chainFx.splice(i,1);
+    }
+  }
+}
+
+function renderChainFx(){
+  for (const f of chainFx){
+    if (f.kind === 'beam'){
+      const x0 = cam.x - 8, x1 = cam.x + W + 8, y0 = cam.y - 8, y1 = cam.y + H + 8;
+      if (f.warn > 0){
+        cx.globalAlpha = 0.35 + Math.sin(ST.time*30)*0.2;
+        cx.strokeStyle = '#37ff6a'; cx.lineWidth = 1;
+        cx.beginPath();
+        if (f.dir === 'h'){ cx.moveTo(x0, f.pos); cx.lineTo(x1, f.pos); }
+        else { cx.moveTo(f.pos, y0); cx.lineTo(f.pos, y1); }
+        cx.stroke();
+      } else {
+        for (const [wide, col, al] of [[9,'#1c7a36',0.7],[5,'#37ff6a',0.9],[2,'#d8ffe2',1]]){
+          cx.globalAlpha = al;
+          cx.strokeStyle = col; cx.lineWidth = wide;
+          cx.beginPath();
+          if (f.dir === 'h'){ cx.moveTo(x0, f.pos); cx.lineTo(x1, f.pos); }
+          else { cx.moveTo(f.pos, y0); cx.lineTo(f.pos, y1); }
+          cx.stroke();
+        }
+      }
+      cx.globalAlpha = 1;
+    }
+    else if (f.kind === 'col' && f.warn > 0){
+      cx.globalAlpha = 0.16 + Math.sin(ST.time*24)*0.08;
+      cx.fillStyle = '#e8162a';
+      cx.fillRect(f.x - 11, cam.y, 22, H);
+      cx.globalAlpha = 1;
+    }
+    else if (f.kind === 'rug'){
+      const g2 = 1 - clamp(f.warn / 0.7, 0, 1);
+      cx.globalAlpha = 0.5 + Math.sin(ST.time*26)*0.2;
+      cx.strokeStyle = f.moon ? CRIMSON : '#37ff6a'; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, TAU); cx.stroke();
+      cx.beginPath(); cx.arc(f.x, f.y, f.r * g2, 0, TAU); cx.stroke();
+      cx.globalAlpha = 1;
+    }
+    else if (f.kind === 'hodl'){
+      cx.globalAlpha = 0.30 + Math.sin(ST.time*8)*0.10;
+      cx.fillStyle = '#37ff6a';
+      cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, TAU); cx.fill();
+      cx.globalAlpha = 0.9;
+      cx.strokeStyle = '#37ff6a'; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.arc(f.x, f.y, f.r + Math.sin(ST.time*6)*3, 0, TAU); cx.stroke();
+      drawText('HODL', f.x, f.y - 3, 1, '#0c2a14', 'center');
+      cx.globalAlpha = 1;
+    }
+    else if (f.kind === 'mark'){
+      cx.globalAlpha = 0.6 + Math.sin(ST.time*30)*0.3;
+      cx.strokeStyle = '#37ff6a'; cx.lineWidth = 2;
+      cx.beginPath();
+      cx.moveTo(f.x-7, f.y-7); cx.lineTo(f.x+7, f.y+7);
+      cx.moveTo(f.x+7, f.y-7); cx.lineTo(f.x-7, f.y+7);
+      cx.stroke();
+      cx.globalAlpha = 1;
+    }
+  }
+}
+
 function updateChainHead(e, dt, dx, dy, d){
   const p = chainPhase();
-  // sinuous hunt, faster with every mined block; sometimes a straight charge
-  const spd = (e.dash > 0 ? 2.3 : 1) * (T.chead.speed + p*6);
-  if (e.dash > 0) e.dash -= dt;
-  e.wob = (e.wob || 0) + dt * 2.4;
-  const aim = Math.atan2(dy, dx) + (e.dash > 0 ? 0 : Math.sin(e.wob) * 0.75);
-  e.x = clamp(e.x + Math.cos(aim) * spd * dt, 30, WORLD.w-30);
-  e.y = clamp(e.y + Math.sin(aim) * spd * dt, 30, WORLD.h-30);
-  // the body follows the head's own trail, one block every 26px of it
+  // ---- movement: sinuous roam between casts, planted while casting ----
+  if (e.st === undefined){ e.st = 'roam'; e.stT = 1.5; e.tA = 1; }
+  const casting = e.st === 'cast';
+  const moving = !casting || e.pat && e.pat.id === 'moon';
+  if (moving && !(e.pat && e.pat.id === 'moon' && casting)){
+    const spd = T.chead.speed + p*7;
+    e.wob = (e.wob || 0) + dt * 2.4;
+    const aim = Math.atan2(dy, dx) + Math.sin(e.wob) * 0.75;
+    e.x = clamp(e.x + Math.cos(aim) * spd * dt, 30, WORLD.w-30);
+    e.y = clamp(e.y + Math.sin(aim) * spd * dt, 30, WORLD.h-30);
+  }
+  // ---- the body follows the head's own trail, one block every 26px ----
   const hist = e.hist;
   if (dist2(hist[0][0], hist[0][1], e.x, e.y) > 4) hist.unshift([e.x, e.y]);
   if (hist.length > 900) hist.length = 900;
@@ -6469,7 +6745,7 @@ function updateChainHead(e, dt, dx, dy, d){
     const prev = si === 0 ? e : segs[si-1];
     segs[si].x = prev.x; segs[si].y = prev.y + 24;
   }
-  // head contact steals shards on top of the touch damage
+  // ---- head contact steals shards on top of the touch damage ----
   e.stealCd -= dt;
   if (e.stealCd <= 0){
     for (const P of alivePlayers()){
@@ -6483,45 +6759,52 @@ function updateChainHead(e, dt, dx, dy, d){
       }
     }
   }
-  if (!inView(e.x, e.y, 40)) return;
-  // attacks, stacking up with the phase
-  e.tA -= dt;
-  if (e.tA <= 0){
-    e.tA = Math.max(0.10, 0.30 - p*0.015);
-    e.spiralA = (e.spiralA || 0) + 0.5;
-    const arms = 1 + Math.floor(p/4);
-    for (let k=0;k<arms;k++)
-      eshoot(e.x, e.y, e.spiralA + k*TAU/arms, T.plateSpeed * (0.8 + p*0.04), 'plate');
-  }
-  e.tB -= dt;
-  if (e.tB <= 0){ e.tB = Math.max(2.6, 5 - p*0.2); e.dash = 0.55; SFX.alarm(); }
-  if (p >= 3){
-    e.tC -= dt;
-    if (e.tC <= 0){
-      e.tC = Math.max(3.5, 7 - p*0.3);
-      let dly = 0;
-      for (const s of chainSegsAlive()){
-        if (!inView(s.x, s.y, 20)) continue;
-        s.ringIn = 0.12 + dly;              // staggered down the body
-        dly += 0.10;
-      }
-      SFX.bubble();
-    }
-  }
+  // ---- summons, on their own clock ----
   if (p >= 6){
     e.tD -= dt;
     if (e.tD <= 0){
-      e.tD = 11;
+      e.tD = 12;
       for (let k=0;k<2;k++){
         const q = spawnEdgePos();
         spawnEnemy(pick(['toaster','chopper','scrubber']), q.x, q.y);
       }
-      ST.banner = 'THE CHAIN VALIDATES'; ST.bannerTimer = 1.2;
     }
   }
-  if (p >= 9 && Math.random() < dt * 1.2)
-    eshoot(clamp(rand(cam.x, cam.x+W), 10, WORLD.w-10), Math.max(12, cam.y - 8),
-           Math.PI/2 + rand(-0.3, 0.3), T.knifeSpeed*0.8, 'knife');
+  if (!inView(e.x, e.y, 60)) return;
+  // ---- the pattern machine: roam -> announce -> cast -> roam ----
+  e.stT -= dt;
+  if (e.st === 'roam'){
+    // light pressure so roaming is never fully safe
+    e.tA -= dt;
+    if (e.tA <= 0){
+      e.tA = Math.max(0.28, 0.55 - p*0.02);
+      e.spiralA = (e.spiralA || 0) + 0.7;
+      eshoot(e.x, e.y, e.spiralA, T.plateSpeed*0.85, 'bubble');
+    }
+    if (e.stT <= 0){
+      const pool = CHAIN_PATTERNS.filter(q => p >= q.from);
+      let pat = pick(pool);
+      if (e.lastPat === pat.id && pool.length > 1)
+        pat = pick(pool.filter(q => q.id !== e.lastPat));
+      e.pat = pat; e.lastPat = pat.id;
+      e.st = 'tell'; e.stT = 0.75; e.subT = 0;
+      ST.banner = pat.name; ST.bannerTimer = 0.9;
+      SFX.alarm();
+      castTelegraph(e, pat.id, p);
+    }
+  } else if (e.st === 'tell'){
+    if (e.stT <= 0){
+      e.st = 'cast';
+      e.stT = castPattern(e, e.pat.id, p);
+    }
+  } else if (e.st === 'cast'){
+    castTick(e, e.pat.id, p, dt);
+    if (e.stT <= 0){
+      e.st = 'roam';
+      e.stT = Math.max(0.55, 2.0 - p*0.11);
+      if (Math.random() < 0.35){ ST.banner = pick(CHAIN_TAUNTS); ST.bannerTimer = 1.2; }
+    }
+  }
 }
 
 // bounced shots against a block that is not the tail yet
@@ -7196,6 +7479,7 @@ function render(){
     }
     cx.globalAlpha = 1;
   }
+  if (chainFx.length) renderChainFx();
 
   // enemies
   for (const e of enemies){
@@ -9509,6 +9793,7 @@ function tick(dt){
   updateVents(dt);
   updateStation(dt);
   updateMut(dt);
+  if (chainFx.length) updateChainFx(dt);
   updateToasts(dt);
   ST.achvT = (ST.achvT || 0) + dt;
   if (ST.achvT > 1){ ST.achvT = 0; checkAchievements(); }
