@@ -9626,7 +9626,13 @@ requestAnimationFrame(frame);
   }
 
   const gunRow = section('GUN');
-  const gunBtns = GUNS.map((g, i) => btn(gunRow, g.name.split(' ')[0], () => {
+  // first meaningful word: the contraband names all start with articles,
+  // and a row of buttons reading EL EL LA EL THE helps nobody
+  const gunLabel = name => {
+    const w = name.split(' ').filter(x => ['LA','EL','THE','DEL'].indexOf(x) < 0);
+    return w[0] || name.split(' ')[0];
+  };
+  const gunBtns = GUNS.map((g, i) => btn(gunRow, gunLabel(g.name), () => {
     // testing a gun implies owning it, or the ladder would snap back
     META.owned[g.id] = true;
     player.ladder = gunLadder();
