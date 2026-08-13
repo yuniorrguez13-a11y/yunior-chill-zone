@@ -178,6 +178,138 @@ const SFX = {
 };
 
 // ================================================================
+// MUSIC — a tiny step sequencer over the same WebAudio graph.
+// No audio files: three songs written as note tables, played on a
+// 16th-note grid a moment ahead of the clock. The menu gets a slow
+// one, the shift gets a driving one, and a boss gets its own.
+// Toggled in OPTIONS (META.music); the M mute still silences all.
+// ================================================================
+function midiHz(m){ return 440 * Math.pow(2, (m - 69) / 12); }
+
+const MUSIC = (function(){
+  // Each channel: w = oscillator type, v = volume, d = note length in
+  // seconds, notes = [step, midi] pairs on a 64-step (4 bar) loop.
+  // hats/kicks/snares are just step lists.
+  const SONGS = {
+    // the front page: slow Am - F - C - G, mostly space
+    menu: { bpm: 84, chans: [
+      { w:'square',   v:.045, d:.30, notes: [[0,45],[16,41],[32,48],[48,43]] },
+      { w:'triangle', v:.055, d:.34, notes: [[0,64],[6,67],[12,69],[16,65],[22,69],[28,72],
+                                             [32,72],[38,76],[44,79],[48,71],[54,74],[60,67]] },
+    ], hats: [4,12,20,28,36,44,52,60], kicks: [], snares: [] },
+    // the shift: driving eighth-note bass down Am G F E
+    fight: { bpm: 140, chans: [
+      { w:'square',   v:.050, d:.16, notes: [
+        [0,45],[2,45],[4,45],[6,45],[8,45],[10,45],[12,45],[14,45],
+        [16,43],[18,43],[20,43],[22,43],[24,43],[26,43],[28,43],[30,43],
+        [32,41],[34,41],[36,41],[38,41],[40,41],[42,41],[44,41],[46,41],
+        [48,40],[50,40],[52,40],[54,40],[56,40],[58,40],[60,40],[62,40]] },
+      { w:'square',   v:.042, d:.18, notes: [
+        [0,69],[4,72],[8,76],[12,74],[16,71],[20,74],[24,79],[28,76],
+        [32,69],[36,72],[40,77],[44,76],[48,74],[52,71],[56,68],[60,64]] },
+    ], hats: [0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62],
+       kicks: [0,8,16,24,32,40,48,56], snares: [8,24,40,56] },
+    // a boss: faster, arpeggios that keep sliding somewhere worse
+    boss: { bpm: 160, chans: [
+      { w:'square',   v:.050, d:.14, notes: [
+        [0,45],[2,45],[4,45],[6,45],[8,45],[10,45],[12,45],[14,45],
+        [16,46],[18,46],[20,46],[22,46],[24,46],[26,46],[28,46],[30,46],
+        [32,45],[34,45],[36,45],[38,45],[40,45],[42,45],[44,45],[46,45],
+        [48,44],[50,44],[52,44],[54,44],[56,44],[58,44],[60,44],[62,44]] },
+      { w:'square',   v:.040, d:.13, notes: [
+        [0,69],[2,72],[4,76],[6,72],[8,69],[10,72],[12,76],[14,72],
+        [16,68],[18,71],[20,74],[22,71],[24,68],[26,71],[28,74],[30,71],
+        [32,65],[34,69],[36,72],[38,69],[40,65],[42,69],[44,72],[46,69],
+        [48,64],[50,68],[52,71],[54,68],[56,64],[58,68],[60,71],[62,68]] },
+    ], hats: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,
+              32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63],
+       kicks: [0,8,16,24,32,40,48,56], snares: [4,12,20,28,36,44,52,60] },
+  };
+
+  let gain = null;        // the music's own volume knob, under masterGain
+  let cur = null;         // which song is playing
+  let step = 0, nextT = 0;
+  let fading = null;      // song to switch to once the fade-out lands
+
+  function ensure(){
+    if (gain || !AC) return;
+    gain = AC.createGain();
+    gain.gain.value = 0.55;
+    gain.connect(masterGain);
+  }
+  function note(w, m, t, d, v){
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = w; o.frequency.setValueAtTime(midiHz(m), t);
+    g.gain.setValueAtTime(v, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + d);
+    o.connect(g); g.connect(gain);
+    o.start(t); o.stop(t + d + 0.02);
+  }
+  function hat(t, v, d){
+    const src = AC.createBufferSource(); src.buffer = noiseBuf;
+    const g = AC.createGain();
+    g.gain.setValueAtTime(v, t);
+    g.gain.linearRampToValueAtTime(0.001, t + d);
+    src.connect(g); g.connect(gain);
+    src.start(t); src.stop(t + d + 0.02);
+  }
+
+  // which song this moment of the game wants
+  function wanted(){
+    if (META.music === 0) return null;
+    if (ST.mode === 'play' || ST.mode === 'levelup' || ST.mode === 'pause')
+      return boss ? 'boss' : 'fight';
+    if (ST.mode === 'over') return null;   // the game-over jingle has the floor
+    return 'menu';
+  }
+
+  function tick(){
+    if (!AC || muted) return;
+    ensure();
+    if (!gain) return;
+    const want = wanted();
+    if (want !== cur && fading === null){
+      // fade what is playing, then swap on the next pass
+      fading = want;
+      gain.gain.cancelScheduledValues(AC.currentTime);
+      gain.gain.setValueAtTime(gain.gain.value, AC.currentTime);
+      gain.gain.linearRampToValueAtTime(0.001, AC.currentTime + 0.30);
+    }
+    if (fading !== null && gain.gain.value <= 0.01){
+      cur = fading; fading = null;
+      step = 0; nextT = AC.currentTime + 0.05;
+      gain.gain.cancelScheduledValues(AC.currentTime);
+      gain.gain.setValueAtTime(0.55, AC.currentTime);
+    }
+    if (!cur) return;
+    const s = SONGS[cur];
+    const dur = 60 / s.bpm / 4;             // one 16th note
+    if (nextT < AC.currentTime) nextT = AC.currentTime + 0.05;
+    // schedule everything due in the next 150ms
+    while (nextT < AC.currentTime + 0.15){
+      const st = step % 64;
+      for (const ch of s.chans)
+        for (const nn of ch.notes)
+          if (nn[0] === st) note(ch.w, nn[1], nextT, ch.d, ch.v);
+      if (s.hats.indexOf(st) >= 0)   hat(nextT, .022, .03);
+      if (s.snares.indexOf(st) >= 0) hat(nextT, .060, .08);
+      if (s.kicks.indexOf(st) >= 0){
+        const o = AC.createOscillator(), g = AC.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(105, nextT);
+        o.frequency.exponentialRampToValueAtTime(38, nextT + 0.10);
+        g.gain.setValueAtTime(.14, nextT);
+        g.gain.exponentialRampToValueAtTime(0.001, nextT + 0.12);
+        o.connect(g); g.connect(gain);
+        o.start(nextT); o.stop(nextT + 0.14);
+      }
+      step++; nextT += dur;
+    }
+  }
+  return { tick };
+})();
+
+// ================================================================
 // PIXEL FONT — 3x5 (some glyphs wider), drawn as rects
 // ================================================================
 const FONT = {
@@ -3165,7 +3297,11 @@ loadMap(0);
 const keys = {};
 const mouse = { x: W/2, y: H/2, down: false };
 let usingTouch = false;
-const touch = { active:false, id:null, sx:0, sy:0, dx:0, dy:0 };
+// Two thumbs, two sticks: the left half of the screen moves, the right
+// half aims and fires. One-finger play still works — with no right
+// stick down, the gun aims itself at the nearest machine.
+const touch  = { active:false, id:null, sx:0, sy:0, dx:0, dy:0, gx:0, gy:0 };  // move
+const touchR = { active:false, id:null, sx:0, sy:0, dx:0, dy:0, gx:0, gy:0 };  // aim + fire
 
 let viewScale = 1, viewLeft = 0, viewTop = 0;
 function resize(){
@@ -3349,11 +3485,19 @@ cv.addEventListener('touchstart', e => {
   if (AC && AC.state === 'suspended') AC.resume();
   const t0 = e.changedTouches[0];
   const p = toGame(t0.clientX, t0.clientY);
-  // arm the joystick on the FIRST finger only; extra fingers must not steal it
-  if (!touch.active){
-    touch.active = true; touch.id = t0.identifier;
-    touch.sx = t0.clientX; touch.sy = t0.clientY;
-    touch.dx = 0; touch.dy = 0;
+  if (ST.mode === 'play'){
+    // every finger matters here: the dash button, then a stick per half
+    for (const tt of e.changedTouches){
+      const q = toGame(tt.clientX, tt.clientY);
+      if (q.x < 48 && q.y > H - 56){ tryDash(); continue; }
+      const s = q.x < W/2 ? touch : touchR;
+      if (s.active) continue;                 // that thumb is already down
+      s.active = true; s.id = tt.identifier;
+      s.sx = tt.clientX; s.sy = tt.clientY;
+      s.gx = q.x; s.gy = q.y;
+      s.dx = 0; s.dy = 0;
+    }
+    return;
   }
   if (ST.mode === 'menu'){
     const i = menuHit(p.x, p.y);
@@ -3397,25 +3541,78 @@ cv.addEventListener('touchstart', e => {
 cv.addEventListener('touchmove', e => {
   e.preventDefault();
   for (const t0 of e.changedTouches){
-    if (t0.identifier === touch.id){
-      touch.dx = (t0.clientX - touch.sx) / viewScale;
-      touch.dy = (t0.clientY - touch.sy) / viewScale;
+    for (const s of [touch, touchR]){
+      if (t0.identifier === s.id){
+        s.dx = (t0.clientX - s.sx) / viewScale;
+        s.dy = (t0.clientY - s.sy) / viewScale;
+      }
     }
   }
 }, {passive:false});
 function touchEnd(e){
   for (const t0 of e.changedTouches){
-    if (t0.identifier === touch.id){ touch.active = false; touch.id = null; touch.dx = 0; touch.dy = 0; }
+    for (const s of [touch, touchR]){
+      if (t0.identifier === s.id){ s.active = false; s.id = null; s.dx = 0; s.dy = 0; }
+    }
   }
 }
 cv.addEventListener('touchend', touchEnd);
 cv.addEventListener('touchcancel', touchEnd);
 
+// ================================================================
+// GAMEPAD — plug one in and it just works. Left stick moves, right
+// stick aims and fires (twin-stick), A or a bumper dashes, START
+// pauses. Menus are driven by faking the matching keyboard presses,
+// so the pad can never drift out of step with the keys.
+// ================================================================
+const pad = { on:false, mx:0, my:0, aim:0, aiming:false, fire:false, prev:{} };
+function padKey(key){
+  window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+  window.dispatchEvent(new KeyboardEvent('keyup', { key }));
+}
+function pollPad(){
+  const list = navigator.getGamepads ? navigator.getGamepads() : [];
+  let g = null;
+  for (const p of list) if (p && p.connected){ g = p; break; }
+  pad.on = !!g;
+  if (!g){ pad.mx = pad.my = 0; pad.aiming = false; pad.fire = false; return; }
+  const dz = v => Math.abs(v) < 0.20 ? 0 : v;
+  pad.mx = dz(g.axes[0] || 0); pad.my = dz(g.axes[1] || 0);
+  const rx = dz(g.axes[2] || 0), ry = dz(g.axes[3] || 0);
+  pad.aiming = Math.hypot(rx, ry) > 0.30;
+  if (pad.aiming) pad.aim = Math.atan2(ry, rx);
+  const down = i => !!(g.buttons[i] && g.buttons[i].pressed);
+  pad.fire = pad.aiming || down(7);            // right stick out, or RT held
+  const edge = (name, is, fn) => {             // fires once per press
+    if (is && !pad.prev[name]) fn();
+    pad.prev[name] = is;
+  };
+  if (ST.mode === 'play'){
+    edge('dash',  down(0) || down(4) || down(5), () => tryDash());
+    edge('pause', down(9), () => padKey('p'));
+  } else if (ST.mode === 'levelup'){
+    // the three cards: dpad left, A (or up), dpad right
+    edge('left',  down(14), () => padKey('1'));
+    edge('ok',    down(0) || down(12), () => padKey('2'));
+    edge('right', down(15), () => padKey('3'));
+  } else {
+    edge('up',    down(12) || pad.my < -0.5, () => padKey('ArrowUp'));
+    edge('down',  down(13) || pad.my >  0.5, () => padKey('ArrowDown'));
+    edge('left',  down(14) || pad.mx < -0.5, () => padKey('ArrowLeft'));
+    edge('right', down(15) || pad.mx >  0.5, () => padKey('ArrowRight'));
+    edge('ok',    down(0) || down(9), () => padKey(ST.mode === 'over' ? 'r' : 'Enter'));
+    edge('back',  down(1), () => padKey('Escape'));
+  }
+}
+window.addEventListener('gamepadconnected', () => {
+  if (typeof pushToast === 'function') pushToast('GAMEPAD CONNECTED', '#79c7f0');
+});
+
 // keyup never arrives for keys released while unfocused — clear everything
 function clearInput(){
   for (const k in keys) keys[k] = false;
   mouse.down = false;
-  touch.active = false; touch.id = null; touch.dx = 0; touch.dy = 0;
+  for (const s of [touch, touchR]){ s.active = false; s.id = null; s.dx = 0; s.dy = 0; }
 }
 document.addEventListener('visibilitychange', ()=>{
   if (document.hidden){
@@ -3472,7 +3669,7 @@ const META = {
   story: 0,                 // how many story chapters are finished
   diff: 0,                  // which difficulty
   achv: {}, stats: {},      // what he has unlocked, and the running totals
-  shake: 1, dmgNums: 1,
+  shake: 1, dmgNums: 1, music: 1,
 };
 function loadMeta(){
   try {
@@ -3485,6 +3682,7 @@ function loadMeta(){
     if (m.waves)  Object.assign(META.waves, m.waves);
     if (m.startGun && GUNS.some(g => g.id === m.startGun && META.owned[g.id])) META.startGun = m.startGun;
     if (m.startWave && META.waves[m.startWave]) META.startWave = m.startWave|0;
+    if (m.music !== undefined) META.music = m.music ? 1 : 0;
   } catch(e){}
   META.owned.pea = true;    // never lose the starter, whatever is in storage
   META.waves[1] = true;
@@ -3991,14 +4189,34 @@ function firePlayerGun(dt){
   player.fireCd -= dt;
   let want = mouse.down || keys[' '];
   let aimX, aimY;
-  if (usingTouch && touch.active){
-    // touch: auto-aim nearest enemy
-    let best = null, bd = 1e9;
-    for (const e of enemies){
-      const d = dist2(player.x, player.y, e.x, e.y);
-      if (d < bd){ bd = d; best = e; }
+  if (usingTouch){
+    const rmag = touchR.active ? Math.hypot(touchR.dx, touchR.dy) : 0;
+    if (rmag > 6){
+      // the right thumb is the aim, and pushing it is the trigger
+      want = true;
+      const a = Math.atan2(touchR.dy, touchR.dx);
+      aimX = player.x + Math.cos(a)*100;
+      aimY = player.y + Math.sin(a)*100;
+    } else if (touch.active){
+      // one finger: auto-aim nearest enemy
+      let best = null, bd = 1e9;
+      for (const e of enemies){
+        const d = dist2(player.x, player.y, e.x, e.y);
+        if (d < bd){ bd = d; best = e; }
+      }
+      if (best){ want = true; aimX = best.x; aimY = best.y; }
     }
-    if (best){ want = true; aimX = best.x; aimY = best.y; }
+  }
+  // gamepad: the right stick is the aim, and pushing it is the trigger
+  if (pad.on && pad.aiming){
+    want = true;
+    aimX = player.x + Math.cos(pad.aim)*100;
+    aimY = player.y + Math.sin(pad.aim)*100;
+  } else if (pad.on && pad.fire && aimX === undefined){
+    // trigger held with the stick centred: shoot at the nearest one
+    want = true;
+    const b = nearestEnemy(player.x, player.y, 420);
+    if (b){ aimX = b.x; aimY = b.y; }
   }
   // the mouse is in screen pixels; the player lives in the kitchen
   if (aimX === undefined){ aimX = mouse.x + cam.x; aimY = mouse.y + cam.y; }
@@ -5061,8 +5279,12 @@ function updatePlayer(dt){
     const mag = Math.hypot(touch.dx, touch.dy);
     if (mag > 6){ mx = touch.dx/mag; my = touch.dy/mag; }
   }
+  if (pad.on && (pad.mx || pad.my)){ mx = pad.mx; my = pad.my; }
   const mag = Math.hypot(mx, my);
-  if (mag > 0){ mx /= mag; my /= mag; }
+  // only normalise when it is over unit length — an analog stick half
+  // pushed should mean half speed, but a keyboard diagonal must not
+  // be faster than a straight line
+  if (mag > 1){ mx /= mag; my /= mag; }
   // hot oil underfoot: you keep moving, you just stop being quick about it
   const slick = onSlick(player.x, player.y);
   const sp = T.playerSpeed * player.speedMul * (slick ? T.slickSlow : 1);
@@ -5586,6 +5808,7 @@ function render(){
   renderHUD();
   renderCombo();
   renderDashPip();
+  renderTouchSticks();
   renderToasts();
   if (ST.tut) renderTutorial();
   if (ST.story) renderObjective();
@@ -6233,6 +6456,7 @@ function tryDash(){
   if (keys['w'] || keys['arrowup'])    ay -= 1;
   if (keys['s'] || keys['arrowdown'])  ay += 1;
   if (usingTouch && touch.active){ ax = touch.dx; ay = touch.dy; }
+  if (pad.on && (pad.mx || pad.my)){ ax = pad.mx; ay = pad.my; }
   // no direction held: dash where he is looking
   if (!ax && !ay){ ax = Math.cos(player.aim); ay = Math.sin(player.aim); }
   const m = Math.hypot(ax, ay) || 1;
@@ -6545,6 +6769,7 @@ function statLines(){
 // ---- 13. OPTIONS. ----
 const OPTIONS = [
   { name:() => 'SOUND: ' + (muted ? 'OFF' : 'ON'),          act: () => setMuted(!muted) },
+  { name:() => 'MUSIC: ' + (META.music === 0 ? 'OFF' : 'ON'), act: () => { META.music = META.music === 0 ? 1 : 0; saveMeta(); } },
   { name:() => 'SCREEN SHAKE: ' + (ST.shakeOn ? 'ON':'OFF'),act: () => { ST.shakeOn = !ST.shakeOn; META.shake = ST.shakeOn?1:0; saveMeta(); } },
   { name:() => 'DAMAGE NUMBERS: ' + (ST.dmgNums ? 'ON':'OFF'), act: () => { ST.dmgNums = !ST.dmgNums; META.dmgNums = ST.dmgNums?1:0; saveMeta(); } },
   { name:() => 'DIFFICULTY: ' + diff().name,                act: () => { META.diff = ((META.diff||0)+1) % DIFFS.length; saveMeta(); } },
@@ -6916,6 +7141,21 @@ function renderCombo(){
 function renderDashPip(){
   if (ST.mode !== 'play') return;
   const ready = player.dashCd <= 0;
+  if (usingTouch){
+    // on a phone this is a real button in the bottom-left corner
+    const bx = 26, by = H - 34;
+    cx.globalAlpha = 0.28;
+    cx.fillStyle = ready ? '#79c7f0' : '#2f333c';
+    cx.beginPath(); cx.arc(bx, by, 15, 0, TAU); cx.fill();
+    cx.globalAlpha = 0.9;
+    cx.strokeStyle = ready ? '#79c7f0' : '#4a5262'; cx.lineWidth = 1.5;
+    cx.beginPath();
+    cx.arc(bx, by, 15, -Math.PI/2, -Math.PI/2 + TAU * (ready ? 1 : 1 - player.dashCd / DASH.cd));
+    cx.stroke();
+    drawText('DASH', bx, by - 2, 1, ready ? '#dfe3ea' : '#3f4450', 'center');
+    cx.globalAlpha = 1;
+    return;
+  }
   const x = 8, y = H - 30;
   cx.fillStyle = ready ? '#79c7f0' : '#2f333c';
   cx.fillRect(x, y, 22, 3);
@@ -6924,6 +7164,22 @@ function renderDashPip(){
     cx.fillRect(x, y, 22 * (1 - player.dashCd / DASH.cd), 3);
   }
   drawText('DASH', x, y - 8, 1, ready ? '#79c7f0' : '#3f4450');
+}
+
+// the two thumbs, drawn where they landed
+function renderTouchSticks(){
+  if (!usingTouch || ST.mode !== 'play') return;
+  for (const s of [touch, touchR]){
+    if (!s.active) continue;
+    const m = Math.hypot(s.dx, s.dy) || 1;
+    const c = Math.min(m, 22);
+    cx.globalAlpha = 0.16;
+    cx.fillStyle = '#dfe3ea';
+    cx.beginPath(); cx.arc(s.gx, s.gy, 20, 0, TAU); cx.fill();
+    cx.globalAlpha = 0.34;
+    cx.beginPath(); cx.arc(s.gx + s.dx/m*c, s.gy + s.dy/m*c, 8, 0, TAU); cx.fill();
+    cx.globalAlpha = 1;
+  }
 }
 
 // ---- the three flat list screens: options, stats, achievements ----
@@ -7202,7 +7458,8 @@ function renderHelp(){
   const lines = [
     ['WASD OR ARROWS', 'MOVE AROUND THE KITCHEN'],
     ['MOUSE', 'AIM  -  HOLD TO FIRE'],
-    ['TOUCH', 'DRAG TO MOVE, IT AIMS ITSELF'],
+    ['TOUCH', 'LEFT STICK MOVES, RIGHT STICK SHOOTS'],
+    ['GAMEPAD', 'STICKS MOVE AND AIM - A DASHES'],
     ['1 2 3', 'PICK AN UPGRADE ON LEVEL UP'],
     ['P', 'PAUSE'],
     ['M', 'MUTE'],
@@ -7284,6 +7541,7 @@ const STEP = 1/60;
 
 function frame(now){
   requestAnimationFrame(frame);
+  pollPad();
   let dt = (now - last) / 1000;
   last = now;
   if (dt > 0.1) dt = 0.1;
@@ -7292,6 +7550,7 @@ function frame(now){
     tick(STEP);
     acc -= STEP;
   }
+  MUSIC.tick();
   render();
 }
 
