@@ -4001,7 +4001,8 @@ window.addEventListener('keydown', e => {
   if (k === 'r' && ST.mode === 'over'){
     audioInit();
     if (AC && AC.state === 'suspended') AC.resume();
-    startRun();
+    // dying to the chain retries the CHAIN, not the arcade shift
+    if (ST.chain) startBlockchain(); else startRun();
   }
   if (ST.mode === 'levelup'){
     if (k === '1') chooseCard(0);
@@ -4064,7 +4065,11 @@ cv.addEventListener('mousedown', e => {
       else if (p.y > H-30){ ST.mode = 'menu'; SFX.click(); }
     }
   }
-  else if (ST.mode === 'over'){ if (overStoreHit(p.x, p.y)) openStore(); else startRun(); }
+  else if (ST.mode === 'over'){
+    if (overStoreHit(p.x, p.y)) openStore();
+    else if (ST.chain) startBlockchain();
+    else startRun();
+  }
   else if (ST.mode === 'pause'){ ST.mode = 'play'; }
   else if (ST.mode === 'levelup'){ clickCard(p.x, p.y); }
   // any click that lands us in play mode counts as held fire
@@ -4139,7 +4144,12 @@ cv.addEventListener('touchstart', e => {
     else if (p.y > H-30) { ST.mode = 'menu'; SFX.click(); }
     return;
   }
-  if (ST.mode === 'over'){ if (overStoreHit(p.x, p.y)) openStore(); else startRun(); return; }
+  if (ST.mode === 'over'){
+    if (overStoreHit(p.x, p.y)) openStore();
+    else if (ST.chain) startBlockchain();
+    else startRun();
+    return;
+  }
   if (ST.mode === 'pause'){ ST.mode = 'play'; return; }
   if (ST.mode === 'levelup'){ clickCard(p.x, p.y); return; }
 }, {passive:false});
@@ -4567,22 +4577,12 @@ function gunLadder(){
   const at = list.findIndex(g => g.id === META.startGun);
   return list.slice(at < 0 ? 0 : at);
 }
-// step up the ladder if the upgrade count has earned it
-function evolveGun(quiet){
-  const l = player.ladder;
-  if (!l || !l.length) return;
-  const g = l[Math.min(Math.floor(player.upgrades / EVOLVE_EVERY), l.length - 1)];
-  const gi = GUNS.indexOf(g);
-  if (gi === player.gunIdx) return;
-  player.gunIdx = gi;
-  player.gunName = g.name;
-  player.charge = 0;      // a half-wound Lance doesn't carry over to the next gun
-  if (player2){ player2.gunIdx = gi; player2.gunName = g.name; player2.charge = 0; }
-  if (quiet) return;
-  ST.banner = 'GUN EVOLVED: ' + g.name; ST.bannerTimer = 2.0;
-  SFX.evolve();
-  spawnParts(player.x, player.y, 24, '#f4c542', 90);
-}
+// The ladder auto-climb is DEAD, by popular demand. It made sense with
+// five guns in a strict power order; with twenty-seven it once swapped a
+// Guillotine Disc for a sandal in the middle of a boss fight. The gun
+// you equip in the store is the gun you play. Kept as a no-op because
+// half the game politely asks it to do its old job.
+function evolveGun(quiet){}
 // How far the gun floats out. It follows the sprite's own width, so the
 // Megablaster hangs a lot further from him than the starter pistol does.
 function gunRadius(g){ return 12 + SP[g.sp].width * 0.30; }
@@ -10177,7 +10177,7 @@ function renderHelp(){
     ['M', 'MUTE'],
     ['', ''],
     ['THE GUN', 'HE WHISTLES IT INTO THE AIR.'],
-    ['', 'IT EVOLVES AS YOU TAKE UPGRADES.'],
+    ['', 'THE ONE YOU EQUIP IS THE ONE YOU KEEP.'],
     ['COUNTERS', 'STOP BULLETS. USE THEM AS COVER.'],
     ['SHARDS', 'BROKEN PLATE. DEAD WASHERS DROP IT.'],
     ['', 'SPEND IT IN THE STORE. IT KEEPS.'],
@@ -10225,7 +10225,7 @@ function renderPause(){
 function renderGameOver(){
   cx.fillStyle = 'rgba(6,6,10,0.7)';
   cx.fillRect(0,0,W,H);
-  drawText('YOU GOT WASHED!', W/2, 70, 3, CRIMSON, 'center');
+  drawText(ST.chain ? 'LIQUIDATED!' : 'YOU GOT WASHED!', W/2, 70, 3, CRIMSON, 'center');
   drawText('WAVE ' + ST.wave + ' + ' + ST.kills + ' KO', W/2, 104, 2, '#fff', 'center');
   const mm = Math.floor(ST.playTime/60), ss = Math.floor(ST.playTime%60);
   drawText('SURVIVED ' + (mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss, W/2, 124, 1, '#dfe3ea', 'center');
