@@ -6437,6 +6437,11 @@ function startBlockchain(){
   chainHead = head;
   chainFx = [];
   boss = head;                        // boss bar + boss music
+  // a fair arena and NOTHING for free: no heal station, no vents, no
+  // room modifier. Hearts come from mined blocks, or nowhere.
+  station = null;
+  vents = [];
+  ST.mod = MODS[0];
   ST.chainMax = 0;
   for (const e of enemies) ST.chainMax += e.hp;
   ST.banner = 'THE BLOCKCHAIN'; ST.bannerTimer = 3;
@@ -6450,9 +6455,11 @@ const CHAIN_PATTERNS = [
   { id:'grid',  from:1,  name:'PROOF OF WORK' },
   { id:'dip',   from:1,  name:'BUY THE DIP' },
   { id:'rug',   from:2,  name:'RUG PULL' },
+  { id:'nova',  from:3,  name:'FULL NODE' },
   { id:'crash', from:4,  name:'MARKET CRASH' },
   { id:'halv',  from:5,  name:'THE HALVING' },
   { id:'hodl',  from:6,  name:'HODL' },
+  { id:'flash', from:7,  name:'FLASH CRASH' },
   { id:'blink', from:8,  name:'FIFTY ONE PERCENT' },
   { id:'moon',  from:10, name:'TO THE MOON' },
 ];
@@ -6477,16 +6484,21 @@ function castTelegraph(e, id, p){
       if (ys.every(q => Math.abs(q - y) > 62)) ys.push(y);
     }
     for (const y of ys) chainFx.push({ kind:'beam', dir:'h', pos:y, warn:0.85, on:0.5 });
+    // second wave, offset, right as the first releases — reposition or burn
+    if (p >= 5)
+      for (const y of ys)
+        chainFx.push({ kind:'beam', dir:'h', pos: y + 34, warn: 1.55, on: 0.5 });
     if (p >= 7){
       const x = rand(cam.x + 40, cam.x + W - 40);
       chainFx.push({ kind:'beam', dir:'v', pos:x, warn:0.85, on:0.5 });
+      if (p >= 11) chainFx.push({ kind:'beam', dir:'v', pos: x + 60, warn:1.55, on:0.5 });
     }
   }
   else if (id === 'dip'){
-    // a wall of plates with ONE gap, swept across the view. A second wall
-    // comes the other way once the chain is short enough.
-    chainFx.push({ kind:'dip', side: Math.random() < 0.5 ? 0 : 1, t: 0.55 });
-    if (p >= 8) chainFx.push({ kind:'dip', side: Math.random() < 0.5 ? 0 : 1, t: 1.35 });
+    // a wall of plates with ONE gap, swept across the view. Late, the gap
+    // is a single plate wide and a second wall comes the other way.
+    chainFx.push({ kind:'dip', side: Math.random() < 0.5 ? 0 : 1, t: 0.55, tight: p >= 6 });
+    if (p >= 8) chainFx.push({ kind:'dip', side: Math.random() < 0.5 ? 0 : 1, t: 1.35, tight: p >= 6 });
   }
   else if (id === 'rug'){
     for (const P of alivePlayers())
@@ -6516,6 +6528,23 @@ function castTelegraph(e, id, p){
   else if (id === 'moon'){
     e.moonPhase = 0;
   }
+  else if (id === 'nova'){
+    // a shockwave the size of the room. Walking cannot outrun it: the
+    // ONLY way through is the dash, i-frames timed as the ring passes.
+    for (const P of alivePlayers())
+      addFloater(P.x, P.y - 20, 'DASH THROUGH IT', '#37ff6a', 1.2);
+  }
+  else if (id === 'flash'){
+    // the whole screen goes off. Except two small circles. Run.
+    const spots = [];
+    for (const P of alivePlayers()){
+      const a = rand(0, TAU), dd = rand(70, 110);
+      spots.push({ x: clamp(P.x + Math.cos(a)*dd, 40, WORLD.w-40),
+                   y: clamp(P.y + Math.sin(a)*dd, 40, WORLD.h-40) });
+      addFloater(P.x, P.y - 20, 'GET TO THE SAFE ZONE', '#37ff6a', 1.2);
+    }
+    chainFx.push({ kind:'flash', t: 1.25, spots, r: 34 });
+  }
 }
 
 function castPattern(e, id, p){
@@ -6526,6 +6555,13 @@ function castPattern(e, id, p){
   if (id === 'crash') return 1.6;
   if (id === 'halv')  return 0.7;
   if (id === 'hodl')  return 1.2;
+  if (id === 'nova'){
+    chainFx.push({ kind:'nova', x: e.x, y: e.y, r: 18, sp: 230 + p*7, w: 9 });
+    if (p >= 9) chainFx.push({ kind:'nova', x: e.x, y: e.y, r: -120, sp: 230 + p*7, w: 9 });
+    SFX.alarm();
+    return 1.4;
+  }
+  if (id === 'flash') return 1.4;
   if (id === 'blink'){
     // it is already standing where you were running to
     e.x = e.blinkX; e.y = e.blinkY;
@@ -6605,7 +6641,7 @@ function updateChainFx(dt){
       const x0 = f.side === 0 ? cam.x - 12 : cam.x + W + 12;
       const ang = f.side === 0 ? 0 : Math.PI;
       for (let k=0;k<n;k++){
-        if (k === gap || k === gap+1) continue;    // the way through
+        if (k === gap || (!f.tight && k === gap+1)) continue;   // the way through
         eshoot(clamp(x0, 8, WORLD.w-8), clamp(cam.y + k*22, 8, WORLD.h-8),
                ang, 105, 'plate');
       }
@@ -6648,6 +6684,32 @@ function updateChainFx(dt){
     else if (f.kind === 'mark'){
       f.warn -= dt;
       if (f.warn <= 0) chainFx.splice(i,1);
+    }
+    else if (f.kind === 'nova'){
+      f.r += f.sp * dt;
+      if (f.r > 1100){ chainFx.splice(i,1); continue; }
+      if (f.r <= 0) continue;
+      for (const P of alivePlayers()){
+        if (P.iframe > 0) continue;
+        const d = Math.abs(Math.sqrt(dist2(P.x, P.y, f.x, f.y)) - f.r);
+        if (d < f.w) hurtPlayer(P, 1);
+      }
+    }
+    else if (f.kind === 'flash'){
+      f.t -= dt;
+      if (f.t > 0) continue;
+      chainFx.splice(i,1);
+      for (const P of alivePlayers()){
+        const safe = f.spots.some(s => dist2(P.x, P.y, s.x, s.y) < f.r*f.r);
+        if (!safe && P.iframe <= 0) hurtPlayer(P, 2);
+      }
+      // the room itself fires: knives out of everywhere, for show and spite
+      for (let k=0;k<20;k++)
+        eshoot(rand(cam.x+10, cam.x+W-10), rand(cam.y+10, cam.y+H-10),
+               rand(0, TAU), T.knifeSpeed*0.7, 'knife');
+      ST.shake = Math.min(10, ST.shake + 7);
+      ST.flashRed = 0.35;
+      SFX.boom();
     }
   }
 }
@@ -6708,21 +6770,58 @@ function renderChainFx(){
       cx.stroke();
       cx.globalAlpha = 1;
     }
+    else if (f.kind === 'nova' && f.r > 0){
+      for (const [wide, col, al] of [[8,'#1c7a36',0.55],[4,'#37ff6a',0.85],[1.5,'#d8ffe2',1]]){
+        cx.globalAlpha = al;
+        cx.strokeStyle = col; cx.lineWidth = wide;
+        cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, TAU); cx.stroke();
+      }
+      cx.globalAlpha = 1;
+    }
+    else if (f.kind === 'flash'){
+      // the room charging up, and the two places it will not hit
+      cx.globalAlpha = 0.10 + (1 - f.t/1.25) * 0.22 + Math.sin(ST.time*30)*0.04;
+      cx.fillStyle = '#e8162a';
+      cx.fillRect(cam.x, cam.y, W, H);
+      cx.globalAlpha = 1;
+      for (const s of f.spots){
+        cx.globalAlpha = 0.85;
+        cx.strokeStyle = '#37ff6a'; cx.lineWidth = 2;
+        cx.beginPath(); cx.arc(s.x, s.y, f.r, 0, TAU); cx.stroke();
+        cx.globalAlpha = 0.20;
+        cx.fillStyle = '#37ff6a';
+        cx.beginPath(); cx.arc(s.x, s.y, f.r, 0, TAU); cx.fill();
+        cx.globalAlpha = 1;
+        drawText('SAFE', s.x, s.y - 3, 1, '#d8ffe2', 'center');
+      }
+    }
   }
 }
 
 function updateChainHead(e, dt, dx, dy, d){
   const p = chainPhase();
-  // ---- movement: sinuous roam between casts, planted while casting ----
-  if (e.st === undefined){ e.st = 'roam'; e.stT = 1.5; e.tA = 1; }
+  // ---- movement: it ORBITS you. The body wraps around the arena and
+  // the tail keeps sweeping right past your gun — no chasing its rear
+  // across the room. It tightens as the chain shortens, and it flips
+  // direction on its own schedule so you can never settle. ----
+  if (e.st === undefined){
+    e.st = 'roam'; e.stT = 1.5; e.tA = 1;
+    e.castCount = 0; e.orbDir = 1; e.orbFlip = 5;
+  }
   const casting = e.st === 'cast';
-  const moving = !casting || e.pat && e.pat.id === 'moon';
-  if (moving && !(e.pat && e.pat.id === 'moon' && casting)){
-    const spd = T.chead.speed + p*7;
-    e.wob = (e.wob || 0) + dt * 2.4;
-    const aim = Math.atan2(dy, dx) + Math.sin(e.wob) * 0.75;
-    e.x = clamp(e.x + Math.cos(aim) * spd * dt, 30, WORLD.w-30);
-    e.y = clamp(e.y + Math.sin(aim) * spd * dt, 30, WORLD.h-30);
+  if (!casting && e.st !== 'open'){
+    const P = nearestPlayer(e.x, e.y);
+    e.orbFlip -= dt;
+    if (e.orbFlip <= 0){ e.orbFlip = rand(3.5, 6); e.orbDir = -e.orbDir; SFX.click(); }
+    if (e.orbA === undefined) e.orbA = Math.atan2(e.y - P.y, e.x - P.x);
+    const R = Math.max(95, 175 - p*7);
+    e.orbA += dt * (0.8 + p*0.06) * e.orbDir;
+    const tx2 = clamp(P.x + Math.cos(e.orbA)*R, 30, WORLD.w-30);
+    const ty2 = clamp(P.y + Math.sin(e.orbA)*R, 30, WORLD.h-30);
+    const da = Math.atan2(ty2 - e.y, tx2 - e.x);
+    const spd = 150 + p*9;
+    e.x = clamp(e.x + Math.cos(da) * spd * dt, 30, WORLD.w-30);
+    e.y = clamp(e.y + Math.sin(da) * spd * dt, 30, WORLD.h-30);
   }
   // ---- the body follows the head's own trail, one block every 26px ----
   const hist = e.hist;
@@ -6771,23 +6870,30 @@ function updateChainHead(e, dt, dx, dy, d){
     }
   }
   if (!inView(e.x, e.y, 60)) return;
-  // ---- the pattern machine: roam -> announce -> cast -> roam ----
+  // ---- the pattern machine: roam -> announce -> cast, and after every
+  // second pattern the OPEN LEDGER: it coils, holds still, and the tail
+  // takes bonus damage. Survive its turn, then take yours. ----
   e.stT -= dt;
   if (e.st === 'roam'){
-    // light pressure so roaming is never fully safe
+    // roaming is never safe — and past the audit line it never stops firing
     e.tA -= dt;
     if (e.tA <= 0){
-      e.tA = Math.max(0.28, 0.55 - p*0.02);
+      e.tA = p >= 13 ? 0.16 : Math.max(0.26, 0.55 - p*0.02);
       e.spiralA = (e.spiralA || 0) + 0.7;
       eshoot(e.x, e.y, e.spiralA, T.plateSpeed*0.85, 'bubble');
+      if (p >= 8) eshoot(e.x, e.y, e.spiralA + Math.PI, T.plateSpeed*0.85, 'bubble');
     }
     if (e.stT <= 0){
-      const pool = CHAIN_PATTERNS.filter(q => p >= q.from);
+      // THE HALVING needs blocks to fire from — no free turns in the audit
+      const pool = CHAIN_PATTERNS.filter(q => p >= q.from &&
+        (q.id !== 'halv' || chainSegsAlive().length > 0));
       let pat = pick(pool);
       if (e.lastPat === pat.id && pool.length > 1)
         pat = pick(pool.filter(q => q.id !== e.lastPat));
       e.pat = pat; e.lastPat = pat.id;
-      e.st = 'tell'; e.stT = 0.75; e.subT = 0;
+      e.st = 'tell';
+      e.stT = p >= 13 ? 0.55 : 0.75;
+      e.subT = 0;
       ST.banner = pat.name; ST.bannerTimer = 0.9;
       SFX.alarm();
       castTelegraph(e, pat.id, p);
@@ -6800,9 +6906,24 @@ function updateChainHead(e, dt, dx, dy, d){
   } else if (e.st === 'cast'){
     castTick(e, e.pat.id, p, dt);
     if (e.stT <= 0){
+      e.castCount++;
+      if (e.castCount % 2 === 0 && p < 13){
+        e.st = 'open';
+        e.stT = Math.max(1.1, 1.9 - p*0.05);
+        ST.banner = 'OPEN LEDGER'; ST.bannerTimer = 1.0;
+        SFX.evolve();
+      } else {
+        e.st = 'roam';
+        e.stT = p >= 13 ? 0.30 : Math.max(0.45, 1.7 - p*0.10);
+        if (Math.random() < 0.35){ ST.banner = pick(CHAIN_TAUNTS); ST.bannerTimer = 1.2; }
+      }
+    }
+  } else if (e.st === 'open'){
+    // coiled and counting its money. This is your window.
+    if (e.stT <= 0){
       e.st = 'roam';
-      e.stT = Math.max(0.55, 2.0 - p*0.11);
-      if (Math.random() < 0.35){ ST.banner = pick(CHAIN_TAUNTS); ST.bannerTimer = 1.2; }
+      e.stT = Math.max(0.45, 1.5 - p*0.09);
+      if (Math.random() < 0.5){ ST.banner = pick(CHAIN_TAUNTS); ST.bannerTimer = 1.2; }
     }
   }
 }
@@ -6850,9 +6971,12 @@ function shieldMul(e, fromX, fromY){
 const CRIT_CHANCE = 0.12, CRIT_MUL = 2.2;
 function damageEnemy(e, dmg, hitX, hitY){
   // THE BLOCKCHAIN only lets you mine the last block in the chain, and
-  // the head only once every block is gone
+  // the head only once every block is gone. During OPEN LEDGER the tail
+  // takes half again as much — that window is the whole rhythm.
   if (e.type === 'cblock' && e !== chainTail()){ chainLockedPing(e); return; }
   if (e.type === 'chead' && chainSegsAlive().length){ chainLockedPing(e); return; }
+  if ((e.type === 'cblock' || e.type === 'chead') &&
+      chainHead && chainHead.st === 'open') dmg *= 1.6;
   // a crit is worth showing: bigger number, brighter, its own sound
   let crit = false;
   if (Math.random() < CRIT_CHANCE){ crit = true; dmg *= CRIT_MUL; ST.crits++; }
@@ -6936,6 +7060,12 @@ function killEnemy(e){
     ST.bannerTimer = 1.4;
     SFX.evolve();
     for (let k=0;k<6;k++) dropPickup(e.x + rand(-10,10), e.y + rand(-10,10), 'shard');
+    // the only healing in the whole fight: every second block pays out
+    if (chainSegsAlive().length % 2 === 0) dropPickup(e.x, e.y, 'heart');
+    if (chainSegsAlive().length === 0){
+      ST.banner = 'THE FINAL AUDIT'; ST.bannerTimer = 2.2;
+      SFX.alarm();
+    }
   }
   if (e.type === 'chead' && ST.chain){
     META.chainDead = 1; saveMeta();
@@ -7468,10 +7598,16 @@ function render(){
     }
     cx.globalAlpha = 1;
     const tail = chainTail();
+    const open = chainHead.st === 'open';
     if (tail){
       cx.globalAlpha = 0.6 + Math.sin(ST.time*8)*0.3;
-      cx.strokeStyle = '#37ff6a'; cx.lineWidth = 1.5;
-      cx.beginPath(); cx.arc(tail.x, tail.y, 16 + Math.sin(ST.time*8)*2, 0, TAU); cx.stroke();
+      cx.strokeStyle = '#37ff6a'; cx.lineWidth = open ? 3 : 1.5;
+      cx.beginPath(); cx.arc(tail.x, tail.y, (open ? 20 : 16) + Math.sin(ST.time*8)*2, 0, TAU); cx.stroke();
+      if (open){
+        cx.globalAlpha = 0.85;
+        drawText('MINE IT', tail.x, tail.y - 26, 1, '#37ff6a', 'center');
+        cx.globalAlpha = 1;
+      }
     } else {
       cx.globalAlpha = 0.6 + Math.sin(ST.time*10)*0.3;
       cx.strokeStyle = CRIMSON; cx.lineWidth = 2;
