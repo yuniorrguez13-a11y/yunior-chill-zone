@@ -2745,6 +2745,35 @@ const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
   ],{a:'#282828',b:'#181818',c:'#101010',d:'#303030',e:'#202020',f:'#383838',
      g:'#607080',h:'#506078',i:'#a0a0a0'});
 
+  // --- fused guns: parent A with parent B bolted on top, gold-rimmed
+  //     so a fusion reads as a fusion at a glance ---
+  function fuseSprite(aKey, bKey){
+    const A = SP[aKey], B = SP[bKey];
+    const s = 0.62;
+    const bw = Math.round(B.width*s), bh = Math.round(B.height*s);
+    const w = Math.max(A.width, bw) + 2, h = A.height + Math.round(bh*0.45) + 2;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    // the smaller parent rides on top, tucked behind the big one
+    g.drawImage(B, Math.round((w - bw)/2) + 2, 1, bw, bh);
+    g.drawImage(A, Math.round((w - A.width)/2), h - A.height - 1);
+    const rim = makeSilhouette(c, '#f4c542');
+    const out = document.createElement('canvas');
+    out.width = w + 2; out.height = h + 2;
+    const og = out.getContext('2d');
+    og.imageSmoothingEnabled = false;
+    for (const d of [[0,1],[2,1],[1,0],[1,2]]) og.drawImage(rim, d[0], d[1]);
+    og.drawImage(c, 1, 1);
+    return out;
+  }
+  SP.fuseA = fuseSprite('gunA','gunE');   // peashooter + megablaster
+  SP.fuseB = fuseSprite('gunD','gunH');   // rinse cannon + arc welder
+  SP.fuseC = fuseSprite('gunF','gunG');   // soak-seeker + grease bomber
+  SP.fuseD = fuseSprite('gunI','gunJ');   // return blade + pressure lance
+  SP.fuseE = fuseSprite('gunK','gunC');   // gains cannon + sud shredder
+
   // --- SUDSY THE SPONGE, the pet. Two frames, the legs swap over. ---
   const petPal = { y:'#e8c84a', d:'#b89a2e', g:'#4a9a58', w:'#ffffff', k:'#14141c' };
   SP.pet0 = makeSprite([
@@ -3852,6 +3881,29 @@ const GUNS = [
     blurb:'LAUNCHES A GUY. HE HAS THREE SECONDS.',
     dmg:2.60, rate:0.45, bspd:0.48, add:0, spread:0.03, pierce:99, shake:2.2, life:4.8,
     buffT:3.0, limpDmg:0.09, limpSpd:0.35 },
+
+  // ---- FUSIONS. Own both parents and the fused gun goes on sale in the
+  // store. Each one is the two parents' tricks in one housing; the sprite
+  // is built at load by bolting the parents together with a gold rim. ----
+  { id:'mini',   cost:1800, name:'SUDS MINIGUN',    sp:'fuseA', shot:'slug', fuse:['pea','mega'],
+    blurb:'THE PEASHOOTER AT SIX HUNDRED RPM',
+    dmg:0.42, rate:3.40, bspd:1.35, add:1, spread:0.10, pierce:0, shake:1.2, life:0 },
+  { id:'prism',  cost:2100, name:'PRISM RINSE',     sp:'fuseB', beam:true, fuse:['rinse','arc'],
+    blurb:'THREE BEAMS IN A FAN',
+    dmg:0.72, rate:1.00, bspd:1.00, add:0, spread:0.00, pierce:2, shake:1.0, life:0,
+    dps:1.55, beams:3, fan:0.34 },
+  { id:'salvo',  cost:2300, name:'SOAK SALVO',      sp:'fuseC', shot:'missile', fuse:['soak','bomb'],
+    blurb:'A FLIGHT OF HUNGRY MISSILES',
+    dmg:1.15, rate:0.55, bspd:0.62, add:2, spread:0.30, pierce:0, shake:1.8, life:0,
+    seek:6.5, hunt:250, blast:32, bdmg:1.10 },
+  { id:'guillo', cost:2500, name:'GUILLOTINE DISC', sp:'fuseD', shot:'saw', charge:true, fuse:['blade','lance'],
+    blurb:'WIND IT UP. SHAVE THE ROOM.',
+    dmg:1.70, rate:0.85, bspd:0.95, add:0, spread:0.00, pierce:99, shake:1.6, life:0,
+    out:0.5, pull:560, windup:0.9, cmin:0.45, cmax:3.6, cpierce:0 },
+  { id:'gym',    cost:2800, name:'GYM CLASS',       sp:'fuseE', shot:'dude', fuse:['gains','sud'],
+    blurb:'THREE GUYS AT ONCE. GOOD LUCK.',
+    dmg:1.45, rate:0.42, bspd:0.46, add:2, spread:0.42, pierce:99, shake:2.6, life:4.8,
+    buffT:3.0, limpDmg:0.09, limpSpd:0.35 },
 ];
 
 // Guns no longer unlock on their own. You own a set, you choose which one to
@@ -4415,8 +4467,21 @@ function firePlayerGun(dt){
 // its target limit. Damage lands every frame, so the hit sound and the damage
 // numbers are rationed rather than fired 60 times a second.
 const BEAM_FALLOFF = 0.55;   // damage multiplier per extra body burned through
+// One trigger, one or several beams: the Rinse Cannon burns a single line,
+// the Prism Rinse spreads a fan of them. Each line does its own damage.
 function fireBeam(g, gun, dt){
-  const ux = Math.cos(player.aim), uy = Math.sin(player.aim);
+  const nB = gun.beams || 1;
+  const parts = [];
+  for (let k = 0; k < nB; k++){
+    const off = nB > 1 ? (k/(nB-1) - 0.5) * (gun.fan || 0) * 2 : 0;
+    parts.push(fireOneBeam(g, gun, dt, player.aim + off));
+  }
+  beamFx = { parts };
+  ST.shake = Math.min(1.2, ST.shake + gun.shake * dt * 3);
+  if (beamSfxCd <= 0){ SFX.shoot(); beamSfxCd = 0.11; }
+}
+function fireOneBeam(g, gun, dt, aim){
+  const ux = Math.cos(aim), uy = Math.sin(aim);
   // how far it can reach: out to the edge of the kitchen, or the first
   // counter in the way, whichever comes first
   const tx = ux > 0 ? (WORLD.w-4 - player.x)/ux : ux < 0 ? (4 - player.x)/ux : 1e9;
@@ -4460,14 +4525,13 @@ function fireBeam(g, gun, dt){
   }
 
   const gr = gunRadius(gun);
-  beamFx = {
+  const fx = {
     x: player.x + ux*gr, y: player.y + uy*gr,
-    ang: player.aim, len: Math.max(0, len - gr),
+    ang: aim, len: Math.max(0, len - gr),
     capped: len < maxLen,
   };
-  spawnParts(beamFx.x + ux*beamFx.len, beamFx.y + uy*beamFx.len, 1, '#a8f4ff', 40);
-  ST.shake = Math.min(1.2, ST.shake + gun.shake * dt * 3);
-  if (beamSfxCd <= 0){ SFX.shoot(); beamSfxCd = 0.11; }
+  spawnParts(fx.x + ux*fx.len, fx.y + uy*fx.len, 1, '#a8f4ff', 40);
+  return fx;
 }
 
 // Anything caught between the player and the floating muzzle takes the shot.
@@ -5604,15 +5668,17 @@ function drawGunWithSmear(sp, cxp, cyp, gr, hov){
 function drawBeam(){
   if (!beamFx || ST.mode !== 'play') return;
   const f = 0.8 + Math.sin(ST.time*44)*0.2;
-  const L = beamFx.len;
-  cx.setTransform(1,0,0,1, ox + Math.round(beamFx.x), oy + Math.round(beamFx.y));
-  cx.rotate(beamFx.ang);
-  cx.fillStyle = 'rgba(47,208,255,0.18)'; cx.fillRect(0, -4.0*f, L, 8.0*f);
-  cx.fillStyle = 'rgba(47,208,255,0.55)'; cx.fillRect(0, -2.2*f, L, 4.4*f);
-  cx.fillStyle = '#a8f4ff';               cx.fillRect(0, -1.2,   L, 2.4);
-  cx.fillStyle = '#ffffff';               cx.fillRect(0, -0.5,   L, 1.0);
-  cx.fillStyle = 'rgba(255,255,255,0.85)'; cx.fillRect(L-2, -3.0*f, 4, 6.0*f);
-  cx.setTransform(1,0,0,1, ox, oy);
+  for (const fx of (beamFx.parts || [beamFx])){
+    const L = fx.len;
+    cx.setTransform(1,0,0,1, ox + Math.round(fx.x), oy + Math.round(fx.y));
+    cx.rotate(fx.ang);
+    cx.fillStyle = 'rgba(47,208,255,0.18)'; cx.fillRect(0, -4.0*f, L, 8.0*f);
+    cx.fillStyle = 'rgba(47,208,255,0.55)'; cx.fillRect(0, -2.2*f, L, 4.4*f);
+    cx.fillStyle = '#a8f4ff';               cx.fillRect(0, -1.2,   L, 2.4);
+    cx.fillStyle = '#ffffff';               cx.fillRect(0, -0.5,   L, 1.0);
+    cx.fillStyle = 'rgba(255,255,255,0.85)'; cx.fillRect(L-2, -3.0*f, 4, 6.0*f);
+    cx.setTransform(1,0,0,1, ox, oy);
+  }
 }
 
 // Hero animation: which pose to show, and the hover offset that sells the float.
@@ -6879,6 +6945,8 @@ const ACHIEVEMENTS = [
     test: s => s.noodleKills >= 1 },
   { id:'pet100',  name:'GOOD SPONGE',      desc:'YOUR PET COLLECTS 100 SHARDS',
     test: s => s.petShards >= 100 },
+  { id:'fusion',  name:'FUSION CUISINE',   desc:'OWN A FUSED GUN',
+    test: () => GUNS.some(g => g.fuse && META.owned[g.id]) },
 ];
 function unlockedCount(){ return ACHIEVEMENTS.filter(a => META.achv && META.achv[a.id]).length; }
 function checkAchievements(){
@@ -7509,6 +7577,16 @@ function storeItems(){
   if (ST.storeTab === 0){
     for (const g of GUNS){
       const own = !!META.owned[g.id];
+      // a fusion stays locked until you own both of its parents
+      if (g.fuse && !own && !(META.owned[g.fuse[0]] && META.owned[g.fuse[1]])){
+        const pa = GUNS.find(x => x.id === g.fuse[0]), pb = GUNS.find(x => x.id === g.fuse[1]);
+        out.push({
+          name: g.name,
+          desc: 'FUSION - NEEDS ' + pa.name.split(' ')[0] + ' + ' + pb.name.split(' ')[0],
+          cost: -2, owned: false, on: false, act(){ return false; },
+        });
+        continue;
+      }
       out.push({
         name: g.name, desc: g.blurb, cost: g.cost, owned: own,
         on: META.startGun === g.id,
@@ -7818,6 +7896,7 @@ window.SUDS = {
   choose(i){ chooseCard(i); },
   gun(i){ player.gunIdx = clamp(i|0, 0, GUNS.length-1); player.gunName = GUNS[player.gunIdx].name; return player.gunName; },
   god(on){ player.iframe = on ? 1e9 : 0; },
+  get beam(){ return beamFx; },
 };
 
 loadMeta();
