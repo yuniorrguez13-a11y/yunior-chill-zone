@@ -6593,6 +6593,9 @@ const SLIDES = [
       cx.fillStyle = CRIMSON;
       cx.fillRect(Math.round(mx + mw*(0.5 + Math.cos(a)*0.3)), Math.round(my + mh*(0.5 + Math.sin(a*1.3)*0.3)), 2, 2);
     } },
+  // real art, pixelated down to the panel's own resolution
+  { cap: 'THE MEGAWASHER ON HIS BREAK',  src: 'art/menu-break.png' },
+  { cap: 'THE LATE SHIFT WANTS A WORD',  src: 'art/menu-lineup.png' },
 ];
 for (const s of SLIDES) if (s.src){ s.img = new Image(); s.img.src = s.src; }
 
