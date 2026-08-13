@@ -3644,6 +3644,7 @@ const ST = {
   objDone: 0, objTimer: 0, beatDelay: 0, bossBeaten: false,
   marker: null, trolley: null, objFailed: false,
   combo: 0, comboT: 0, comboBest: 0, stop: 0, mod: null, crits: 0,
+  mut: null, mutBlock: -1, rainT: 0, greaseT: 0,
   roomsSeen: {}, cleanWave: true, recap: null, optSel: 0, wipeArm: 0, achvTop: 0,
   shakeOn: true, dmgNums: true,
   best: { wave: 0, kills: 0 },
@@ -3946,6 +3947,7 @@ function startRun(){
   player.hp = player.maxhp;
   ST.roomsSeen = {}; ST.cleanWave = true; ST.recap = null;
   ST.combo = 0; ST.comboT = 0; ST.crits = 0;
+  ST.mut = null; ST.mutBlock = -1; ST.rainT = 0; ST.greaseT = 0;
   bumpStat('runs');
   // starting deeper in the shift comes with the upgrades you would have had
   for (let i = 0; i < META.startWave - 1; i++){
@@ -4017,6 +4019,16 @@ function beginWave(n){
   // walked into the next room of the building
   const want = mapForWave(n);
   if (want !== MAPI && !ST.tut) gotoMap(want, true);
+  // OVERTIME: from wave 31 a new house rule lands every five waves
+  let newMut = false;
+  if (!ST.story && !ST.tut && n >= 31){
+    const blk = Math.floor((n - 31) / 5);
+    if (blk !== ST.mutBlock){
+      ST.mutBlock = blk;
+      ST.mut = pick(MUTS);
+      newMut = true;
+    }
+  }
   if (isBossWave(n)){
     ST.waveState = 'bosswarn';
     ST.waveTimer = 2.2;
@@ -4031,6 +4043,11 @@ function beginWave(n){
   if (ST.cleanWave && n > 1) bumpStat('cleanWaves');
   ST.cleanWave = true;
   ST.banner = 'WAVE ' + n; ST.bannerTimer = 1.4;
+  if (newMut){
+    ST.banner = 'OVERTIME RULE: ' + ST.mut.name; ST.bannerTimer = 2.6;
+    pushToast(ST.mut.desc, '#c89bff');
+    SFX.alarm();
+  }
   let budget = 4 + n * 2;
   if (ST.mod && ST.mod.id === 'swarm') budget = Math.round(budget * 1.6);   // more, weaker
   if (ST.mod && ST.mod.id === 'elite') budget = Math.round(budget * 0.65);  // fewer, nastier
@@ -4116,6 +4133,11 @@ function spawnEnemy(type, x, y){
     t2: rand(0, TAU),                     // wobble phase
     flash: 0,
   };
+  // overtime rules that change what walks in the door
+  if (ST.mut && BOSSES.indexOf(type) < 0){
+    if (ST.mut.id === 'overtime') e.speed *= 1.3;
+    if (ST.mut.id === 'sturdy'){ e.hp *= 1.5; e.maxhp *= 1.5; }
+  }
   if (type === 'scrubber'){
     e.st = 'walk';        // walk -> wind -> dash -> rest
     e.t3 = 0;             // how long is left in the current state
@@ -5106,7 +5128,8 @@ function damageEnemy(e, dmg, hitX, hitY){
 // Broken plate pieces. The tougher the dishwasher, the more of it there is
 // left on the floor. The Shard Magnet boost tilts the odds.
 function dropShards(e){
-  const mul = (player.shardMul || 1) * comboMul() * diff().shards;
+  const mul = (player.shardMul || 1) * comboMul() * diff().shards
+            * (ST.mut && ST.mut.id === 'payday' ? 2 : 1);
   let n;
   if (isBoss(e))           n = irand(14, 20);
   else if (e.elite)        n = irand(2, 4);
@@ -5640,8 +5663,12 @@ function render(){
       cx.stroke();
       cx.globalAlpha = 1;
     }
+    // GHOST SHIFT: they keep fading towards nothing on their own cycles
+    const ghostly = ST.mut && ST.mut.id === 'ghost' && !isBoss(e);
+    if (ghostly) cx.globalAlpha = 0.10 + Math.abs(Math.sin(ST.time*1.5 + e.t2)) * 0.80;
     drawSpriteC(sp, e.x + (e.type === 'scrubber' && e.st === 'wind' ? wob : 0),
                 e.y + wob*0.4, scale);
+    if (ghostly) cx.globalAlpha = 1;
     if (e.flash > 0){
       cx.globalAlpha = 0.85;
       drawSpriteC(SP[e.type+'_flash'], e.x, e.y + wob*0.4, scale);
@@ -5848,6 +5875,8 @@ function renderHUD(){
     cx.fillStyle = '#101018'; cx.fillRect(W/2-bw/2, 14, bw, 4);
     cx.fillStyle = CRIMSON; cx.fillRect(W/2-bw/2, 14, bw * clamp(boss.hp/boss.maxhp,0,1), 4);
   }
+  // the overtime rule in force, so a blackout is never a mystery
+  if (ST.mut) drawText(ST.mut.name, W/2, boss ? 21 : 15, 1, '#c89bff', 'center');
   // kills + time + level
   const mm = Math.floor(ST.playTime/60), ss = Math.floor(ST.playTime%60);
   drawText(String(ST.kills) + ' KO', W-8, 6, 1, '#dfe3ea', 'right');
@@ -6646,15 +6675,55 @@ function applyMod(m){
     addFloater(player.x, player.y - 30, m.desc, '#79c7f0', 2.4);
   }
 }
-// the dark modifier: everything outside a radius around him gets painted over
+// the dark modifier: everything outside a radius around him gets painted over.
+// The TOTAL BLACKOUT overtime rule is the same thing with the walls closed in.
 function renderDark(){
-  if (!ST.mod || ST.mod.id !== 'dark') return;
+  const blackout = ST.mut && ST.mut.id === 'blackout';
+  if (!blackout && (!ST.mod || ST.mod.id !== 'dark')) return;
   const sx = player.x - cam.x, sy = player.y - cam.y;
-  const g = cx.createRadialGradient(sx, sy, 40, sx, sy, 150);
+  const inner = blackout ? 26 : 40, outer = blackout ? 105 : 150;
+  const g = cx.createRadialGradient(sx, sy, inner, sx, sy, outer);
   g.addColorStop(0, 'rgba(4,4,8,0)');
-  g.addColorStop(0.7, 'rgba(4,4,8,0.72)');
-  g.addColorStop(1, 'rgba(4,4,8,0.94)');
+  g.addColorStop(0.7, 'rgba(4,4,8,' + (blackout ? 0.85 : 0.72) + ')');
+  g.addColorStop(1, 'rgba(4,4,8,' + (blackout ? 0.985 : 0.94) + ')');
   cx.fillStyle = g; cx.fillRect(0,0,W,H);
+}
+
+// ================================================================
+// OVERTIME RULES — from wave 31 the shift stops playing fair. A new
+// rule lands every five waves and stays for the block, stacking on
+// top of whatever the room modifier is doing.
+// ================================================================
+const MUTS = [
+  { id:'ghost',    name:'GHOST SHIFT',     desc:'THEY KEEP FADING OUT' },
+  { id:'overtime', name:'DOUBLE TIME',     desc:'THEY ARE FASTER NOW' },
+  { id:'sturdy',   name:'REINFORCED',      desc:'THEY TAKE HALF AGAIN AS MUCH' },
+  { id:'blackout', name:'TOTAL BLACKOUT',  desc:'YOU CAN BARELY SEE' },
+  { id:'rain',     name:'PLATE RAIN',      desc:'THE CEILING IS THROWING PLATES' },
+  { id:'greasy',   name:'GREASE NIGHT',    desc:'THE FLOOR KEEPS GETTING WORSE' },
+  { id:'payday',   name:'PAYDAY',          desc:'EVERYTHING DROPS DOUBLE SHARDS' },
+];
+function updateMut(dt){
+  if (!ST.mut || ST.mode !== 'play') return;
+  if (ST.mut.id === 'rain'){
+    ST.rainT = (ST.rainT || 0) - dt;
+    if (ST.rainT <= 0){
+      ST.rainT = rand(0.45, 0.95);
+      const x = rand(cam.x + 10, cam.x + W - 10);
+      eshoot(clamp(x, 10, WORLD.w-10), Math.max(10, cam.y - 8),
+             Math.PI/2 + rand(-0.35, 0.35), T.plateSpeed, 'plate');
+    }
+  }
+  if (ST.mut.id === 'greasy'){
+    ST.greaseT = (ST.greaseT || 0) - dt;
+    if (ST.greaseT <= 0){
+      ST.greaseT = rand(2.2, 3.4);
+      for (let i=0;i<12;i++){
+        const x = rand(cam.x + 20, cam.x + W - 20), y = rand(cam.y + 20, cam.y + H - 20);
+        if (clearSpot(x, y, 10)){ addSlick(x, y); break; }
+      }
+    }
+  }
 }
 
 
@@ -7582,6 +7651,7 @@ function tick(dt){
   updateHitMarks(dt);
   updateVents(dt);
   updateStation(dt);
+  updateMut(dt);
   updateToasts(dt);
   ST.achvT = (ST.achvT || 0) + dt;
   if (ST.achvT > 1){ ST.achvT = 0; checkAchievements(); }
