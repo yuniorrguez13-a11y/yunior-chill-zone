@@ -6462,6 +6462,7 @@ function startBlockchain(){
   // it opens its mouth before it opens fire
   head.st = 'intro'; head.stT = 3.45; head.introT = 3.45;
   head.castCount = 0; head.orbDir = 1; head.orbFlip = 5;
+  head.seqIdx = 0; head.act = 0;
   bumpStat('chainTries');
   ST.chainTry = (META.stats && META.stats.chainTries) || 1;
   for (let i = 0; i < N; i++){
@@ -7215,10 +7216,11 @@ function updateChainHead(e, dt, dx, dy, d){
     if (e.stT <= 0){
       // the act runs its script in order. THE HALVING is skipped when
       // there are no blocks left to fire it from.
-      let id = A.seq[e.seqIdx % A.seq.length];
+      e.seqIdx = e.seqIdx || 0;
+      let id = A.seq[e.seqIdx % A.seq.length] || A.seq[0];
       e.seqIdx++;
       if (id === 'halv' && !chainSegsAlive().length){
-        id = A.seq[e.seqIdx % A.seq.length];
+        id = A.seq[e.seqIdx % A.seq.length] || A.seq[0];
         e.seqIdx++;
       }
       e.pat = id;
