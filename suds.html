@@ -3791,6 +3791,16 @@ function loadMeta(){
     if (m.pets) Object.assign(META.pets, m.pets);
     if (m.pet !== undefined && (m.pet === '' || META.pets[m.pet])) META.pet = m.pet;
     if (m.coop !== undefined) META.coop = m.coop ? 1 : 0;
+    // saveMeta writes ALL of META, but loading is a whitelist — these were
+    // missing, so story progress, achievements, stats, the tutorial flag
+    // and the difficulty all quietly reset on every page refresh
+    if (typeof m.story === 'number') META.story = clamp(m.story|0, 0, CHAPTERS.length);
+    if (m.tutorial) META.tutorial = true;
+    if (typeof m.diff === 'number') META.diff = clamp(m.diff|0, 0, DIFFS.length-1);
+    if (m.achv)  Object.assign(META.achv, m.achv);
+    if (m.stats) Object.assign(META.stats, m.stats);
+    if (m.shake !== undefined) META.shake = m.shake ? 1 : 0;
+    if (m.dmgNums !== undefined) META.dmgNums = m.dmgNums ? 1 : 0;
   } catch(e){}
   META.owned.pea = true;    // never lose the starter, whatever is in storage
   META.waves[1] = true;
