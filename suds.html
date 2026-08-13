@@ -86,6 +86,7 @@ const T = {
   btrap:   { hp: 760, speed:  0, touch: 2, r: 24 },
   bburner: { hp: 680, speed: 20, touch: 2, r: 21 },
   bchef:   { hp: 900, speed: 26, touch: 3, r: 22 },
+  bwash:   { hp: 1500, speed: 11, touch: 3, r: 26 },
   plateSpeed: 62, forkSpeed: 105, bubbleSpeed: 26, steamSpeed: 30,
   dashSpeed: 4.6,           // scrubber charge, as a multiple of its walk speed
   shieldArc: 1.05,          // stacker blocks within this many radians of facing
@@ -662,7 +663,7 @@ const SP = {};
 // every dishwasher in the building, bosses included
 const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
                'toaster','fryer','kettle','mixer','micro','chopper',
-               'boss','btrap','bburner','bchef'];
+               'boss','btrap','bburner','bchef','bwash'];
 (function bakeSprites(){
   // --- the five floating guns ---
   // Traced from the reference art: background keyed out, cropped, area-averaged
@@ -2744,6 +2745,42 @@ const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
     "......e...............c.......",
   ],{a:'#282828',b:'#181818',c:'#101010',d:'#303030',e:'#202020',f:'#383838',
      g:'#607080',h:'#506078',i:'#a0a0a0'});
+
+  // --- THE ORIGINAL DISHWASHER — the final boss, drawn in code from its
+  //     own geometry so no hand-counted rows can ever be misaligned ---
+  (function(){
+    const w = 42, h = 36;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    const px = (x,y,cw,chh,col)=>{ g.fillStyle = col; g.fillRect(x,y,cw,chh); };
+    // steel body with a lighter face and a worn top edge
+    px(1,3,w-2,h-4,'#5a6270');
+    px(2,4,w-4,h-6,'#7e8896');
+    px(3,5,w-6,3,'#98a2b0');
+    // pipework it grew over the years
+    px(6,0,4,4,'#4a505c'); px(w-11,0,4,4,'#4a505c'); px(18,1,6,3,'#3a404c');
+    // the door, and the eye behind the glass
+    g.fillStyle = '#3a404c'; g.beginPath(); g.arc(w/2, h/2+2, 11, 0, TAU); g.fill();
+    g.fillStyle = '#2a2e38'; g.beginPath(); g.arc(w/2, h/2+2, 9, 0, TAU); g.fill();
+    g.strokeStyle = '#79c7f0'; g.lineWidth = 1;
+    g.beginPath(); g.arc(w/2, h/2+2, 9.5, 0, TAU); g.stroke();
+    g.fillStyle = '#e8162a'; g.beginPath(); g.arc(w/2, h/2+2, 3, 0, TAU); g.fill();
+    px(w/2-1, h/2+1, 1, 1, '#ffd0d0');
+    // rust, rivets, vents
+    px(4, h-8, 5, 3, '#8a5a3c'); px(w-9, 8, 4, 4, '#8a5a3c'); px(w-7, h-6, 3, 2, '#6a4028');
+    for (let i=0;i<6;i++){ px(4+i*7, 5, 1, 1, '#b9c2cf'); px(4+i*7, h-4, 1, 1, '#b9c2cf'); }
+    for (let i=0;i<4;i++) px(6, 12+i*3, 6, 1, '#4a505c');
+    // 1px dark outline, same trick as everything else
+    const rim = makeSilhouette(c, '#14141c');
+    const out = document.createElement('canvas');
+    out.width = w + 2; out.height = h + 2;
+    const og = out.getContext('2d');
+    og.imageSmoothingEnabled = false;
+    for (const d of [[0,1],[2,1],[1,0],[1,2]]) og.drawImage(rim, d[0], d[1]);
+    og.drawImage(c, 1, 1);
+    SP.bwash = out;
+  })();
 
   // --- fused guns: parent A with parent B bolted on top, gold-rimmed
   //     so a fusion reads as a fusion at a glance ---
@@ -5059,8 +5096,9 @@ function updateBoss(e, dt, dx, dy, d){
       e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt;
       return;
     }
-    // half health is where each of them changes its mind
-    if (e.phase === 1 && e.hp < e.maxhp*0.5){
+    // half health is where each of them changes its mind — except the
+    // Original, which runs its own three-phase programme
+    if (e.phase === 1 && e.hp < e.maxhp*0.5 && e.type !== 'bwash'){
       e.phase = 2;
       ST.banner = BOSS_NAME[e.type] + ' IS ANGRY'; ST.bannerTimer = 1.6;
       ST.shake = Math.min(8, ST.shake + 5);
@@ -5070,6 +5108,7 @@ function updateBoss(e, dt, dx, dy, d){
     if (e.type === 'btrap')   return bossGreaseTrap(e, dt, dx, dy, d);
     if (e.type === 'bburner') return bossSixBurner(e, dt, dx, dy, d);
     if (e.type === 'bchef')   return bossHeadChef(e, dt, dx, dy, d);
+    if (e.type === 'bwash')   return bossOriginal(e, dt, dx, dy, d);
   }
   const lv = e.bossLvl;
   if (d > 90){ e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt; }
@@ -5232,6 +5271,109 @@ function bossHeadChef(e, dt, dx, dy, d){
   }
 }
 
+// --- THE ORIGINAL DISHWASHER -----------------------------------------
+// The first machine the building ever ran, and the last fight in it.
+// Three phases, cut at thirds: THE WASH (suds and volleys), THE RINSE
+// CYCLE (rotating water-jet arms, read like the Six Burner's flames),
+// and the FINAL SPIN, where it stops pretending to be furniture.
+function bossOriginal(e, dt, dx, dy, d){
+  if (e.phase === 1 && e.hp < e.maxhp * 0.667){
+    e.phase = 2;
+    ST.banner = 'THE RINSE CYCLE'; ST.bannerTimer = 1.8;
+    ST.shake = Math.min(9, ST.shake + 6); SFX.alarm();
+    spawnParts(e.x, e.y, 40, '#79c7f0', 130);
+  }
+  if (e.phase === 2 && e.hp < e.maxhp * 0.334){
+    e.phase = 3;
+    ST.banner = 'FINAL SPIN'; ST.bannerTimer = 1.8;
+    ST.shake = Math.min(10, ST.shake + 7); SFX.alarm();
+    spawnParts(e.x, e.y, 50, CRIMSON, 140);
+  }
+  const p = e.phase;
+
+  // it walks. In the final spin it hunts, and sometimes it charges.
+  if (e.dash > 0){
+    e.dash -= dt;
+    e.x += Math.cos(e.dashA) * 190 * dt;
+    e.y += Math.sin(e.dashA) * 190 * dt;
+    if (Math.random() < 0.8) spawnParts(e.x, e.y, 1, '#79c7f0', 40);
+  } else if (d > 110){
+    const chase = p === 3 ? e.speed * 1.8 : e.speed;
+    e.x += (dx/d)*chase*dt; e.y += (dy/d)*chase*dt;
+  }
+
+  // the suds spiral never stops; it just gets worse
+  e.tSpiral -= dt;
+  if (e.tSpiral <= 0){
+    e.tSpiral = p === 3 ? 0.10 : p === 2 ? 0.14 : 0.18;
+    e.spiralA += p === 3 ? 0.55 : 0.38;
+    const arms = p + 1;
+    for (let k=0;k<arms;k++)
+      eshoot(e.x, e.y, e.spiralA + k*TAU/arms,
+             T.plateSpeed * (p === 3 ? 1.05 : 0.85), p === 1 ? 'bubble' : 'plate');
+  }
+
+  // phase 2+: the rinse cycle — water-jet arms, checked rather than fired
+  if (p >= 2){
+    e.sweep += dt * (p === 3 ? 1.1 : 0.7) * (e.spin || 1);
+    e.beamArms = p === 3 ? 3 : 2;
+    e.armLens = [];
+    for (let k=0;k<e.beamArms;k++){
+      const a = e.sweep + k*TAU/e.beamArms;
+      const ux = Math.cos(a), uy = Math.sin(a);
+      const len = rayWall(e.x, e.y, ux, uy, 240);
+      e.armLens.push(len);
+      const t = (player.x - e.x)*ux + (player.y - e.y)*uy;
+      if (t > 16 && t < len){
+        const qx = e.x + ux*t, qy = e.y + uy*t;
+        if (player.iframe <= 0 && dist2(qx, qy, player.x, player.y) < 64) hurtPlayer(1);
+      }
+      if (Math.random() < 0.4)
+        spawnParts(e.x + ux*rand(18,len), e.y + uy*rand(18,len), 1, '#79c7f0', 22);
+    }
+    // it reverses on a timer, which is the whole tell
+    e.tA -= dt;
+    if (e.tA <= 0){ e.tA = p === 3 ? 3.0 : 4.2; e.spin = -(e.spin || 1); SFX.alarm(); }
+  } else {
+    e.beamArms = 0;
+  }
+
+  // the door slams: an aimed volley early, rings of bubbles later
+  e.tB -= dt;
+  if (e.tB <= 0){
+    e.tB = p === 3 ? 1.6 : p === 2 ? 2.4 : 3.0;
+    if (p === 1){
+      const a = Math.atan2(dy, dx), n = 6;
+      for (let k=0;k<n;k++) eshoot(e.x, e.y, a + (k/(n-1)-0.5)*0.8, T.forkSpeed, 'fork');
+      SFX.fork();
+    } else {
+      const n = p === 3 ? 16 : 12, a0 = rand(0, TAU);
+      for (let k=0;k<n;k++) eshoot(e.x, e.y, a0 + k*TAU/n, T.bubbleSpeed*1.3, 'bubble');
+      SFX.bubble();
+    }
+  }
+
+  // it remembers every machine it ever ran
+  e.tC -= dt;
+  if (e.tC <= 0){
+    e.tC = p === 3 ? 5 : 8;
+    const kinds = p === 3 ? ['chopper','kettle','micro']
+                : p === 2 ? ['toaster','scrubber'] : ['washer','rinser'];
+    for (let k=0;k<p;k++){
+      const a = rand(0, TAU);
+      spawnEnemy(pick(kinds), clamp(e.x+Math.cos(a)*80, 24, WORLD.w-24),
+                              clamp(e.y+Math.sin(a)*80, 24, WORLD.h-24));
+    }
+    ST.banner = 'IT REMEMBERS EVERY MACHINE'; ST.bannerTimer = 1.2;
+  }
+
+  // final spin: winds up and charges you flat out
+  if (p === 3 && e.dash <= 0){
+    e.tD = (e.tD === undefined ? 3 : e.tD) - dt;
+    if (e.tD <= 0){ e.tD = 4.5; e.dashA = Math.atan2(dy, dx); e.dash = 0.55; SFX.alarm(); }
+  }
+}
+
 // How much of a shot actually lands. The stacker's plate stack eats almost
 // everything that comes at its front, so you have to get around it.
 function shieldMul(e, fromX, fromY){
@@ -5287,9 +5429,10 @@ function dropShards(e){
     dropPickup(e.x + rand(-9,9), e.y + rand(-7,7), 'shard');
 }
 
-const BOSSES = ['boss','btrap','bburner','bchef'];
+const BOSSES = ['boss','btrap','bburner','bchef','bwash'];
 const BOSS_NAME = { boss:'THE MEGAWASHER', btrap:'THE GREASE TRAP',
-                    bburner:'THE SIX BURNER', bchef:'THE HEAD CHEF' };
+                    bburner:'THE SIX BURNER', bchef:'THE HEAD CHEF',
+                    bwash:'THE ORIGINAL DISHWASHER' };
 // which one turns up on a given boss wave — they cycle, so a long run meets
 // all four and then starts again with more health on each
 function bossIndexFor(n){ return Math.max(0, Math.floor(n/5) - 1); }
@@ -5301,7 +5444,7 @@ const DEATH_COLOR = {
   scrubber:'#f0c020', steamer:'#c9a227', stacker:'#e6e9ef', boss:'#79c7f0',
   toaster:'#f0c874', fryer:'#e8bb3a', kettle:'#e0563a',
   mixer:'#b9c2cf', micro:'#6ad07a', chopper:'#c9a06a',
-  btrap:'#c79a24', bburner:'#e0563a', bchef:'#e6eaf1',
+  btrap:'#c79a24', bburner:'#e0563a', bchef:'#e6eaf1', bwash:'#79c7f0',
 };
 
 function killEnemy(e){
@@ -5793,6 +5936,26 @@ function render(){
         cx.lineTo(e.x+ux*len, e.y+uy*len); cx.stroke();
         cx.strokeStyle = '#ffd070'; cx.lineWidth = 1.5;
         cx.beginPath(); cx.moveTo(e.x+ux*12, e.y+uy*12);
+        cx.lineTo(e.x+ux*len, e.y+uy*len); cx.stroke();
+        cx.globalAlpha = 1;
+      }
+    }
+    // the Original's rinse-cycle arms: high-pressure water, drawn like
+    // the burner's flames but in its own cold colours
+    if (e.type === 'bwash' && e.beamArms && e.armLens){
+      for (let k=0;k<e.beamArms;k++){
+        const a = e.sweep + k*TAU/e.beamArms;
+        const ux = Math.cos(a), uy = Math.sin(a);
+        const len = e.armLens[k] || 200;
+        cx.globalAlpha = 0.85;
+        cx.strokeStyle = '#2f6e96'; cx.lineWidth = 6;
+        cx.beginPath(); cx.moveTo(e.x+ux*16, e.y+uy*16);
+        cx.lineTo(e.x+ux*len, e.y+uy*len); cx.stroke();
+        cx.strokeStyle = '#79c7f0'; cx.lineWidth = 3;
+        cx.beginPath(); cx.moveTo(e.x+ux*16, e.y+uy*16);
+        cx.lineTo(e.x+ux*len, e.y+uy*len); cx.stroke();
+        cx.strokeStyle = '#dff6ff'; cx.lineWidth = 1;
+        cx.beginPath(); cx.moveTo(e.x+ux*16, e.y+uy*16);
         cx.lineTo(e.x+ux*len, e.y+uy*len); cx.stroke();
         cx.globalAlpha = 1;
       }
@@ -6927,8 +7090,8 @@ const ACHIEVEMENTS = [
     test: s => s.bestWave >= 25 },
   { id:'boss1',   name:'ONE DOWN',         desc:'BEAT THE MEGAWASHER',
     test: s => s.bosses >= 1 },
-  { id:'boss4',   name:'THE WHOLE BRIGADE',desc:'BEAT ALL FOUR BOSSES',
-    test: s => s.bossKinds >= 4 },
+  { id:'boss4',   name:'THE WHOLE BRIGADE',desc:'BEAT ALL FIVE BOSSES',
+    test: s => s.bossKinds >= 5 },
   { id:'combo20', name:'ON A ROLL',        desc:'A STREAK OF 20',
     test: s => s.bestCombo >= 20 },
   { id:'rich',    name:'PLATE COLLECTOR',  desc:'BANK 2000 SHARDS IN TOTAL',
@@ -7169,6 +7332,15 @@ const CHAPTERS = [
     before:['HE IS STILL IN HIS WHITES. HE HAS BEEN HERE THE WHOLE TIME.',
             'HE SAYS THE MACHINES NEVER STOPPED. HE SAYS NOBODY EVER LET THEM.',
             'HE SAYS THE NEW GUY IS LATE FOR HIS SHIFT.'],
+    after: ['THE CHEF IS DOWN. THE HUM IS NOT.',
+            'IT IS COMING FROM UNDER THE FLOOR.',
+            'THERE IS A HATCH BEHIND THE BOILER. IT IS WARM.'] },
+
+  { id:13, map:5, title:'THE ORIGINAL', obj:'boss', boss:'bwash',
+    before:['UNDER THE BOILER ROOM THERE IS AN OLDER ROOM.',
+            'THE FIRST MACHINE THE BUILDING EVER RAN IS DOWN HERE.',
+            'IT NEVER STOPPED. IT JUST GOT DEEPER.',
+            'THE HEAD CHEF ONLY EVER TOOK ORDERS.'],
     after: ['06:12 AM. THE FIRST DELIVERY IS DUE AT SEVEN.',
             'HE PUTS THE GUN DOWN. IT STAYS UP.',
             'HE PUTS THE KETTLE ON INSTEAD. THE NORMAL ONE.'] },
@@ -7329,7 +7501,7 @@ function beatAdvance(){
   const next = ST.chapter + 1;
   ST.story = false;
   if (next < CHAPTERS.length){ ST.chapter = next; ST.mode = 'chapters'; ST.chapSel = next; }
-  else { ST.mode = 'ending'; }
+  else { ST.mode = 'ending'; ST.endT0 = ST.time; }
 }
 
 function renderBeat(){
@@ -7517,22 +7689,50 @@ function renderChapters(){
   drawText('ESC BACK', W/2, 252, 1, '#3f4450', 'center');
 }
 
+// The ending is a little scene, staged on a clock: night, then the dawn
+// creeps up, he floats down and finally lands, and the lines arrive one
+// at a time. The gun never lands. That is the joke and the ending.
 function renderEnding(){
   cx.fillStyle = '#06060a'; cx.fillRect(0,0,W,H);
-  const t = ST.time;
-  drawText('THE SHIFT IS OVER', W/2, 60, 3, '#f4c542', 'center');
+  const t = ST.time - (ST.endT0 || 0);
+  // dawn, up from the bottom of the screen
+  const dawn = clamp((t - 2) / 8, 0, 1);
+  const g = cx.createLinearGradient(0, H*0.30, 0, H);
+  g.addColorStop(0, 'rgba(6,6,10,0)');
+  g.addColorStop(1, 'rgba(244,150,66,' + (0.26*dawn).toFixed(3) + ')');
+  cx.fillStyle = g; cx.fillRect(0,0,W,H);
+  // a floor line to land on
+  cx.fillStyle = 'rgba(223,227,234,0.10)'; cx.fillRect(0, 168, W, 1);
+  // he comes down slowly, and for once he stands on the ground
+  const drop = clamp(t / 4, 0, 1);
+  const hy = 96 + drop*56 + (1 - drop) * Math.sin(t*3) * 2;
+  drawHeroStatic(drop >= 1 ? 'idle0' : 'float1', W/2 - 26, hy, 1,
+                 drop >= 1 ? 0 : Math.sin(t*3)*2);
+  // the gun does not come down. It bobs there, refusing.
+  const gunSp = SP[GUNS[0].sp];
+  cx.drawImage(gunSp, Math.round(W/2 + 6), Math.round(98 + Math.sin(t*2.2)*3));
+  if (t > 5) drawText('THE SHIFT IS OVER', W/2, 34, 3, '#f4c542', 'center');
   const lines = [
     'HE FINISHED THE NIGHT.',
     'NOBODY WILL BELIEVE HIM AND HE IS NOT GOING TO TRY.',
-    '',
     'THE ROTA ON THE WALL STILL SAYS NEW GUY.',
     'HE HAS DECIDED HE IS FINE WITH THAT.',
   ];
-  let y = 108;
-  for (const l of lines){ if (l) drawText(l, W/2, y, 1, '#dfe3ea', 'center'); y += 14; }
-  drawText('SUDS OF DOOM', W/2, 196, 2, CRIMSON, 'center');
-  if (Math.floor(t*2) % 2 === 0)
-    drawText('ESC TO GO BACK', W/2, 236, 1, '#7a7a8e', 'center');
+  let y = 186;
+  for (let i=0;i<lines.length;i++){
+    const a = clamp((t - 6 - i*1.6) / 0.8, 0, 1);
+    if (a > 0){
+      cx.globalAlpha = a;
+      drawText(lines[i], W/2, y, 1, '#dfe3ea', 'center');
+      cx.globalAlpha = 1;
+    }
+    y += 12;
+  }
+  if (t > 13){
+    drawText('SUDS OF DOOM', W/2, 244, 2, CRIMSON, 'center');
+    if (Math.floor(t*2) % 2 === 0)
+      drawText('ESC TO GO BACK', W/2, 260, 1, '#7a7a8e', 'center');
+  }
 }
 
 // the marker and the trolley are objective props, drawn in the world
