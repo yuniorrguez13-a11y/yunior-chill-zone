@@ -176,6 +176,10 @@ const SFX = {
              [784,659,523,392].forEach((f,i)=> tone('square', f, f, .1, .1, .1+i*.09)); },
   gameover(){ [392,330,262,196].forEach((f,i)=> tone('triangle', f, f, .22, .18, i*.18)); },
   click(){ tone('square', 880, 880, .04, .08); },
+  // the stadium horn: two detuned saws and a wall of noise
+  honk(){ tone('sawtooth', 185, 170, .40, .22); tone('sawtooth', 233, 220, .40, .18); noise(.25, .10); },
+  // a grand piano landing on something: a cluster chord, not a note
+  chord(){ [220, 233, 262, 311, 92].forEach(f => tone('triangle', f, f*0.98, .5, .12)); noise(.15, .16); },
 };
 
 // ================================================================
@@ -2787,6 +2791,431 @@ const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
     SP.bwash = out;
   })();
 
+  // --- THE CONTRABAND: eleven guns that have no business in a kitchen,
+  //     plus their projectiles. Traced from generated art like the rest. ---
+  SP.gunL = makeSprite([
+    '........................aa..........',
+    '.......................abca.........',
+    '......................acdefa........',
+    '.....................agbheija.......',
+    '.........aa..........ahkkleija......',
+    '........aggaaa......abkkkkhiia......',
+    '........ahkllha....ackkkkkkgdea.....',
+    '.........ahkkbca..ahkkkkkkkhdia.....',
+    '..........ahllma.ahkkkkkkkkhegja....',
+    '..aaaaa....ahlbaahkklhhnnnncnnda....',
+    '.amdfjjaaaaaadmjdhhnmccdjjiidbnnaa..',
+    'agbideeejfffjggggjdmjeejeeeiiedcnja.',
+    'abdcnciiiidbgeeeeenjiccediiiidcdnima',
+    'abiindiiiidceeeeiineiddeediiidcdngca',
+    'agcideeejjfffeejjjdmeieieeieeidcnfa.',
+    '.amgffffaaaaadbjdhhnncddjjjjednnaa..',
+    '.affaaaa...ahlmaahkklhhnnnhcnnda....',
+    '..aa......ahllma.abkkkkkkkkhjjfa....',
+    '.........ahlkbda..abkkkkkkkhdia.....',
+    '........ahlllda....abkkkkkkgdja.....',
+    '........ajgaaa......abkkkkhiia......',
+    '.........aa..........abkkleia.......',
+    '......................amheija.......',
+    '......................acdefa........',
+    '.......................acda.........',
+    '........................aa..........',
+  ], {a:'#0d0e14', b:'#a07000', c:'#885800', d:'#704800', e:'#481800', f:'#180000', g:'#483000', h:'#989890', i:'#602800', j:'#281000', k:'#f8f8f8', l:'#e0e0d0', m:'#b08000', n:'#c8a000'});
+  SP.gunM = makeSprite([
+    '....aaaaaaaaa.........',
+    '...abcccbccbbaaaa.....',
+    '..accccbdddccccceaaa..',
+    '.accccfgfhhhcccccbija.',
+    'aecccdfhkdkdfdcbccljia',
+    'aecccdhfmgggfhcdbcijla',
+    'accbckkmgkkgkhbcccljla',
+    'accbcmhfghhgmkfccbllla',
+    'aecbcdffggggmhfcccilia',
+    'aececkkfmgkkhhfcccilla',
+    '.acccckhmmkddkkcccijia',
+    '.aececcccdddddcccbila.',
+    '..accccccdcccccceaaa..',
+    '...acccccbbbbbaaa.....',
+    '....aaaaaaaaaa........',
+  ], {a:'#0d0e14', b:'#286868', c:'#387080', d:'#100878', e:'#307870', f:'#080068', g:'#7000f8', h:'#000050', i:'#a80000', j:'#e80000', k:'#400098', l:'#c00000', m:'#200088'});
+  SP.gunN = makeSprite([
+    '....................aaaaaaaaaaaaaa..',
+    '...................abbcbbdebffbecba.',
+    '...aa..............abghbegffgebgfbfa',
+    '..aiha............agghhjeklllkjjhdda',
+    '.aghigaaa...aaaaaagcbhhmlllllllggeba',
+    '.aggihaggaaaccccccibbhellllllllkjbba',
+    '.ahhiicgjdgccccchjieegllllllllllfdda',
+    'aigjiihbgggccgghiiigbfllllllllllkeba',
+    'ahhhiigedcccgggjebiebfllllllllllkbba',
+    '.ahjijcdhhhghghjebieegllllllllllmdca',
+    '.aiiicjjjgggggghiijgehmllllllllkdfba',
+    '.aiihccccccccccccccfbjhklllllllmhbba',
+    '..ahaaaaaaaaaaaaaaafbjjhmklllkmgjfca',
+    '...a..............acfhhihfmmmdhjgdba',
+    '..................acbbcbbdfbffbedbea',
+    '...................afddbfceeceecfea.',
+    '....................aaaaaaaaaaaaaa..',
+  ], {a:'#0d0e14', b:'#805800', c:'#080808', d:'#181000', e:'#684800', f:'#402000', g:'#202020', h:'#303030', i:'#505050', j:'#404040', k:'#d00000', l:'#f80000', m:'#580000'});
+  SP.gunO = makeSprite([
+    '...........aaaaa............',
+    '..aaaaaaaaabcdcbaaaaaaaaaa..',
+    '.abbbbbbbbbbeeebbbbbbbbbbba.',
+    'abdddffffffghhhgfffffffifgca',
+    'abdddfffffffffffffffffggffda',
+    'abbcbgggggggggggggggggihgica',
+    '.abbbccdccccccdcccccddcccca.',
+    '..aaaaaaaaaaaaaaaaaaaaaaaa..',
+  ], {a:'#0d0e14', b:'#000000', c:'#181818', d:'#282828', e:'#f80000', f:'#e0e0e0', g:'#808890', h:'#606060', i:'#687070'});
+  SP.gunP = makeSprite([
+    '................aaaaaa........................',
+    '...............abcbbdba....aaaaaa.......aaaa..',
+    '............aaaddcbddbeaaaadcdebeaaaaaaabddda.',
+    '..........aabccddfgehhhhhhcdiifchhhjjjjccdjdca',
+    '.........acddjhhhkilhhjcjjjcimnjnnndennneejdca',
+    '........acdcdhhhhimdjclcljjhiifcdddcddddcbcdca',
+    '........acdcbdddbkidjcclclhhimnbnnnennnnenneba',
+    '.........adbeddbbimljjccljhhiiecnnnbennndnncda',
+    '.........anbejcdeifecjjchhhdlmncnnnbennndnndda',
+    '........aencccigbcjjbdbdbbbjjcndnnnennnnbnndda',
+    '....aaaaiefdcjggdcjjjhdjjhcjccccccccccccccddda',
+    '..aaeeikkkkdcjggdebbnnnnnnnbeendnnnennnnbnndda',
+    '.aikkkkkkkkdddllbeddnneeeeeddencnnnbennndnndda',
+    'aennneeffffdccggbbddnneeeenddbndnnnbennndnndda',
+    '.aaaaaaaneebdcllbcjcjhdjjjcjjccccccdccccccddda',
+    '........aenddcggbdddbbeeeeedddnbnnnennnnbnndda',
+    '.........anbeddbefeedjccjjcbfencnnnbennndnndda',
+    '.........adeebbeelmlhjljdjjjlmecnnnbennndnndda',
+    '........addcbbdddmkbhdjbjdjhimndnnnbennnbnebda',
+    '........acdcdhhhhimljjdjbjhhiifcddddddddcdcdca',
+    '.........adbdjhhjmmbjjjdjhjcimndnnnbennneejcca',
+    '..........abedddbffecccjjjcdiffddccddccdbbddca',
+    '...........aaaaddcbbdeeaaaabddeeeaaaaaaabdbda.',
+    '..............aebdbebba....aaaaaa.......aaaa..',
+    '...............aaaaaaa........................',
+  ], {a:'#0d0e14', b:'#282828', c:'#484848', d:'#383838', e:'#181818', f:'#483000', g:'#702020', h:'#686868', i:'#584828', j:'#585858', k:'#507818', l:'#403028', m:'#d89000', n:'#000000'});
+  SP.gunQ = makeSprite([
+    '..............................................',
+    '.....................................a........',
+    '....................................aba.......',
+    '.....................................a...a....',
+    '..................................aaacaaaba...',
+    '....aa.aaa..aaaa.................adeedadaa....',
+    '..aafgaceeaaceefa...............accdhhhdfa....',
+    '.afeeicjjekijjefaa.....aa.....aaaddllllhhca...',
+    'akfecmcjjfemjjjjckaaaaakkaaaaakkkcbllllbea.aa.',
+    'aicecmkjjecmejjjemmmmmmmimmmmmmiicbllllbddabba',
+    'agffiiijjckicjjjfgaaaaagaaaaaaaggcdlllbdca.aa.',
+    '.aafkkkccfgkkeccfa.....a.......aadedhhdedca...',
+    '...aaaaaaaaaaaaaa................adjedcdaa....',
+    '.................................acccdaca.....',
+    '..................................aaaa.a......',
+    '..............................................',
+    '..............................................',
+    '..............................................',
+  ], {a:'#0d0e14', b:'#f8c800', c:'#702800', d:'#f87000', e:'#b81000', f:'#400000', g:'#202020', h:'#f88800', i:'#808080', j:'#f81800', k:'#383838', l:'#f8e000', m:'#909090'});
+  SP.gunR = makeSprite([
+    '...aaaaaaaaaaaaaaaaa....................',
+    '..abbcddebeeeeeeeeeba...................',
+    '.aeecfggdeccccccccdebaaaaaaaaa.....a....',
+    'abeebhggeccccccccccdebeeebbbbbaaaaaiaa..',
+    'aecccggfeccceccecccdeecccccccceeebgigga.',
+    'abccfggcbcccecceeccdbbbbbbbbbbaaaagaaaja',
+    'abbbgggeeccccccccccdbaaaaaaaaa....a...a.',
+    '.akhhhkeeccccccecccdbaaaaaaaaaaaaa.aa...',
+    '.akggggghdcdcccecccdebcdcccccceeebagia..',
+    '.akggggggfcccccecccdbbbbbbbbbbbbbbkjaha.',
+    'abbfhhhggfcccccccccdbaaaaaaaaaaaaaaa.a..',
+    'abcggkbeddccecceeccdbaaaaaaaaaaaa..aa...',
+    'abkggcbbecccecceeccdebeeeeeeeeeeeaaija..',
+    'abhghbeeeccccccccccdebeeeeeeeeeeebgjaja.',
+    '.adhkeeebeccccccccccbbbbaaaaaaaaaaaa.a..',
+    '..abbbecceeccccccccbaaaa................',
+    '...aaabcccbbbbbbbbba....................',
+    '......abbbaaaaaaaaa.....................',
+    '.......aaa..............................',
+  ], {a:'#0d0e14', b:'#000000', c:'#181818', d:'#282828', e:'#101008', f:'#484848', g:'#686868', h:'#585858', i:'#38f8f8', j:'#d8d8d8', k:'#383838'});
+  SP.gunS = makeSprite([
+    '............................aa..............',
+    '...........................abca...aa........',
+    '..........................adeca..affaa......',
+    '..........................abeca.a.afffa.....',
+    '.........................aghicaafa.aaffa....',
+    '........................aihgicaaffaa.affa...',
+    '......aaaaaaa.........aaihgieba.aaffa.affa..',
+    '.....acjkkkjca......aalihgihgbaa..affa.afa..',
+    '....aalbgggglaaaaaaadbhigehfcbcfa..afa.affa.',
+    '...adllcgggclldlldlgeigiehffcbaffa.affa.afa.',
+    '..alkkkkkkkjcldccbeiiihhfmmfcbaaffa.afa.affa',
+    '..akkemmmmmjeilcbghffmmmmmmmcba.afa.affaaffa',
+    '.adkkkkkkkkjlklccemmmmmmmmmmcba.affaaffa.afa',
+    'abckkkkkkkkjkldlliffffffffffcga.affaaffa.afa',
+    'acdkkkkkkkkjckdllbhhhhhhhhhhcga.affaaffa.afa',
+    'aldjkkkkkkkllcdllcgiiiiiieehcga.affaaffa.afa',
+    '.adjjkjjjjjljldddlbgiehfhhehcga.afa.affa.afa',
+    '..aljjjjjjjldjdddcgcccbgehffcbaaffa.afa.affa',
+    '...adjjjjjjllldlldlbigccbiihcbaaffaaffa.afa.',
+    '....aaaaaaaaaaaaaaaadcigcbihcblffa.afa..afa.',
+    '....................aalgiccgiblaa.affa.affa.',
+    '......................aagibciba..affa.affa..',
+    '........................aiibibaaaffa.aafa...',
+    '.........................ageicafffa.affa....',
+    '..........................abicaaaaaaffa.....',
+    '..........................adica..afffa......',
+    '...........................acca...aaa.......',
+    '............................aa..............',
+  ], {a:'#0d0e14', b:'#506070', c:'#404848', d:'#000000', e:'#90a0b8', f:'#c8f0f8', g:'#607080', h:'#a0b8d0', i:'#8090a8', j:'#b80000', k:'#f80000', l:'#202020', m:'#f8f8f8'});
+  SP.gunT = makeSprite([
+    '..aaaa................aaaaa.................',
+    '.abcbda..............adbcbda................',
+    'adebedda.............aebcedda...........a...',
+    'afgggggaaaaaaaaaaaaaaagghgifa........a.aia..',
+    'afjhhhgeccccccccccccchhhhjha........afaaia..',
+    'afhhgkhkjhhjjkjhhjjjkkkihgga......aaagaaa...',
+    '.abhjjhkghjjjjjhjjjhhjhhjeda.....akehjheha..',
+    '.acbdihkkkkkjgijkkkkkkgfecea....abegiiildba.',
+    '.acceemmmmmmjkhkmmmmmmkdbcea...aihlgigglldha',
+    '.aeceemmmmmjlcelkkmmmmkgeeeaaaadghlggdfffdea',
+    'agjbejjccckkhhghkkccccbhhhcccccbkkldlffffdka',
+    'agjbejdbbbejhdggkjbbbbbhghbbbbbehjlfdeeefdja',
+    'aigbeijkkkkifbdfgiddddlfillldddliddjkkkkgdda',
+    '.abceemmmmmedkjdhmmmmmkdbceaaaaalkdkkkkkieha',
+    '.acceekmmmmmhiihmmmmmmkdbcea....aecehjjebba.',
+    '.acjjkjkjjjkkkkjjjkkkkkhjeea....alddhjhddda.',
+    '.ajggjhjghjjjhhhhjhhhhhijdha.....aaaiiiaaa..',
+    'aijhgggddeeeedeeeeeeeggghjha........aaa.....',
+    'aigggggebbbbbbbbbbbbbgggggga................',
+    'albccdillllllllllllllilccbdla...............',
+    'aldddllaaaaaaaaaaaaaaaldddlla...............',
+    '.alilla...............alilla................',
+    '..aaaa.................aaaa.................',
+  ], {a:'#0d0e14', b:'#703800', c:'#905008', d:'#301800', e:'#502800', f:'#000000', g:'#182020', h:'#283030', i:'#081010', j:'#304040', k:'#405050', l:'#180800', m:'#f8f8f8'});
+  SP.gunU = makeSprite([
+    '....a...................................................',
+    '...aba.aa...............................................',
+    '...abcacda..........aa..aa.....aa.......................',
+    '...aefgfha.....aaaaaccaabbaaaaaccaaa..........aaa.......',
+    '...aefffha.aaaacieeeeeedeeiibeeeeeeba......aaadiea......',
+    '...aijdddaadjjjeeeeeibebbhiebeeeieeeca..aaajdhfkkda.....',
+    '...aiaaaaldedjjeiilljmkibbmiiikiekieda.adehgfnkkba......',
+    '...adaaaiegiekbbdiibhhbbdddkiibekkieeaajeeffnkobiaa.....',
+    '..abecmbofndkkkbhggffffffffhhhkkkldebcddkefnnnkkieda....',
+    '..akbkkeknfgkokgffnnnnnnnnnnffkkkjjjjiceoennnnkkdeia....',
+    '..akkkebehhhkkkhnnnnnnkknnnnngekkmllmemkofnnnokdhea.....',
+    '..albljjmjghiebdnnnnnnoknnnnndmeemddcemkofnnkoldeba.....',
+    '..ajbjikkingkkennnnnknooeknnnnfkkmeecemoknnnnkoeida.....',
+    '.ajjjloehffgkoennnnkooooooennnfooldddeloknnnnneokida....',
+    'abemibknfbijkoennnnkooooooknnnfoolllbemoknnnnnnnoeia....',
+    'aiimelknbeeikoennnnookookoknnnfoolllbemoknnnnnnkkida.aa.',
+    'aiibebknbbeikoennnkoknkknooennfoollldemoknnnnnkkbia.aeea',
+    'abbcblkfhiidkkennnkoknkknoonnnfkkmlmdemoknnnekkdhia.aeea',
+    'adbjblkffhddkkennnnkkekkeoknnnfkkmmmdimoknnnkoicheba.aa.',
+    '.acjjmkkibngkoennnnnkooooknnnnfkkmeecijkknnnnnkeheiaa...',
+    '..ajdjliibfhiebdfnnnnkkkennnfdceejiicejkegffffekbiaaea..',
+    '..ambcjjljdjekkhfnnnnnnnnnnnnhikkmjjmejkkgffekkdeda.a...',
+    '..akkkibkffhkkkhggfffffffffffgkekjjjjijekgffekbhgia.....',
+    '..akbkkiknnhkkkihhhgggggggghhhkkkjjjjbjekhgffnkiheia....',
+    '..abeilbkggdkkkideehggeeggheiiekeldebcdbkiggggekbeba....',
+    '..ajbjaaiehedmdebmidddiidddibedlkkbebjjjeegggekbbda.....',
+    '...aia..albicjceeiibbbbliemldbiiiiiedaaadihggekeba......',
+    '...aijaaaajcjjjieeeeeieiiiieieeeeeeeda..aaajdhgkkca.....',
+    '...aefgghaaaaaajddddbdccbicdcddbbddca......aajdeia......',
+    '...aefffha.....aaaaaccaaccjaaaaaaaaa.........aaaa.......',
+    '...abcdhda..........aa..aaa.............................',
+    '...adaaaa...............................................',
+    '....a...................................................',
+  ], {a:'#0d0e14', b:'#784000', c:'#402800', d:'#582800', e:'#b06000', f:'#e00800', g:'#b80000', h:'#980000', i:'#985800', j:'#201808', k:'#f8e0b8', l:'#383820', m:'#302810', n:'#f81000', o:'#f8f8e8'});
+  SP.gunV = makeSprite([
+    '..................................................................',
+    '............................a..a.a................................',
+    '...........................abaacaba...............................',
+    '...........a.....a.........abdacabda.........a.....a..............',
+    '..........aea...aea........addfbbddaa.......aea...aea.............',
+    '.........afea..aceaa.....aaaghdhbghaea.....adea...aega............',
+    '.........aiha..ajkklaaaaahfaghgcgghagaaaaaamkjna..ahoa............',
+    '.........aihaaanpkppjngfgidqhqqgqhhhhhgegnkppnpmaaohoa............',
+    '........aiomodnppkppppbqhidiqiobooiihohgkppppnppldidda............',
+    '.....aaahiohohpknlppkkhoiihiqhfeghoigoihokkpplkkpiooooa...........',
+    '....aceddigbooododdddhddiqfifbhgdbgicooddhddddodhiifhoa....aa.....',
+    '.....afooigboooghfhofhhhiooiodgfbddioohgghfohfhgoiiggoa.aaaqeaa...',
+    '....acddoidooiohoooohoooooiogecccngdihhocoqiiqiiiiiqhiaaofhheeea..',
+    '...acgoodbqhbbqghbhgldlgbnogkklnnpnqoggheddoeiiiiiiiiiieocdmpqa...',
+    '...agdoogehjijbgljlgkgnbdmjikkmmlpmqdbcogoideooooooooooededdeeea..',
+    '..agqoooqfgdiiggpplghhdglljdkkeeckmqdgfiqodmedmmmmmmmmmememmphfa..',
+    '..abdhhhhbqgohhbkkmfklkbkmljjkkeekdhlncohddmkmnllllnnnlknkjjpeaa..',
+    '.acbdegcgbqqhqqghmhgmodgkkjkjkeoekdgbbeogddmedlmmbmmmbmedemdeebea.',
+    'aecgcefcgfqigiqhobhgngngjklnneehekdhggeofhooehcggcfggcfchcdgefceea',
+    '.aagdgoghgqnhkddjklgkdbbjddmjjecekdqhhfiiiiocioooqoooqofqfqhefqaa.',
+    '..ahooooqggdiogdpplghhdgjkmdjjjeckdqiggiqioofiiiiiiiiiigqgqgeqa...',
+    '..afgiiigehdohhgjkmfklkbnpnijkmmmkdiigfogiiifiiiiiiiiiigigqqeeea..',
+    '...ahqiiigiqqqqghmhhmodghjmqkkmmmpliihhighooeiiiiiiiiiififqqeha...',
+    '...acfooiqqihiqqihqqoooqghihbkbcnkbdihhhehoihiiiiiiiiiifigqheea...',
+    '....aagiiibbiiighfoighghooiiqffffgdoiiihhqgiqfhgiioggiaaaaqqefa...',
+    '....afehhihgooihohoqhiooiigihddgddhigiiqqqhhohohoioghoa...aaaa....',
+    '.....agooiddoikmddkkdlhhiqfigfgehfgigoidolmkjdddkioddoa...........',
+    '......aaaihdodppkkpppphiqihiqihchioihooqlppppnppkhihoa............',
+    '.........aohoadkpkpppkbghihihiihioqqhihfnppppjpkaaodoa............',
+    '.........aooa.adkkpjlagaaqhhhohghhhhhhaaaalkplkmaaohia............',
+    '.........agfa..anjlaa.a..aeagggfgghaca....aalkna..acha............',
+    '.........acea..acea.......aahhghgghaa.......aea...aea.............',
+    '..........aa....aa.........adogcahoa.........a....aea.............',
+    '...........................addagagda...............a..............',
+    '...........................afaagaga...............................',
+    '............................a..a.a................................',
+    '..................................................................',
+  ], {a:'#0d0e14', b:'#584010', c:'#704800', d:'#282820', e:'#905800', f:'#603800', g:'#402800', h:'#201808', i:'#000000', j:'#686858', k:'#787068', l:'#484848', m:'#383838', n:'#585848', o:'#101010', p:'#f8f8f0', q:'#180800'});
+  SP.pChancla = makeSprite([
+    '...aaaaa..........',
+    '..abccbbaa........',
+    '.acaaaaabba.......',
+    '.aaddedaafba......',
+    'adggfeegeedbaa....',
+    'agfhhddfgefbbba...',
+    'adfhfeeheefbhha...',
+    '.aidiiddiiiaaa....',
+    '.acaaaaaacca......',
+    '..abcdagbca.......',
+    '...aaa.aaa........',
+  ], {a:'#0d0e14', b:'#706030', c:'#705818', d:'#382008', e:'#502008', f:'#683818', g:'#583010', h:'#804820', i:'#281800'});
+  SP.pPaw = makeSprite([
+    '....aa.....................................a..',
+    '...abba...............aaaaa...............aba.',
+    '...accba.............adbbbdaa............abeba',
+    '...abccba..........aadccfccbda..........abcca.',
+    '....abccba........adbcgffffccba........abcba..',
+    '.....abca........abbcfffffffhbda......abeca...',
+    '......aa........adcffffffffficdaaaaa...abba...',
+    '..............aabccffffffffhecdbbbbbaa..aa....',
+    '............aadbcfffffffffheebbcfffcbba.......',
+    '..aaaaaaaaaabbccfffffffffheecccfffffcbba......',
+    '.adcccbddddbccffffffffffiehiiffffffffcda......',
+    'abcgifccccccffffihiffffffffffffffffffcba......',
+    'abbeeiffieehfffiehffffffffffffffffffieba......',
+    'abceiffffheiffiehffffffffffffffffifiecba......',
+    'abcehffffffffffihhfffffffffffffihehecbda......',
+    'abcehiffffffffffffffffffffffffieeeegbda.......',
+    'abgehffffffffffffffheiffffffffiiihgcbbba......',
+    'abggehffffhhifffffhghfffffffffffffffffcba.....',
+    'abgeeifffhehffffffeghffffffffffffffffffcda....',
+    'abceiffffhehiffffffiiffffffffffffffffffcba....',
+    'abceeifffiehffffffffffffffffffffffffffffca....',
+    'abceeifffffhfffffffffffffffffffffffffffhca....',
+    'abcgehffffffffffffffffffffffffffffffffhcba....',
+    'abcehffffffffffffhhifffffffffffieehiihecda....',
+    'abgehifffihfffffhgeiffffffffffheeeeeeccba.....',
+    'abgghifffhhfffffiehffffffffffffhegcccbda......',
+    'abcgehfffffffffffieiffffffffffffficbdaa.......',
+    '.acgefffihifffiffffffffffffffffffffgbda.......',
+    '.acgehihegehffheifffffffffffffffffffcba.......',
+    '.acggeeegggehiieffffffffffffffffffffhba.......',
+    '.abcgeecbbceeeififffffffffhhifffffffcba.......',
+    '.abccbbbaabbccciffffffffffheeifffffhcda.......',
+    '..addbaa..aaddcehfffffffffhgeehiiiecba........',
+    '...aaa......aabbcifffffffffhbcceeccbda..a.....',
+    '......aa......aabchfffffffficdbbbbdda..aba....',
+    '.....abca.......abchfffffffecaaaaaaa..abeba...',
+    '....abccba.......abcciffffhgba.........accba..',
+    '...abccba.........adbchhheecda..........accba.',
+    '..abccba...........abdbcccbda............acea.',
+    '...abba.............aabbbbba..............aa..',
+    '....aa................aaaaa...................',
+  ], {a:'#0d0e14', b:'#101008', c:'#a88858', d:'#000000', e:'#f8d088', f:'#f8f0d0', g:'#f0c078', h:'#f8d8a0', i:'#f8e8b8'});
+  SP.pTrex = makeSprite([
+    '............aaaaa...............',
+    '........aaaabbccba..............',
+    '.......adedacfcghaaaa...aa......',
+    '........aedicjhgcjjciaaacbaaaa..',
+    '.........aaaabgkfhhcbabcfcbbbba.',
+    '....aaaaaaajbhkgkfgghbcfgffgghca',
+    '.aaajbbbbchfghkhfhhffhckggggghca',
+    'abbccfhffffhkhhhfhhfffhhghbgggca',
+    'ajjjbbbchkgkgfgfkhgggkhhgchhhiia',
+    '.aaaaaaaabbccgkfgkggkcbfchjibba.',
+    '.........aaajckhckfhbjjkdkkiiia.',
+    '.........aaiibfgbjjhiaaaiiikkka.',
+    '........aegibbcgcaaaja..aaaaaa..',
+    '.......adedacbbbja..a...........',
+    '........aaaabiiaa...............',
+    '............aaa.................',
+  ], {a:'#0d0e14', b:'#283010', c:'#384010', d:'#d0b078', e:'#e8c890', f:'#606820', g:'#808828', h:'#505818', i:'#404028', j:'#181808', k:'#707828'});
+  SP.pPiano = makeSprite([
+    '................................',
+    '..a....aaaaaaa..................',
+    '.aba..accddeccaa................',
+    '..a..aeeeeeeeecbaaaaaa..........',
+    '....aceeeeeeeeeccccccbaa........',
+    '....aceeeeeeeeeeeeeecbcba.......',
+    '....aceeeeeeeeeeeeeccfbcba......',
+    '...aceeeeeeeeeeeeecbbbgbca......',
+    '...aceeeeeeeeeeeecbbbffgbca.....',
+    '...aceeeeeeeeeeecbhfcbfgbca.....',
+    '...aceeeeeeeeeccbbbhfbffhca...a.',
+    '...aceeeeeeeeccbbccbfcbbgcca.aba',
+    '...aceeeeeeecbbbccccbbcbgbcaaba.',
+    '...aceeeeeecbbbceccccbchgbca.a..',
+    '...aceeeeecbbbcceeecccbhgbca..a.',
+    '...aceeeecbhbbbbbbbbbbbcgfca.aba',
+    '...aceeccbhggggggggggggfhfcaaba.',
+    '...aceccffbgfffffffhhhfbfbca.a..',
+    '...accbbbbbgbbbbbffbbbbhgfca....',
+    '...abbbhggghgggggggggggfhbca....',
+    '....acbeeeeeeeccceeeeeeeecca....',
+    '....abbffffffffghfffffffbbba....',
+    '....abcddideiddiddiddddddbba....',
+    '....abciiiiiiiiiiiiiiiiiibba....',
+    '....acciiiiiiiiiiiiiiiiidbba....',
+    '.....abbbbbbbbbbbbbbbbbbbba.....',
+    '......aaaaaaaaaaaaaaaaaaaa......',
+    '................................',
+  ], {a:'#0d0e14', b:'#000000', c:'#101010', d:'#484840', e:'#202020', f:'#180800', g:'#402000', h:'#301000', i:'#706860'});
+  SP.pFire = makeSprite([
+    '................aa............',
+    '...............abbaa..........',
+    '.............aaaacdca.aa......',
+    '............abbbabefcacba.....',
+    '.........aaaabggbbgfeccecaa...',
+    '........abbbbabeeggeffdefdba..',
+    '....aaaaaabhibbgffffffffffda..',
+    '...ajjijhjabieggfffffffffffda.',
+    '....aahggghbbgffefffffkeffdea.',
+    '..aajhhgggggbcgffffffebdeeddca',
+    '.ajgggggggckgdfffffffdjhekhdda',
+    '.ajiiiggggcdeffffffffdjjekjdka',
+    '..aaaajggggccceefffffebbeececa',
+    '.....ajihjhgbbggefffffeefffka.',
+    '......aaajjbbdffffffffffffka..',
+    '.........aabdccdfffeffffeca...',
+    '...........aaaabeccefeecaa....',
+    '.............abbbbdekcaa......',
+    '..............aaabcbaa........',
+    '.................aaa..........',
+  ], {a:'#0d0e14', b:'#300000', c:'#404040', d:'#706868', e:'#a0a0a0', f:'#f8f8f8', g:'#f85000', h:'#f81800', i:'#f83800', j:'#f80000', k:'#606060'});
+  SP.pFireOut = makeSprite([
+    '........a..a..a.......',
+    '.......abaacaaca......',
+    '.......acabcaaca......',
+    '......acaacaaca.......',
+    '.......acaccacca......',
+    '.......acaacaaca......',
+    '.....aadeaffaagaa.....',
+    '....aghbegbbffbefa....',
+    '...aghiibheeebiibda...',
+    '..affhiiichfbiiiebea..',
+    '.afbbbiiihefhiiiiibda.',
+    '.afbiiiiiiehiiiiicfda.',
+    '.ageiiiiihiihiiiiiibga',
+    'aghiiiibegiigebiiiiifa',
+    'afiiiihfffiiffghiichga',
+    'afciiiigbfiifbgiiiega.',
+    '.afeiiigefiifegiiiifa.',
+    '..aficiefhiihfeiiicea.',
+    '..ageeciiiiiiiichchga.',
+    '...aadhiiiiciichgfga..',
+    '.....agheecehchgaaa...',
+    '......addgfgddda......',
+    '.......aaaaaaaa.......',
+  ], {a:'#0d0e14', b:'#706868', c:'#909088', d:'#080808', e:'#484848', f:'#282828', g:'#181818', h:'#585858', i:'#a8a0a0'});
+
   // --- fused guns: parent A with parent B bolted on top, gold-rimmed
   //     so a fusion reads as a fusion at a glance ---
   function fuseSprite(aKey, bKey){
@@ -3775,6 +4204,7 @@ const META = {
   shake: 1, dmgNums: 1, music: 1,
   pets: {}, pet: '',        // pets bought, and which one is on shift
   coop: 0,                  // local co-op on/off
+  chainDead: 0,             // THE BLOCKCHAIN has been broken
 };
 function loadMeta(){
   try {
@@ -3791,6 +4221,7 @@ function loadMeta(){
     if (m.pets) Object.assign(META.pets, m.pets);
     if (m.pet !== undefined && (m.pet === '' || META.pets[m.pet])) META.pet = m.pet;
     if (m.coop !== undefined) META.coop = m.coop ? 1 : 0;
+    if (m.chainDead) META.chainDead = 1;
     // saveMeta writes ALL of META, but loading is a whitelist — these were
     // missing, so story progress, achievements, stats, the tutorial flag
     // and the difficulty all quietly reset on every page refresh
@@ -3998,6 +4429,57 @@ const GUNS = [
     blurb:'THREE GUYS AT ONCE. GOOD LUCK.',
     dmg:1.45, rate:0.42, bspd:0.46, add:2, spread:0.42, pierce:99, shake:2.6, life:4.8,
     buffT:3.0, limpDmg:0.09, limpSpd:0.35 },
+
+  // ---- THE CONTRABAND. None of this is kitchen issue. Overpowered on
+  // purpose, priced to match, and each one is its own bad idea. ----
+  { id:'chancla', cost:3000, name:'LA CHANCLA',        sp:'gunL', shot:'chancla',
+    blurb:'IT NEVER MISSES. IT NEVER FORGIVES.',
+    dmg:1.80, rate:0.75, bspd:1.10, add:0, spread:0.00, pierce:0, shake:1.0, life:0,
+    bounces:6, seek:14, hunt:420 },
+  { id:'jar',     cost:3200, name:'PICKLE SINGULARITY', sp:'gunM', shot:'jar',
+    blurb:'A BLACK HOLE. IN A PICKLE JAR.',
+    dmg:1.40, rate:0.28, bspd:0.55, add:0, spread:0.03, pierce:0, shake:1.5, life:0.9,
+    drag:0.962, holeT:2.3, holePull:150, holeR:170, blast:60, bdmg:2.4 },
+  { id:'boton',   cost:3400, name:'EL BOTON',           sp:'gunN', strike:'laser',
+    blurb:'PRESS IT. SOMETHING IN ORBIT ANSWERS.',
+    dmg:3.20, rate:0.40, bspd:1.00, add:0, spread:0.00, pierce:0, shake:2.0, life:0,
+    sDelay:0.85, sRadius:52 },
+  { id:'puntero', cost:3600, name:'EL PUNTERO',         sp:'gunO', strike:'paw',
+    blurb:'WHERE THE DOT GOES, THE PAW FOLLOWS.',
+    dmg:2.40, rate:0.70, bspd:1.00, add:0, spread:0.00, pierce:0, shake:1.6, life:0,
+    sDelay:0.55, sRadius:44 },
+  { id:'trexgun', cost:3800, name:'LANZA-T-REX',        sp:'gunP', shot:'trex',
+    blurb:'CONTAINS ONE DINOSAUR. BRIEFLY.',
+    dmg:2.00, rate:0.30, bspd:0.90, add:0, spread:0.00, pierce:0, shake:2.2, life:0,
+    critT:6.0 },
+  { id:'sol',     cost:4000, name:'EL SOL PORTATIL',    sp:'gunQ', sun:true,
+    blurb:'HOLD UP THE SUN. EVERYTHING MELTS.',
+    dmg:1.00, rate:1.00, bspd:1.00, add:0, spread:0.00, pierce:0, shake:0.4, life:0,
+    dps:0.50 },
+  { id:'lag',     cost:4200, name:'EL ROUTER DEL LAG',  sp:'gunR', shot:'lag',
+    blurb:'SHOOTS PING. THEY MOVE AT ONE FPS.',
+    dmg:0.70, rate:1.30, bspd:1.50, add:0, spread:0.06, pierce:1, shake:0.5, life:0,
+    lagT:3.0 },
+  { id:'bocina',  cost:4400, name:'LA BOCINA DEL JUICIO', sp:'gunS', cone:true,
+    blurb:'ONE HONK. HALF THE ROOM LEAVES.',
+    dmg:3.00, rate:0.50, bspd:1.00, add:0, spread:0.00, pierce:0, shake:3.0, life:0,
+    cRange:160, cArc:0.65, kb:70 },
+  { id:'pianos',  cost:4600, name:'EL LANZAPIANOS',     sp:'gunT', shot:'piano',
+    blurb:'ARTILLERY, BUT MAKE IT MUSIC.',
+    dmg:2.80, rate:0.32, bspd:0.55, add:0, spread:0.04, pierce:0, shake:2.4, life:0.85,
+    drag:0.965, blast:52, bdmg:1.0, dropT:0.7 },
+  { id:'fguy',    cost:5000, name:'EL CANON DEL FIRE GUY', sp:'gunU', shot:'fire',
+    blurb:'FIRES THE MASCOT. KEEP HIM DRY.',
+    dmg:3.00, rate:0.26, bspd:0.80, add:0, spread:0.00, pierce:0, shake:3.0, life:0,
+    critT:7.0 },
+  // The secret one. Appears with ten guns owned; sold only once THE
+  // BLOCKCHAIN is broken. Fires a bit of everything the game has.
+  { id:'rule',    cost:9999, name:'THE WEAPON TO RULE THEM ALL', sp:'gunV', shot:'slug', ruleAll:true, secret:true,
+    blurb:'EVERYTHING. ALL AT ONCE. YOU EARNED IT.',
+    dmg:1.30, rate:0.85, bspd:1.30, add:4, spread:0.25, pierce:2, shake:3.5, life:0,
+    seek:6.0, hunt:240, blast:30, bdmg:1.2,
+    reach:170, jump:100, jumps:3, falloff:0.7,
+    cRange:110, cArc:0.9, kb:40 },
 ];
 
 // Guns no longer unlock on their own. You own a set, you choose which one to
@@ -4090,6 +4572,275 @@ function updateOrbs(dt){
 }
 
 // ================================================================
+// THE CONTRABAND — the machinery behind the crazy guns.
+// strikes: things falling from above (orbital lasers, cat paws).
+// holes: black holes out of pickle jars. drops: pianos mid-air.
+// critters: t-rexes and Fire Guys loose on the floor.
+// ================================================================
+let strikes = [], holes = [], drops = [], critters = [];
+let honkFx = null, pawFx = [], wreckFx = [];
+
+function updateStrikes(dt){
+  for (let i = strikes.length-1; i >= 0; i--){
+    const s = strikes[i];
+    s.t -= dt;
+    if (s.t > 0) continue;
+    strikes.splice(i, 1);
+    if (s.kind === 'laser'){
+      boom(s.x, s.y, s.r, s.dmg, '#ff5040');
+      blasts.push({ x:s.x, y:s.y, r:s.r*0.6, t:0.22, max:0.22, color:'#ffffff' });
+      s.beamT = 0.2;
+      wreckFx.push({ kind:'laser', x:s.x, y:s.y, t:0.22, max:0.22 });
+    } else {
+      boom(s.x, s.y, s.r, s.dmg, '#f0d8b0');
+      pawFx.push({ x:s.x, y:s.y, t:0.45, max:0.45 });
+    }
+  }
+  for (let i = pawFx.length-1; i >= 0; i--) if ((pawFx[i].t -= dt) <= 0) pawFx.splice(i,1);
+  for (let i = wreckFx.length-1; i >= 0; i--) if ((wreckFx[i].t -= dt) <= 0) wreckFx.splice(i,1);
+  if (honkFx && (honkFx.t -= dt) <= 0) honkFx = null;
+}
+
+function spawnHole(x, y, b){
+  const gn = b.g;
+  holes.push({ x, y, t: gn.holeT, max: gn.holeT, r: gn.holeR, pull: gn.holePull,
+               blast: gn.blast, dmg: b.dmg * gn.bdmg });
+  SFX.bubble();
+}
+function updateHoles(dt){
+  for (let i = holes.length-1; i >= 0; i--){
+    const hle = holes[i];
+    hle.t -= dt;
+    // everything leans in — enemies hard, their bullets harder
+    for (const e of enemies){
+      const d = Math.sqrt(dist2(e.x, e.y, hle.x, hle.y)) || 1;
+      if (d > hle.r) continue;
+      const f = (hle.pull * (1 - d/hle.r) + 40) * (isBoss(e) ? 0.25 : 1);
+      moveCircle(e, (hle.x-e.x)/d * f * dt, (hle.y-e.y)/d * f * dt, e.r);
+      e.hp -= 4 * dt;
+      if (e.hp <= 0) killEnemy(e);
+    }
+    for (const eb of ebullets){
+      const d = Math.sqrt(dist2(eb.x, eb.y, hle.x, hle.y)) || 1;
+      if (d > hle.r) continue;
+      eb.vx += (hle.x-eb.x)/d * 500 * dt;
+      eb.vy += (hle.y-eb.y)/d * 500 * dt;
+    }
+    if (Math.random() < 0.6){
+      const a = rand(0, TAU), rr = rand(10, hle.r*0.8);
+      spawnParts(hle.x + Math.cos(a)*rr, hle.y + Math.sin(a)*rr, 1, '#a070ff', 10);
+    }
+    if (hle.t <= 0){
+      holes.splice(i, 1);
+      boom(hle.x, hle.y, hle.blast, hle.dmg, '#a070ff');
+    }
+  }
+}
+
+function updateDrops(dt){
+  for (let i = drops.length-1; i >= 0; i--){
+    const dp = drops[i];
+    dp.t -= dt;
+    if (dp.t > 0) continue;
+    drops.splice(i, 1);
+    boom(dp.x, dp.y, dp.blast, dp.dmg, '#dfe4ec');
+    wreckFx.push({ kind:'piano', x:dp.x, y:dp.y, t:2.2, max:2.2 });
+    SFX.chord();
+  }
+}
+
+function updateCritters(dt){
+  for (let i = critters.length-1; i >= 0; i--){
+    const c = critters[i];
+    c.t -= dt;
+    if (c.kind === 'puff'){
+      c.x += Math.cos(c.a) * 8 * dt;
+      c.y -= 6 * dt;
+      if (c.t <= 0) critters.splice(i, 1);
+      continue;
+    }
+    const tgt = nearestEnemy(c.x, c.y, 340);
+    let a = c.a;
+    if (tgt) a = c.a = Math.atan2(tgt.y - c.y, tgt.x - c.x);
+    const sp = c.kind === 'trex' ? 130 : 105;
+    moveCircle(c, Math.cos(a)*sp*dt, Math.sin(a)*sp*dt, 6);
+    c.face = Math.cos(a) >= 0 ? 1 : -1;
+    c.biteCd -= dt;
+    if (c.kind === 'fire'){
+      // he is made of fire in a building full of suds. One puddle and
+      // the mascot goes out. That is the deal.
+      if (onSlick(c.x, c.y)){
+        c.kind = 'puff'; c.t = 1.6; c.max = 1.6;
+        addFloater(c.x, c.y - 12, 'PSSSS', '#b0b7c4', 1.2);
+        spawnParts(c.x, c.y, 10, '#8d93a4', 40);
+        noise(0.4, 0.18);
+        continue;
+      }
+      if (Math.random() < 0.5) spawnParts(c.x, c.y, 1, pick(['#ff7020','#ffd040']), 26);
+    }
+    if (tgt && c.biteCd <= 0 && dist2(c.x, c.y, tgt.x, tgt.y) < (tgt.r+9)*(tgt.r+9)){
+      const wasIdx = enemies.indexOf(tgt);
+      damageEnemy(tgt, c.dmg * (c.size || 1), c.x, c.y);
+      c.biteCd = c.kind === 'trex' ? 0.35 : 0.22;
+      spawnParts(tgt.x, tgt.y, 4, c.kind === 'trex' ? '#7ec850' : '#ff9020', 60);
+      // Fire Guy grows with every machine he burns down
+      if (c.kind === 'fire' && wasIdx >= 0 && enemies.indexOf(tgt) < 0)
+        c.size = Math.min(2.4, (c.size || 1) + 0.28);
+    }
+    if (c.t <= 0){
+      spawnParts(c.x, c.y, 8, c.kind === 'trex' ? '#7ec850' : '#ff9020', 50);
+      critters.splice(i, 1);
+    }
+  }
+}
+
+// EL SOL PORTATIL: hold it up and everything you can see cooks slowly
+function fireSun(P, g, gun, dt){
+  const dps = g.damage * g.rate * gun.dps;
+  ST.sunT = 0.12;
+  for (const e of enemies.slice()){
+    if (!inView(e.x, e.y, 0)) continue;
+    e.hp -= dps * dt;
+    e.sunAcc = (e.sunAcc || 0) + dps*dt;
+    e.sunTick = (e.sunTick || 0) + dt;
+    if (e.sunTick >= 0.5){
+      addFloater(e.x, e.y - 6, String(Math.max(1, Math.round(e.sunAcc))), '#ffb020');
+      e.sunAcc = 0; e.sunTick = 0;
+    }
+    if (Math.random() < 0.06) spawnParts(e.x, e.y, 1, '#ffb020', 22);
+    if (e.hp <= 0) killEnemy(e);
+  }
+  if (Math.random() < 0.4)
+    spawnParts(P.x + Math.cos(P.aim)*26, P.y + Math.sin(P.aim)*26, 1, '#ffd040', 30);
+}
+
+// LA BOCINA: a cone of pure noise. Damage, shove, and it deletes
+// every enemy bullet caught in the blast, which is most of the point.
+function fireHonk(P, g, gun){
+  const dmg = g.damage * gun.dmg;
+  for (const e of enemies.slice()){
+    const d = Math.sqrt(dist2(P.x, P.y, e.x, e.y)) - e.r;
+    if (d > gun.cRange) continue;
+    let da = Math.atan2(e.y - P.y, e.x - P.x) - P.aim;
+    while (da > Math.PI) da -= TAU;
+    while (da < -Math.PI) da += TAU;
+    if (Math.abs(da) > gun.cArc) continue;
+    damageEnemy(e, dmg * (1 - Math.max(0, d) / gun.cRange * 0.5), P.x, P.y);
+    if (enemies.indexOf(e) >= 0 && !isBoss(e)){
+      const a = Math.atan2(e.y - P.y, e.x - P.x);
+      moveCircle(e, Math.cos(a)*gun.kb, Math.sin(a)*gun.kb, e.r);
+    }
+  }
+  for (let i = ebullets.length-1; i >= 0; i--){
+    const eb = ebullets[i];
+    const d = Math.sqrt(dist2(P.x, P.y, eb.x, eb.y));
+    if (d > gun.cRange) continue;
+    let da = Math.atan2(eb.y - P.y, eb.x - P.x) - P.aim;
+    while (da > Math.PI) da -= TAU;
+    while (da < -Math.PI) da += TAU;
+    if (Math.abs(da) > gun.cArc) continue;
+    spawnParts(eb.x, eb.y, 1, '#dfe3ea', 30);
+    ebullets.splice(i, 1);
+  }
+  honkFx = { x: P.x, y: P.y, a: P.aim, t: 0.25, max: 0.25, range: gun.cRange, arc: gun.cArc };
+  ST.shake = Math.min(6, ST.shake + 3);
+  SFX.honk();
+}
+
+function renderContraband(){
+  // strike telegraphs: the laser ring, or the little red dot
+  for (const s of strikes){
+    const f = 1 - s.t / s.max;
+    if (s.kind === 'laser'){
+      cx.globalAlpha = 0.5 + Math.sin(ST.time*20)*0.2;
+      cx.strokeStyle = '#ff5040'; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.arc(s.x, s.y, s.r * (1 - f*0.5), 0, TAU); cx.stroke();
+      cx.beginPath(); cx.moveTo(s.x-6, s.y); cx.lineTo(s.x+6, s.y);
+      cx.moveTo(s.x, s.y-6); cx.lineTo(s.x, s.y+6); cx.stroke();
+    } else {
+      cx.globalAlpha = 1;
+      cx.fillStyle = '#ff2020';
+      cx.fillRect(Math.round(s.x)-1, Math.round(s.y)-1, 2, 2);
+      cx.globalAlpha = 0.3;
+      cx.strokeStyle = '#f0d8b0'; cx.lineWidth = 1;
+      cx.beginPath(); cx.arc(s.x, s.y, s.r * f, 0, TAU); cx.stroke();
+    }
+    cx.globalAlpha = 1;
+  }
+  // the laser column and the piano wreckage
+  for (const wfx of wreckFx){
+    const f = wfx.t / wfx.max;
+    if (wfx.kind === 'laser'){
+      cx.globalAlpha = f;
+      cx.fillStyle = 'rgba(255,80,64,0.55)';
+      cx.fillRect(Math.round(wfx.x)-5, cam.y - 10, 10, wfx.y - cam.y + 10);
+      cx.fillStyle = '#ffffff';
+      cx.fillRect(Math.round(wfx.x)-2, cam.y - 10, 4, wfx.y - cam.y + 10);
+    } else {
+      cx.globalAlpha = Math.min(1, f*2) * 0.9;
+      drawSpriteC(SP.pPiano, wfx.x, wfx.y);
+    }
+    cx.globalAlpha = 1;
+  }
+  // cat paws mid-slam
+  for (const pfx of pawFx){
+    const f = 1 - pfx.t / pfx.max;
+    cx.globalAlpha = 1 - f*f;
+    drawSpriteC(SP.pPaw, pfx.x, pfx.y - (1-f)*10, 0.7 + f*0.5);
+    cx.globalAlpha = 1;
+  }
+  // black holes: a dark disc, a violet rim, everything leaning in
+  for (const hle of holes){
+    cx.globalAlpha = 0.85;
+    cx.fillStyle = '#0a0612';
+    cx.beginPath(); cx.arc(hle.x, hle.y, 12 + Math.sin(ST.time*9)*2, 0, TAU); cx.fill();
+    cx.strokeStyle = '#a070ff'; cx.lineWidth = 2;
+    cx.beginPath(); cx.arc(hle.x, hle.y, 15 + Math.sin(ST.time*9)*2, 0, TAU); cx.stroke();
+    cx.globalAlpha = 0.25;
+    cx.strokeStyle = '#c8a8ff'; cx.lineWidth = 1;
+    cx.beginPath(); cx.arc(hle.x, hle.y, hle.r * (0.5 + 0.5*((ST.time*0.8)%1)), 0, TAU); cx.stroke();
+    cx.globalAlpha = 1;
+  }
+  // pianos on their way down: shadow first, then the instrument
+  for (const dp of drops){
+    const f = 1 - dp.t / dp.max;
+    cx.globalAlpha = 0.35 * f;
+    cx.fillStyle = '#000000';
+    cx.beginPath(); cx.ellipse(dp.x, dp.y, 16*f + 4, 8*f + 2, 0, 0, TAU); cx.fill();
+    cx.globalAlpha = 1;
+    drawSpriteC(SP.pPiano, dp.x, dp.y - (1-f)*170, 0.5 + f*0.5);
+  }
+  // the creatures
+  for (const c of critters){
+    if (c.kind === 'puff'){
+      cx.globalAlpha = Math.min(1, c.t / (c.max || 1.6));
+      drawSpriteC(SP.pFireOut, c.x, c.y + Math.sin(ST.time*3)*1.5);
+      cx.globalAlpha = 1;
+      continue;
+    }
+    const sp = c.kind === 'trex' ? SP.pTrex : SP.pFire;
+    const bob = c.kind === 'trex' ? Math.abs(Math.sin(ST.time*14))*2 : Math.sin(ST.time*6)*1.5;
+    cx.setTransform(c.face, 0, 0, 1, ox + Math.round(c.x), oy + Math.round(c.y - bob));
+    const s2 = c.size || 1;
+    cx.drawImage(sp, -sp.width*s2/2, -sp.height*s2/2, sp.width*s2, sp.height*s2);
+    cx.setTransform(1, 0, 0, 1, ox, oy);
+  }
+  // the honk, drawn as expanding arcs out of the horn
+  if (honkFx){
+    const f = 1 - honkFx.t / honkFx.max;
+    for (let k=0;k<3;k++){
+      cx.globalAlpha = (1-f) * (0.7 - k*0.18);
+      cx.strokeStyle = '#dfe3ea'; cx.lineWidth = 3 - k*0.8;
+      cx.beginPath();
+      cx.arc(honkFx.x, honkFx.y, (honkFx.range*0.4 + k*16) + f*honkFx.range*0.6,
+             honkFx.a - honkFx.arc, honkFx.a + honkFx.arc);
+      cx.stroke();
+    }
+    cx.globalAlpha = 1;
+  }
+}
+
+// ================================================================
 // THE PET — Sudsy the sponge. Bought in the store, invincible (he is
 // a sponge), heels behind you, hoovers up shards and suds, and every
 // couple of seconds lunges at whatever machine is nearest and bites.
@@ -4165,6 +4916,9 @@ function startRun(){
   player.charge = 0; player.recoil = 0; player.whistling = 0;
   enemies = []; pbullets = []; ebullets = []; pickups = []; parts = []; floaters = []; orbs = [];
   boss = null; beamFx = null; beamSfxCd = 0; blasts = []; arcFx = null;
+  strikes = []; holes = []; drops = []; critters = [];
+  honkFx = null; pawFx = []; wreckFx = []; ST.sunT = 0;
+  ST.chain = false;
   spawnPet();
 
   // everything bought at the store lands here, before the first enemy
@@ -4528,6 +5282,46 @@ function firePlayerGun(P, dt){
     if (want) fireBeam(P, g, gun, dt);
     return;
   }
+  // EL BOTON / EL PUNTERO: nothing leaves the gun — something arrives
+  if (gun.strike){
+    if (!want || P.fireCd > 0) return;
+    P.fireCd = 1 / (g.rate * gun.rate);
+    strikes.push({ kind: gun.strike,
+      x: clamp(aimX, 24, WORLD.w-24), y: clamp(aimY, 24, WORLD.h-24),
+      t: gun.sDelay, max: gun.sDelay, r: gun.sRadius, dmg: g.damage * gun.dmg });
+    P.recoil = 0.13;
+    SFX.click();
+    return;
+  }
+  // EL SOL PORTATIL: held up, not fired
+  if (gun.sun){
+    if (want) fireSun(P, g, gun, dt);
+    return;
+  }
+  // LA BOCINA: the cone of noise
+  if (gun.cone){
+    if (!want || P.fireCd > 0) return;
+    P.fireCd = 1 / (g.rate * gun.rate);
+    fireHonk(P, g, gun);
+    P.recoil = 0.13;
+    return;
+  }
+  // the launchers that release a creature rather than a bullet
+  if (gun.shot === 'trex' || gun.shot === 'fire'){
+    if (!want || P.fireCd > 0) return;
+    P.fireCd = 1 / (g.rate * gun.rate);
+    const gr2 = gunRadius(gun);
+    critters.push({ kind: gun.shot,
+      x: P.x + Math.cos(P.aim)*gr2, y: P.y + Math.sin(P.aim)*gr2,
+      a: P.aim, t: gun.critT, dmg: g.damage * gun.dmg, size: 1, biteCd: 0, face: 1 });
+    // three loose creatures is plenty
+    let live = critters.filter(c => c.kind !== 'puff');
+    while (live.length > 3){ critters.splice(critters.indexOf(live[0]), 1); live.shift(); }
+    ST.shake = Math.min(4, ST.shake + gun.shake*0.6);
+    P.recoil = 0.13;
+    SFX.boom();
+    return;
+  }
   // the Arc Welder never spawns a bullet — it picks its own targets
   if (gun.chain){
     if (want && P.fireCd <= 0){
@@ -4593,6 +5387,20 @@ function firePlayerGun(P, dt){
   // The muzzle floats well ahead of him now, so anything standing between the
   // two would never be hit. Sweep that gap by hand.
   sweepMuzzle(P, mx, my, dmg * n);
+  // THE WEAPON TO RULE THEM ALL: the slugs above, and then everything
+  // else the armoury knows how to do, all on the same trigger pull
+  if (gun.ruleAll){
+    for (let k=-1;k<=1;k+=2){
+      if (pbullets.length >= T.maxPBullets) pbullets.shift();
+      pbullets.push({ x: mx, y: my,
+        vx: Math.cos(P.aim + k*0.5)*spd*0.7, vy: Math.sin(P.aim + k*0.5)*spd*0.7,
+        ang: P.aim + k*0.5, dmg: dmg*0.9, size: g.size, pierce: 0, hitList: null,
+        shot: 'missile', life: 0, g: gun, age: 0, tgt: null, back: false,
+        spin: rand(0,TAU), own: P });
+    }
+    fireChain(P, g, gun);
+    fireHonk(P, g, gun);
+  }
   ST.shake = Math.min(3, ST.shake + gun.shake*0.5);
   if (ST.tut && !P.isP2) ST.tut.shots++;
   P.recoil = 0.13;
@@ -4772,9 +5580,24 @@ function updatePBullets(dt){
       }
       if (Math.random() < 0.7) spawnParts(b.x, b.y, 1, '#aab2c0', 14);
     }
-    else if (b.shot === 'bomb'){
+    else if (b.shot === 'bomb' || b.shot === 'jar' || b.shot === 'piano'){
       b.vx *= gn.drag; b.vy *= gn.drag;   // it is lobbed, so it runs out of throw
       b.spin += dt*9;
+    }
+    else if (b.shot === 'chancla'){
+      // the sandal hunts. Hard. It has a list of who it has already
+      // visited and it is working through everybody else.
+      b.spin += dt*22;
+      const tgt = nearestEnemy(b.x, b.y, gn.hunt, b.hitList);
+      if (tgt){
+        let d2a = Math.atan2(tgt.y - b.y, tgt.x - b.x) - b.ang;
+        while (d2a > Math.PI) d2a -= TAU;
+        while (d2a < -Math.PI) d2a += TAU;
+        b.ang += clamp(d2a, -gn.seek*dt, gn.seek*dt);
+        const sp = Math.hypot(b.vx, b.vy);
+        b.vx = Math.cos(b.ang)*sp; b.vy = Math.sin(b.ang)*sp;
+      }
+      if (b.age > 7){ pbullets.splice(i,1); continue; }
     }
     else if (b.shot === 'dude'){
       b.ang = Math.atan2(b.vy, b.vx);
@@ -4817,6 +5640,9 @@ function updatePBullets(dt){
       b.life -= dt;
       if (b.life <= 0){
         if (b.shot === 'bomb') boom(b.x, b.y, gn.blast, b.dmg * gn.bdmg, '#e8d84a');
+        else if (b.shot === 'jar') spawnHole(b.x, b.y, b);
+        else if (b.shot === 'piano') drops.push({ x: b.x, y: b.y, t: gn.dropT, max: gn.dropT,
+                                                  blast: gn.blast, dmg: b.dmg * gn.bdmg });
         else if (b.shot === 'dude') spawnParts(b.x, b.y, 6, '#e8a86a', 30);
         else spawnParts(b.x, b.y, 2, '#cfe8ff', 24);
         pbullets.splice(i,1);
@@ -4830,7 +5656,8 @@ function updatePBullets(dt){
     }
     // splat against the kitchen itself. A blade on its way home ignores the
     // furniture, otherwise it gets wedged behind a counter and never returns.
-    const homing = b.shot === 'saw' && b.back;
+    // a chancla and a lobbed piano both sail over the furniture
+    const homing = (b.shot === 'saw' && b.back) || b.shot === 'chancla' || b.shot === 'piano';
     const off = b.x < 4 || b.x > WORLD.w-4 || b.y < 4 || b.y > WORLD.h-4;
     if (!homing && (off || wallAt(b.x, b.y, 0))){
       if (b.shot === 'saw'){
@@ -4844,6 +5671,7 @@ function updatePBullets(dt){
       }
       if (b.shot === 'bomb')         boom(b.x, b.y, gn.blast, b.dmg * gn.bdmg, '#e8d84a');
       else if (b.shot === 'missile') boom(b.x, b.y, gn.blast, b.dmg * gn.bdmg, '#ff9420');
+      else if (b.shot === 'jar')     spawnHole(b.x, b.y, b);
       else spawnParts(b.x, b.y, 2, '#f4c542', 30);
       pbullets.splice(i,1);
     } else if (homing && off){
@@ -4963,6 +5791,17 @@ function updateEnemies(dt){
     const tgt = player2 ? nearestPlayer(e.x, e.y) : player;
     const dx = tgt.x - e.x, dy = tgt.y - e.y;
     const d = Math.hypot(dx, dy) || 1;
+
+    // hit by the lag router: they exist at one frame per second. The
+    // frozen windows skip the whole update, timers, fuses and all.
+    if (e.lag > 0){
+      e.lag -= dt;
+      if ((ST.time % 0.5) > 0.10){
+        if (Math.random() < 0.12)
+          spawnParts(e.x + rand(-8,8), e.y + rand(-8,8), 1, '#6ad07a', 8);
+        continue;
+      }
+    }
 
     if (e.type === 'washer'){
       step(e, (dx/d) * e.speed * dt, (dy/d) * e.speed * dt);
@@ -5853,7 +6692,9 @@ function hurtPlayer(P, dmg){
 function collidePlayerBullets(){
   for (let i = pbullets.length-1; i >= 0; i--){
     const b = pbullets[i];
-    const br = (b.shot === 'saw' ? 5 : b.shot === 'dude' ? (b.limp ? 5 : 15) : 2.5) * b.size;
+    if (b.shot === 'piano') continue;      // it is above everybody's heads
+    const br = (b.shot === 'saw' ? 5 : b.shot === 'dude' ? (b.limp ? 5 : 15)
+              : b.shot === 'chancla' ? 5 : 2.5) * b.size;
     let hit = false;
     for (const e of enemies){
       if (b.hitList && b.hitList.indexOf(e) >= 0) continue;
@@ -5865,6 +6706,30 @@ function collidePlayerBullets(){
           hit = true;
           break;
         }
+        if (b.shot === 'jar'){
+          spawnHole(b.x, b.y, b);
+          hit = true;
+          break;
+        }
+        // the chancla: hit, cross the name off the list, go find the next one
+        if (b.shot === 'chancla'){
+          damageEnemy(e, b.dmg, b.x, b.y);
+          spawnParts(b.x, b.y, 4, '#f4c542', 60);
+          (b.hitList || (b.hitList = [])).push(e);
+          if (b.bounces === undefined) b.bounces = b.g.bounces;
+          b.bounces--;
+          if (b.bounces < 0){ hit = true; break; }
+          let nxt = nearestEnemy(b.x, b.y, 1e6, b.hitList);
+          if (!nxt){ b.hitList = [e]; nxt = nearestEnemy(b.x, b.y, 1e6, b.hitList); }
+          if (nxt){
+            const a = Math.atan2(nxt.y - b.y, nxt.x - b.x);
+            const sp = Math.hypot(b.vx, b.vy);
+            b.vx = Math.cos(a)*sp; b.vy = Math.sin(a)*sp; b.ang = a;
+          } else hit = true;
+          break;
+        }
+        // the router: light damage, heavy ping
+        if (b.shot === 'lag') e.lag = b.g.lagT * (isBoss(e) ? 0.3 : 1);
         damageEnemy(e, b.dmg, b.x, b.y);
         spawnParts(b.x, b.y, 3, '#f4c542', 50);
         if (b.pierce > 0){
@@ -6272,8 +7137,18 @@ function render(){
     else if (b.shot === 'saw')     drawSpriteRot(SP.saw, b.x, b.y, b.spin, b.size);
     else if (b.shot === 'bolt')    drawSpriteRot(SP.bolt, b.x, b.y, b.ang, b.size);
     else if (b.shot === 'dude')    drawSpriteRot(b.limp ? SP.weak : SP.buff, b.x, b.y, b.ang + (b.wob||0), b.size);
+    else if (b.shot === 'chancla') drawSpriteRot(SP.pChancla, b.x, b.y, b.spin, b.size);
+    else if (b.shot === 'jar')     drawSpriteRot(SP.gunM, b.x, b.y, b.spin*0.4, 0.8);
+    else if (b.shot === 'piano')   drawSpriteRot(SP.pPiano, b.x, b.y, b.spin*0.15, 0.5);
+    else if (b.shot === 'lag'){
+      cx.fillStyle = '#6ad07a';
+      cx.fillRect(Math.round(b.x)-2, Math.round(b.y)-2, 4, 4);
+      cx.fillStyle = '#bdf7c9';
+      cx.fillRect(Math.round(b.x)-1, Math.round(b.y)-1, 2, 2);
+    }
     else                           drawSpriteRot(SP.slug, b.x, b.y, b.ang, b.size);
   }
+  renderContraband();
 
   // blast rings — one quick expanding circle per bang
   for (const bl of blasts){
@@ -6347,6 +7222,13 @@ function render(){
   cx.setTransform(1,0,0,1,0,0);
   renderOffscreenMarkers();
   renderDark();
+  // EL SOL PORTATIL held up: the whole screen goes warm
+  if (ST.sunT > 0){
+    cx.globalAlpha = Math.min(1, ST.sunT / 0.12) * (0.10 + Math.sin(ST.time*22)*0.03);
+    cx.fillStyle = '#ff9820';
+    cx.fillRect(0, 0, W, H);
+    cx.globalAlpha = 1;
+  }
   renderLowHealth();
   renderHitMarks();
   renderHUD();
@@ -8014,6 +8896,16 @@ function storeItems(){
   if (ST.storeTab === 0){
     for (const g of GUNS){
       const own = !!META.owned[g.id];
+      // the secret one: invisible until ten guns are owned, and not for
+      // sale until THE BLOCKCHAIN has been broken
+      if (g.secret && !own){
+        if (ownedGuns().length < 10) continue;
+        if (!META.chainDead){
+          out.push({ name:'? ? ?', desc:'DEFEAT THE BLOCKCHAIN TO CLAIM IT',
+                     cost:-2, owned:false, on:false, act(){ return false; } });
+          continue;
+        }
+      }
       // a fusion stays locked until you own both of its parents
       if (g.fuse && !own && !(META.owned[g.fuse[0]] && META.owned[g.fuse[1]])){
         const pa = GUNS.find(x => x.id === g.fuse[0]), pb = GUNS.find(x => x.id === g.fuse[1]);
@@ -8300,6 +9192,11 @@ function tick(dt){
   collidePlayerBullets();
   updateBlasts(dt);
   updateSlicks(dt);
+  updateStrikes(dt);
+  updateHoles(dt);
+  updateDrops(dt);
+  updateCritters(dt);
+  if (ST.sunT > 0) ST.sunT -= dt;
   updateDash(player, dt);
   if (player2) updateDash(player2, dt);
   updateGhosts(dt);
