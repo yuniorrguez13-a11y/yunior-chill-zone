@@ -87,8 +87,9 @@ const T = {
   bburner: { hp: 680, speed: 20, touch: 2, r: 21 },
   bchef:   { hp: 900, speed: 26, touch: 3, r: 22 },
   bwash:   { hp: 1500, speed: 11, touch: 3, r: 26 },
-  chead:   { hp: 3200, speed: 46, touch: 3, r: 15 },
+  chead:   { hp: 4200, speed: 46, touch: 3, r: 15 },
   cblock:  { hp: 700,  speed: 0,  touch: 2, r: 12 },
+  uncle:   { hp: 60,   speed: 0,  touch: 1, r: 7 },
   plateSpeed: 62, forkSpeed: 105, bubbleSpeed: 26, steamSpeed: 30,
   dashSpeed: 4.6,           // scrubber charge, as a multiple of its walk speed
   shieldArc: 1.05,          // stacker blocks within this many radians of facing
@@ -231,6 +232,20 @@ const MUSIC = (function(){
     ], hats: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,
               32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63],
        kicks: [0,8,16,24,32,40,48,56], snares: [4,12,20,28,36,44,52,60] },
+    // THE BLOCKCHAIN gets its own track: a two-note phrygian grind that
+    // never resolves, and the fight itself speeds the tempo up per phase
+    chain: { bpm: 150, chans: [
+      { w:'square',   v:.052, d:.15, notes: [
+        [0,40],[2,40],[4,41],[6,40],[8,40],[10,40],[12,41],[14,43],
+        [16,40],[18,40],[20,41],[22,40],[24,40],[26,40],[28,38],[30,36],
+        [32,40],[34,40],[36,41],[38,40],[40,40],[42,40],[44,41],[46,43],
+        [48,45],[50,44],[52,43],[54,41],[56,40],[58,38],[60,36],[62,35]] },
+      { w:'sawtooth', v:.030, d:.13, notes: [
+        [0,64],[4,65],[8,64],[12,67],[16,64],[20,65],[24,62],[28,60],
+        [32,64],[36,65],[40,64],[44,67],[48,69],[52,67],[56,65],[60,64]] },
+    ], hats: [0,2,3,4,6,8,10,11,12,14,16,18,19,20,22,24,26,27,28,30,32,34,35,36,38,40,42,43,44,46,
+              48,50,51,52,54,56,58,59,60,62],
+       kicks: [0,6,8,16,22,24,32,38,40,48,54,56], snares: [4,12,20,28,36,44,52,60] },
   };
 
   let gain = null;        // the music's own volume knob, under masterGain
@@ -265,7 +280,7 @@ const MUSIC = (function(){
   function wanted(){
     if (META.music === 0) return null;
     if (ST.mode === 'play' || ST.mode === 'levelup' || ST.mode === 'pause')
-      return boss ? 'boss' : 'fight';
+      return ST.chain ? 'chain' : (boss ? 'boss' : 'fight');
     if (ST.mode === 'over') return null;   // the game-over jingle has the floor
     return 'menu';
   }
@@ -290,7 +305,11 @@ const MUSIC = (function(){
     }
     if (!cur) return;
     const s = SONGS[cur];
-    const dur = 60 / s.bpm / 4;             // one 16th note
+    // the blockchain fight cranks its own track: +4% tempo per phase
+    let rate = 1;
+    if (cur === 'chain' && typeof chainPhase === 'function' && ST.chain)
+      rate = 1 + (chainPhase() - 1) * 0.04;
+    const dur = 60 / s.bpm / 4 / rate;      // one 16th note
     if (nextT < AC.currentTime) nextT = AC.currentTime + 0.05;
     // schedule everything due in the next 150ms
     while (nextT < AC.currentTime + 0.15){
@@ -674,7 +693,7 @@ const SP = {};
 // every dishwasher in the building, bosses included
 const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
                'toaster','fryer','kettle','mixer','micro','chopper',
-               'boss','btrap','bburner','bchef','bwash','chead','cblock'];
+               'boss','btrap','bburner','bchef','bwash','chead','cblock','uncle'];
 (function bakeSprites(){
   // --- the five floating guns ---
   // Traced from the reference art: background keyed out, cropped, area-averaged
@@ -3262,6 +3281,7 @@ const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
   }
   SP.chead = chainCube(30, true);
   SP.cblock = chainCube(22, false);
+  SP.uncle = chainCube(12, false);
 
   // --- fused guns: parent A with parent B bolted on top, gold-rimmed
   //     so a fusion reads as a fusion at a glance ---
@@ -5049,6 +5069,7 @@ function endRun(){
   }
   ST.mode = 'over';
   bumpStat('deaths');
+  if (ST.chain) bumpStat('chainDeaths');
   bumpStat('time', Math.round(ST.playTime));
   let near = null, nd = 1e9;
   for (const e of enemies){ const d = dist2(e.x, e.y, player.x, player.y); if (d < nd){ nd = d; near = e; } }
@@ -6067,6 +6088,15 @@ function updateEnemies(dt){
         SFX.plate();
       }
     }
+    else if (e.type === 'uncle'){
+      // a bodyguard block, orbiting whichever end is currently minable
+      const tl = chainTail() || chainHead;
+      if (tl){
+        e.orbA = (e.orbA || 0) + dt * 3.2;
+        e.x = tl.x + Math.cos(e.orbA) * 22;
+        e.y = tl.y + Math.sin(e.orbA) * 22;
+      }
+    }
     else if (e.type === 'chead'){
       updateChainHead(e, dt, dx, dy, d);
     }
@@ -6429,6 +6459,11 @@ function startBlockchain(){
   head.hist = [[hx, hy]];
   head.tA = 1.6; head.tB = 5; head.tC = 8; head.tD = 12;
   head.dash = 0; head.stealCd = 0;
+  // it opens its mouth before it opens fire
+  head.st = 'intro'; head.stT = 3.45; head.introT = 3.45;
+  head.castCount = 0; head.orbDir = 1; head.orbFlip = 5;
+  bumpStat('chainTries');
+  ST.chainTry = (META.stats && META.stats.chainTries) || 1;
   for (let i = 0; i < N; i++){
     const s = spawnEnemy('cblock', hx, hy - (i+1)*26);
     s.seg = i;
@@ -6451,17 +6486,48 @@ function startBlockchain(){
 // ---- the pattern book. Undertale rules: every attack has a NAME, a
 // telegraph you can read, and a way out if you move. `from` is the
 // phase where the chain learns it. ----
-const CHAIN_PATTERNS = [
-  { id:'grid',  from:1,  name:'PROOF OF WORK' },
-  { id:'dip',   from:1,  name:'BUY THE DIP' },
-  { id:'rug',   from:2,  name:'RUG PULL' },
-  { id:'nova',  from:3,  name:'FULL NODE' },
-  { id:'crash', from:4,  name:'MARKET CRASH' },
-  { id:'halv',  from:5,  name:'THE HALVING' },
-  { id:'hodl',  from:6,  name:'HODL' },
-  { id:'flash', from:7,  name:'FLASH CRASH' },
-  { id:'blink', from:8,  name:'FIFTY ONE PERCENT' },
-  { id:'moon',  from:10, name:'TO THE MOON' },
+const CHAIN_PATTERNS = {
+  grid:     { name:'PROOF OF WORK' },
+  dip:      { name:'BUY THE DIP' },
+  rug:      { name:'RUG PULL' },
+  nova:     { name:'FULL NODE' },
+  crash:    { name:'MARKET CRASH' },
+  halv:     { name:'THE HALVING' },
+  hodl:     { name:'HODL' },
+  flash:    { name:'FLASH CRASH' },
+  blink:    { name:'FIFTY ONE PERCENT' },
+  moon:     { name:'TO THE MOON' },
+  bear:     { name:'BEAR TRAP' },
+  dca:      { name:'DOLLAR COST AVERAGING' },
+  pump:     { name:'PUMP AND DUMP' },
+  contract: { name:'SMART CONTRACT' },
+  fomo:     { name:'FOMO' },
+  reorg:    { name:'CHAIN REORG' },
+};
+// ---- the five ACTS. A real boss is choreographed, not shuffled: each
+// act runs its sequence in order, on its own pacing, with its own name
+// card, and the acts turn over as the chain gets shorter. ----
+function chainAct(p){
+  if (p >= 13) return 4;
+  if (p >= 10) return 3;
+  if (p >= 7)  return 2;
+  if (p >= 4)  return 1;
+  return 0;
+}
+const CHAIN_ACTS = [
+  { name:'THE OPENING BELL',
+    seq:['grid','dip','rug','grid','dip','rug'],           roam:1.7, tell:0.80 },
+  { name:'THE BEAR MARKET',
+    seq:['nova','crash','bear','grid','dca','dip','rug'],  roam:1.3, tell:0.75 },
+  { name:'THE BULL RUN',
+    seq:['halv','hodl','flash','nova','pump','contract','crash','dca'],
+                                                           roam:1.0, tell:0.70 },
+  { name:'DEAD CAT BOUNCE',
+    seq:['blink','moon','bear','flash','fomo','pump','reorg','nova','contract'],
+                                                           roam:0.7, tell:0.60 },
+  { name:'THE FINAL AUDIT',
+    seq:['nova','grid','moon','blink','flash','pump','bear','crash','dip','reorg'],
+                                                           roam:0.30, tell:0.50 },
 ];
 const CHAIN_TAUNTS = [
   'NOT YOUR KEYS. NOT YOUR HEARTS.',
@@ -6470,6 +6536,15 @@ const CHAIN_TAUNTS = [
   'ZERO CONFIRMATIONS',
   'GAS FEES APPLY',
   'DIAMOND HANDS. IRON EVERYTHING.',
+  'HAVE FUN STAYING POOR',
+  'FEW UNDERSTAND. YOU LESS.',
+  'THIS DIP IS TRANSITORY',
+  'YOUR PORTFOLIO CALLED. IT QUIT.',
+];
+const CHAIN_INTRO = [
+  'SO YOU BROUGHT TEN GUNS.',
+  'I BROUGHT TWELVE BLOCKS.',
+  'LET US DISCUSS YOUR PORTFOLIO.',
 ];
 let chainFx = [];    // telegraphs and live hazards: beams, columns, rugs, the hodl zone
 
@@ -6545,6 +6620,36 @@ function castTelegraph(e, id, p){
     }
     chainFx.push({ kind:'flash', t: 1.25, spots, r: 34 });
   }
+  else if (id === 'bear'){
+    // jaws: plates from the top and the bottom at once, one shared gap
+    // column. You find the column and you live in it.
+    chainFx.push({ kind:'bear', t: 0.6 });
+  }
+  else if (id === 'dca'){
+    // aimed fire on a metronome for a few seconds — the pattern under
+    // the pattern. It overlaps whatever comes next.
+    chainFx.push({ kind:'dca', t: 3.6, rt: 0, x: e.x, y: e.y });
+  }
+  else if (id === 'contract'){
+    // a rectangle appears. You have one second to be inside it, and it
+    // is never anywhere comfortable.
+    for (let k=0;k<40;k++){
+      const wq = 96, hq = 72;
+      const x = rand(cam.x + 40, cam.x + W - 40 - wq);
+      const y = rand(cam.y + 30, cam.y + H - 30 - hq);
+      if (!clearSpot(x + wq/2, y + hq/2, 24)) continue;
+      chainFx.push({ kind:'contract', x, y, w: wq, h: hq, warn: 1.0, dur: 1.8, tick: 0 });
+      for (const P of alivePlayers())
+        addFloater(P.x, P.y - 20, 'GET IN THE CONTRACT', '#37ff6a', 1.2);
+      break;
+    }
+  }
+  else if (id === 'fomo'){
+    for (const P of alivePlayers())
+      addFloater(P.x, P.y - 20, 'IT IS EATING THE SHARDS', '#37ff6a', 1.2);
+  }
+  // pump and reorg need no telegraph beyond the name card — the inflate
+  // and the swap ARE the telegraph
 }
 
 function castPattern(e, id, p){
@@ -6558,10 +6663,38 @@ function castPattern(e, id, p){
   if (id === 'nova'){
     chainFx.push({ kind:'nova', x: e.x, y: e.y, r: 18, sp: 230 + p*7, w: 9 });
     if (p >= 9) chainFx.push({ kind:'nova', x: e.x, y: e.y, r: -120, sp: 230 + p*7, w: 9 });
+    if (e.allIn) chainFx.push({ kind:'nova', x: e.x, y: e.y, r: -240, sp: 230 + p*7, w: 9 });
     SFX.alarm();
     return 1.4;
   }
   if (id === 'flash') return 1.4;
+  if (id === 'bear')  return 1.5;
+  if (id === 'dca')   return 1.0;   // it keeps firing on its own after this
+  if (id === 'contract') return 2.6;
+  if (id === 'fomo')  return 1.6;
+  if (id === 'pump'){ e.pumpN = 3; e.pumpT = 0.55; e.pump = 0; return 2.0; }
+  if (id === 'reorg'){
+    // the whole chain flips end for end: the head is suddenly where the
+    // tail was, and whatever you were lining up is now the wrong end
+    const segs = chainSegsAlive().sort((a,b) => a.seg - b.seg);
+    if (segs.length){
+      const last = segs[segs.length-1];
+      const hx = e.x, hy = e.y;
+      e.x = last.x; e.y = last.y;
+      last.x = hx; last.y = hy;
+      e.hist = [[e.x, e.y]];
+      spawnParts(e.x, e.y, 16, '#37ff6a', 80);
+      spawnParts(last.x, last.y, 16, '#37ff6a', 80);
+      const n = 10;
+      for (let k=0;k<n;k++){
+        eshoot(e.x, e.y, k*TAU/n, T.bubbleSpeed*1.5, 'coin');
+        eshoot(last.x, last.y, k*TAU/n + TAU/(n*2), T.bubbleSpeed*1.5, 'coin');
+      }
+      ST.shake = Math.min(7, ST.shake + 4);
+      SFX.boom();
+    }
+    return 0.5;
+  }
   if (id === 'blink'){
     // it is already standing where you were running to
     e.x = e.blinkX; e.y = e.blinkY;
@@ -6577,6 +6710,42 @@ function castPattern(e, id, p){
 }
 
 function castTick(e, id, p, dt){
+  if (id === 'pump'){
+    // inflate, then three rotated radial dumps with one safe wedge each.
+    // The wedge is drawn before every pulse: read it, stand in it.
+    e.pump = Math.min(1, (e.pump || 0) + dt*1.6);
+    e.pumpT -= dt;
+    if (e.pumpT <= 0 && e.pumpN > 0){
+      e.pumpN--;
+      e.pumpT = 0.55;
+      const n = 26;
+      const wedge = rand(0, TAU);
+      chainFx.push({ kind:'wedge', x: e.x, y: e.y, a: wedge, t: 0.30 });
+      // the bullets leave AFTER the wedge has been readable for a beat
+      chainFx.push({ kind:'dump', x: e.x, y: e.y, a: wedge, n, t: 0.30, p });
+      SFX.plate();
+      if (e.pumpN === 0) e.pump = 0;
+    }
+  }
+  if (id === 'fomo'){
+    // it inhales every loose shard on the floor and spits a coin back
+    // out for each one. Leave money lying around, get shot with it.
+    for (let i = pickups.length-1; i >= 0; i--){
+      const q = pickups[i];
+      if (q.kind !== 'shard') continue;
+      const d2q = dist2(q.x, q.y, e.x, e.y), dq = Math.sqrt(d2q) || 1;
+      q.vx += (e.x - q.x)/dq * 900 * dt;
+      q.vy += (e.y - q.y)/dq * 900 * dt;
+      if (d2q < 14*14){
+        pickups.splice(i, 1);
+        e.hp = Math.min(e.maxhp, e.hp + 4);
+        const P = pick(alivePlayers());
+        eshoot(e.x, e.y, Math.atan2(P.y - e.y, P.x - e.x) + rand(-0.05,0.05),
+               T.forkSpeed*1.2, 'coin');
+        addFloater(e.x, e.y - 18, 'NOM', '#37ff6a', 0.5);
+      }
+    }
+  }
   if (id === 'rug'){
     // pulses two and three chase where you ran to
     e.subT = (e.subT || 0) - dt;
@@ -6695,6 +6864,76 @@ function updateChainFx(dt){
         if (d < f.w) hurtPlayer(P, 1);
       }
     }
+    else if (f.kind === 'bear'){
+      f.t -= dt;
+      if (f.t > 0) continue;
+      chainFx.splice(i,1);
+      // the jaws: columns from the top and the bottom, one shared gap
+      const n = Math.ceil(W / 24) + 1;
+      const gap = irand(1, n - 3);
+      for (let k=0;k<n;k++){
+        if (k === gap || k === gap+1) continue;
+        const x = clamp(cam.x + k*24, 8, WORLD.w-8);
+        eshoot(x, Math.max(8, cam.y - 10), Math.PI/2, 92, 'plate');
+        eshoot(x, Math.min(WORLD.h-8, cam.y + H + 10), -Math.PI/2, 92, 'plate');
+      }
+      SFX.plate();
+    }
+    else if (f.kind === 'dca'){
+      f.t -= dt;
+      if (f.t <= 0){ chainFx.splice(i,1); continue; }
+      // the metronome: it fires from wherever the head is NOW
+      if (chainHead){ f.x = chainHead.x; f.y = chainHead.y; }
+      f.rt -= dt;
+      if (f.rt <= 0){
+        f.rt = 0.4;
+        for (const P of alivePlayers())
+          eshoot(f.x, f.y, Math.atan2(P.y - f.y, P.x - f.x), 150, 'coin');
+        SFX.click();
+      }
+    }
+    else if (f.kind === 'wedge'){
+      f.t -= dt;
+      if (f.t <= 0) chainFx.splice(i,1);
+    }
+    else if (f.kind === 'dump'){
+      f.t -= dt;
+      if (f.t > 0) continue;
+      chainFx.splice(i,1);
+      // the radial dump, minus the wedge that was just drawn
+      const half = 0.42;
+      for (let k=0;k<f.n;k++){
+        const a = k*TAU/f.n;
+        let da = a - f.a;
+        while (da > Math.PI) da -= TAU;
+        while (da < -Math.PI) da += TAU;
+        if (Math.abs(da) < half) continue;      // the safe slice
+        eshoot(f.x, f.y, a, T.plateSpeed * (0.95 + f.p*0.03), 'coin');
+      }
+      ST.shake = Math.min(6, ST.shake + 2);
+    }
+    else if (f.kind === 'contract'){
+      if (f.warn > 0){ f.warn -= dt; continue; }
+      f.dur -= dt;
+      if (f.dur <= 0){ chainFx.splice(i,1); continue; }
+      // outside the rectangle is a rolling detonation
+      f.tick -= dt;
+      if (f.tick <= 0){
+        f.tick = 0.5;
+        for (const P of alivePlayers()){
+          const inside = P.x > f.x && P.x < f.x + f.w && P.y > f.y && P.y < f.y + f.h;
+          if (!inside && P.iframe <= 0) hurtPlayer(P, 1);
+        }
+        for (let k=0;k<6;k++){
+          const a = rand(0, TAU), rr = rand(60, 160);
+          const qx = clamp(f.x + f.w/2 + Math.cos(a)*rr, cam.x+8, cam.x+W-8);
+          const qy = clamp(f.y + f.h/2 + Math.sin(a)*rr, cam.y+8, cam.y+H-8);
+          if (qx > f.x && qx < f.x+f.w && qy > f.y && qy < f.y+f.h) continue;
+          spawnParts(qx, qy, 3, '#e8162a', 60);
+        }
+        SFX.boom();
+      }
+    }
     else if (f.kind === 'flash'){
       f.t -= dt;
       if (f.t > 0) continue;
@@ -6770,6 +7009,39 @@ function renderChainFx(){
       cx.stroke();
       cx.globalAlpha = 1;
     }
+    else if (f.kind === 'contract'){
+      const armed = f.warn <= 0;
+      cx.globalAlpha = armed ? 0.85 : 0.45 + Math.sin(ST.time*24)*0.2;
+      cx.strokeStyle = '#37ff6a'; cx.lineWidth = armed ? 2 : 1;
+      cx.strokeRect(f.x, f.y, f.w, f.h);
+      cx.globalAlpha = 0.12;
+      cx.fillStyle = '#37ff6a';
+      cx.fillRect(f.x, f.y, f.w, f.h);
+      cx.globalAlpha = 0.9;
+      drawText('THE CONTRACT', f.x + f.w/2, f.y - 10, 1, '#37ff6a', 'center');
+      cx.globalAlpha = 1;
+      if (armed){
+        // the world outside the terms, on fire
+        cx.globalAlpha = 0.10 + Math.sin(ST.time*20)*0.05;
+        cx.fillStyle = '#e8162a';
+        cx.fillRect(cam.x, cam.y, W, f.y - cam.y);
+        cx.fillRect(cam.x, f.y + f.h, W, cam.y + H - f.y - f.h);
+        cx.fillRect(cam.x, f.y, f.x - cam.x, f.h);
+        cx.fillRect(f.x + f.w, f.y, cam.x + W - f.x - f.w, f.h);
+        cx.globalAlpha = 1;
+      }
+    }
+    else if (f.kind === 'wedge'){
+      // the one slice of the dump that will not fire
+      cx.globalAlpha = 0.35 + Math.sin(ST.time*30)*0.15;
+      cx.fillStyle = '#37ff6a';
+      cx.beginPath();
+      cx.moveTo(f.x, f.y);
+      cx.arc(f.x, f.y, 120, f.a - 0.42, f.a + 0.42);
+      cx.closePath();
+      cx.fill();
+      cx.globalAlpha = 1;
+    }
     else if (f.kind === 'nova' && f.r > 0){
       for (const [wide, col, al] of [[8,'#1c7a36',0.55],[4,'#37ff6a',0.85],[1.5,'#d8ffe2',1]]){
         cx.globalAlpha = al;
@@ -6814,7 +7086,8 @@ function updateChainHead(e, dt, dx, dy, d){
     e.orbFlip -= dt;
     if (e.orbFlip <= 0){ e.orbFlip = rand(3.5, 6); e.orbDir = -e.orbDir; SFX.click(); }
     if (e.orbA === undefined) e.orbA = Math.atan2(e.y - P.y, e.x - P.x);
-    const R = Math.max(95, 175 - p*7);
+    // SELL EVERYTHING: it runs wide. During the intro it keeps its distance.
+    const R = e.st === 'stand' ? 280 : e.st === 'intro' ? 230 : Math.max(95, 175 - p*7);
     e.orbA += dt * (0.8 + p*0.06) * e.orbDir;
     const tx2 = clamp(P.x + Math.cos(e.orbA)*R, 30, WORLD.w-30);
     const ty2 = clamp(P.y + Math.sin(e.orbA)*R, 30, WORLD.h-30);
@@ -6870,41 +7143,99 @@ function updateChainHead(e, dt, dx, dy, d){
     }
   }
   if (!inView(e.x, e.y, 60)) return;
-  // ---- the pattern machine: roam -> announce -> cast, and after every
-  // second pattern the OPEN LEDGER: it coils, holds still, and the tail
-  // takes bonus damage. Survive its turn, then take yours. ----
+  // ---- the desperation ladder, checked before anything else ----
+  if (p >= 13 && !e.allIn && e.hp < e.maxhp * 0.5){
+    e.allIn = true;
+    e.st = 'act'; e.stT = 1.2;
+    ST.banner = 'ALL IN'; ST.bannerTimer = 1.6;
+    ST.shake = Math.min(10, ST.shake + 7);
+    spawnParts(e.x, e.y, 40, '#37ff6a', 140);
+    SFX.alarm();
+  }
+  if (p >= 13 && !e.lastStand && e.hp < e.maxhp * 0.12){
+    e.lastStand = true;
+    e.st = 'stand'; e.stT = 2.4;
+    ST.banner = 'SELL. SELL EVERYTHING.'; ST.bannerTimer = 2.2;
+    chainFx.length = 0;              // the room goes quiet for a breath
+    SFX.gameover();
+  }
+  // ---- act turnover: a name card and a heartbeat of quiet ----
+  const act = chainAct(p);
+  if (e.act === undefined) e.act = act;
+  if (act !== e.act && e.st !== 'intro' && e.st !== 'stand'){
+    e.act = act;
+    e.seqIdx = 0;
+    e.st = 'act'; e.stT = 1.3;
+    chainFx.length = 0;              // no leftovers crossing the act line
+    ST.banner = CHAIN_ACTS[act].name; ST.bannerTimer = 1.8;
+    ST.shake = Math.min(8, ST.shake + 5);
+    blasts.push({ x:e.x, y:e.y, r:90, t:0.4, max:0.4, color:'#37ff6a' });
+    SFX.alarm();
+  }
+  const A = CHAIN_ACTS[e.act || 0];
+
+  // ---- the machine: intro -> (roam -> announce -> cast)+ -> open -> ... ----
   e.stT -= dt;
+  if (e.st === 'intro'){
+    // it talks first. Of course it talks first.
+    const idx = Math.min(CHAIN_INTRO.length - 1,
+                Math.floor((e.introT - e.stT) / 1.15));
+    ST.banner = CHAIN_INTRO[idx]; ST.bannerTimer = 0.4;
+    if (e.stT <= 0){
+      e.st = 'act'; e.stT = 1.2;
+      ST.banner = CHAIN_ACTS[0].name; ST.bannerTimer = 1.6;
+      SFX.alarm();
+    }
+    return;
+  }
+  if (e.st === 'act'){
+    if (e.stT <= 0){ e.st = 'roam'; e.stT = A.roam; }
+    return;
+  }
+  if (e.st === 'stand'){
+    // the fake mercy. It stops, it sulks, and then it goes all in anyway
+    if (e.stT <= 0){
+      e.st = 'tell'; e.stT = 0.6;
+      e.pat = 'nova';
+      ST.banner = 'ONE MORE BLOCK'; ST.bannerTimer = 1.0;
+      castTelegraph(e, 'nova', p);
+      SFX.alarm();
+    }
+    return;
+  }
   if (e.st === 'roam'){
-    // roaming is never safe — and past the audit line it never stops firing
+    // roaming is never safe — and in the audit it never stops firing
     e.tA -= dt;
     if (e.tA <= 0){
-      e.tA = p >= 13 ? 0.16 : Math.max(0.26, 0.55 - p*0.02);
+      e.tA = (e.allIn ? 0.10 : p >= 13 ? 0.16 : Math.max(0.26, 0.55 - p*0.02));
       e.spiralA = (e.spiralA || 0) + 0.7;
-      eshoot(e.x, e.y, e.spiralA, T.plateSpeed*0.85, 'bubble');
-      if (p >= 8) eshoot(e.x, e.y, e.spiralA + Math.PI, T.plateSpeed*0.85, 'bubble');
+      eshoot(e.x, e.y, e.spiralA, T.plateSpeed*0.85, 'coin');
+      if (p >= 8) eshoot(e.x, e.y, e.spiralA + Math.PI, T.plateSpeed*0.85, 'coin');
     }
     if (e.stT <= 0){
-      // THE HALVING needs blocks to fire from — no free turns in the audit
-      const pool = CHAIN_PATTERNS.filter(q => p >= q.from &&
-        (q.id !== 'halv' || chainSegsAlive().length > 0));
-      let pat = pick(pool);
-      if (e.lastPat === pat.id && pool.length > 1)
-        pat = pick(pool.filter(q => q.id !== e.lastPat));
-      e.pat = pat; e.lastPat = pat.id;
+      // the act runs its script in order. THE HALVING is skipped when
+      // there are no blocks left to fire it from.
+      let id = A.seq[e.seqIdx % A.seq.length];
+      e.seqIdx++;
+      if (id === 'halv' && !chainSegsAlive().length){
+        id = A.seq[e.seqIdx % A.seq.length];
+        e.seqIdx++;
+      }
+      e.pat = id;
       e.st = 'tell';
-      e.stT = p >= 13 ? 0.55 : 0.75;
+      e.stT = e.allIn ? Math.max(0.4, A.tell - 0.1) : A.tell;
       e.subT = 0;
-      ST.banner = pat.name; ST.bannerTimer = 0.9;
+      ST.banner = CHAIN_PATTERNS[id].name; ST.bannerTimer = 0.9;
       SFX.alarm();
-      castTelegraph(e, pat.id, p);
+      castTelegraph(e, id, p);
     }
   } else if (e.st === 'tell'){
     if (e.stT <= 0){
       e.st = 'cast';
-      e.stT = castPattern(e, e.pat.id, p);
+      e.stT = castPattern(e, e.pat, p) * (e.allIn ? 0.85 : 1);
     }
   } else if (e.st === 'cast'){
-    castTick(e, e.pat.id, p, dt);
+    castTick(e, e.pat, p, dt);
     if (e.stT <= 0){
       e.castCount++;
       if (e.castCount % 2 === 0 && p < 13){
@@ -6914,7 +7245,7 @@ function updateChainHead(e, dt, dx, dy, d){
         SFX.evolve();
       } else {
         e.st = 'roam';
-        e.stT = p >= 13 ? 0.30 : Math.max(0.45, 1.7 - p*0.10);
+        e.stT = e.allIn ? 0.20 : A.roam;
         if (Math.random() < 0.35){ ST.banner = pick(CHAIN_TAUNTS); ST.bannerTimer = 1.2; }
       }
     }
@@ -6922,7 +7253,16 @@ function updateChainHead(e, dt, dx, dy, d){
     // coiled and counting its money. This is your window.
     if (e.stT <= 0){
       e.st = 'roam';
-      e.stT = Math.max(0.45, 1.5 - p*0.09);
+      e.stT = A.roam;
+      // and the tail hires bodyguards for the next one
+      const tail = chainTail();
+      if (tail && p >= 4){
+        for (let k=0;k<2;k++){
+          const u = spawnEnemy('uncle', tail.x + rand(-14,14), tail.y + rand(-14,14));
+          u.hp = u.maxhp = T.uncle.hp;
+          u.orbA = k * Math.PI;
+        }
+      }
       if (Math.random() < 0.5){ ST.banner = pick(CHAIN_TAUNTS); ST.bannerTimer = 1.2; }
     }
   }
@@ -6954,6 +7294,13 @@ function renderChainWin(){
     drawText('THE WEAPON TO RULE THEM ALL', W/2, 158, 2, '#f4c542', 'center');
     drawText('WAITING IN THE STORE', W/2, 178, 1, '#8d93a4', 'center');
   }
+  if (t > 2){
+    const mm = Math.floor((ST.chainTime||0)/60), ss = Math.floor((ST.chainTime||0)%60);
+    const deaths = (META.stats && META.stats.chainDeaths) || 0;
+    drawText('ATTEMPT ' + (ST.chainTry||1) + '   TIME ' +
+             (mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss + '   DEATHS ON THE WAY ' + deaths,
+             W/2, 206, 1, '#5f6472', 'center');
+  }
   if (t > 4 && Math.floor(ST.time*2) % 2 === 0)
     drawText('CLICK OR ESC', W/2, 232, 1, '#7a7a8e', 'center');
 }
@@ -6972,7 +7319,10 @@ const CRIT_CHANCE = 0.12, CRIT_MUL = 2.2;
 function damageEnemy(e, dmg, hitX, hitY){
   // THE BLOCKCHAIN only lets you mine the last block in the chain, and
   // the head only once every block is gone. During OPEN LEDGER the tail
-  // takes half again as much — that window is the whole rhythm.
+  // takes half again as much — that window is the whole rhythm. And while
+  // it is still talking, nothing lands at all: let it finish.
+  if ((e.type === 'cblock' || e.type === 'chead') &&
+      chainHead && chainHead.st === 'intro'){ chainLockedPing(e); return; }
   if (e.type === 'cblock' && e !== chainTail()){ chainLockedPing(e); return; }
   if (e.type === 'chead' && chainSegsAlive().length){ chainLockedPing(e); return; }
   if ((e.type === 'cblock' || e.type === 'chead') &&
@@ -7037,6 +7387,7 @@ const DEATH_COLOR = {
   toaster:'#f0c874', fryer:'#e8bb3a', kettle:'#e0563a',
   mixer:'#b9c2cf', micro:'#6ad07a', chopper:'#c9a06a',
   btrap:'#c79a24', bburner:'#e0563a', bchef:'#e6eaf1', bwash:'#79c7f0',
+  chead:'#37ff6a', cblock:'#37ff6a', uncle:'#37ff6a',
 };
 
 function killEnemy(e){
@@ -7068,7 +7419,12 @@ function killEnemy(e){
     }
   }
   if (e.type === 'chead' && ST.chain){
-    META.chainDead = 1; saveMeta();
+    META.chainDead = 1;
+    ST.chainTime = ST.playTime;
+    META.stats = META.stats || {};
+    if (!META.stats.chainBest || ST.playTime < META.stats.chainBest)
+      META.stats.chainBest = Math.round(ST.playTime);
+    saveMeta();
     boss = null; chainHead = null; ST.chain = false;
     spawnParts(e.x, e.y, 80, '#37ff6a', 160);
     spawnParts(e.x, e.y, 40, '#ffffff', 110);
@@ -7303,7 +7659,8 @@ function updatePlayer(P, dt){
     for (let i = ebullets.length-1; i >= 0; i--){
       const b = ebullets[i];
       const br = b.kind === 'plate' ? 3 : b.kind === 'bubble' ? 2.5 : b.kind === 'steam' ? 4
-               : b.kind === 'glob' ? 2.5 : b.kind === 'toast' ? 2.5 : 2;
+               : b.kind === 'glob' ? 2.5 : b.kind === 'toast' ? 2.5
+               : b.kind === 'coin' ? 3 : b.kind === 'candle' ? 3 : 2;
       if (dist2(b.x, b.y, P.x, P.y) < (cr+br)*(cr+br)){
         ebullets.splice(i,1);
         hurtPlayer(P, 1);
@@ -7622,6 +7979,9 @@ function render(){
     let sp = SP[e.type], scale = 1;
     if (e.elite && SP[e.type+'_elite']){ sp = SP[e.type+'_elite']; scale = 1.15; }
     if (isBoss(e)) scale = 2;
+    // the chain draws at its own sizes, and the head inflates mid-PUMP
+    if (e.type === 'chead') scale = 1.6 * (1 + (e.pump || 0) * 0.5);
+    if (e.type === 'cblock') scale = 1.2;
     let wob = Math.sin(ST.time*6 + e.t2) * 1;
     // a kettle at the boil rattles and flashes faster the closer it gets
     if (e.type === 'kettle' && e.armed){
@@ -7892,6 +8252,24 @@ function render(){
     else if (b.kind === 'toast') drawSpriteRot(SP.toast, b.x, b.y, b.spin);
     else if (b.kind === 'glob')  drawSpriteC(SP.glob, b.x, b.y);
     else if (b.kind === 'knife') drawSpriteRot(SP.knife, b.x, b.y, b.ang);
+    else if (b.kind === 'coin'){
+      // the chain's own currency: a spinning green glitch square
+      cx.setTransform(1,0,0,1, ox + Math.round(b.x), oy + Math.round(b.y));
+      cx.rotate(b.spin);
+      cx.fillStyle = '#0c2a14'; cx.fillRect(-4,-4,8,8);
+      cx.fillStyle = '#37ff6a'; cx.fillRect(-3,-3,6,6);
+      cx.fillStyle = '#d8ffe2'; cx.fillRect(-1,-1,2,2);
+      cx.setTransform(1,0,0,1, ox, oy);
+    }
+    else if (b.kind === 'candle'){
+      // a market candle, falling body-first with its wick behind it
+      cx.setTransform(1,0,0,1, ox + Math.round(b.x), oy + Math.round(b.y));
+      cx.rotate(b.ang - Math.PI/2);
+      cx.fillStyle = '#7a1420'; cx.fillRect(-1, -9, 2, 5);
+      cx.fillStyle = '#e8162a'; cx.fillRect(-3, -4, 6, 10);
+      cx.fillStyle = '#ff6a78'; cx.fillRect(-3, -4, 2, 10);
+      cx.setTransform(1,0,0,1, ox, oy);
+    }
     else if (b.kind === 'steam'){
       // swells as it drifts and thins out as it dies
       cx.globalAlpha = clamp(Math.min(b.age*3, (2.4 - b.age)*1.6), 0, 1) * 0.8;
