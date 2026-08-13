@@ -659,6 +659,11 @@ const HERO = (function buildHero(){
 const HERO_FLASH = {};
 for (const k in HERO) HERO_FLASH[k] = makeSilhouette(HERO[k], '#ffffff');
 
+// Player two is the same man on the same shift, tinted blue so the two of
+// you can never be confused mid-scrum. The whole rig, every pose.
+const HERO2 = {};
+for (const k in HERO) HERO2[k] = makeTint(HERO[k], '#4a90d0', 0.34);
+
 const SP = {};
 // every dishwasher in the building, bosses included
 const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
@@ -2836,6 +2841,9 @@ const KINDS = ['washer','rinser','bubbler','scrubber','steamer','stacker',
     '..kk.....kk..',
   ], petPal);
 
+  // player two's hearts on the HUD
+  SP.heart2 = makeTint(SP.heart, '#4a90d0', 0.45);
+
   // silhouettes for damage flash + elite tints. One list, so adding a
   // dishwasher and forgetting to tint it cannot happen again.
   for (const k of KINDS) SP[k+'_flash'] = makeSilhouette(SP[k], '#ffffff');
@@ -3422,6 +3430,8 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;                              // OS auto-repeat must not re-toggle
   if (k === 'm'){ setMuted(!muted); }
   if ((k === 'shift' || k === 'q') && ST.mode === 'play'){ tryDash(); }
+  // player two dashes on enter (or the pad's A button)
+  if (k === 'enter' && ST.mode === 'play' && player2){ tryDash(player2); }
   if (ST.mode === 'menu'){
     if (k === 'w' || k === 'arrowup')   ST.menuSel = (ST.menuSel + MENU.length - 1) % MENU.length;
     if (k === 's' || k === 'arrowdown') ST.menuSel = (ST.menuSel + 1) % MENU.length;
@@ -3679,7 +3689,8 @@ function pollPad(){
     pad.prev[name] = is;
   };
   if (ST.mode === 'play'){
-    edge('dash',  down(0) || down(4) || down(5), () => tryDash());
+    // in co-op the pad belongs to player two
+    edge('dash',  down(0) || down(4) || down(5), () => tryDash(player2 || player));
     edge('pause', down(9), () => padKey('p'));
   } else if (ST.mode === 'levelup'){
     // the three cards: dpad left, A (or up), dpad right
@@ -3763,6 +3774,7 @@ const META = {
   achv: {}, stats: {},      // what he has unlocked, and the running totals
   shake: 1, dmgNums: 1, music: 1,
   pets: {}, pet: '',        // pets bought, and which one is on shift
+  coop: 0,                  // local co-op on/off
 };
 function loadMeta(){
   try {
@@ -3778,6 +3790,7 @@ function loadMeta(){
     if (m.music !== undefined) META.music = m.music ? 1 : 0;
     if (m.pets) Object.assign(META.pets, m.pets);
     if (m.pet !== undefined && (m.pet === '' || META.pets[m.pet])) META.pet = m.pet;
+    if (m.coop !== undefined) META.coop = m.coop ? 1 : 0;
   } catch(e){}
   META.owned.pea = true;    // never lose the starter, whatever is in storage
   META.waves[1] = true;
@@ -3820,7 +3833,32 @@ const player = {
   dashT: 0, dashCd: 0, dashA: 0,
   whistling: 0,           // counts down while he is doing the thing
   orbs: 0,                // spare barrels floating around him
+  down: false, revT: 0,   // co-op: on the floor, and how revived he is
 };
+
+// ---- LOCAL CO-OP ------------------------------------------------
+// Turned on in OPTIONS. Player two shares the gun, the level-ups and
+// the shard pool; he has his own hearts, dash and aim. He plays on
+// the arrow keys (the gun aims itself) or takes over the gamepad.
+// Going to zero puts you DOWN, not out — your partner stands next to
+// you for a couple of seconds and you are back up on half hearts.
+// The run only ends when you are both on the floor.
+let player2 = null;
+function bothPlayers(){ return player2 ? [player, player2] : [player]; }
+function alivePlayers(){
+  const out = [];
+  if (!player.down) out.push(player);
+  if (player2 && !player2.down) out.push(player2);
+  return out.length ? out : [player];
+}
+function nearestPlayer(x, y){
+  let best = player, bd = Infinity;
+  for (const P of alivePlayers()){
+    const d = dist2(x, y, P.x, P.y);
+    if (d < bd){ bd = d; best = P; }
+  }
+  return best;
+}
 
 let enemies = [], pbullets = [], ebullets = [], pickups = [], parts = [], floaters = [];
 let orbs = [];          // the spare barrels: { ang, cd }
@@ -3834,9 +3872,18 @@ let arcFx = null;       // the Arc Welder's last bolt: { pts, t }
 // The camera. It sits on the player but leans a little toward where he is
 // aiming, so you get to see what you are shooting at before it reaches you.
 function updateCam(dt, snap){
-  const lead = 40;
-  const tx = clamp(player.x + Math.cos(player.aim)*lead - W/2, 0, WORLD.w - W);
-  const ty = clamp(player.y + Math.sin(player.aim)*lead - H/2, 0, WORLD.h - H);
+  // co-op: sit on the midpoint of whoever is still standing, no aim lean —
+  // leaning toward one player's aim would drag the other off screen
+  let fx = player.x + Math.cos(player.aim)*40;
+  let fy = player.y + Math.sin(player.aim)*40;
+  if (player2){
+    const APs = alivePlayers();
+    fx = 0; fy = 0;
+    for (const P of APs){ fx += P.x; fy += P.y; }
+    fx /= APs.length; fy /= APs.length;
+  }
+  const tx = clamp(fx - W/2, 0, WORLD.w - W);
+  const ty = clamp(fy - H/2, 0, WORLD.h - H);
   if (snap){ cam.x = tx; cam.y = ty; return; }
   const k = 1 - Math.pow(0.0018, dt);   // frame-rate independent smoothing
   cam.x += (tx - cam.x) * k;
@@ -3963,6 +4010,7 @@ function evolveGun(quiet){
   player.gunIdx = gi;
   player.gunName = g.name;
   player.charge = 0;      // a half-wound Lance doesn't carry over to the next gun
+  if (player2){ player2.gunIdx = gi; player2.gunName = g.name; player2.charge = 0; }
   if (quiet) return;
   ST.banner = 'GUN EVOLVED: ' + g.name; ST.bannerTimer = 2.0;
   SFX.evolve();
@@ -3976,8 +4024,8 @@ const CARDS = [
   { id:'rate',  name:'RAPID CYCLE',    desc:'+30% FIRE RATE',        apply: g => g.rate = Math.min(20, g.rate*1.30), max: g => g.rate >= 20 },
   { id:'dmg',   name:'HEAVY LOAD',     desc:'+35% DAMAGE',           apply: g => { g.damage *= 1.35; g.size = Math.min(2.2, g.size*1.12); } },
   { id:'split', name:'SPLIT BARREL',   desc:'+1 BULLET',             apply: g => g.count = Math.min(6, g.count+1), max: g => g.count >= 6 },
-  { id:'boots', name:'TURBO SNEAKERS', desc:'+12% MOVE SPEED',       apply: () => player.speedMul *= 1.12 },
-  { id:'armor', name:'STEEL APRON',    desc:'+1 MAX HEART, HEAL 2',  apply: () => { player.maxhp++; player.hp = Math.min(player.maxhp, player.hp+2); } },
+  { id:'boots', name:'TURBO SNEAKERS', desc:'+12% MOVE SPEED',       apply: () => { for (const P of bothPlayers()) P.speedMul *= 1.12; } },
+  { id:'armor', name:'STEEL APRON',    desc:'+1 MAX HEART, HEAL 2',  apply: () => { for (const P of bothPlayers()){ P.maxhp++; P.hp = Math.min(P.maxhp, P.hp+2); } } },
   { id:'drill', name:'DRILL ROUNDS',   desc:'BULLETS PIERCE +1',     apply: g => g.pierce = Math.min(3, g.pierce+1), max: g => g.pierce >= 3 },
   { id:'rifle', name:'LONG RIFLING',   desc:'+25% BULLET SPEED',     apply: g => { g.bspeedMul *= 1.25; g.damage *= 1.10; } },
   // he whistles a second tune and another barrel comes along for the ride.
@@ -4120,6 +4168,23 @@ function startRun(){
   ST.roomsSeen = {}; ST.cleanWave = true; ST.recap = null;
   ST.combo = 0; ST.comboT = 0; ST.crits = 0;
   ST.mut = null; ST.mutBlock = -1; ST.rainT = 0; ST.greaseT = 0;
+  player.down = false; player.revT = 0;
+  // the second chair
+  player2 = null;
+  if (META.coop){
+    player2 = {
+      x: SPAWN.x + 22, y: SPAWN.y, vx: 0, vy: 0,
+      hp: player.maxhp, maxhp: player.maxhp,
+      aim: Math.PI, iframe: 0, fireCd: 0, flash: 0,
+      face: -1, moving: false,
+      speedMul: player.speedMul, gun: player.gun,
+      gunName: player.gunName, gunIdx: player.gunIdx, upgrades: 0,
+      aimTrail: [0,0,0], recoil: 0, dashT: 0, dashCd: 0, dashA: 0,
+      whistling: 0, orbs: 0, charge: 0,
+      down: false, revT: 0, isP2: true,
+      magnet: player.magnet, mercy: player.mercy, shardMul: player.shardMul,
+    };
+  }
   bumpStat('runs');
   // starting deeper in the shift comes with the upgrades you would have had
   for (let i = 0; i < META.startWave - 1; i++){
@@ -4152,8 +4217,11 @@ function applyBoosts(){
 function endRun(){
   if (ST.tut){
     // there is no losing the tutorial — patch him up and carry on
-    player.hp = player.maxhp;
-    player.iframe = Math.max(player.iframe, 2);
+    for (const P of bothPlayers()){
+      P.hp = P.maxhp;
+      P.iframe = Math.max(P.iframe, 2);
+      P.down = false;
+    }
     ST.flashRed = 0.4;
     addFloater(player.x, player.y - 16, 'PATCHED UP', '#79c7f0', 1.6);
     SFX.heart();
@@ -4316,7 +4384,8 @@ function spawnEnemy(type, x, y){
   }
   if (type === 'stacker'){
     e.shield = true;
-    e.face = Math.atan2(player.y - y, player.x - x);
+    const FP = player2 ? nearestPlayer(x, y) : player;
+    e.face = Math.atan2(FP.y - y, FP.x - x);
   }
   if (type === 'toaster'){ e.hop = rand(0, TAU); e.burst = 0; }
   if (type === 'kettle'){ e.fuse = 0; e.armed = false; }
@@ -4378,62 +4447,79 @@ function updateWaves(dt){
 // ================================================================
 // BULLETS
 // ================================================================
-function firePlayerGun(dt){
-  const g = player.gun;
-  player.fireCd -= dt;
-  let want = mouse.down || keys[' '];
-  let aimX, aimY;
-  if (usingTouch){
-    const rmag = touchR.active ? Math.hypot(touchR.dx, touchR.dy) : 0;
-    if (rmag > 6){
-      // the right thumb is the aim, and pushing it is the trigger
-      want = true;
-      const a = Math.atan2(touchR.dy, touchR.dx);
-      aimX = player.x + Math.cos(a)*100;
-      aimY = player.y + Math.sin(a)*100;
-    } else if (touch.active){
-      // one finger: auto-aim nearest enemy
-      let best = null, bd = 1e9;
-      for (const e of enemies){
-        const d = dist2(player.x, player.y, e.x, e.y);
-        if (d < bd){ bd = d; best = e; }
+function firePlayerGun(P, dt){
+  const g = P.gun;
+  P.fireCd -= dt;
+  let want, aimX, aimY;
+  if (P.isP2){
+    // player two: the pad if one is plugged in, otherwise the gun aims itself
+    if (pad.on){
+      want = pad.fire;
+      if (pad.aiming){
+        aimX = P.x + Math.cos(pad.aim)*100;
+        aimY = P.y + Math.sin(pad.aim)*100;
+      } else if (pad.fire){
+        const b = nearestEnemy(P.x, P.y, 420);
+        if (b){ aimX = b.x; aimY = b.y; }
       }
-      if (best){ want = true; aimX = best.x; aimY = best.y; }
+    } else {
+      const b = nearestEnemy(P.x, P.y, 420);
+      if (b){ want = true; aimX = b.x; aimY = b.y; }
     }
+    if (aimX === undefined){
+      aimX = P.x + Math.cos(P.aim)*100;
+      aimY = P.y + Math.sin(P.aim)*100;
+    }
+  } else {
+    want = mouse.down || keys[' '];
+    if (usingTouch){
+      const rmag = touchR.active ? Math.hypot(touchR.dx, touchR.dy) : 0;
+      if (rmag > 6){
+        // the right thumb is the aim, and pushing it is the trigger
+        want = true;
+        const a = Math.atan2(touchR.dy, touchR.dx);
+        aimX = P.x + Math.cos(a)*100;
+        aimY = P.y + Math.sin(a)*100;
+      } else if (touch.active){
+        // one finger: auto-aim nearest enemy
+        let best = null, bd = 1e9;
+        for (const e of enemies){
+          const d = dist2(P.x, P.y, e.x, e.y);
+          if (d < bd){ bd = d; best = e; }
+        }
+        if (best){ want = true; aimX = best.x; aimY = best.y; }
+      }
+    }
+    // gamepad drives player one only when there is no player two to take it
+    if (!player2 && pad.on && pad.aiming){
+      want = true;
+      aimX = P.x + Math.cos(pad.aim)*100;
+      aimY = P.y + Math.sin(pad.aim)*100;
+    } else if (!player2 && pad.on && pad.fire && aimX === undefined){
+      want = true;
+      const b = nearestEnemy(P.x, P.y, 420);
+      if (b){ aimX = b.x; aimY = b.y; }
+    }
+    // the mouse is in screen pixels; the player lives in the kitchen
+    if (aimX === undefined){ aimX = mouse.x + cam.x; aimY = mouse.y + cam.y; }
   }
-  // gamepad: the right stick is the aim, and pushing it is the trigger
-  if (pad.on && pad.aiming){
-    want = true;
-    aimX = player.x + Math.cos(pad.aim)*100;
-    aimY = player.y + Math.sin(pad.aim)*100;
-  } else if (pad.on && pad.fire && aimX === undefined){
-    // trigger held with the stick centred: shoot at the nearest one
-    want = true;
-    const b = nearestEnemy(player.x, player.y, 420);
-    if (b){ aimX = b.x; aimY = b.y; }
-  }
-  // the mouse is in screen pixels; the player lives in the kitchen
-  if (aimX === undefined){ aimX = mouse.x + cam.x; aimY = mouse.y + cam.y; }
-  player.aim = Math.atan2(aimY - player.y, aimX - player.x);
+  P.aim = Math.atan2(aimY - P.y, aimX - P.x);
   // keep the last few aim angles so the gun can smear when it swings hard
-  player.aimTrail[2] = player.aimTrail[1];
-  player.aimTrail[1] = player.aimTrail[0];
-  player.aimTrail[0] = player.aim;
+  P.aimTrail[2] = P.aimTrail[1];
+  P.aimTrail[1] = P.aimTrail[0];
+  P.aimTrail[0] = P.aim;
 
-  const gun = GUNS[player.gunIdx];
-  // cleared every frame by everything, not just by the beam gun — otherwise
-  // swapping off the Rinse Cannon mid-burn leaves the last beam painted on
-  beamFx = null;
+  const gun = GUNS[P.gunIdx];
   if (gun.beam){
-    beamSfxCd -= dt;
-    if (want) fireBeam(g, gun, dt);
+    if (!P.isP2) beamSfxCd -= dt;
+    if (want) fireBeam(P, g, gun, dt);
     return;
   }
   // the Arc Welder never spawns a bullet — it picks its own targets
   if (gun.chain){
-    if (want && player.fireCd <= 0){
-      player.fireCd = 1 / (g.rate * gun.rate);
-      fireChain(g, gun);
+    if (want && P.fireCd <= 0){
+      P.fireCd = 1 / (g.rate * gun.rate);
+      fireChain(P, g, gun);
     }
     return;
   }
@@ -4444,29 +4530,29 @@ function firePlayerGun(dt){
   let cmul = 1, cAdd = 0;
   if (gun.charge){
     if (want){
-      player.charge = Math.min(gun.windup, (player.charge || 0) + dt);
-      if (player.charge < gun.windup) return;
+      P.charge = Math.min(gun.windup, (P.charge || 0) + dt);
+      if (P.charge < gun.windup) return;
     }
-    const held = player.charge || 0;
-    player.charge = 0;
+    const held = P.charge || 0;
+    P.charge = 0;
     if (held <= 0.02) return;
     const f = clamp(held / gun.windup, 0, 1);
     cmul = gun.cmin + (gun.cmax - gun.cmin) * f;
     cAdd = Math.round(gun.cpierce * f);
   } else {
-    if (!want || player.fireCd > 0) return;
+    if (!want || P.fireCd > 0) return;
   }
-  player.fireCd = 1 / (g.rate * gun.rate);
+  P.fireCd = 1 / (g.rate * gun.rate);
   const n = g.count + gun.add;
   const spd = g.speed * g.bspeedMul * gun.bspd * (gun.charge ? 0.7 + cmul*0.12 : 1);
   const dmg = g.damage * gun.dmg * cmul;
   const pierce = g.pierce + gun.pierce + cAdd;
   const spread = (n > 1 ? (0.09 + n*0.03) : 0) + gun.spread;
   const gr = gunRadius(gun);
-  const mx = player.x + Math.cos(player.aim)*gr;
-  const my = player.y + Math.sin(player.aim)*gr;
+  const mx = P.x + Math.cos(P.aim)*gr;
+  const my = P.y + Math.sin(P.aim)*gr;
   // across-the-barrels offset, used by banked guns to fire parallel streams
-  const nx = -Math.sin(player.aim), ny = Math.cos(player.aim);
+  const nx = -Math.sin(P.aim), ny = Math.cos(P.aim);
   for (let i=0;i<n;i++){
     const t = n > 1 ? (i/(n-1) - 0.5) : 0;     // -0.5 .. +0.5 across the barrels
     let a, bx = mx, by = my;
@@ -4474,10 +4560,10 @@ function firePlayerGun(dt){
       // every barrel points the same way — spread them sideways, not angularly
       bx += nx * t * gun.bank;
       by += ny * t * gun.bank;
-      a = player.aim + rand(-0.02, 0.02);
+      a = P.aim + rand(-0.02, 0.02);
     } else {
       const off = n > 1 ? t * spread * 2 : rand(-spread, spread);
-      a = player.aim + off + rand(-0.015, 0.015);
+      a = P.aim + off + rand(-0.015, 0.015);
     }
     if (pbullets.length >= T.maxPBullets) pbullets.shift();
     pbullets.push({
@@ -4488,14 +4574,15 @@ function firePlayerGun(dt){
       // the gun itself rides along, so the odd shots (homing, lobbed, returning)
       // can read their own tuning without copying six fields onto every bullet
       g: gun, age: 0, tgt: null, back: false, spin: rand(0, TAU),
+      own: P,     // who fired it — the Return Blade flies home to its owner
     });
   }
   // The muzzle floats well ahead of him now, so anything standing between the
   // two would never be hit. Sweep that gap by hand.
-  sweepMuzzle(mx, my, dmg * n);
+  sweepMuzzle(P, mx, my, dmg * n);
   ST.shake = Math.min(3, ST.shake + gun.shake*0.5);
-  if (ST.tut) ST.tut.shots++;
-  player.recoil = 0.13;
+  if (ST.tut && !P.isP2) ST.tut.shots++;
+  P.recoil = 0.13;
   SFX.shoot();
 }
 
@@ -4506,31 +4593,31 @@ function firePlayerGun(dt){
 const BEAM_FALLOFF = 0.55;   // damage multiplier per extra body burned through
 // One trigger, one or several beams: the Rinse Cannon burns a single line,
 // the Prism Rinse spreads a fan of them. Each line does its own damage.
-function fireBeam(g, gun, dt){
+function fireBeam(P, g, gun, dt){
   const nB = gun.beams || 1;
-  const parts = [];
+  // both players can hold a beam at once — append, never overwrite
+  if (!beamFx) beamFx = { parts: [] };
   for (let k = 0; k < nB; k++){
     const off = nB > 1 ? (k/(nB-1) - 0.5) * (gun.fan || 0) * 2 : 0;
-    parts.push(fireOneBeam(g, gun, dt, player.aim + off));
+    beamFx.parts.push(fireOneBeam(P, g, gun, dt, P.aim + off));
   }
-  beamFx = { parts };
   ST.shake = Math.min(1.2, ST.shake + gun.shake * dt * 3);
   if (beamSfxCd <= 0){ SFX.shoot(); beamSfxCd = 0.11; }
 }
-function fireOneBeam(g, gun, dt, aim){
+function fireOneBeam(P, g, gun, dt, aim){
   const ux = Math.cos(aim), uy = Math.sin(aim);
   // how far it can reach: out to the edge of the kitchen, or the first
   // counter in the way, whichever comes first
-  const tx = ux > 0 ? (WORLD.w-4 - player.x)/ux : ux < 0 ? (4 - player.x)/ux : 1e9;
-  const ty = uy > 0 ? (WORLD.h-4 - player.y)/uy : uy < 0 ? (4 - player.y)/uy : 1e9;
-  const maxLen = rayWall(player.x, player.y, ux, uy, Math.max(0, Math.min(tx, ty)));
+  const tx = ux > 0 ? (WORLD.w-4 - P.x)/ux : ux < 0 ? (4 - P.x)/ux : 1e9;
+  const ty = uy > 0 ? (WORLD.h-4 - P.y)/uy : uy < 0 ? (4 - P.y)/uy : 1e9;
+  const maxLen = rayWall(P.x, P.y, ux, uy, Math.max(0, Math.min(tx, ty)));
 
   const half = 2 + g.size;
   const hits = [];
   for (const e of enemies){
-    const t = (e.x - player.x)*ux + (e.y - player.y)*uy;
+    const t = (e.x - P.x)*ux + (e.y - P.y)*uy;
     if (t < 0 || t > maxLen) continue;
-    const px = player.x + ux*t, py = player.y + uy*t;
+    const px = P.x + ux*t, py = P.y + uy*t;
     const rr = e.r + half;
     if (dist2(px, py, e.x, e.y) > rr*rr) continue;
     hits.push({ e, t });
@@ -4546,7 +4633,7 @@ function fireOneBeam(g, gun, dt, aim){
     // the beam spends itself as it burns through: each body behind the first
     // takes less, so a long line never out-damages the Megablaster.
     // Plate stacks turn it away from the front like anything else.
-    const dmg = dps * Math.pow(BEAM_FALLOFF, idx) * dt * shieldMul(e, player.x, player.y);
+    const dmg = dps * Math.pow(BEAM_FALLOFF, idx) * dt * shieldMul(e, P.x, P.y);
     e.hp -= dmg;
     e.flash = 0.08;
     e.bAcc = (e.bAcc || 0) + dmg;
@@ -4563,7 +4650,7 @@ function fireOneBeam(g, gun, dt, aim){
 
   const gr = gunRadius(gun);
   const fx = {
-    x: player.x + ux*gr, y: player.y + uy*gr,
+    x: P.x + ux*gr, y: P.y + uy*gr,
     ang: aim, len: Math.max(0, len - gr),
     capped: len < maxLen,
   };
@@ -4572,22 +4659,22 @@ function fireOneBeam(g, gun, dt, aim){
 }
 
 // Anything caught between the player and the floating muzzle takes the shot.
-function sweepMuzzle(mx, my, dmg){
-  const dx = mx - player.x, dy = my - player.y;
+function sweepMuzzle(P, mx, my, dmg){
+  const dx = mx - P.x, dy = my - P.y;
   const len = Math.hypot(dx, dy);
   if (len < 1) return;
   const ux = dx/len, uy = dy/len;
   let best = null, bt = 1e9;
   for (const e of enemies){
-    const t = (e.x - player.x)*ux + (e.y - player.y)*uy;
+    const t = (e.x - P.x)*ux + (e.y - P.y)*uy;
     if (t < 0 || t > len || t >= bt) continue;
-    const px = player.x + ux*t, py = player.y + uy*t;
+    const px = P.x + ux*t, py = P.y + uy*t;
     if (dist2(px, py, e.x, e.y) > e.r*e.r) continue;
     bt = t; best = e;
   }
   if (best){
     // hit it on the side facing the player, so shields are judged fairly
-    const hx = player.x + ux*bt, hy = player.y + uy*bt;
+    const hx = P.x + ux*bt, hy = P.y + uy*bt;
     damageEnemy(best, dmg, hx, hy);
     spawnParts(hx, hy, 3, '#f4c542', 50);
   }
@@ -4630,9 +4717,9 @@ function boom(x, y, radius, dmg, color){
 
 // The Arc Welder: grab the nearest one, then let the current walk from body to
 // body. Nothing flies — the whole thing lands on the frame it is fired.
-function fireChain(g, gun){
+function fireChain(P, g, gun){
   const gr = gunRadius(gun);
-  const mx = player.x + Math.cos(player.aim)*gr, my = player.y + Math.sin(player.aim)*gr;
+  const mx = P.x + Math.cos(P.aim)*gr, my = P.y + Math.sin(P.aim)*gr;
   let from = nearestEnemy(mx, my, gun.reach);
   if (!from) return;
   const done = [], pts = [[mx, my]];
@@ -4698,14 +4785,15 @@ function updatePBullets(dt){
       if (!b.back && b.age >= gn.out) b.back = true;
       if (b.back){
         // reel it in — the pull beats the throw, so it turns and comes home
-        const a = Math.atan2(player.y - b.y, player.x - b.x);
+        const O = b.own || player;
+        const a = Math.atan2(O.y - b.y, O.x - b.x);
         b.vx += Math.cos(a)*gn.pull*dt;
         b.vy += Math.sin(a)*gn.pull*dt;
         const sp = Math.hypot(b.vx, b.vy);
         if (sp > 300){ b.vx = b.vx/sp*300; b.vy = b.vy/sp*300; }
         // fair game again on the way back, which is the whole point of it
         if (b.hitList && b.age > gn.out + 0.15) b.hitList = null;
-        if (dist2(b.x, b.y, player.x, player.y) < 100){ pbullets.splice(i,1); continue; }
+        if (dist2(b.x, b.y, O.x, O.y) < 100){ pbullets.splice(i,1); continue; }
       }
       b.ang = Math.atan2(b.vy, b.vx);
     }
@@ -4766,7 +4854,8 @@ function updateEBullets(dt){
     if (b.kind === 'bubble'){
       // gentle homing for the first 3 seconds, then pop at 6
       if (b.age < 3){
-        const ta = Math.atan2(player.y - b.y, player.x - b.x);
+        const HP = player2 ? nearestPlayer(b.x, b.y) : player;
+        const ta = Math.atan2(HP.y - b.y, HP.x - b.x);
         let ca = Math.atan2(b.vy, b.vx);
         let d = ta - ca;
         while (d > Math.PI) d -= TAU;
@@ -4827,9 +4916,10 @@ function kettleBoom(e){
     if (dist2(o.x, o.y, e.x, e.y) < (T.kettleBlast + o.r)*(T.kettleBlast + o.r))
       damageEnemy(o, 26, e.x, e.y);
   }
-  if (player.iframe <= 0 &&
-      dist2(player.x, player.y, e.x, e.y) < (T.kettleBlast+8)*(T.kettleBlast+8))
-    hurtPlayer(T.kettleDmg);
+  for (const P of alivePlayers())
+    if (P.iframe <= 0 &&
+        dist2(P.x, P.y, e.x, e.y) < (T.kettleBlast+8)*(T.kettleBlast+8))
+      hurtPlayer(P, T.kettleDmg);
 }
 
 // The microwave's line. It stops at the first counter, so cover really works.
@@ -4837,10 +4927,12 @@ function microBurn(e, dt){
   const ux = Math.cos(e.beamA), uy = Math.sin(e.beamA);
   const len = rayWall(e.x, e.y, ux, uy, 340);
   e.beamLen = len;
-  const t = (player.x - e.x)*ux + (player.y - e.y)*uy;
-  if (t > 0 && t < len){
-    const px = e.x + ux*t, py = e.y + uy*t;
-    if (player.iframe <= 0 && dist2(px, py, player.x, player.y) < 100) hurtPlayer(1);
+  for (const P of alivePlayers()){
+    const t = (P.x - e.x)*ux + (P.y - e.y)*uy;
+    if (t > 0 && t < len){
+      const px = e.x + ux*t, py = e.y + uy*t;
+      if (P.iframe <= 0 && dist2(px, py, P.x, P.y) < 100) hurtPlayer(P, 1);
+    }
   }
   if (Math.random() < 0.5){
     const s = rand(10, len);
@@ -4854,7 +4946,9 @@ function updateEnemies(dt){
   for (const e of enemies){
     if (e.gone) continue;
     e.flash = Math.max(0, e.flash - dt);
-    const dx = player.x - e.x, dy = player.y - e.y;
+    // each machine goes for whichever player is closest and still standing
+    const tgt = player2 ? nearestPlayer(e.x, e.y) : player;
+    const dx = tgt.x - e.x, dy = tgt.y - e.y;
     const d = Math.hypot(dx, dy) || 1;
 
     if (e.type === 'washer'){
@@ -4954,9 +5048,9 @@ function updateEnemies(dt){
         // the pull is strongest right next to it
         // never quite as fast as he runs, so it is a fight and not a capture
         const g = T.mixerPull * (1 - d / T.mixerRange);
-        moveCircle(player, -(dx/d) * g * dt, -(dy/d) * g * dt, 6);
+        moveCircle(tgt, -(dx/d) * g * dt, -(dy/d) * g * dt, 6);
         if (Math.random() < 0.4)
-          spawnParts(player.x - (dx/d)*10, player.y - (dy/d)*10, 1, '#b9c2cf', 30);
+          spawnParts(tgt.x - (dx/d)*10, tgt.y - (dy/d)*10, 1, '#b9c2cf', 30);
       }
       e.t1 -= dt;
       if (e.t1 <= 0 && d < 200 && onScreen(e)){
@@ -5197,10 +5291,12 @@ function bossSixBurner(e, dt, dx, dy, d){
     const a = e.sweep + k*TAU/arms;
     const ux = Math.cos(a), uy = Math.sin(a);
     const len = rayWall(e.x, e.y, ux, uy, 190);
-    const t = (player.x - e.x)*ux + (player.y - e.y)*uy;
-    if (t > 12 && t < len){
-      const px = e.x + ux*t, py = e.y + uy*t;
-      if (player.iframe <= 0 && dist2(px, py, player.x, player.y) < 64) hurtPlayer(1);
+    for (const P of alivePlayers()){
+      const t = (P.x - e.x)*ux + (P.y - e.y)*uy;
+      if (t > 12 && t < len){
+        const px = e.x + ux*t, py = e.y + uy*t;
+        if (P.iframe <= 0 && dist2(px, py, P.x, P.y) < 64) hurtPlayer(P, 1);
+      }
     }
     if (Math.random() < 0.5)
       spawnParts(e.x + ux*rand(14,len), e.y + uy*rand(14,len), 1,
@@ -5323,10 +5419,12 @@ function bossOriginal(e, dt, dx, dy, d){
       const ux = Math.cos(a), uy = Math.sin(a);
       const len = rayWall(e.x, e.y, ux, uy, 240);
       e.armLens.push(len);
-      const t = (player.x - e.x)*ux + (player.y - e.y)*uy;
-      if (t > 16 && t < len){
-        const qx = e.x + ux*t, qy = e.y + uy*t;
-        if (player.iframe <= 0 && dist2(qx, qy, player.x, player.y) < 64) hurtPlayer(1);
+      for (const P of alivePlayers()){
+        const t = (P.x - e.x)*ux + (P.y - e.y)*uy;
+        if (t > 16 && t < len){
+          const qx = e.x + ux*t, qy = e.y + uy*t;
+          if (P.iframe <= 0 && dist2(qx, qy, P.x, P.y) < 64) hurtPlayer(P, 1);
+        }
       }
       if (Math.random() < 0.4)
         spawnParts(e.x + ux*rand(18,len), e.y + uy*rand(18,len), 1, '#79c7f0', 22);
@@ -5526,13 +5624,15 @@ function updatePickups(dt){
         continue;
       }
     }
-    const d2 = dist2(p.x, p.y, player.x, player.y);
-    const mr = player.magnet || T.magnetRadius;
+    // whoever is closer does the collecting; the pool is shared anyway
+    const NP = player2 ? nearestPlayer(p.x, p.y) : player;
+    const d2 = dist2(p.x, p.y, NP.x, NP.y);
+    const mr = NP.magnet || T.magnetRadius;
     if (d2 < mr*mr){
       const d = Math.sqrt(d2) || 1;
       const pull = 220 * (1 - d/mr) + 60;
-      p.vx += (player.x - p.x)/d * pull * dt * 10;
-      p.vy += (player.y - p.y)/d * pull * dt * 10;
+      p.vx += (NP.x - p.x)/d * pull * dt * 10;
+      p.vy += (NP.y - p.y)/d * pull * dt * 10;
     }
     moveCircle(p, p.vx*dt, p.vy*dt, 3);
     if (d2 < 7*7){
@@ -5541,7 +5641,7 @@ function updatePickups(dt){
         META.shards++; ST.runShards++; bumpStat('shardsEver');
         SFX.plate();
       }
-      else { player.hp = Math.min(player.maxhp, player.hp + 1); SFX.heart(); addFloater(player.x, player.y-12, '+1 HEART', CRIMSON); }
+      else { NP.hp = Math.min(NP.maxhp, NP.hp + 1); SFX.heart(); addFloater(NP.x, NP.y-12, '+1 HEART', CRIMSON); }
       pickups.splice(i,1);
     } else if (p.age > 25){
       pickups.splice(i,1);
@@ -5598,92 +5698,140 @@ function clickCard(x, y){
 // ================================================================
 // PLAYER
 // ================================================================
-function updatePlayer(dt){
+// which way this player's controls are pushing, dash and walk alike
+function readMove(P){
   let mx = 0, my = 0;
-  if (keys['w'] || keys['arrowup']) my--;
-  if (keys['s'] || keys['arrowdown']) my++;
-  if (keys['a'] || keys['arrowleft']) mx--;
-  if (keys['d'] || keys['arrowright']) mx++;
-  if (usingTouch && touch.active){
-    const mag = Math.hypot(touch.dx, touch.dy);
-    if (mag > 6){ mx = touch.dx/mag; my = touch.dy/mag; }
+  if (P.isP2){
+    if (keys['arrowup']) my--;
+    if (keys['arrowdown']) my++;
+    if (keys['arrowleft']) mx--;
+    if (keys['arrowright']) mx++;
+    if (pad.on && (pad.mx || pad.my)){ mx = pad.mx; my = pad.my; }
+  } else {
+    if (keys['w']) my--;
+    if (keys['s']) my++;
+    if (keys['a']) mx--;
+    if (keys['d']) mx++;
+    // solo, the arrows and the pad belong to player one too
+    if (!player2){
+      if (keys['arrowup']) my--;
+      if (keys['arrowdown']) my++;
+      if (keys['arrowleft']) mx--;
+      if (keys['arrowright']) mx++;
+      if (pad.on && (pad.mx || pad.my)){ mx = pad.mx; my = pad.my; }
+    }
+    if (usingTouch && touch.active){
+      const m = Math.hypot(touch.dx, touch.dy);
+      if (m > 6){ mx = touch.dx/m; my = touch.dy/m; }
+    }
   }
-  if (pad.on && (pad.mx || pad.my)){ mx = pad.mx; my = pad.my; }
+  return [mx, my];
+}
+
+function updatePlayer(P, dt){
+  if (P.down){
+    // on the floor. Untouchable, useless, waiting for a hand up.
+    P.iframe = 1e9;
+    const other = P.isP2 ? player : player2;
+    if (other && !other.down && dist2(P.x, P.y, other.x, other.y) < 26*26){
+      P.revT += dt;
+      if (P.revT >= 2.2){
+        P.down = false; P.revT = 0;
+        P.hp = Math.max(1, Math.ceil(P.maxhp/2));
+        P.iframe = 2;
+        addFloater(P.x, P.y - 14, 'BACK UP!', '#6ad07a', 1.4);
+        SFX.heart();
+      }
+    } else {
+      P.revT = Math.max(0, P.revT - dt*0.7);
+    }
+    return;
+  }
+  let [mx, my] = readMove(P);
   const mag = Math.hypot(mx, my);
   // only normalise when it is over unit length — an analog stick half
   // pushed should mean half speed, but a keyboard diagonal must not
   // be faster than a straight line
   if (mag > 1){ mx /= mag; my /= mag; }
   // hot oil underfoot: you keep moving, you just stop being quick about it
-  const slick = onSlick(player.x, player.y);
-  const sp = T.playerSpeed * player.speedMul * (slick ? T.slickSlow : 1);
+  const slick = onSlick(P.x, P.y);
+  const sp = T.playerSpeed * P.speedMul * (slick ? T.slickSlow : 1);
   // WET FLOOR: he keeps going for a moment after he stops steering
   if (ST.mod && ST.mod.id === 'wet'){
-    player.sx = (player.sx || 0) * 0.94 + mx * 0.06;
-    player.sy = (player.sy || 0) * 0.94 + my * 0.06;
-    mx = player.sx; my = player.sy;
+    P.sx = (P.sx || 0) * 0.94 + mx * 0.06;
+    P.sy = (P.sy || 0) * 0.94 + my * 0.06;
+    mx = P.sx; my = P.sy;
   }
   if (slick && mag > 0 && Math.random() < 0.25)
-    spawnParts(player.x, player.y + 6, 1, '#c79a24', 18);
+    spawnParts(P.x, P.y + 6, 1, '#c79a24', 18);
   // his own collision box is small — he floats, and a big box would snag
   // on every doorway in the kitchen
-  moveCircle(player, mx*sp*dt, my*sp*dt, 6);
-  player.moving = mag > 0;
+  moveCircle(P, mx*sp*dt, my*sp*dt, 6);
+  P.moving = mag > 0;
   // face the way he's aiming, with a dead zone so he doesn't flicker near vertical
-  const ax = Math.cos(player.aim);
-  if (ax > 0.12) player.face = 1; else if (ax < -0.12) player.face = -1;
-  player.iframe = Math.max(0, player.iframe - dt);
-  player.flash = Math.max(0, player.flash - dt);
-  player.recoil = Math.max(0, player.recoil - dt);
-  player.whistling = Math.max(0, player.whistling - dt);
+  const ax = Math.cos(P.aim);
+  if (ax > 0.12) P.face = 1; else if (ax < -0.12) P.face = -1;
+  P.iframe = Math.max(0, P.iframe - dt);
+  P.flash = Math.max(0, P.flash - dt);
+  P.recoil = Math.max(0, P.recoil - dt);
+  P.whistling = Math.max(0, P.whistling - dt);
 
-  firePlayerGun(dt);
+  firePlayerGun(P, dt);
 
   // enemy bullets vs player (tiny core hitbox)
-  if (player.iframe <= 0){
+  if (P.iframe <= 0){
     const cr = T.coreRadius;
     for (let i = ebullets.length-1; i >= 0; i--){
       const b = ebullets[i];
       const br = b.kind === 'plate' ? 3 : b.kind === 'bubble' ? 2.5 : b.kind === 'steam' ? 4
                : b.kind === 'glob' ? 2.5 : b.kind === 'toast' ? 2.5 : 2;
-      if (dist2(b.x, b.y, player.x, player.y) < (cr+br)*(cr+br)){
+      if (dist2(b.x, b.y, P.x, P.y) < (cr+br)*(cr+br)){
         ebullets.splice(i,1);
-        hurtPlayer(1);
+        hurtPlayer(P, 1);
         break;
       }
     }
   }
   // enemy contact
-  if (player.iframe <= 0){
+  if (P.iframe <= 0){
     for (const e of enemies){
-      if (dist2(e.x, e.y, player.x, player.y) < (e.r + T.bodyRadius)*(e.r + T.bodyRadius)){
-        hurtPlayer(e.touch);
+      if (dist2(e.x, e.y, P.x, P.y) < (e.r + T.bodyRadius)*(e.r + T.bodyRadius)){
+        hurtPlayer(P, e.touch);
         // knockback away from the enemy
-        const a = Math.atan2(player.y - e.y, player.x - e.x);
-        moveCircle(player, Math.cos(a)*14, Math.sin(a)*14, 6);
+        const a = Math.atan2(P.y - e.y, P.x - e.x);
+        moveCircle(P, Math.cos(a)*14, Math.sin(a)*14, 6);
         break;
       }
     }
   }
 }
 
-function hurtPlayer(dmg){
+function hurtPlayer(P, dmg){
   // whatever was nearest is the best guess at what just hit him
   let near = null, nd = 1e9;
-  for (const e of enemies){ const d = dist2(e.x, e.y, player.x, player.y); if (d < nd){ nd = d; near = e; } }
+  for (const e of enemies){ const d = dist2(e.x, e.y, P.x, P.y); if (d < nd){ nd = d; near = e; } }
   if (near) markHit(near.x, near.y);
   ST.combo = 0; ST.comboT = 0; ST.cleanWave = false;
-  player.hp -= dmg;
-  player.iframe = player.mercy || T.iframes;
-  player.flash = 0.25;
+  P.hp -= dmg;
+  P.iframe = P.mercy || T.iframes;
+  P.flash = 0.25;
   ST.shake = Math.min(8, ST.shake + 5);
   ST.flashRed = 0.25;
   SFX.hurt();
-  spawnParts(player.x, player.y, 10, CRIMSON, 80);
-  if (player.hp <= 0){
-    player.hp = 0;
-    spawnParts(player.x, player.y, 40, CRIMSON, 120);
-    spawnParts(player.x, player.y, 20, '#f0c090', 90);
+  spawnParts(P.x, P.y, 10, CRIMSON, 80);
+  if (P.hp <= 0){
+    P.hp = 0;
+    // co-op: going to zero puts you down, not out — unless you both are
+    if (player2 && !ST.tut){
+      P.down = true; P.revT = 0;
+      spawnParts(P.x, P.y, 24, CRIMSON, 100);
+      const other = P.isP2 ? player : player2;
+      if (other.down) endRun();
+      else { ST.banner = (P.isP2 ? 'P2' : 'P1') + ' IS DOWN'; ST.bannerTimer = 1.6; }
+      return;
+    }
+    spawnParts(P.x, P.y, 40, CRIMSON, 120);
+    spawnParts(P.x, P.y, 20, '#f0c090', 90);
     endRun();
   }
 }
@@ -5795,15 +5943,15 @@ function angDelta(a, b){
 // The gun is floating on its own out there, so a fast turn should drag.
 // Two ghost copies at the previous couple of aim angles, faded, only when
 // the swing is big enough to be worth it.
-function drawGunWithSmear(sp, cxp, cyp, gr, hov){
-  const a0 = player.aim;
-  const swing = Math.abs(angDelta(a0, player.aimTrail[2]));
+function drawGunWithSmear(sp, P, gr, hov){
+  const a0 = P.aim;
+  const swing = Math.abs(angDelta(a0, P.aimTrail[2]));
   if (swing > 0.22){
-    const ghosts = [[player.aimTrail[1], 0.30], [player.aimTrail[2], 0.16]];
-    for (const [ga, al] of ghosts)
-      drawGunRot(sp, cxp + Math.cos(ga)*gr, cyp + hov + Math.sin(ga)*gr, ga, al);
+    const trail = [[P.aimTrail[1], 0.30], [P.aimTrail[2], 0.16]];
+    for (const [ga, al] of trail)
+      drawGunRot(sp, P.x + Math.cos(ga)*gr, P.y + hov + Math.sin(ga)*gr, ga, al);
   }
-  drawGunRot(sp, cxp + Math.cos(a0)*gr, cyp + hov + Math.sin(a0)*gr, a0);
+  drawGunRot(sp, P.x + Math.cos(a0)*gr, P.y + hov + Math.sin(a0)*gr, a0);
 }
 
 // The Rinse Cannon's beam: stacked rotated bars — widest and faintest on the
@@ -5828,26 +5976,27 @@ function drawBeam(){
 // Which pose he is in. Ordered by what should win: being hit beats everything,
 // then the whistle, then recoil, then walking, then the state of his health.
 const HERO_WALK = ['float0','float1','float2','float3'];
-function heroFrame(){
-  if (player.flash > 0.14) return 'hurt';
-  if (player.flash > 0)    return 'hit';
-  if (player.whistling > 0) return Math.floor(ST.time*7) % 2 ? 'whis1' : 'whis0';
+function heroFrame(P){
+  P = P || player;
+  if (P.flash > 0.14) return 'hurt';
+  if (P.flash > 0)    return 'hit';
+  if (P.whistling > 0) return Math.floor(ST.time*7) % 2 ? 'whis1' : 'whis0';
   // the kick from the gun, for a moment after each shot
-  if (player.recoil > 0.06) return 'shoot1';
-  if (player.recoil > 0)    return 'shoot0';
-  if (player.moving) return HERO_WALK[Math.floor(ST.time*11) % 4];
-  if (player.hp <= 2)  return Math.floor(ST.time*8) % 2 ? 'panic1' : 'panic';
+  if (P.recoil > 0.06) return 'shoot1';
+  if (P.recoil > 0)    return 'shoot0';
+  if (P.moving) return HERO_WALK[Math.floor(ST.time*11) % 4];
+  if (P.hp <= 2)  return Math.floor(ST.time*8) % 2 ? 'panic1' : 'panic';
   return Math.floor(ST.time*2.2) % 2 ? 'idle1' : 'idle0';
 }
-function heroHover(key){
+function heroHover(P, key){
   if (key === 'hit' || key === 'hurt') return 0;
   // he rides higher and faster when he is moving, and drifts when he is not
-  const base = Math.sin(ST.time * (player.moving ? 5.5 : 3.2)) * (player.moving ? 0.9 : 1.4);
+  const base = Math.sin(ST.time * (P.moving ? 5.5 : 3.2)) * (P.moving ? 0.9 : 1.4);
   // a shot pushes him down into his own recoil
-  return base + (player.recoil > 0 ? 1.2 * (player.recoil / 0.13) : 0);
+  return base + (P.recoil > 0 ? 1.2 * (P.recoil / 0.13) : 0);
 }
-function drawHero(key, x, y, face, hover, flash){
-  const sp = flash ? HERO_FLASH[key] : HERO[key];
+function drawHero(key, x, y, face, hover, flash, p2){
+  const sp = flash ? HERO_FLASH[key] : (p2 ? HERO2[key] : HERO[key]);
   cx.setTransform(face, 0, 0, 1, ox + Math.round(x), oy + Math.round(y + hover));
   cx.drawImage(sp, -sp.width/2, -sp.height/2);
   cx.setTransform(1, 0, 0, 1, ox, oy);
@@ -6023,35 +6172,52 @@ function render(){
     cx.setTransform(1, 0, 0, 1, ox, oy);
   }
 
-  // player (blink during iframes)
-  const blink = player.iframe > 0 && Math.floor(ST.time*14) % 2 === 0;
-  if (ST.mode === 'over'){
-    drawHero('dead', player.x, player.y + 4, player.face, 0);
-  } else if (!blink){
-    const key = heroFrame();
-    const hov = heroHover(key);
-    drawHero(key, player.x, player.y, player.face, hov);
-    // the gun isn't held — it floats out at arm's length and bobs on its own
-    const gun = GUNS[player.gunIdx];
-    const gr = gunRadius(gun) + Math.sin(ST.time*5.5)*0.9;
-    drawGunWithSmear(SP[gun.sp], player.x, player.y, gr, hov);
-    // the Lance winding up: a ring closing around the muzzle, white when full
-    if (gun.charge && player.charge > 0.02){
-      const f = clamp(player.charge / gun.windup, 0, 1);
-      // gr is where the middle of the gun floats — push out to the barrel tip
-      const tip = gr + SP[gun.sp].width*0.42;
-      const mx = player.x + Math.cos(player.aim)*tip, my = player.y + hov + Math.sin(player.aim)*tip;
-      cx.strokeStyle = f >= 1 ? '#ffffff' : '#f4a020';
-      cx.lineWidth = f >= 1 ? 2 : 1.5;
-      cx.beginPath();
-      cx.arc(mx, my, 11 - f*4, -Math.PI/2, -Math.PI/2 + TAU*f);
-      cx.stroke();
-      if (f >= 1 && Math.random() < 0.5) spawnParts(mx, my, 1, '#ffe8b0', 40);
+  // the players (blink during iframes; downed partners lie flat)
+  for (const P of bothPlayers()){
+    if (P.down && ST.mode !== 'over'){
+      drawHero('dead', P.x, P.y + 4, P.face, 0, false, P.isP2);
+      if (P.revT > 0){
+        // the revive ring fills while the partner kneels close
+        cx.strokeStyle = '#6ad07a'; cx.lineWidth = 2;
+        cx.beginPath();
+        cx.arc(P.x, P.y, 13, -Math.PI/2, -Math.PI/2 + TAU * Math.min(1, P.revT/2.2));
+        cx.stroke();
+      } else {
+        cx.globalAlpha = 0.5 + Math.sin(ST.time*6)*0.3;
+        drawText('DOWN', P.x, P.y - 24, 1, CRIMSON, 'center');
+        cx.globalAlpha = 1;
+      }
+      continue;
     }
-    if (player.flash > 0){
-      cx.globalAlpha = 0.7;
-      drawHero(key, player.x, player.y, player.face, hov, true);
-      cx.globalAlpha = 1;
+    const blink = P.iframe > 0 && Math.floor(ST.time*14) % 2 === 0;
+    if (ST.mode === 'over'){
+      drawHero('dead', P.x, P.y + 4, P.face, 0, false, P.isP2);
+    } else if (!blink){
+      const key = heroFrame(P);
+      const hov = heroHover(P, key);
+      drawHero(key, P.x, P.y, P.face, hov, false, P.isP2);
+      // the gun isn't held — it floats out at arm's length and bobs on its own
+      const gun = GUNS[P.gunIdx];
+      const gr = gunRadius(gun) + Math.sin(ST.time*5.5)*0.9;
+      drawGunWithSmear(SP[gun.sp], P, gr, hov);
+      // the Lance winding up: a ring closing around the muzzle, white when full
+      if (gun.charge && P.charge > 0.02){
+        const f = clamp(P.charge / gun.windup, 0, 1);
+        // gr is where the middle of the gun floats — push out to the barrel tip
+        const tip = gr + SP[gun.sp].width*0.42;
+        const mx = P.x + Math.cos(P.aim)*tip, my = P.y + hov + Math.sin(P.aim)*tip;
+        cx.strokeStyle = f >= 1 ? '#ffffff' : '#f4a020';
+        cx.lineWidth = f >= 1 ? 2 : 1.5;
+        cx.beginPath();
+        cx.arc(mx, my, 11 - f*4, -Math.PI/2, -Math.PI/2 + TAU*f);
+        cx.stroke();
+        if (f >= 1 && Math.random() < 0.5) spawnParts(mx, my, 1, '#ffe8b0', 40);
+      }
+      if (P.flash > 0){
+        cx.globalAlpha = 0.7;
+        drawHero(key, P.x, P.y, P.face, hov, true);
+        cx.globalAlpha = 1;
+      }
     }
   }
 
@@ -6068,7 +6234,7 @@ function render(){
   // the dash trail, drawn behind him
   for (const g of ghosts){
     cx.globalAlpha = (g.t / g.max) * 0.45;
-    drawHero(g.key, g.x, g.y, g.face, 0);
+    drawHero(g.key, g.x, g.y, g.face, 0, false, g.p2);
     cx.globalAlpha = 1;
   }
   drawBeam();
@@ -6193,15 +6359,22 @@ function render(){
 }
 
 function renderHUD(){
-  // hearts
+  // hearts — a row per player, the second one tinted like its owner
   for (let i=0;i<player.maxhp;i++){
     const x = 10 + i*9, y = 8;
-    if (i < player.hp) drawSpriteC(SP.heart, x, y);
-    else {
-      cx.globalAlpha = 0.25;
-      drawSpriteC(SP.heart, x, y);
+    cx.globalAlpha = i < player.hp ? 1 : 0.25;
+    drawSpriteC(SP.heart, x, y);
+    cx.globalAlpha = 1;
+  }
+  if (player2){
+    for (let i=0;i<player2.maxhp;i++){
+      const x = 10 + i*9, y = 17;
+      cx.globalAlpha = i < player2.hp ? 1 : 0.25;
+      drawSpriteC(SP.heart2, x, y);
       cx.globalAlpha = 1;
     }
+    if (player.down)  drawText('P1 IS DOWN', 10, 26, 1, CRIMSON);
+    if (player2.down) drawText('P2 IS DOWN', 10, player.down ? 34 : 26, 1, '#79c7f0');
   }
   // wave
   const label = boss ? (BOSS_NAME[boss.type] || 'BOSS')
@@ -6273,6 +6446,10 @@ function renderMinimap(){
                 Math.round(W*s), Math.round(H*s));
   cx.fillStyle = '#ffffff';
   cx.fillRect(Math.round(x0 + player.x*s)-1, Math.round(y0 + player.y*s)-1, 2, 2);
+  if (player2){
+    cx.fillStyle = '#79c7f0';
+    cx.fillRect(Math.round(x0 + player2.x*s)-1, Math.round(y0 + player2.y*s)-1, 2, 2);
+  }
   cx.strokeStyle = '#2a2a36';
   cx.strokeRect(x0+0.5, y0+0.5, MM.w-1, MM.h-1);
 }
@@ -6815,34 +6992,30 @@ function renderStory(){
 // ---- 1. DASH. Shift or right mouse. Costs nothing, but it has a cooldown
 //         and it is the only way to leave a bad spot in a hurry. ----
 const DASH = { time: 0.17, speed: 340, cd: 1.05, iframes: 0.30 };
-function tryDash(){
-  if (ST.mode !== 'play' || player.dashCd > 0 || player.dashT > 0) return;
-  let ax = 0, ay = 0;
-  if (keys['a'] || keys['arrowleft'])  ax -= 1;
-  if (keys['d'] || keys['arrowright']) ax += 1;
-  if (keys['w'] || keys['arrowup'])    ay -= 1;
-  if (keys['s'] || keys['arrowdown'])  ay += 1;
-  if (usingTouch && touch.active){ ax = touch.dx; ay = touch.dy; }
-  if (pad.on && (pad.mx || pad.my)){ ax = pad.mx; ay = pad.my; }
+function tryDash(P){
+  P = P || player;
+  if (ST.mode !== 'play' || P.down || P.dashCd > 0 || P.dashT > 0) return;
+  let [ax, ay] = readMove(P);
+  if (!P.isP2 && usingTouch && touch.active){ ax = touch.dx; ay = touch.dy; }
   // no direction held: dash where he is looking
-  if (!ax && !ay){ ax = Math.cos(player.aim); ay = Math.sin(player.aim); }
+  if (!ax && !ay){ ax = Math.cos(P.aim); ay = Math.sin(P.aim); }
   const m = Math.hypot(ax, ay) || 1;
-  player.dashA = Math.atan2(ay/m, ax/m);
-  player.dashT = DASH.time;
-  player.dashCd = DASH.cd;
-  player.iframe = Math.max(player.iframe, DASH.iframes);
+  P.dashA = Math.atan2(ay/m, ax/m);
+  P.dashT = DASH.time;
+  P.dashCd = DASH.cd;
+  P.iframe = Math.max(P.iframe, DASH.iframes);
   SFX.dash();
 }
-function updateDash(dt){
-  player.dashCd = Math.max(0, player.dashCd - dt);
-  if (player.dashT > 0){
-    player.dashT -= dt;
-    const s = DASH.speed * (0.35 + player.dashT / DASH.time);
-    moveCircle(player, Math.cos(player.dashA)*s*dt, Math.sin(player.dashA)*s*dt, 6);
+function updateDash(P, dt){
+  P.dashCd = Math.max(0, P.dashCd - dt);
+  if (P.dashT > 0){
+    P.dashT -= dt;
+    const s = DASH.speed * (0.35 + P.dashT / DASH.time);
+    moveCircle(P, Math.cos(P.dashA)*s*dt, Math.sin(P.dashA)*s*dt, 6);
     // a trail of him, fading
     if (Math.random() < 0.9)
-      ghosts.push({ x: player.x, y: player.y, face: player.face,
-                    key: heroFrame(), t: 0.22, max: 0.22 });
+      ghosts.push({ x: P.x, y: P.y, face: P.face, p2: !!P.isP2,
+                    key: heroFrame(P), t: 0.22, max: 0.22 });
   }
 }
 let ghosts = [];
@@ -6925,7 +7098,8 @@ function updateVents(dt){
     if (v.on > 0){
       v.on -= dt;
       if (Math.random() < 0.8) spawnParts(v.x + rand(-8,8), v.y + rand(-8,8), 1, '#c9ced9', 30);
-      if (player.iframe <= 0 && dist2(player.x, player.y, v.x, v.y) < 20*20) hurtPlayer(1);
+      for (const P of alivePlayers())
+        if (P.iframe <= 0 && dist2(P.x, P.y, v.x, v.y) < 20*20) hurtPlayer(P, 1);
       for (const e of enemies.slice())
         if (dist2(e.x, e.y, v.x, v.y) < 20*20) damageEnemy(e, 9*dt, v.x, v.y);
     }
@@ -6959,12 +7133,15 @@ function seedStation(map){
 }
 function updateStation(dt){
   if (!station || station.used) return;
-  if (dist2(player.x, player.y, station.x, station.y) < 18*18 && player.hp < player.maxhp){
-    station.used = true;
-    player.hp = Math.min(player.maxhp, player.hp + 2);
-    addFloater(player.x, player.y - 16, '+2 HEARTS', '#6ad07a', 1.6);
-    spawnParts(station.x, station.y, 18, '#6ad07a', 70);
-    SFX.heart();
+  for (const P of alivePlayers()){
+    if (dist2(P.x, P.y, station.x, station.y) < 18*18 && P.hp < P.maxhp){
+      station.used = true;
+      P.hp = Math.min(P.maxhp, P.hp + 2);
+      addFloater(P.x, P.y - 16, '+2 HEARTS', '#6ad07a', 1.6);
+      spawnParts(station.x, station.y, 18, '#6ad07a', 70);
+      SFX.heart();
+      return;
+    }
   }
 }
 function renderStation(){
@@ -7181,6 +7358,7 @@ function statLines(){
 const OPTIONS = [
   { name:() => 'SOUND: ' + (muted ? 'OFF' : 'ON'),          act: () => setMuted(!muted) },
   { name:() => 'MUSIC: ' + (META.music === 0 ? 'OFF' : 'ON'), act: () => { META.music = META.music === 0 ? 1 : 0; saveMeta(); } },
+  { name:() => 'LOCAL CO-OP: ' + (META.coop ? 'ON' : 'OFF'),  act: () => { META.coop = META.coop ? 0 : 1; saveMeta(); } },
   { name:() => 'SCREEN SHAKE: ' + (ST.shakeOn ? 'ON':'OFF'),act: () => { ST.shakeOn = !ST.shakeOn; META.shake = ST.shakeOn?1:0; saveMeta(); } },
   { name:() => 'DAMAGE NUMBERS: ' + (ST.dmgNums ? 'ON':'OFF'), act: () => { ST.dmgNums = !ST.dmgNums; META.dmgNums = ST.dmgNums?1:0; saveMeta(); } },
   { name:() => 'DIFFICULTY: ' + diff().name,                act: () => { META.diff = ((META.diff||0)+1) % DIFFS.length; saveMeta(); } },
@@ -7432,10 +7610,12 @@ function updateStory(dt){
   else if (c.obj === 'boss') done = ST.bossBeaten;
   else if (c.obj === 'clear') done = ST.wave >= 1 && enemies.length === 0 && !ST.toSpawn.length;
   else if (c.obj === 'reach'){
-    if (ST.marker && dist2(player.x, player.y, ST.marker.x, ST.marker.y) < 20*20) done = true;
+    const RP = ST.marker ? nearestPlayer(ST.marker.x, ST.marker.y) : player;
+    if (ST.marker && dist2(RP.x, RP.y, ST.marker.x, ST.marker.y) < 20*20) done = true;
   }
   else if (c.obj === 'hold'){
-    const on = ST.marker && dist2(player.x, player.y, ST.marker.x, ST.marker.y) < 34*34;
+    const HP2 = ST.marker ? nearestPlayer(ST.marker.x, ST.marker.y) : player;
+    const on = ST.marker && dist2(HP2.x, HP2.y, ST.marker.x, ST.marker.y) < 34*34;
     if (ST.marker) ST.marker.on = on;
     if (on) ST.objTimer += dt;
     done = ST.objTimer >= c.n;
@@ -7938,6 +8118,7 @@ function renderHelp(){
     ['MOUSE', 'AIM  -  HOLD TO FIRE'],
     ['TOUCH', 'LEFT STICK MOVES, RIGHT STICK SHOOTS'],
     ['GAMEPAD', 'STICKS MOVE AND AIM - A DASHES'],
+    ['CO-OP', 'IN OPTIONS. P2 IS ARROWS OR THE PAD'],
     ['1 2 3', 'PICK AN UPGRADE ON LEVEL UP'],
     ['P', 'PAUSE'],
     ['M', 'MUTE'],
@@ -8046,7 +8227,14 @@ function tick(dt){
   else if (ST.story){ if (!ST.objDone) updateWaves(dt); updateStory(dt); }
   else updateWaves(dt);
   updateWhistle(dt);
-  updatePlayer(dt);
+  // cleared once per tick, not per player — both beams get to paint
+  beamFx = null;
+  updatePlayer(player, dt);
+  if (player2){
+    // the ladder is shared: player two always carries what player one does
+    player2.gunIdx = player.gunIdx; player2.gunName = player.gunName;
+    updatePlayer(player2, dt);
+  }
   updatePet(dt);
   updateOrbs(dt);
   updateEnemies(dt);
@@ -8055,7 +8243,8 @@ function tick(dt){
   collidePlayerBullets();
   updateBlasts(dt);
   updateSlicks(dt);
-  updateDash(dt);
+  updateDash(player, dt);
+  if (player2) updateDash(player2, dt);
   updateGhosts(dt);
   updateCombo(dt);
   updateHitMarks(dt);
@@ -8085,7 +8274,7 @@ window.SUDS = {
   start(){ if (ST.mode !== 'play') startRun(); },
   forceWave(n){ enemies = []; ebullets = []; boss = null; ST.toSpawn = []; ST.waveState = 'clear'; ST.waveTimer = 0.01; ST.wave = n-1; },
   grantXP(n){ gainXP(n); },
-  hurt(n){ player.iframe = 0; hurtPlayer(n||1); },
+  hurt(n){ player.iframe = 0; hurtPlayer(player, n||1); },
   spawn(type, x, y){
     if (x === undefined){ const p = spawnEdgePos(); x = p.x; y = p.y; }
     return spawnEnemy(type, x, y);
@@ -8097,6 +8286,8 @@ window.SUDS = {
   gun(i){ player.gunIdx = clamp(i|0, 0, GUNS.length-1); player.gunName = GUNS[player.gunIdx].name; return player.gunName; },
   god(on){ player.iframe = on ? 1e9 : 0; },
   get beam(){ return beamFx; },
+  get p2(){ return player2; },
+  get p1(){ return player; },
 };
 
 loadMeta();
@@ -8219,7 +8410,7 @@ requestAnimationFrame(frame);
   const meRow = section('PLAYER');
   btn(meRow, 'HEAL', () => { player.hp = player.maxhp; });
   btn(meRow, '+HEART', () => { player.maxhp++; player.hp++; });
-  btn(meRow, 'HURT', () => { player.iframe = 0; hurtPlayer(1); });
+  btn(meRow, 'HURT', () => { player.iframe = 0; hurtPlayer(player, 1); });
   const godBtn = btn(meRow, 'GOD', () => { player.iframe = player.iframe > 1e8 ? 0 : 1e9; });
 
   const waveRow = section('WAVE');
