@@ -4290,6 +4290,7 @@ const META = {
   pets: {}, pet: '',        // pets bought, and which one is on shift
   coop: 0,                  // local co-op on/off
   chainDead: 0,             // THE BLOCKCHAIN has been broken
+  ekber: 0,                 // every texture is Uncle Ekber
 };
 function loadMeta(){
   try {
@@ -4307,6 +4308,7 @@ function loadMeta(){
     if (m.pet !== undefined && (m.pet === '' || META.pets[m.pet])) META.pet = m.pet;
     if (m.coop !== undefined) META.coop = m.coop ? 1 : 0;
     if (m.chainDead) META.chainDead = 1;
+    if (m.ekber !== undefined) META.ekber = m.ekber ? 1 : 0;
     // saveMeta writes ALL of META, but loading is a whitelist — these were
     // missing, so story progress, achievements, stats, the tutorial flag
     // and the difficulty all quietly reset on every page refresh
@@ -4644,6 +4646,58 @@ function updateOrbs(dt){
       pierce: g.pierce, hitList: null, shot: 'slug', life: 0,
     });
   }
+}
+
+// ================================================================
+// UNCLE EKBER MODE — for the doomscrollers. One switch in OPTIONS
+// and every texture in the game — floors, counters, guns, enemies,
+// bosses, the hero, the hearts — becomes the same un-pixelated
+// photograph of Uncle Ekber from Folk Valley. Deliberately smoothed,
+// deliberately wrong. The originals are kept so it toggles clean.
+// ================================================================
+const EKBER = { on: false, img: null, orig: null, loading: false };
+function ekberize(sp){
+  const c = document.createElement('canvas');
+  c.width = sp.width; c.height = sp.height;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = true;         // the whole point
+  const iw = EKBER.img.width, ih = EKBER.img.height;
+  const s = Math.max(c.width/iw, c.height/ih);   // cover-fit crop...
+  // ...aimed at THE FACE, so even a 24px floor tile is unmistakably him
+  const fx = 0.50, fy = 0.34;
+  const dx = clamp(c.width/2 - iw*s*fx, c.width - iw*s, 0);
+  const dy = clamp(c.height/2 - ih*s*fy, c.height - ih*s, 0);
+  g.drawImage(EKBER.img, dx, dy, iw*s, ih*s);
+  return c;
+}
+function applyEkber(on){
+  if (EKBER.on === on) return;
+  if (on && !EKBER.img){
+    // first switch-on: fetch the man, then do it for real
+    if (EKBER.loading) return;
+    EKBER.loading = true;
+    const im = new Image();
+    im.onload = () => { EKBER.img = im; EKBER.loading = false; applyEkber(true); };
+    im.onerror = () => { EKBER.loading = false; };
+    im.src = 'art/ekber.jpg';
+    return;
+  }
+  EKBER.on = on;
+  if (on){
+    EKBER.orig = { SP: {}, HERO: {}, HERO2: {}, HERO_FLASH: {} };
+    for (const k in SP){ EKBER.orig.SP[k] = SP[k]; SP[k] = ekberize(SP[k]); }
+    for (const k in HERO){ EKBER.orig.HERO[k] = HERO[k]; HERO[k] = ekberize(HERO[k]); }
+    for (const k in HERO2){ EKBER.orig.HERO2[k] = HERO2[k]; HERO2[k] = ekberize(HERO2[k]); }
+    for (const k in HERO_FLASH){ EKBER.orig.HERO_FLASH[k] = HERO_FLASH[k]; HERO_FLASH[k] = ekberize(HERO_FLASH[k]); }
+  } else if (EKBER.orig){
+    for (const k in EKBER.orig.SP) SP[k] = EKBER.orig.SP[k];
+    for (const k in EKBER.orig.HERO) HERO[k] = EKBER.orig.HERO[k];
+    for (const k in EKBER.orig.HERO2) HERO2[k] = EKBER.orig.HERO2[k];
+    for (const k in EKBER.orig.HERO_FLASH) HERO_FLASH[k] = EKBER.orig.HERO_FLASH[k];
+    EKBER.orig = null;
+  }
+  // the floor is baked from those sprites — bake it again, in his image
+  bakeWorld(MAPS[MAPI]);
 }
 
 // ================================================================
@@ -9369,6 +9423,8 @@ const OPTIONS = [
   { name:() => 'SOUND: ' + (muted ? 'OFF' : 'ON'),          act: () => setMuted(!muted) },
   { name:() => 'MUSIC: ' + (META.music === 0 ? 'OFF' : 'ON'), act: () => { META.music = META.music === 0 ? 1 : 0; saveMeta(); } },
   { name:() => 'LOCAL CO-OP: ' + (META.coop ? 'ON' : 'OFF'),  act: () => { META.coop = META.coop ? 0 : 1; saveMeta(); } },
+  { name:() => 'UNCLE EKBER MODE: ' + (META.ekber ? 'ON' : 'OFF'),
+    act: () => { META.ekber = META.ekber ? 0 : 1; saveMeta(); applyEkber(!!META.ekber); } },
   { name:() => 'SCREEN SHAKE: ' + (ST.shakeOn ? 'ON':'OFF'),act: () => { ST.shakeOn = !ST.shakeOn; META.shake = ST.shakeOn?1:0; saveMeta(); } },
   { name:() => 'DAMAGE NUMBERS: ' + (ST.dmgNums ? 'ON':'OFF'), act: () => { ST.dmgNums = !ST.dmgNums; META.dmgNums = ST.dmgNums?1:0; saveMeta(); } },
   { name:() => 'DIFFICULTY: ' + diff().name,                act: () => { META.diff = ((META.diff||0)+1) % DIFFS.length; saveMeta(); } },
@@ -10350,6 +10406,7 @@ window.SUDS = {
 };
 
 loadMeta();
+if (META.ekber) applyEkber(true);   // he was here when you left
 seedProps(MAPS[MAPI]);
 ST.shakeOn = (META.shake === undefined) ? true : !!META.shake;
 ST.dmgNums = (META.dmgNums === undefined) ? true : !!META.dmgNums;
