@@ -3953,6 +3953,17 @@ window.addEventListener('keydown', e => {
   }
   if (ST.mode === 'ending'){ if (k === 'escape' || k === 'enter' || k === ' '){ ST.mode='menu'; SFX.click(); } return; }
   if (ST.mode === 'chainwin'){ if (k === 'escape' || k === 'enter' || k === ' '){ ST.mode='menu'; SFX.click(); } return; }
+  if (ST.mode === 'casino'){
+    const n = betRound(betRid()).opts.length;
+    if (k === 'escape' || k === 'backspace'){ ST.mode = 'menu'; SFX.click(); }
+    else if (k === 'w' || k === 'arrowup'){ CAS.sel = (CAS.sel + n - 1) % n; SFX.click(); }
+    else if (k === 's' || k === 'arrowdown'){ CAS.sel = (CAS.sel + 1) % n; SFX.click(); }
+    else if (k === 'a' || k === 'arrowleft'){ CAS.amtIdx = (CAS.amtIdx + BET_AMTS.length - 1) % BET_AMTS.length; SFX.click(); }
+    else if (k === 'd' || k === 'arrowright'){ CAS.amtIdx = (CAS.amtIdx + 1) % BET_AMTS.length; SFX.click(); }
+    else if (k === 'enter' || k === ' ') casinoPlaceBet(CAS.sel);
+    else if (k >= '1' && k <= '5') casinoPlaceBet(parseInt(k,10) - 1);
+    return;
+  }
   if (ST.mode === 'stats'){ ST.mode = 'menu'; SFX.click(); return; }
   if (ST.mode === 'achv'){
     if (k === 'escape' || k === 'backspace' || k === 'enter'){ ST.mode = 'menu'; SFX.click(); }
@@ -4050,6 +4061,18 @@ cv.addEventListener('mousedown', e => {
   else if (ST.mode === 'beat') beatAdvance();
   else if (ST.mode === 'ending'){ ST.mode = 'menu'; SFX.click(); }
   else if (ST.mode === 'chainwin'){ ST.mode = 'menu'; SFX.click(); }
+  else if (ST.mode === 'casino'){
+    if (p.y > H-22){ ST.mode = 'menu'; SFX.click(); }
+    else {
+      const n = betRound(betRid()).opts.length;
+      const row = Math.floor((p.y - 81) / 22);
+      if (row >= 0 && row < n){ CAS.sel = row; casinoPlaceBet(row); }
+      else if (p.y > 190 && p.y < 206){
+        const i = Math.floor((p.x - 124) / 54);
+        if (i >= 0 && i < BET_AMTS.length){ CAS.amtIdx = i; SFX.click(); }
+      }
+    }
+  }
   else if (ST.mode === 'chapters'){
     const i = chapterHit(p.y);
     if (i === CHAPTERS.length && chainUnlockable()){ ST.chapSel = i; startBlockchain(); }
@@ -4129,6 +4152,19 @@ cv.addEventListener('touchstart', e => {
   if (ST.mode === 'beat'){ beatAdvance(); return; }
   if (ST.mode === 'ending'){ ST.mode = 'menu'; SFX.click(); return; }
   if (ST.mode === 'chainwin'){ ST.mode = 'menu'; SFX.click(); return; }
+  if (ST.mode === 'casino'){
+    if (p.y > H-22){ ST.mode = 'menu'; SFX.click(); }
+    else {
+      const n = betRound(betRid()).opts.length;
+      const row = Math.floor((p.y - 81) / 22);
+      if (row >= 0 && row < n){ CAS.sel = row; casinoPlaceBet(row); }
+      else if (p.y > 190 && p.y < 206){
+        const i = Math.floor((p.x - 124) / 54);
+        if (i >= 0 && i < BET_AMTS.length){ CAS.amtIdx = i; SFX.click(); }
+      }
+    }
+    return;
+  }
   if (ST.mode === 'chapters'){
     const i = chapterHit(p.y);
     if (i === CHAPTERS.length && chainUnlockable()){ ST.chapSel = i; startBlockchain(); }
@@ -4292,6 +4328,7 @@ const META = {
   chainDead: 0,             // THE BLOCKCHAIN has been broken
   ekber: 0,                 // every texture is Uncle Ekber
   btc: 0, btcCost: 0,       // the fictional bag, and what was paid for it
+  casinoBet: null,          // the live wager, so a refresh cannot dodge a loss
 };
 function loadMeta(){
   try {
@@ -4312,6 +4349,7 @@ function loadMeta(){
     if (m.ekber !== undefined) META.ekber = m.ekber ? 1 : 0;
     if (typeof m.btc === 'number' && m.btc >= 0 && isFinite(m.btc)) META.btc = m.btc;
     if (typeof m.btcCost === 'number' && m.btcCost >= 0 && isFinite(m.btcCost)) META.btcCost = m.btcCost;
+    if (m.casinoBet && typeof m.casinoBet.rid === 'number') META.casinoBet = m.casinoBet;
     // saveMeta writes ALL of META, but loading is a whitelist — these were
     // missing, so story progress, achievements, stats, the tutorial flag
     // and the difficulty all quietly reset on every page refresh
@@ -7983,6 +8021,7 @@ function render(){
   if (ST.mode === 'beat'){ renderBeat(); return; }
   if (ST.mode === 'ending'){ renderEnding(); return; }
   if (ST.mode === 'chainwin'){ renderChainWin(); return; }
+  if (ST.mode === 'casino'){ renderCasino(); return; }
   if (ST.mode === 'store'){ renderStore(); return; }
 
   const camX = Math.round(cam.x), camY = Math.round(cam.y);
@@ -8549,6 +8588,7 @@ const MENU = [
   { label: () => 'START GAME',                          act: () => META.tutorial ? startRun() : startTutorial(true) },
   { label: () => 'STORY MODE',                          act: () => { ST.mode='chapters'; ST.chapSel = Math.min(chaptersOpen()-1, CHAPTERS.length-1); SFX.click(); } },
   { label: () => 'STORE',                               act: () => openStore() },
+  { label: () => 'THE CASINO',                          act: () => openCasino() },
   { label: () => 'TUTORIAL',                            act: () => startTutorial(false) },
   { label: () => 'THE FILE',                             act: () => openStory() },
   { label: () => 'HOW TO PLAY',                         act: () => { ST.mode = 'help'; SFX.click(); } },
@@ -8557,7 +8597,7 @@ const MENU = [
   { label: () => 'THE RECORD',                          act: () => { ST.mode = 'stats'; SFX.click(); } },
   { label: () => 'OPTIONS',                             act: () => { ST.mode = 'options'; ST.optSel = 0; ST.wipeArm = 0; SFX.click(); } },
 ];
-const MENU_Y = 132, MENU_STEP = 11, MENU_W = 190;
+const MENU_Y = 130, MENU_STEP = 10, MENU_W = 190;
 function menuHit(x, y){
   for (let i=0;i<MENU.length;i++){
     const iy = MENU_Y + i*MENU_STEP;
@@ -9356,6 +9396,8 @@ const ACHIEVEMENTS = [
     test: () => GUNS.some(g => g.fuse && META.owned[g.id]) },
   { id:'hands',   name:'DIAMOND HANDS',    desc:'MAKE 500 SHARDS TRADING BITCOIN',
     test: s => s.btcProfit >= 500 },
+  { id:'streak3', name:'HOT TABLE',        desc:'WIN THREE CASINO BETS IN A ROW',
+    test: s => s.betStreak >= 3 },
 ];
 function unlockedCount(){ return ACHIEVEMENTS.filter(a => META.achv && META.achv[a.id]).length; }
 function checkAchievements(){
@@ -9365,7 +9407,7 @@ function checkAchievements(){
     bossKinds: Object.keys(s.bossKinds||{}).length, bestCombo: s.bestCombo||0,
     shardsEver: s.shardsEver||0, roomsThisRun: Object.keys(ST.roomsSeen||{}).length,
     cleanWaves: s.cleanWaves||0, noodleKills: s.noodleKills||0, petShards: s.petShards||0,
-    btcProfit: s.btcProfit||0,
+    btcProfit: s.btcProfit||0, betStreak: s.betStreak||0,
   };
   META.achv = META.achv || {};
   for (const a of ACHIEVEMENTS){
@@ -10044,6 +10086,410 @@ function renderObjectiveProps(){
       cx.fillRect(Math.round(t.x-9+i*1.6), Math.round(t.y-12), 1, 3);
     }
   }
+}
+
+// ================================================================
+// THE CASINO — THE SUDS DOWNS. One betting round per real-world
+// minute, the same round for every player on the planet: the round
+// number IS the minute number, and everything about it (the event,
+// the runners, their names) is generated deterministically from it.
+// Bets are open until second 50, then POST TIME, and when the next
+// minute rolls over the race actually RUNS on screen and pays out.
+//
+// The outcome comes from Supabase (a separate project, so it costs
+// the main site nothing): a secret salt lives server-side and an RPC
+// refuses to reveal outcome(round) until the round has ended — so
+// nobody, including the client, can know early. Until the keys are
+// pasted in below the casino runs in LOCAL mode: same rounds, same
+// animations, outcome derived on-device.
+// ================================================================
+const BET_DB = { url: '', key: '' };   // <- the new Supabase project goes here
+let betSb = null, betSbLoading = false;
+function betConnect(){
+  if (betSb || betSbLoading || !BET_DB.url || !BET_DB.key) return;
+  betSbLoading = true;
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  s.onload = () => {
+    betSb = window.supabase.createClient(BET_DB.url, BET_DB.key,
+      { auth: { persistSession: false } });
+    betSbLoading = false;
+  };
+  s.onerror = () => { betSbLoading = false; };
+  document.head.appendChild(s);
+}
+
+// a tiny seeded RNG, so round N looks identical on every screen
+function mulberry(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const BET_HORSE_A = ['SOAPY','GREASY','TURBO','HAUNTED','UNCLE','MAJOR','FOAMY','MIDNIGHT','DIESEL','HUMBLE'];
+const BET_HORSE_B = ['LIGHTNING','THUNDER','EKBER','BISCUIT','DESTINY','PROBLEM','CASSEROLE','REGRET','ROCKET','SPONGE'];
+const BET_CHEFS   = ['CHEF RAMIRO','CHEF BUBBLES','CHEF DOOM','CHEF NONNA','CHEF KEV','CHEF LASAGNA'];
+const BET_TFS = [
+  'A RUBBER DUCK BEATS A TOASTER IN A FAIR FIGHT',
+  'THE MOP KNOWS YOUR NAME',
+  'UNCLE EKBER FINISHED THE BREAD',
+  'THE FREEZER DOOR WAS LEFT OPEN LAST NIGHT',
+  'A KETTLE CAN FEEL FEAR',
+  'THE GREASE TRAP DREAMS OF THE SEA',
+  'FIRE GUY IS AFRAID OF THE RAIN',
+  'THE DISHWASHER RAN AN EXTRA CYCLE FOR FUN',
+];
+const BET_COLORS = ['#e8626a','#79c7f0','#f4c542','#6ad07a','#c89bff','#f0965a'];
+
+function betRid(){ return Math.floor(Date.now() / 60000); }
+function betSec(){ return (Date.now() / 1000) % 60; }
+
+// everything about round N, generated from N alone
+function betRound(rid){
+  const rng = mulberry(rid ^ 0x5EBA5);
+  const kinds = ['horse','derby','flip','kettle','tf','chef'];
+  const kind = kinds[Math.floor(rng() * kinds.length)];
+  const r = { rid, kind, opts: [] };
+  if (kind === 'horse'){
+    r.title = 'THE SUDS DOWNS - PICK THE WINNER';
+    const used = {};
+    for (let i=0;i<4;i++){
+      let nm;
+      do { nm = pick2(rng, BET_HORSE_A) + ' ' + pick2(rng, BET_HORSE_B); } while (used[nm]);
+      used[nm] = 1;
+      r.opts.push({ name: nm, color: BET_COLORS[i] });
+    }
+  } else if (kind === 'derby'){
+    r.title = 'DISHWASHER DERBY - PICK THE WINNER';
+    const machines = [['washer','THE WASHER'],['rinser','THE RINSER'],['scrubber','THE SCRUBBER'],['toaster','THE TOASTER']];
+    for (let i=0;i<3;i++){
+      const m = machines.splice(Math.floor(rng()*machines.length),1)[0];
+      r.opts.push({ name: m[1], sp: m[0], color: BET_COLORS[i] });
+    }
+  } else if (kind === 'flip'){
+    r.title = 'THE COIN FLIP';
+    r.opts.push({ name: 'SUDS', color: '#79c7f0' });
+    r.opts.push({ name: 'DOOM', color: CRIMSON });
+  } else if (kind === 'kettle'){
+    r.title = 'KETTLE ROULETTE - WHICH ONE BLOWS FIRST';
+    for (let i=0;i<5;i++) r.opts.push({ name: 'KETTLE ' + (i+1), color: BET_COLORS[i] });
+  } else if (kind === 'tf'){
+    r.title = 'TRUE OR FALSE';
+    r.claim = pick2(rng, BET_TFS);
+    r.opts.push({ name: 'TRUE', color: '#6ad07a' });
+    r.opts.push({ name: 'FALSE', color: CRIMSON });
+  } else {
+    r.title = 'CHEF FIGHT - PICK THE LAST ONE STANDING';
+    const a = pick2(rng, BET_CHEFS);
+    let b2; do { b2 = pick2(rng, BET_CHEFS); } while (b2 === a);
+    r.opts.push({ name: a, color: '#e6eaf1' });
+    r.opts.push({ name: b2, color: '#f0965a' });
+  }
+  // fair odds minus five percent for the house
+  r.odds = Math.round(r.opts.length * 0.95 * 100) / 100;
+  return r;
+}
+function pick2(rng, arr){ return arr[Math.floor(rng() * arr.length)]; }
+
+// where the outcome comes from. Server first; LOCAL when there is none.
+function betLocalOutcome(rid){
+  const rng = mulberry(Math.imul(rid, 2654435761) ^ 0xC0FFEE);
+  return Math.floor(rng() * 1e9);
+}
+function betOutcome(rid, cb){
+  if (betSb){
+    betSb.rpc('bet_reveal', { rid }).then(res => {
+      if (res.error || res.data === null || res.data === undefined)
+        cb(betLocalOutcome(rid), false);
+      else cb(res.data, true);
+    }).catch(() => cb(betLocalOutcome(rid), false));
+  } else cb(betLocalOutcome(rid), false);
+}
+
+// this browser's anonymous bettor id, for the crowd numbers
+let betClientId = '';
+try {
+  betClientId = localStorage.getItem('suds-bettor') || '';
+  if (!betClientId){
+    betClientId = 'b' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('suds-bettor', betClientId);
+  }
+} catch(e){ betClientId = 'b' + Math.random().toString(36).slice(2); }
+
+const CAS = { sel: 0, amtIdx: 0, anim: null, crowd: null, crowdT: 0, result: null };
+const BET_AMTS = [10, 50, 250, 'ALL'];
+
+function openCasino(){
+  ST.mode = 'casino';
+  CAS.sel = 0; CAS.result = null; CAS.crowd = null;
+  document.body.classList.remove('playing');
+  betConnect();
+  casinoResolve();
+  SFX.click();
+}
+
+function casinoBetAmt(){
+  const a = BET_AMTS[CAS.amtIdx];
+  return a === 'ALL' ? Math.max(10, META.shards) : a;
+}
+function casinoOpenForBets(){ const s = betSec(); return s >= 8 && s < 50; }
+
+function casinoPlaceBet(pickIdx){
+  const rid = betRid(), round = betRound(rid);
+  if (!casinoOpenForBets()){ SFX.hurt(); return; }
+  if (META.casinoBet && META.casinoBet.rid === rid){ SFX.hurt(); return; }
+  const amt = Math.min(casinoBetAmt(), META.shards);
+  if (amt < 10 || pickIdx >= round.opts.length){ SFX.hurt(); return; }
+  META.shards -= amt;
+  META.casinoBet = { rid, pick: pickIdx, amt };
+  saveMeta();
+  SFX.plate();
+  // record it for the crowd numbers, best effort
+  if (betSb) betSb.from('bet_wagers')
+    .insert({ round: rid, client: betClientId, pick: pickIdx, amount: amt })
+    .then(()=>{}).catch(()=>{});
+}
+
+// settle any bet whose round has ended — win or lose, in or out of the room
+function casinoResolve(){
+  const bet = META.casinoBet;
+  if (!bet || bet.rid >= betRid()) return;
+  betOutcome(bet.rid, (v) => {
+    if (v === null) return;
+    const round = betRound(bet.rid);
+    const winner = v % round.opts.length;
+    const won = winner === bet.pick;
+    if (won){
+      const payout = Math.floor(bet.amt * round.odds);
+      META.shards += payout;
+      bumpStat('betWon', payout - bet.amt);
+      META.stats.betStreak = (META.stats.betStreak || 0) + 1;
+      CAS.result = { won: true, amt: payout, name: round.opts[winner].name };
+      pushToast('THE BET CAME IN: +' + payout, '#6ad07a');
+      SFX.levelup();
+    } else {
+      bumpStat('betLost', bet.amt);
+      META.stats.betStreak = 0;
+      CAS.result = { won: false, amt: bet.amt, name: round.opts[winner].name };
+      SFX.plate();
+    }
+    META.casinoBet = null;
+    saveMeta();
+  });
+}
+
+// crowd percentages for the live round, throttled, server mode only
+function casinoCrowd(){
+  if (!betSb) return;
+  const rid = betRid();
+  if (CAS.crowd && CAS.crowd.rid === rid && performance.now() - CAS.crowdT < 6000) return;
+  CAS.crowdT = performance.now();
+  betSb.from('bet_wagers').select('pick, amount').eq('round', rid)
+    .then(res => {
+      if (res.error || !res.data) return;
+      const tally = [0,0,0,0,0,0,0,0];
+      let total = 0;
+      for (const w of res.data){ tally[w.pick] += w.amount; total += w.amount; }
+      CAS.crowd = { rid, tally, total };
+    }).catch(()=>{});
+}
+
+// ---- the show itself: the previous round runs on screen at :00-:08 ----
+function casinoAnim(){
+  const rid = betRid(), s = betSec();
+  if (s >= 8){ if (CAS.anim && CAS.anim.done) CAS.anim = null; return; }
+  if (CAS.anim && CAS.anim.rid === rid - 1) return;
+  CAS.anim = { rid: rid - 1, round: betRound(rid - 1), outcome: null, done: false };
+  betOutcome(rid - 1, v => { if (CAS.anim && CAS.anim.rid === rid - 1) CAS.anim.outcome = v; });
+}
+
+function drawHorse(x, y, color, phase){
+  // an honest 14px horse: body, neck, head, four legs and a tail
+  cx.fillStyle = color;
+  cx.fillRect(Math.round(x)-6, Math.round(y)-3, 11, 5);
+  cx.fillRect(Math.round(x)+4, Math.round(y)-6, 3, 4);
+  cx.fillRect(Math.round(x)+6, Math.round(y)-7, 4, 3);
+  const k = Math.floor(phase*8) % 2;
+  cx.fillRect(Math.round(x)-5, Math.round(y)+2, 2, k ? 3 : 2);
+  cx.fillRect(Math.round(x)-1, Math.round(y)+2, 2, k ? 2 : 3);
+  cx.fillRect(Math.round(x)+2, Math.round(y)+2, 2, k ? 3 : 2);
+  cx.fillStyle = '#14141c';
+  cx.fillRect(Math.round(x)-8, Math.round(y)-3, 2, 2);
+  cx.fillRect(Math.round(x)+8, Math.round(y)-7, 1, 1);
+}
+
+function renderCasino(){
+  cx.drawImage(bg, 500, 240, W, H, 0, 0, W, H);
+  cx.fillStyle = 'rgba(6,6,10,0.90)'; cx.fillRect(0,0,W,H);
+  const rid = betRid(), s = betSec();
+  const round = betRound(rid);
+  casinoAnim();
+  casinoResolve();
+  casinoCrowd();
+
+  drawText('THE CASINO', W/2, 8, 2, '#f4c542', 'center');
+  drawText(betSb ? 'SHARED TABLE - LIVE' : 'LOCAL TABLE' , W/2, 24, 1,
+           betSb ? '#6ad07a' : '#5f6472', 'center');
+  drawSpriteC(SP.shard, W-84, 12);
+  drawText(String(META.shards), W-74, 8, 2, '#f2f5f9');
+
+  // ---- the show: seconds 0-8 replay the round that just ended ----
+  if (CAS.anim && !CAS.anim.done){
+    const A = CAS.anim, t = clamp(s / 8, 0, 1);
+    renderCasinoShow(A, t);
+    if (t >= 1 || s >= 7.8) A.done = true;
+    return;
+  }
+
+  // ---- the betting board ----
+  const open = casinoOpenForBets();
+  const closeIn = Math.max(0, 50 - s);
+  drawText(round.title, W/2, 40, 1, '#dfe3ea', 'center');
+  if (round.claim) drawText(round.claim, W/2, 52, 1, '#8d93a4', 'center');
+  // the clock
+  cx.fillStyle = '#101018'; cx.fillRect(90, 62, W-180, 4);
+  cx.fillStyle = open ? '#6ad07a' : CRIMSON;
+  cx.fillRect(90, 62, (W-180) * clamp((50 - s) / 42, 0, 1), 4);
+  drawText(open ? 'BETS CLOSE IN ' + Math.ceil(closeIn) + 'S'
+                : (s < 8 ? 'NEW ROUND SOON' : 'POST TIME - NO MORE BETS'),
+           W/2, 70, 1, open ? '#6ad07a' : CRIMSON, 'center');
+
+  const myBet = META.casinoBet && META.casinoBet.rid === rid ? META.casinoBet : null;
+  const y0 = 86, step = 22;
+  for (let i=0;i<round.opts.length;i++){
+    const o = round.opts[i], y = y0 + i*step;
+    const sel = CAS.sel === i;
+    if (sel && !myBet){
+      cx.fillStyle = 'rgba(232,22,42,0.14)'; cx.fillRect(70, y-5, W-140, 19);
+      cx.fillStyle = CRIMSON; cx.fillRect(70, y-5, 2, 19);
+    }
+    cx.fillStyle = o.color;
+    cx.fillRect(80, y, 8, 8);
+    drawText(o.name, 96, y, 1, myBet && myBet.pick === i ? '#f4c542' : (sel ? '#ffffff' : '#9aa3b2'));
+    // crowd money, when the table is shared
+    if (CAS.crowd && CAS.crowd.rid === rid && CAS.crowd.total > 0){
+      const pc = Math.round(100 * CAS.crowd.tally[i] / CAS.crowd.total);
+      drawText(pc + ' PCT', W-140, y, 1, '#5f6472', 'right');
+    }
+    drawText('X' + round.odds.toFixed(2), W-80, y, 1, '#79c7f0', 'right');
+    if (myBet && myBet.pick === i) drawText(myBet.amt + ' IN', W-30, y, 1, '#f4c542', 'right');
+  }
+
+  // the stake row
+  const ay = 196;
+  drawText('STAKE:', 80, ay, 1, '#8d93a4');
+  for (let i=0;i<BET_AMTS.length;i++){
+    const ax = 130 + i*54;
+    const on = CAS.amtIdx === i;
+    if (on){ cx.fillStyle = 'rgba(244,197,66,0.16)'; cx.fillRect(ax-6, ay-4, 46, 13); }
+    drawText(String(BET_AMTS[i]), ax, ay, 1, on ? '#f4c542' : '#7a7a8e');
+  }
+  if (CAS.result){
+    drawText(CAS.result.won ? 'LAST RACE: ' + CAS.result.name + ' - YOU WON ' + CAS.result.amt
+                            : 'LAST RACE: ' + CAS.result.name + ' - YOU LOST ' + CAS.result.amt,
+             W/2, 214, 1, CAS.result.won ? '#6ad07a' : '#c4545f', 'center');
+  }
+  drawText(myBet ? 'BET PLACED. THE RACE RUNS ON THE MINUTE.'
+                 : 'UP DOWN PICK   LEFT RIGHT STAKE   ENTER BET',
+           W/2, 230, 1, '#5f6472', 'center');
+  drawText('FAIR ODDS MINUS FIVE PERCENT. THE HOUSE IS A DISHWASHER.', W/2, 242, 1, '#3f4450', 'center');
+  drawText('ESC BACK', W/2, 254, 1, '#3f4450', 'center');
+}
+
+// the animations: one per event kind, all driven by t in 0..1
+function renderCasinoShow(A, t){
+  const round = A.round;
+  const winner = A.outcome === null ? null : A.outcome % round.opts.length;
+  drawText(round.title, W/2, 40, 1, '#dfe3ea', 'center');
+  drawText('ROUND ' + (A.rid % 10000), W/2, 26, 1, '#5f6472', 'center');
+  const n = round.opts.length;
+  if (round.kind === 'horse' || round.kind === 'derby'){
+    // lanes, a finish line, and a photo finish the winner always steals
+    const x0 = 60, x1 = W - 70;
+    for (let i=0;i<n;i++){
+      const y = 90 + i*32;
+      cx.fillStyle = '#101018'; cx.fillRect(x0-10, y-12, x1-x0+40, 26);
+      cx.strokeStyle = '#2a2a36'; cx.strokeRect(x0-10.5, y-12.5, x1-x0+41, 27);
+      cx.fillStyle = '#dfe3ea';
+      for (let d=0; d<5; d++) cx.fillRect(x1+16, y-12 + d*6, 2, 3);
+      const rng = mulberry((A.rid ^ 0xACE) + i*7919);
+      const wob = Math.sin(t*9 + i*2.1) * 0.05 * rng();
+      let prog = t * (0.80 + rng()*0.08) + wob;
+      if (i === winner) prog = Math.max(prog, t < 0.7 ? prog : prog + (t-0.7)*0.9);
+      if (i === winner && t >= 0.98) prog = 1;
+      prog = clamp(prog, 0, 1);
+      const px = x0 + (x1 - x0) * prog;
+      if (round.kind === 'horse') drawHorse(px, y, round.opts[i].color, t*10 + i, 0);
+      else {
+        cx.setTransform(1,0,0,1, Math.round(px), Math.round(y) + Math.round(Math.abs(Math.sin(t*22+i))* -2));
+        const sp = SP[round.opts[i].sp];
+        cx.drawImage(sp, -sp.width/2, -sp.height/2);
+        cx.setTransform(1,0,0,1,0,0);
+      }
+      drawText(round.opts[i].name, x0-10, y-22, 1, round.opts[i].color);
+    }
+  } else if (round.kind === 'flip'){
+    const cxp = W/2, cyp = 120;
+    const spin = t < 0.8 ? t*26 : 0;
+    const sc = t < 0.8 ? Math.abs(Math.cos(spin)) : 1;
+    cx.setTransform(Math.max(0.08, sc)*3, 0, 0, 3, cxp, cyp);
+    cx.fillStyle = '#0c2a14'; cx.fillRect(-8,-8,16,16);
+    cx.fillStyle = winner === 0 ? '#79c7f0' : CRIMSON;
+    cx.fillRect(-6,-6,12,12);
+    cx.setTransform(1,0,0,1,0,0);
+    if (t >= 0.8 && winner !== null)
+      drawText(round.opts[winner].name + '!', W/2, 170, 3, round.opts[winner].color, 'center');
+  } else if (round.kind === 'kettle'){
+    for (let i=0;i<n;i++){
+      const x = 90 + i*(W-180)/(n-1), y = 130;
+      const shake = t > 0.5 ? rand(-2,2) * t : 0;
+      if (i === winner && t > 0.85){
+        cx.globalAlpha = clamp(1 - (t-0.85)*5, 0.2, 1);
+        cx.strokeStyle = '#e0563a'; cx.lineWidth = 3;
+        cx.beginPath(); cx.arc(x, y, 6 + (t-0.85)*180, 0, TAU); cx.stroke();
+        cx.globalAlpha = 1;
+        drawText('BOOM', x, y - 30 - (t-0.85)*80, 2, '#e0563a', 'center');
+      } else {
+        drawSpriteC(SP.kettle, x + shake, y + shake);
+      }
+      drawText(String(i+1), x, y + 22, 1, round.opts[i].color, 'center');
+    }
+  } else if (round.kind === 'tf'){
+    drawText(round.claim, W/2, 80, 1, '#8d93a4', 'center');
+    for (let i=0;i<2;i++){
+      const x = i === 0 ? W/2 - 80 : W/2 + 80;
+      const isW = winner === i, zoom = isW && t > 0.7 ? 1 + (t-0.7)*2 : 1;
+      const dim = !isW && t > 0.7;
+      cx.globalAlpha = dim ? 0.25 : 1;
+      drawText(round.opts[i].name, x, 130, Math.round(2*zoom), round.opts[i].color, 'center');
+      cx.globalAlpha = 1;
+    }
+  } else { // chef fight
+    const meet = W/2, y = 130;
+    const d0 = (W/2 - 70) * Math.min(1, t*1.6);
+    for (let i=0;i<2;i++){
+      const dir = i === 0 ? 1 : -1;
+      const x = (i === 0 ? 60 : W-60) + dir * d0;
+      const lost = winner !== null && winner !== i && t > 0.72;
+      cx.setTransform(dir, 0, 0, 1, Math.round(x), Math.round(y));
+      if (lost) cx.rotate(Math.PI/2 * Math.min(1, (t-0.72)*4));
+      cx.drawImage(SP.bchef, -SP.bchef.width/2, -SP.bchef.height/2);
+      cx.setTransform(1,0,0,1,0,0);
+      drawText(round.opts[i].name, i === 0 ? 60 : W-60, 90, 1, round.opts[i].color, 'center');
+    }
+    if (t > 0.6 && t < 0.72){
+      // the clash, drawn by hand — particles only live inside the game proper
+      cx.fillStyle = '#e6eaf1';
+      for (let k=0;k<6;k++)
+        cx.fillRect(meet + rand(-14,14), y + rand(-12,12), 2, 2);
+    }
+  }
+  if (winner !== null && t > 0.9)
+    drawText('WINNER: ' + round.opts[winner].name, W/2, 224, 2, '#f4c542', 'center');
+  drawText('BETS FOR THE NEXT ROUND OPEN IN A MOMENT', W/2, 248, 1, '#3f4450', 'center');
 }
 
 // ================================================================
