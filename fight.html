@@ -205,8 +205,8 @@ kbd{
     <button class="btn ghost" id="btn-how"><i data-ic="scroll" data-ic-size="17"></i> How to Play</button>
   </div>
   <div id="userchip"><i data-ic="user" data-ic-size="15"></i> <span id="userchip-txt">Checking session…</span></div>
-  <div class="menu-note" id="menu-note">Two players on one keyboard, or grab a friend online with a room code.
-    Built-in fighters are placeholder puppets — the real roster is coming from the community.</div>
+  <div class="menu-note" id="menu-note">Local versus: one player on the keyboard, the other on a
+    controller — plug one in and it just works. Or grab a friend online with a room code.</div>
   <a class="backlink" href="index.html"><i data-ic="arrowLeft" data-ic-size="15"></i> Back to the Chill Zone</a>
 </div>
 
@@ -293,23 +293,30 @@ kbd{
     <h3><i data-ic="scroll" data-ic-size="20"></i> How to play</h3>
     <p>Best of 3 rounds, 99 seconds each. Hold <b>away from your opponent</b> to block.
        Light attacks are fast, heavies hurt, specials have a gimmick per fighter. One air attack per jump.</p>
-    <h4>Player 1 (local)</h4>
+    <h4>Player 1 — keyboard</h4>
+    <p>Both layouts work when the keyboard is all yours:</p>
     <table class="keys-table">
-      <tr><td>Move / jump / crouch</td><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td></tr>
-      <tr><td>Light attack</td><td><kbd>F</kbd></td></tr>
-      <tr><td>Heavy attack</td><td><kbd>G</kbd></td></tr>
-      <tr><td>Special</td><td><kbd>H</kbd></td></tr>
+      <tr><td>Move / jump / crouch</td><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></td></tr>
+      <tr><td>Light attack</td><td><kbd>F</kbd> or <kbd>J</kbd></td></tr>
+      <tr><td>Heavy attack</td><td><kbd>G</kbd> or <kbd>K</kbd></td></tr>
+      <tr><td>Special</td><td><kbd>H</kbd> or <kbd>L</kbd></td></tr>
     </table>
-    <h4>Player 2 (local)</h4>
+    <h4>Player 2 — controller</h4>
+    <p>Plug in (or pair) an Xbox, PlayStation or generic controller — the browser picks it up
+       automatically. With two controllers, Player 1 gets the first one.</p>
     <table class="keys-table">
-      <tr><td>Move / jump / crouch</td><td><kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd></td></tr>
-      <tr><td>Light attack</td><td><kbd>J</kbd> or <kbd>Num 1</kbd></td></tr>
-      <tr><td>Heavy attack</td><td><kbd>K</kbd> or <kbd>Num 2</kbd></td></tr>
-      <tr><td>Special</td><td><kbd>L</kbd> or <kbd>Num 3</kbd></td></tr>
+      <tr><td>Move / crouch</td><td>D-pad or left stick</td></tr>
+      <tr><td>Jump</td><td><kbd>A</kbd> / <kbd>Cross</kbd> (or up)</td></tr>
+      <tr><td>Light attack</td><td><kbd>X</kbd> / <kbd>Square</kbd></td></tr>
+      <tr><td>Heavy attack</td><td><kbd>Y</kbd> / <kbd>Triangle</kbd></td></tr>
+      <tr><td>Special</td><td><kbd>B</kbd> / <kbd>Circle</kbd> or <kbd>RB</kbd></td></tr>
     </table>
+    <p>No controller at all? Two can still share the keyboard the old cramped way:
+       P1 on <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>+<kbd>F</kbd><kbd>G</kbd><kbd>H</kbd>,
+       P2 on arrows+<kbd>J</kbd><kbd>K</kbd><kbd>L</kbd>. Not recommended for friendships.</p>
     <h4>Online</h4>
-    <p>Use either control set. <kbd>Esc</kbd> opens the forfeit prompt. The match runs peer-to-peer —
-       the number in the corner is your connection delay.</p>
+    <p>Keyboard (either layout) or controller, whatever feels right. <kbd>Esc</kbd> opens the forfeit
+       prompt. The match runs peer-to-peer — the number in the corner is your connection delay.</p>
     <h4>Tiers</h4>
     <p>Every fighter gets a power score computed from its stats and frame data — that's the tier badge on the
        select screen. When community fighters arrive, the engine rates them the same way so matchmaking can
@@ -1178,6 +1185,44 @@ window.addEventListener('keyup',e=>keysDown.delete(e.code));
 window.addEventListener('blur',()=>keysDown.clear());
 function readMask(map){let m=0;for(const k of keysDown)if(map[k]!==undefined)m|=map[k];return m;}
 
+/* ── gamepads (standard mapping: Xbox / PlayStation / most generics) ──
+   D-pad or left stick moves · A/Cross jumps · X/Square light ·
+   Y/Triangle heavy · B/Circle or RB special */
+function padMask(gp){
+  if(!gp)return 0;
+  let m=0;
+  const b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  const ax=gp.axes[0]||0, ay=gp.axes[1]||0;
+  if(b(14)||ax<-0.35)m|=IN_L;
+  if(b(15)||ax>0.35)m|=IN_R;
+  if(b(12)||ay<-0.5||b(0))m|=IN_U;
+  if(b(13)||ay>0.5)m|=IN_D;
+  if(b(2))m|=IN_A;
+  if(b(3))m|=IN_B;
+  if(b(1)||b(5))m|=IN_C;
+  return m;
+}
+function getPads(){
+  const out=[];
+  try{if(navigator.getGamepads)for(const g of navigator.getGamepads())if(g&&g.connected)out.push(g);}catch(e){}
+  return out;
+}
+/* local versus input assignment:
+   2+ pads → pad 1 is P1 (keyboard also feeds P1), pad 2 is P2
+   1 pad   → keyboard (either layout) is P1, the pad is P2
+   0 pads  → classic two-on-one-keyboard split, as a last resort */
+function localMasks(){
+  const pads=getPads();
+  const kb=readMask(P1K)|readMask(P2K);
+  if(pads.length>=2)return [kb|padMask(pads[0]),padMask(pads[1])];
+  if(pads.length===1)return [kb,padMask(pads[0])];
+  return [readMask(P1K),readMask(P2K)];
+}
+window.addEventListener('gamepadconnected',e=>{
+  toast('Controller connected — it drives Player 2 in local versus');
+});
+window.addEventListener('gamepaddisconnected',()=>toast('Controller disconnected'));
+
 /* ════════════════════════════════════════════════════════════════════
    GAME LOOP
    ════════════════════════════════════════════════════════════════════ */
@@ -1226,13 +1271,12 @@ function loop(ts){
 function advanceOneFrame(){
   if(S.phase===PHASES.matchend){onMatchEnd();return true;}
   if(mode==='local'){
-    const m0=test.masks?test.masks[0]:readMask(P1K);
-    const m1=test.masks?test.masks[1]:readMask(P2K);
+    const [m0,m1]=test.masks||localMasks();
     step(S,m0,m1);
   }else{
-    /* delay-based lockstep */
+    /* delay-based lockstep — local player uses keyboard (either layout) or any pad */
     while(net.capF<=S.frame+net.delay){
-      net.localIn[net.capF]=readMask(P1K)|readMask(P2K);
+      net.localIn[net.capF]=readMask(P1K)|readMask(P2K)|getPads().reduce((m,g)=>m|padMask(g),0);
       sendInputs();
       net.capF++;
     }
