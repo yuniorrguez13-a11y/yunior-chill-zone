@@ -732,7 +732,7 @@ function checksum(S){
     h^=(n>>16)&0xff;h=Math.imul(h,0x01000193);h^=(n>>>24)&0xff;h=Math.imul(h,0x01000193);};
   mix(S.frame);mix(S.phase);mix(S.timer);mix(S.round);mix(S.wins[0]);mix(S.wins[1]);mix(S.hitstop);
   for(const f of S.f){mix(f.x);mix(f.y);mix(f.vx);mix(f.vy);mix(f.hp);mix(f.st);mix(f.t);
-    mix(f.face);mix(f.combo);mix(f.prevIn);}
+    mix(f.face);mix(f.combo);mix(f.prevIn);mix(f.dur);mix(f.mvHit|(f.armorUsed<<1)|(f.airUsed<<2));}
   return h>>>0;
 }
 
@@ -911,7 +911,6 @@ function drawFighter(S,f,W2S){
   ctx.strokeStyle=shade(c.color,-18);
   ctx.lineWidth=armW;
   const reachPx=(currentMove(f)?(currentMove(f).box.x+currentMove(f).box.w):c.w*0.9);
-  const armTargetY=p.punch>0? (p.armY*z*0.9-(hipY)) : 0;
   /* back arm (idle guard) */
   ctx.beginPath();ctx.moveTo(shoX-W*0.2,shoY+torsoH*0.22);
   ctx.lineTo(shoX-W*0.05,shoY+torsoH*0.52);ctx.stroke();
@@ -1241,7 +1240,11 @@ function drawPortrait(pcv,c){
 }
 
 function openSelect(m){
-  selMode=m;picks=[null,null];selTurn=0;onReady=[false,false];
+  selMode=m;selTurn=0;
+  /* online: adopt whatever the peer already told us (their pick/ready can
+     arrive over the ordered channel before this screen opens) */
+  if(m==='online'){picks=[null,net.peerPick];onReady=[false,net.peerReady];}
+  else{picks=[null,null];onReady=[false,false];}
   buildSelect();
   $('sel-go-txt').textContent=m==='online'?'Ready':'Start Fight';
   show('s-select');
@@ -1332,8 +1335,12 @@ const net={
   on:false,host:false,code:'',chan:null,pc:null,ctl:null,game:null,
   peerId:null,peerName:'',delay:4,capF:0,localIn:{},remoteIn:{},stall:0,
   lastPkt:null,lastSend:0,ping:0,cks:{},peerCks:{},polite:false,making:false,
-  rematch:[false,false],started:false
+  rematch:[false,false],started:false,
+  /* peer's select-screen state, kept here so a pick/ready that arrives
+     before our select screen opens is never lost */
+  peerPick:null,peerReady:false
 };
+const selOnlineActive=()=>selMode==='online'&&$('s-select').classList.contains('active');
 
 function roomCode(){
   const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';
@@ -1381,20 +1388,24 @@ function joinChannel(){
     .on('presence',{event:'sync'},()=>{
       const state=net.chan.presenceState();
       const others=Object.keys(state).filter(id=>id!==user.id);
-      if(others.length>1){netTeardown('That room is full');return;}
-      if(others.length===1&&!net.peerId){
-        net.peerId=others[0];
-        const meta=state[others[0]][0];
-        net.peerName=meta?.name||'Opponent';
-        onStatus('Opponent found — connecting…','',true);
-        startWebRTC();
+      /* a third wheel sees a full room and leaves — the paired two ignore them */
+      if(others.length>1&&!net.peerId){netTeardown('That room is full');return;}
+      if(!net.peerId){
+        /* only pair host with joiner — two joiners on a wrong code must not latch on */
+        const match=others.find(id=>{const meta=state[id][0];return meta&&meta.host===!net.host;});
+        if(match){
+          net.peerId=match;
+          net.peerName=state[match][0]?.name||'Opponent';
+          onStatus('Opponent found — connecting…','',true);
+          startWebRTC();
+        }
       }
     })
     .on('broadcast',{event:'sig'},({payload})=>onSig(payload))
     .subscribe(async st=>{
       if(st==='SUBSCRIBED'&&!joined){
         joined=true;
-        await net.chan.track({uid:user.id,name:myName});
+        await net.chan.track({uid:user.id,name:myName,host:net.host});
         if(!net.host){
           /* joiner: if no host shows up quickly, the code is probably wrong */
           setTimeout(()=>{if(net.chan&&!net.peerId)netTeardown('Nobody in that room — check the code');},4000);
@@ -1481,6 +1492,7 @@ function checkChannelsReady(){
   if(net.ctl?.readyState!=='open'||net.game?.readyState!=='open')return;
   onStatus('Connected — measuring ping…','ok',false);
   measurePing().then(rtt=>{
+    if(!net.on||net.ctl?.readyState!=='open')return;   // torn down while measuring
     net.ping=rtt;
     if(net.host){
       const frames=Math.ceil((rtt/2)/SIM_MS);
@@ -1511,8 +1523,8 @@ function onCtl(m){
     case 'pg': ctlSend({t:'po',n:m.n}); break;
     case 'po': net._pong&&net._pong(); break;
     case 'delay': net.delay=m.d; net.ping=m.rtt||net.ping; break;
-    case 'pick': picks[1]=m.c; paintSelect(); break;
-    case 'ready': onReady[1]=true; paintSelect(); maybeStartOnline(); break;
+    case 'pick': net.peerPick=m.c; if(selOnlineActive()){picks[1]=m.c;paintSelect();} break;
+    case 'ready': net.peerReady=true; if(selOnlineActive()){onReady[1]=true;paintSelect();maybeStartOnline();} break;
     case 'start': beginOnlineMatch(m.p0,m.p1,m.d); break;
     case 'ck': net.peerCks[m.f]=m.h; verifyChecksum(m.f); break;
     case 'rm': net.rematch[1]=true; maybeRematch(); break;
@@ -1523,6 +1535,7 @@ function onCtl(m){
 }
 function maybeStartOnline(){
   if(!net.host)return;
+  if(!selOnlineActive())return;        // a stray late 'ready' must never restart a live match
   if(onReady[0]&&onReady[1]&&picks[0]!==null&&picks[1]!==null){
     /* host is P1/fighter 0 */
     ctlSend({t:'start',p0:picks[0],p1:picks[1],d:net.delay});
@@ -1533,6 +1546,7 @@ function beginOnlineMatch(p0,p1,delay){
   net.delay=delay;
   net.capF=delay;net.localIn={};net.remoteIn={};net.stall=0;
   net.cks={};net.peerCks={};net.rematch=[false,false];net.started=true;
+  net.peerReady=false;                 // stale ready must not leak into the next select
   for(let f=0;f<delay;f++){net.localIn[f]=0;net.remoteIn[f]=0;}
   hudNames=net.host?[myName,net.peerName]:[net.peerName,myName];
   startMatch(p0,p1,'online');
@@ -1608,7 +1622,8 @@ function maybeRematch(){
   }
 }
 function resetOnlineSelect(){
-  selMode='online';onReady=[false,false];net.rematch=[false,false];
+  selMode='online';net.peerReady=false;net.rematch=[false,false];
+  picks[1]=net.peerPick;onReady=[false,false];
   buildSelect();paintSelect();
   $('sel-go-txt').textContent='Ready';$('sel-go').disabled=picks[0]===null;
 }
@@ -1620,7 +1635,7 @@ function netTeardown(msg){
   try{net.pc&&net.pc.close();}catch(e){}
   if(net.chan){try{net.chan.untrack();sb.removeChannel(net.chan);}catch(e){}}
   net.chan=null;net.pc=null;net.ctl=null;net.game=null;net.peerId=null;net.peerName='';
-  net.localIn={};net.remoteIn={};net.lastPkt=null;
+  net.localIn={};net.remoteIn={};net.lastPkt=null;net.peerPick=null;net.peerReady=false;
   $('create-row').style.display='flex';$('code-row').style.display='none';
   $('join-in').value='';
   if(was&&msg){toast(msg);}
