@@ -1,0 +1,54 @@
+================================================================================
+ASSET LICENSE AGREEMENT
+================================================================================
+
+Asset Name:       Fighter Anime Girl Sprite
+Creator / Author: neopixelboyco
+Year / Date:      2026
+
+--------------------------------------------------------------------------------
+1. GRANT OF PERMISSION
+--------------------------------------------------------------------------------
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this sprite asset ("Fighter Anime Girl Sprite" and all associated graphic files),
+to use and deal in the Asset without restriction, including without limitation 
+the rights to:
+
+  • Commercial & Non-Commercial Use: Use in any for-profit or free projects,
+    including video games, animation, videos, mobile apps, software, websites,
+    promotional material, and merchandise.
+  • Free Modifications: Edit, crop, re-color, resize, animate, splice, or
+    create derivative works based on the Asset.
+  • Distribution & Embedding: Distribute, publish, and embed the Asset as part
+    of compiled software, games, media, or applications.
+  • Worldwide & Perpetual: Valid globally, indefinitely, for all current and
+    future platforms.
+
+--------------------------------------------------------------------------------
+2. CONDITIONS & REQUIREMENTS
+--------------------------------------------------------------------------------
+  • Attribution: OPTIONAL. Attribution is appreciated (e.g., "Fighter Anime Girl
+    Sprite created by neopixelboyco") but is NOT required.
+  • Standalone Resale Restriction: You may NOT claim original sole ownership or
+    resell/re-distribute this sprite asset in its raw, standalone form on asset
+    marketplaces (e.g., Unity Asset Store, Itch.io, Unreal Marketplace, Envato)
+    without substantial modifications or inclusion within a larger product.
+
+--------------------------------------------------------------------------------
+3. DISCLAIMER OF WARRANTY
+--------------------------------------------------------------------------------
+THE ASSET IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR OR
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE ASSET OR THE USE OR OTHER DEALINGS IN THE ASSET.
+
+================================================================================
+ALTERNATIVE DEDICATION: CC0 1.0 UNIVERSAL (PUBLIC DOMAIN)
+================================================================================
+If preferred, this asset may also be treated as dedicated to the Public Domain
+under the Creative Commons CC0 1.0 Universal License.
+To view a copy of this license, visit:
+https://creativecommons.org/publicdomain/zero/1.0/
+================================================================================

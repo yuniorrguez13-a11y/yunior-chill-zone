@@ -533,6 +533,38 @@ const CHARACTERS=[
     throw:{name:'Yoink',dmg:110,startup:5,active:3,recovery:22,hitstop:10,kbx:80,launch:1,kby:-190,throw:1,box:{x:8,y:-126,w:50,h:66}},
     super:{name:'Actual Malice',dmg:220,startup:7,active:6,recovery:26,hitstun:28,blockstun:15,hitstop:13,kbx:190,launch:1,kby:-220,step:150,inv:1,super:1,box:{x:24,y:-124,w:116,h:44}}
   }
+},
+{
+  id:'sarge', name:'Sarge', tagline:'Chain of command. Literally.',
+  color:'#a8b8c8', color2:'#e8f0f8', skin:'#e9d9c8',
+  hp:850, walk:60, back:48, jumpVX:58, jumpVY:-250, grav:14,
+  w:48, h:150, crouchH:104,
+  sprite:{ /* "Fighter Anime Girl Sprite" by neopixelboyco (itch.io, CC0 option) —
+             design verified distinct from any commercial fighter; chroma-keyed,
+             cropped and re-composed into strips. See art/sarge/LICENSE.txt */
+    path:'art/sarge/', scale:0.58, smooth:1, idleTop:8,
+    anims:{
+      idle:{f:'idle.png',n:9,cw:176,ch:270,cx:106,fy:264},
+      run:{f:'run.png',n:8,cw:424,ch:300,cx:126,fy:295},
+      jump:{f:'jump.png',n:2,cw:202,ch:284,cx:108,fy:278},
+      fall:{f:'fall.png',n:2,cw:165,ch:303,cx:78,fy:297},
+      attack1:{f:'attack1.png',n:8,cw:326,ch:268,cx:159,fy:263},
+      attack2:{f:'attack2.png',n:9,cw:289,ch:281,cx:106,fy:275},
+      hit:{f:'hit.png',n:4,cw:141,ch:270,cx:61,fy:265},
+      death:{f:'death.png',n:6,cw:262,ch:279,cx:132,fy:274},
+      crouch:{f:'crouch.png',n:6,cw:168,ch:253,cx:92,fy:247}
+    }
+  },
+  moves:{
+    light:{name:'Whip Snap',dmg:55,startup:8,active:3,recovery:14,hitstun:15,blockstun:9,hitstop:5,kbx:70,box:{x:28,y:-128,w:92,h:30}},
+    heavy:{name:'Crack the Sky',dmg:115,startup:14,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:9,kbx:110,box:{x:30,y:-140,w:104,h:44}},
+    special:{name:'Reel In',dmg:90,startup:13,active:4,recovery:22,hitstun:26,blockstun:13,hitstop:10,kbx:-130,box:{x:36,y:-130,w:120,h:40}},
+    air:{name:'Sky Lash',dmg:60,startup:8,active:7,recovery:9,hitstun:15,blockstun:9,hitstop:5,kbx:60,hits:'high',box:{x:20,y:-100,w:96,h:40}},
+    clight:{name:'Boot Lash',dmg:45,startup:7,active:3,recovery:12,hitstun:14,blockstun:9,hitstop:5,kbx:55,hits:'low',box:{x:30,y:-44,w:100,h:32}},
+    cheavy:{name:'Trip Wire',dmg:95,startup:12,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:8,kbx:70,hits:'low',launch:1,kby:-160,box:{x:32,y:-42,w:110,h:32}},
+    throw:{name:'Court Martial',dmg:115,startup:5,active:3,recovery:24,hitstop:10,kbx:80,launch:1,kby:-190,throw:1,box:{x:8,y:-130,w:52,h:70}},
+    super:{name:'Dishonorable Discharge',dmg:240,startup:10,active:6,recovery:28,hitstun:30,blockstun:16,hitstop:14,kbx:210,launch:1,kby:-240,inv:1,super:1,box:{x:28,y:-140,w:150,h:52}}
+  }
 }];
 
 /* ── sprite sheet loader — a character whose art fails to load just falls
@@ -1053,7 +1085,9 @@ function spriteFrame(f,c){
       if(dir!==0&&dir!==f.face)idx=a.n-1-idx;     // walking backwards: same run, reversed
       return {k:'run',idx,squash:1};
     }
-    case ST.crouch: return {k:'idle',idx:((f.t/7)|0)%sp.anims.idle.n,squash:0.78};
+    case ST.crouch:
+      if(sp.anims.crouch)return {k:'crouch',idx:((f.t/7)|0)%sp.anims.crouch.n,squash:1};
+      return {k:'idle',idx:((f.t/7)|0)%sp.anims.idle.n,squash:0.78};
     case ST.jumpsquat: return {k:'jump',idx:0,squash:0.85};
     case ST.air: return {k:f.vy<0?'jump':'fall',idx:f.vy<0?(f.vy<-120?0:1):(f.vy>120?1:0),squash:1};
     case ST.land: return {k:'fall',idx:1,squash:0.9};
@@ -1081,15 +1115,18 @@ function spriteFrame(f,c){
 function drawSpriteFighter(f,W2S){
   const c=chr(f),sp=c.sprite;
   const fr=spriteFrame(f,c);
+  const a=sp.anims[fr.k];
   const img=sp.imgs[fr.k];
+  /* per-anim cell geometry (HD packs) with square-cell fallback (pixel packs) */
+  const cw=a.cw||sp.cell, ch=a.ch||sp.cell;
+  const cx=a.cx!=null?a.cx:sp.centerX, fy=a.fy!=null?a.fy:sp.feetY;
   const [sx,sy]=W2S(f.x/FP,f.y/FP);
   const s=sp.scale*V.z;
   ctx.save();
   ctx.translate(sx,sy);
   ctx.scale(f.face,fr.squash);
-  ctx.imageSmoothingEnabled=false;              // crisp pixels, no blur
-  ctx.drawImage(img,fr.idx*sp.cell,0,sp.cell,sp.cell,
-    -sp.centerX*s,-sp.feetY*s,sp.cell*s,sp.cell*s);
+  ctx.imageSmoothingEnabled=!!sp.smooth;        // pixel art stays crisp, HD renders stay smooth
+  ctx.drawImage(img,fr.idx*cw,0,cw,ch,-cx*s,-fy*s,cw*s,ch*s);
   ctx.restore();
 }
 
@@ -1621,10 +1658,13 @@ function drawPortrait(pcv,c){
     const sp=c.sprite;
     const paint=()=>{
       g.clearRect(0,0,120,140);
-      const s2=112/(sp.feetY-sp.idleTop);
-      g.imageSmoothingEnabled=false;
+      const ia=sp.anims.idle;
+      const cw=ia.cw||sp.cell,ch=ia.ch||sp.cell;
+      const cx=ia.cx!=null?ia.cx:sp.centerX,fy=ia.fy!=null?ia.fy:sp.feetY;
+      const s2=112/(fy-(sp.idleTop||0));
+      g.imageSmoothingEnabled=!!sp.smooth;
       g.save();g.translate(60,130);
-      g.drawImage(sp.imgs.idle,0,0,sp.cell,sp.cell,-sp.centerX*s2,-sp.feetY*s2,sp.cell*s2,sp.cell*s2);
+      g.drawImage(sp.imgs.idle,0,0,cw,ch,-cx*s2,-fy*s2,cw*s2,ch*s2);
       g.restore();
     };
     if(sp._st==='ready'){paint();return;}
