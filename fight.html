@@ -177,6 +177,12 @@ kbd{
 }
 .modal .close-x{float:right;background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;}
 .modal .close-x:hover{color:var(--text);}
+.pad-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:11px 6px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:8px;transition:background .12s;}
+.pad-row:hover{background:rgba(255,255,255,.04);}
+.pad-row .cur{color:var(--cyan);font-weight:700;font-size:13.5px;}
+.pad-row.listen .cur{color:var(--amber);animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:.35;}}
 
 /* toast */
 #toast{
@@ -203,6 +209,7 @@ kbd{
     <button class="btn primary big" id="btn-local"><i data-ic="users" data-ic-size="19"></i> Local Versus</button>
     <button class="btn big" id="btn-online"><i data-ic="bolt" data-ic-size="19"></i> Online Match</button>
     <button class="btn ghost" id="btn-how"><i data-ic="scroll" data-ic-size="17"></i> How to Play</button>
+    <button class="btn ghost" id="btn-controls"><i data-ic="settings" data-ic-size="17"></i> Controls</button>
   </div>
   <div id="userchip"><i data-ic="user" data-ic-size="15"></i> <span id="userchip-txt">Checking session…</span></div>
   <div class="menu-note" id="menu-note">Local versus: one player on the keyboard, the other on a
@@ -303,13 +310,15 @@ kbd{
     </table>
     <h4>Player 2 — controller</h4>
     <p>Plug in (or pair) an Xbox, PlayStation or generic controller — the browser picks it up
-       automatically. With two controllers, Player 1 gets the first one.</p>
+       automatically. With two controllers, Player 1 gets the first one. Default buttons follow
+       the fighting-game standard (SF6 Modern / Guilty Gear); change them in <b>Controls</b> on
+       the main menu.</p>
     <table class="keys-table">
       <tr><td>Move / crouch</td><td>D-pad or left stick</td></tr>
-      <tr><td>Jump</td><td><kbd>A</kbd> / <kbd>Cross</kbd> (or up)</td></tr>
       <tr><td>Light attack</td><td><kbd>X</kbd> / <kbd>Square</kbd></td></tr>
-      <tr><td>Heavy attack</td><td><kbd>Y</kbd> / <kbd>Triangle</kbd></td></tr>
-      <tr><td>Special</td><td><kbd>B</kbd> / <kbd>Circle</kbd> or <kbd>RB</kbd></td></tr>
+      <tr><td>Heavy attack</td><td><kbd>B</kbd> / <kbd>Circle</kbd></td></tr>
+      <tr><td>Special</td><td><kbd>Y</kbd> / <kbd>Triangle</kbd> or <kbd>RB</kbd></td></tr>
+      <tr><td>Jump</td><td><kbd>A</kbd> / <kbd>Cross</kbd> or up</td></tr>
     </table>
     <p>No controller at all? Two can still share the keyboard the old cramped way:
        P1 on <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>+<kbd>F</kbd><kbd>G</kbd><kbd>H</kbd>,
@@ -321,6 +330,22 @@ kbd{
     <p>Every fighter gets a power score computed from its stats and frame data — that's the tier badge on the
        select screen. When community fighters arrive, the engine rates them the same way so matchmaking can
        keep things fair.</p>
+  </div>
+</div>
+
+<!-- ══════════════ CONTROLLER MAPPING ══════════════ -->
+<div class="modal-bg" id="ctl-ov">
+  <div class="modal">
+    <button class="close-x" id="ctl-x"><i data-ic="x" data-ic-size="18"></i></button>
+    <h3><i data-ic="settings" data-ic-size="20"></i> Controller mapping</h3>
+    <p>Click an action, then press the button you want on your controller.
+       Movement is always the d-pad or left stick, and up always jumps.
+       Saved on this browser.</p>
+    <div id="pad-rows"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn" id="pad-reset"><i data-ic="refresh" data-ic-size="15"></i> Reset to defaults</button>
+    </div>
+    <p style="margin-top:12px;color:var(--text3);">Keyboard layouts are fixed for now — see How to Play.</p>
   </div>
 </div>
 
@@ -1186,20 +1211,28 @@ window.addEventListener('blur',()=>keysDown.clear());
 function readMask(map){let m=0;for(const k of keysDown)if(map[k]!==undefined)m|=map[k];return m;}
 
 /* ── gamepads (standard mapping: Xbox / PlayStation / most generics) ──
-   D-pad or left stick moves · A/Cross jumps · X/Square light ·
-   Y/Triangle heavy · B/Circle or RB special */
+   Default attack buttons follow the genre convention (SF6 Modern /
+   Guilty Gear put light on Square/X and the heavy hit on Circle/B):
+   X/Square light · B/Circle heavy · Y/Triangle special · A/Cross jump.
+   All four are remappable in the Controls panel (saved per browser). */
+const PAD_DEFAULT={light:2,heavy:1,special:3,jump:0};
+const PAD_BTN_NAMES={0:'A / Cross',1:'B / Circle',2:'X / Square',3:'Y / Triangle',
+  4:'LB / L1',5:'RB / R1',6:'LT / L2',7:'RT / R2',8:'View / Share',9:'Menu / Options',
+  10:'L3',11:'R3',12:'D-pad Up',13:'D-pad Down',14:'D-pad Left',15:'D-pad Right'};
+let padMap=(()=>{ try{return {...PAD_DEFAULT,...JSON.parse(localStorage.getItem('sffg-pad')||'{}')};}
+  catch(e){return {...PAD_DEFAULT};} })();
 function padMask(gp){
   if(!gp)return 0;
   let m=0;
-  const b=i=>!!(gp.buttons[i]&&gp.buttons[i].pressed);
+  const b=i=>i!=null&&!!(gp.buttons[i]&&gp.buttons[i].pressed);
   const ax=gp.axes[0]||0, ay=gp.axes[1]||0;
   if(b(14)||ax<-0.35)m|=IN_L;
   if(b(15)||ax>0.35)m|=IN_R;
-  if(b(12)||ay<-0.5||b(0))m|=IN_U;
+  if(b(12)||ay<-0.5||b(padMap.jump))m|=IN_U;
   if(b(13)||ay>0.5)m|=IN_D;
-  if(b(2))m|=IN_A;
-  if(b(3))m|=IN_B;
-  if(b(1)||b(5))m|=IN_C;
+  if(b(padMap.light))m|=IN_A;
+  if(b(padMap.heavy))m|=IN_B;
+  if(b(padMap.special)||b(5))m|=IN_C;      // RB stays a special shortcut
   return m;
 }
 function getPads(){
@@ -1222,6 +1255,49 @@ window.addEventListener('gamepadconnected',e=>{
   toast('Controller connected — it drives Player 2 in local versus');
 });
 window.addEventListener('gamepaddisconnected',()=>toast('Controller disconnected'));
+
+/* ── controller remapping panel ── */
+let padListen=null,padListenBase=null,padListenTimer=null;
+function renderPadRows(){
+  const box=$('pad-rows');box.innerHTML='';
+  for(const [key,label] of [['light','Light attack'],['heavy','Heavy attack'],['special','Special'],['jump','Jump']]){
+    const row=document.createElement('div');
+    row.className='pad-row'+(padListen===key?' listen':'');
+    row.innerHTML='<span>'+label+'</span><span class="cur">'+
+      (padListen===key?'press a controller button…':esc(PAD_BTN_NAMES[padMap[key]]||('Button '+padMap[key])))+'</span>';
+    row.addEventListener('click',()=>startPadListen(key));
+    box.appendChild(row);
+  }
+}
+function startPadListen(key){
+  if(!getPads().length){toast('Connect a controller first','err');return;}
+  padListen=key;
+  padListenBase=getPads().map(g=>g.buttons.map(b=>b.pressed));
+  renderPadRows();
+  clearInterval(padListenTimer);
+  padListenTimer=setInterval(()=>{
+    const pads=getPads();
+    for(let gi=0;gi<pads.length;gi++){
+      const g=pads[gi];
+      for(let bi=0;bi<g.buttons.length;bi++){
+        const pressed=g.buttons[bi].pressed;
+        const was=padListenBase[gi]&&padListenBase[gi][bi];
+        if(!pressed){if(was)padListenBase[gi][bi]=false;continue;}
+        if(!was){
+          padMap[padListen]=bi;
+          try{localStorage.setItem('sffg-pad',JSON.stringify(padMap));}catch(e){}
+          stopPadListen();
+          return;
+        }
+      }
+    }
+  },50);
+}
+function stopPadListen(){
+  padListen=null;
+  clearInterval(padListenTimer);padListenTimer=null;
+  renderPadRows();
+}
 
 /* ════════════════════════════════════════════════════════════════════
    GAME LOOP
@@ -1308,6 +1384,10 @@ function onMatchEnd(){
 
 function onEscape(){
   /* Esc closes modals first (site convention) */
+  if($('ctl-ov').classList.contains('on')){
+    if(padListen)stopPadListen();else $('ctl-ov').classList.remove('on');
+    return;
+  }
   if($('how-ov').classList.contains('on')){$('how-ov').classList.remove('on');return;}
   if($('ff-ov').classList.contains('on')){$('ff-ov').classList.remove('on');return;}
   if(!$('s-game').classList.contains('active')||!S||S.phase===PHASES.matchend)return;
@@ -1833,6 +1913,14 @@ $('btn-online').addEventListener('click',()=>{
 $('btn-how').addEventListener('click',()=>$('how-ov').classList.add('on'));
 $('how-x').addEventListener('click',()=>$('how-ov').classList.remove('on'));
 $('how-ov').addEventListener('click',e=>{if(e.target.id==='how-ov')$('how-ov').classList.remove('on');});
+$('btn-controls').addEventListener('click',()=>{renderPadRows();$('ctl-ov').classList.add('on');});
+$('ctl-x').addEventListener('click',()=>{stopPadListen();$('ctl-ov').classList.remove('on');});
+$('ctl-ov').addEventListener('click',e=>{if(e.target.id==='ctl-ov'){stopPadListen();$('ctl-ov').classList.remove('on');}});
+$('pad-reset').addEventListener('click',()=>{
+  padMap={...PAD_DEFAULT};
+  try{localStorage.removeItem('sffg-pad');}catch(e){}
+  stopPadListen();
+});
 $('on-back').addEventListener('click',()=>{netTeardown();show('s-menu');});
 $('btn-create').addEventListener('click',createRoom);
 $('btn-join').addEventListener('click',joinRoom);
