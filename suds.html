@@ -10103,7 +10103,14 @@ function renderObjectiveProps(){
 // pasted in below the casino runs in LOCAL mode: same rounds, same
 // animations, outcome derived on-device.
 // ================================================================
-const BET_DB = { url: '', key: '' };   // <- the new Supabase project goes here
+// The casino's own Supabase project — separate from the main site on
+// purpose, so the betting traffic costs yuniorschillzone nothing. The
+// publishable key belongs in the client; the secrecy lives in RLS and
+// in the bet_reveal function server-side.
+const BET_DB = {
+  url: 'https://gsdclvwylgzrsrligxgp.supabase.co',
+  key: 'sb_publishable_0rlvro5Hd2FNnW5ZxDM-vg_eUUEwsj2',
+};
 let betSb = null, betSbLoading = false;
 function betConnect(){
   if (betSb || betSbLoading || !BET_DB.url || !BET_DB.key) return;
