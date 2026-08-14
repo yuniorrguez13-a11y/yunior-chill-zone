@@ -413,6 +413,18 @@ function show(id){
    launch   1 = knocks the target into the air (kby = launch speed, negative=up)
    step     forward movement during startup+active (fine units/frame)
    armor    1 = absorbs one hit during startup+active (takes 75% damage, no flinch)
+
+   sprite (optional) — pixel-art body instead of the vector puppet.
+   The GAMEPLAY still comes 100% from the data above; art is just skin.
+     path     folder with the sheets (horizontal strips, one row)
+     cell     size of one square frame in the strip
+     centerX  x inside a cell where the body's center is
+     feetY    y inside a cell where the feet touch the ground
+     idleTop  y of the top of the head in the idle pose (portrait scaling)
+     scale    game pixels per cell pixel
+     anims    idle/run/jump/fall/attack1/attack2/hit/death → {f:file, n:frames}
+   Few art frames + fast gameplay is fine: the engine stretches or holds
+   frames to fit each move's real frame data. Chunky is a feature.
    ════════════════════════════════════════════════════════════════════ */
 const CHARACTERS=[
 {
@@ -440,17 +452,43 @@ const CHARACTERS=[
   }
 },
 {
-  id:'twig', name:'Twig', tagline:'Zero mass. All malice.',
+  id:'twig', name:'Sir Twig', tagline:'Zero mass. All malice. Found a sword.',
   color:'#00d4ff', color2:'#c8f4ff', skin:'#e9c9a8',
   hp:750, walk:92, back:70, jumpVX:72, jumpVY:-262, grav:14,
-  w:46, h:144, crouchH:100,
+  w:46, h:140, crouchH:100,
+  sprite:{ /* "Martial Hero" pack by LuizMelo, CC0 — see art/martial-hero/LICENSE.txt */
+    path:'art/martial-hero/', cell:200, centerX:95, feetY:122, idleTop:70, scale:2.7,
+    anims:{
+      idle:{f:'idle.png',n:8}, run:{f:'run.png',n:8},
+      jump:{f:'jump.png',n:2}, fall:{f:'fall.png',n:2},
+      attack1:{f:'attack1.png',n:6}, attack2:{f:'attack2.png',n:6},
+      hit:{f:'takehit.png',n:4}, death:{f:'death.png',n:6}
+    }
+  },
   moves:{
-    light:{name:'Flick',dmg:45,startup:4,active:2,recovery:7,hitstun:13,blockstun:7,hitstop:4,kbx:50,box:{x:22,y:-120,w:52,h:22}},
-    heavy:{name:'Whip Kick',dmg:100,startup:10,active:4,recovery:14,hitstun:20,blockstun:11,hitstop:8,kbx:100,box:{x:26,y:-128,w:64,h:30}},
-    special:{name:'Zoomies',dmg:120,startup:10,active:6,recovery:20,hitstun:22,blockstun:12,hitstop:9,kbx:130,step:110,box:{x:24,y:-124,w:62,h:34}},
-    air:{name:'Dive Poke',dmg:60,startup:6,active:8,recovery:8,hitstun:15,blockstun:9,hitstop:5,kbx:60,box:{x:18,y:-86,w:50,h:34}}
+    light:{name:'Quick Slash',dmg:50,startup:5,active:3,recovery:10,hitstun:14,blockstun:8,hitstop:5,kbx:60,box:{x:22,y:-118,w:100,h:34}},
+    heavy:{name:'Heavy Slash',dmg:105,startup:11,active:4,recovery:16,hitstun:21,blockstun:11,hitstop:8,kbx:105,box:{x:24,y:-124,w:120,h:40}},
+    special:{name:'Zoomies',dmg:120,startup:10,active:6,recovery:20,hitstun:22,blockstun:12,hitstop:9,kbx:130,step:110,box:{x:24,y:-120,w:108,h:38}},
+    air:{name:'Sky Slash',dmg:60,startup:6,active:8,recovery:8,hitstun:15,blockstun:9,hitstop:5,kbx:60,box:{x:16,y:-96,w:92,h:44}}
   }
 }];
+
+/* ── sprite sheet loader — a character whose art fails to load just falls
+     back to the vector puppet, the fight itself never breaks ── */
+function loadSprites(c){
+  if(!c.sprite||c.sprite._st)return;
+  const sp=c.sprite;sp._st='loading';sp.imgs={};
+  let left=0,failed=false;
+  for(const k in sp.anims){
+    left++;
+    const im=new Image();
+    im.onload=()=>{if(--left===0&&!failed)sp._st='ready';};
+    im.onerror=()=>{failed=true;sp._st='failed';console.warn('[fight] sprite sheet failed to load:',sp.path+sp.anims[k].f);};
+    im.src=sp.path+sp.anims[k].f;
+    sp.imgs[k]=im;
+  }
+}
+CHARACTERS.forEach(loadSprites);
 
 /* ── automatic tier rating — same formula community fighters will get ── */
 const TIERS=['genuine piece of shi','iwannalose','meh','regular guy','steroids were used',
@@ -868,8 +906,60 @@ function poseOf(S,f){
   return p;
 }
 
+/* which sheet + frame a sprite fighter shows right now.
+   Art frames get stretched/held to match the move's REAL frame data —
+   this is the "few drawings, 60fps game" trick working as designed. */
+function spriteFrame(f,c){
+  const sp=c.sprite,m=currentMove(f);
+  switch(f.st){
+    case ST.walk:{
+      const a=sp.anims.run;
+      const dir=((f.prevIn&IN_R)?1:0)-((f.prevIn&IN_L)?1:0);
+      let idx=((f.t/6)|0)%a.n;
+      if(dir!==0&&dir!==f.face)idx=a.n-1-idx;     // walking backwards: same run, reversed
+      return {k:'run',idx,squash:1};
+    }
+    case ST.crouch: return {k:'idle',idx:((f.t/7)|0)%sp.anims.idle.n,squash:0.78};
+    case ST.jumpsquat: return {k:'jump',idx:0,squash:0.85};
+    case ST.air: return {k:f.vy<0?'jump':'fall',idx:f.vy<0?(f.vy<-120?0:1):(f.vy>120?1:0),squash:1};
+    case ST.land: return {k:'fall',idx:1,squash:0.9};
+    case ST.attack: case ST.airattack:{
+      const k=(f.mv==='heavy'||f.mv==='special')?'attack2':'attack1';
+      const n=sp.anims[k].n;
+      let idx;
+      if(f.t<m.startup)idx=Math.min(n-3,((f.t*(n-2))/m.startup)|0); // windup drawings
+      else if(f.t<m.startup+m.active)idx=n-2;                       // the slash frame
+      else idx=n-1;                                                 // follow-through
+      return {k,idx,squash:1};
+    }
+    case ST.hitstun: return {k:'hit',idx:Math.min(3,((f.t*4)/Math.max(1,f.dur))|0),squash:1};
+    case ST.blockstun: return {k:'hit',idx:0,squash:1};
+    case ST.launched: return {k:'hit',idx:1,squash:1};
+    case ST.knockdown: return {k:'death',idx:Math.min(5,(f.t/5)|0),squash:1};
+    case ST.getup: return {k:'death',idx:Math.max(0,5-((f.t/3)|0)),squash:1};   // death, rewound
+    case ST.ko: return {k:'death',idx:Math.min(5,(f.t/8)|0),squash:1};
+    default: return {k:'idle',idx:((f.t/7)|0)%sp.anims.idle.n,squash:1};
+  }
+}
+
+function drawSpriteFighter(f,W2S){
+  const c=chr(f),sp=c.sprite;
+  const fr=spriteFrame(f,c);
+  const img=sp.imgs[fr.k];
+  const [sx,sy]=W2S(f.x/FP,f.y/FP);
+  const s=sp.scale*V.z;
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.scale(f.face,fr.squash);
+  ctx.imageSmoothingEnabled=false;              // crisp pixels, no blur
+  ctx.drawImage(img,fr.idx*sp.cell,0,sp.cell,sp.cell,
+    -sp.centerX*s,-sp.feetY*s,sp.cell*s,sp.cell*s);
+  ctx.restore();
+}
+
 function drawFighter(S,f,W2S){
   const c=chr(f);
+  if(c.sprite&&c.sprite._st==='ready'){drawSpriteFighter(f,W2S);return;}
   const p=poseOf(S,f);
   const [sx,sy]=W2S(f.x/FP,f.y/FP);
   const z=V.z, H=c.h*z, W=c.w*z;
@@ -1215,6 +1305,25 @@ const stat=(l,v)=>'<div class="chr-stat"><span>'+l+'</span><div class="bar"><i s
 function drawPortrait(pcv,c){
   const g=pcv.getContext('2d');
   g.clearRect(0,0,120,140);
+  /* sprite characters: idle frame 0, pixel-crisp; retry briefly while loading */
+  if(c.sprite&&c.sprite._st!=='failed'){
+    const sp=c.sprite;
+    const paint=()=>{
+      g.clearRect(0,0,120,140);
+      const s2=112/(sp.feetY-sp.idleTop);
+      g.imageSmoothingEnabled=false;
+      g.save();g.translate(60,130);
+      g.drawImage(sp.imgs.idle,0,0,sp.cell,sp.cell,-sp.centerX*s2,-sp.feetY*s2,sp.cell*s2,sp.cell*s2);
+      g.restore();
+    };
+    if(sp._st==='ready'){paint();return;}
+    let tries=0;
+    const iv=setInterval(()=>{
+      if(sp._st==='ready'){paint();clearInterval(iv);}
+      else if(sp._st==='failed'||++tries>40)clearInterval(iv);
+    },150);
+    /* fall through: puppet as placeholder while sheets load */
+  }
   g.save();g.translate(60,128);
   const scale=110/c.h;g.scale(scale,scale);
   /* mini puppet, idle pose */
