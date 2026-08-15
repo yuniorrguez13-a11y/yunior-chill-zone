@@ -473,6 +473,14 @@ function show(id){
      idleTop  y of the top of the head in the idle pose (portrait scaling)
      scale    game pixels per cell pixel
      anims    idle/run/jump/fall/attack1/attack2/hit/death → {f:file, n:frames}
+              optional extras (used automatically when present): walkback,
+              dash, backdash, block, getup, crouch (stand-to-kneel, held),
+              plus any custom key a move points at via its anim field.
+              Per-anim cw/ch/cx/fy override the global cell geometry.
+   A move may set anim:'key' to use its own sheet; otherwise light-ish moves
+   share attack1 and heavy-ish moves share attack2. The engine always puts
+   the sheet's second-to-last frame on the move's active window — author
+   strips as windup…, impact, follow-through.
    Few art frames + fast gameplay is fine: the engine stretches or holds
    frames to fit each move's real frame data. Chunky is a feature.
    ════════════════════════════════════════════════════════════════════ */
@@ -541,29 +549,40 @@ const CHARACTERS=[
   w:48, h:150, crouchH:104,
   sprite:{ /* "Fighter Anime Girl Sprite" by neopixelboyco (itch.io, CC0 option) —
              design verified distinct from any commercial fighter; chroma-keyed,
-             cropped and re-composed into strips. See art/sarge/LICENSE.txt */
+             cropped and re-composed into strips. Frame mapping identified by
+             the owner watching every block animated. See art/sarge/LICENSE.txt */
     path:'art/sarge/', scale:0.58, smooth:1, idleTop:8,
     anims:{
-      idle:{f:'idle.png',n:9,cw:176,ch:270,cx:106,fy:264},
-      run:{f:'run.png',n:8,cw:424,ch:300,cx:126,fy:295},
-      jump:{f:'jump.png',n:2,cw:202,ch:284,cx:108,fy:278},
-      fall:{f:'fall.png',n:2,cw:165,ch:303,cx:78,fy:297},
-      attack1:{f:'attack1.png',n:8,cw:326,ch:268,cx:159,fy:263},
-      attack2:{f:'attack2.png',n:9,cw:289,ch:281,cx:106,fy:275},
-      hit:{f:'hit.png',n:4,cw:141,ch:270,cx:61,fy:265},
-      death:{f:'death.png',n:6,cw:262,ch:279,cx:132,fy:274},
-      crouch:{f:'crouch.png',n:6,cw:168,ch:253,cx:92,fy:247}
+      idle:{f:'idle.png',n:8,cw:163,ch:269,cx:106,fy:264},
+      run:{f:'run.png',n:9,cw:173,ch:267,cx:88,fy:262},
+      walkback:{f:'walkback.png',n:7,cw:124,ch:268,cx:59,fy:262},
+      dash:{f:'dash.png',n:8,cw:256,ch:190,cx:129,fy:185},
+      backdash:{f:'backdash.png',n:6,cw:216,ch:270,cx:121,fy:265},
+      jump:{f:'jump.png',n:2,cw:194,ch:267,cx:96,fy:262},
+      fall:{f:'fall.png',n:2,cw:163,ch:300,cx:76,fy:295},
+      attack1:{f:'attack1.png',n:6,cw:252,ch:258,cx:115,fy:252},
+      attack2:{f:'attack2.png',n:8,cw:287,ch:278,cx:105,fy:273},
+      special:{f:'special.png',n:8,cw:269,ch:280,cx:156,fy:274},
+      super:{f:'super.png',n:9,cw:273,ch:323,cx:78,fy:317},
+      clight:{f:'clight.png',n:6,cw:274,ch:176,cx:93,fy:171},
+      cheavy:{f:'cheavy.png',n:7,cw:261,ch:206,cx:138,fy:200},
+      airatk:{f:'airatk.png',n:6,cw:323,ch:266,cx:158,fy:260},
+      hit:{f:'hit.png',n:4,cw:202,ch:268,cx:59,fy:262},
+      block:{f:'block.png',n:4,cw:213,ch:266,cx:110,fy:261},
+      death:{f:'death.png',n:6,cw:320,ch:249,cx:135,fy:244},
+      getup:{f:'getup.png',n:5,cw:241,ch:168,cx:120,fy:162},
+      crouch:{f:'crouch.png',n:4,cw:140,ch:268,cx:61,fy:262}
     }
   },
   moves:{
-    light:{name:'Whip Snap',dmg:55,startup:8,active:3,recovery:14,hitstun:15,blockstun:9,hitstop:5,kbx:70,box:{x:28,y:-128,w:92,h:30}},
-    heavy:{name:'Crack the Sky',dmg:115,startup:14,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:9,kbx:110,box:{x:30,y:-140,w:104,h:44}},
-    special:{name:'Reel In',dmg:90,startup:13,active:4,recovery:22,hitstun:26,blockstun:13,hitstop:10,kbx:-130,box:{x:36,y:-130,w:120,h:40}},
-    air:{name:'Sky Lash',dmg:60,startup:8,active:7,recovery:9,hitstun:15,blockstun:9,hitstop:5,kbx:60,hits:'high',box:{x:20,y:-100,w:96,h:40}},
-    clight:{name:'Boot Lash',dmg:45,startup:7,active:3,recovery:12,hitstun:14,blockstun:9,hitstop:5,kbx:55,hits:'low',box:{x:30,y:-44,w:100,h:32}},
-    cheavy:{name:'Trip Wire',dmg:95,startup:12,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:8,kbx:70,hits:'low',launch:1,kby:-160,box:{x:32,y:-42,w:110,h:32}},
+    light:{name:'Jab',dmg:55,startup:8,active:3,recovery:14,hitstun:15,blockstun:9,hitstop:5,kbx:70,box:{x:26,y:-128,w:84,h:30}},
+    heavy:{name:'Pirouette Kick',dmg:115,startup:14,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:9,kbx:110,box:{x:28,y:-136,w:100,h:46}},
+    special:{name:'Reel In',dmg:90,startup:13,active:4,recovery:22,hitstun:26,blockstun:13,hitstop:10,kbx:-130,anim:'special',box:{x:34,y:-130,w:110,h:40}},
+    air:{name:'Volley Kick',dmg:60,startup:8,active:7,recovery:9,hitstun:15,blockstun:9,hitstop:5,kbx:60,hits:'high',anim:'airatk',box:{x:20,y:-100,w:104,h:40}},
+    clight:{name:'Ankle Sweep',dmg:45,startup:7,active:3,recovery:12,hitstun:14,blockstun:9,hitstop:5,kbx:55,hits:'low',anim:'clight',box:{x:30,y:-44,w:112,h:32}},
+    cheavy:{name:'Braid Riser',dmg:95,startup:12,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:8,kbx:60,launch:1,kby:-230,anim:'cheavy',box:{x:20,y:-150,w:80,h:110}},
     throw:{name:'Court Martial',dmg:115,startup:5,active:3,recovery:24,hitstop:10,kbx:80,launch:1,kby:-190,throw:1,box:{x:8,y:-130,w:52,h:70}},
-    super:{name:'Dishonorable Discharge',dmg:240,startup:10,active:6,recovery:28,hitstun:30,blockstun:16,hitstop:14,kbx:210,launch:1,kby:-240,inv:1,super:1,box:{x:28,y:-140,w:150,h:52}}
+    super:{name:'Dishonorable Discharge',dmg:240,startup:10,active:6,recovery:28,hitstun:30,blockstun:16,hitstop:14,kbx:200,launch:1,kby:-260,inv:1,super:1,anim:'super',box:{x:14,y:-170,w:90,h:130}}
   }
 }];
 
@@ -1077,38 +1096,55 @@ function poseOf(S,f){
    this is the "few drawings, 60fps game" trick working as designed. */
 function spriteFrame(f,c){
   const sp=c.sprite,m=currentMove(f);
+  const A=sp.anims;
   switch(f.st){
     case ST.walk:{
-      const a=sp.anims.run;
       const dir=((f.prevIn&IN_R)?1:0)-((f.prevIn&IN_L)?1:0);
-      let idx=((f.t/6)|0)%a.n;
-      if(dir!==0&&dir!==f.face)idx=a.n-1-idx;     // walking backwards: same run, reversed
+      const back=dir!==0&&dir!==f.face;
+      if(back&&A.walkback)return {k:'walkback',idx:((f.t/6)|0)%A.walkback.n,squash:1};
+      let idx=((f.t/6)|0)%A.run.n;
+      if(back)idx=A.run.n-1-idx;                  // no dedicated back-walk: play run reversed
       return {k:'run',idx,squash:1};
     }
     case ST.crouch:
-      if(sp.anims.crouch)return {k:'crouch',idx:((f.t/7)|0)%sp.anims.crouch.n,squash:1};
-      return {k:'idle',idx:((f.t/7)|0)%sp.anims.idle.n,squash:0.78};
-    case ST.jumpsquat: return {k:'jump',idx:0,squash:0.85};
+      /* crouch sheets are a stand-to-kneel transition: play once, hold the last frame */
+      if(A.crouch)return {k:'crouch',idx:Math.min(A.crouch.n-1,(f.t/5)|0),squash:1};
+      return {k:'idle',idx:((f.t/7)|0)%A.idle.n,squash:0.78};
+    case ST.jumpsquat:
+      if(A.crouch)return {k:'crouch',idx:Math.min(A.crouch.n-1,1),squash:1};
+      return {k:'jump',idx:0,squash:0.85};
     case ST.air: return {k:f.vy<0?'jump':'fall',idx:f.vy<0?(f.vy<-120?0:1):(f.vy>120?1:0),squash:1};
     case ST.land: return {k:'fall',idx:1,squash:0.9};
-    case ST.dash: return {k:'run',idx:((f.t/3)|0)%sp.anims.run.n,squash:1};
-    case ST.backdash: return {k:'jump',idx:0,squash:0.9};
+    case ST.dash:
+      if(A.dash)return {k:'dash',idx:((f.t/3)|0)%A.dash.n,squash:1};
+      return {k:'run',idx:((f.t/3)|0)%A.run.n,squash:1};
+    case ST.backdash:
+      if(A.backdash)return {k:'backdash',idx:Math.min(A.backdash.n-1,(f.t/3)|0),squash:1};
+      return {k:'jump',idx:0,squash:0.9};
     case ST.attack: case ST.airattack:{
-      const k=(f.mv==='light'||f.mv==='air'||f.mv==='clight'||f.mv==='throw')?'attack1':'attack2';
-      const n=sp.anims[k].n;
+      /* a move can name its own sheet (m.anim); otherwise light-ish moves share
+         attack1 and heavy-ish moves share attack2 */
+      let k=(m.anim&&A[m.anim])?m.anim:
+        ((f.mv==='light'||f.mv==='air'||f.mv==='clight'||f.mv==='throw')?'attack1':'attack2');
+      const n=A[k].n;
       let idx;
       if(f.t<m.startup)idx=Math.min(n-3,((f.t*(n-2))/m.startup)|0); // windup drawings
-      else if(f.t<m.startup+m.active)idx=n-2;                       // the slash frame
+      else if(f.t<m.startup+m.active)idx=n-2;                       // the impact frame
       else idx=n-1;                                                 // follow-through
-      return {k,idx,squash:(f.mv==='clight'||f.mv==='cheavy')?0.8:1};
+      const sq=(f.mv==='clight'||f.mv==='cheavy')&&!(m.anim&&A[m.anim])?0.8:1;
+      return {k,idx,squash:sq};
     }
-    case ST.hitstun: return {k:'hit',idx:Math.min(3,((f.t*4)/Math.max(1,f.dur))|0),squash:1};
-    case ST.blockstun: return {k:'hit',idx:0,squash:1};
-    case ST.launched: return {k:'hit',idx:1,squash:1};
-    case ST.knockdown: return {k:'death',idx:Math.min(5,(f.t/5)|0),squash:1};
-    case ST.getup: return {k:'death',idx:Math.max(0,5-((f.t/3)|0)),squash:1};   // death, rewound
-    case ST.ko: return {k:'death',idx:Math.min(5,(f.t/8)|0),squash:1};
-    default: return {k:'idle',idx:((f.t/7)|0)%sp.anims.idle.n,squash:1};
+    case ST.hitstun:{const n=A.hit.n;return {k:'hit',idx:Math.min(n-1,((f.t*n)/Math.max(1,f.dur))|0),squash:1};}
+    case ST.blockstun:
+      if(A.block)return {k:'block',idx:Math.min(A.block.n-1,(f.t/3)|0),squash:1};
+      return {k:'hit',idx:0,squash:1};
+    case ST.launched: return {k:'hit',idx:Math.min(A.hit.n-1,1),squash:1};
+    case ST.knockdown:{const n=A.death.n;return {k:'death',idx:Math.min(n-1,(f.t/5)|0),squash:1};}
+    case ST.getup:
+      if(A.getup)return {k:'getup',idx:Math.min(A.getup.n-1,((f.t*A.getup.n)/14)|0),squash:1};
+      return {k:'death',idx:Math.max(0,A.death.n-1-((f.t/3)|0)),squash:1};      // death, rewound
+    case ST.ko:{const n=A.death.n;return {k:'death',idx:Math.min(n-1,(f.t/8)|0),squash:1};}
+    default: return {k:'idle',idx:((f.t/7)|0)%A.idle.n,squash:1};
   }
 }
 
