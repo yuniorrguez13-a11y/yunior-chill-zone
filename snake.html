@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Snake Game — Da Gaming Zone</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+  <script src="ycz-scores.js"></script>
   <style>
     :root {
       --cyan: #00d4ff;
@@ -223,6 +224,7 @@
       // Collision
       if (snake.some(seg => seg.x === head.x && seg.y === head.y) ||
           head.x < 0 || head.y < 0 || head.x >= canvasSize || head.y >= canvasSize) {
+        if (window.yczScore) yczScore('snake', score);   // console record
         alert('Game Over! Score: ' + score);
         snake = [{x: 10 * box, y: 10 * box}];
         direction = 'ArrowRight';

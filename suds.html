@@ -36,6 +36,7 @@
     #backLink:hover { color:#fff; border-color:rgba(232,22,42,.7); }
     body.playing #backLink { display:none; }
   </style>
+  <script src="ycz-scores.js"></script>
 </head>
 <body>
   <a id="backLink" href="index.html">&larr; Yuniors Chill Zone</a>
@@ -5182,6 +5183,7 @@ function endRun(){
       localStorage.setItem('suds-best-kills', String(ST.best.kills));
     } catch(e){}
   }
+  if (window.yczScore) yczScore('suds', ST.wave);   // console record
   SFX.gameover();
 }
 

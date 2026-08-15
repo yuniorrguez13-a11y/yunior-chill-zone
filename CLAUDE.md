@@ -17,11 +17,13 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `index.html` | The main app. ~2,600 lines, everything inline. Chat, servers, channels, voice, DMs, friends, profiles, bots, notifications. |
 | `ycz-theme.css` | Shared stylesheet. Loaded **after** each page's own `<style>` so it wins the cascade. |
 | `ycz-i18n.js` | Translation engine + dictionaries (en/es/fr/pt). `t('key')` in JS, `data-i18n="key"` in markup. |
-| `ycz-icons.js` | SVG icon set (~41). `icon('hash')` in JS, `<i data-ic="hash">` in markup. |
+| `ycz-icons.js` | SVG icon set (~47). `icon('hash')` in JS, `<i data-ic="hash">` in markup. |
+| `ycz-scores.js` | Records + playtime, kept in `localStorage` under `ycz-games`. `yczScore(id,n)` for a high score, `yczTally(id)` for a running count, `yczPlay(id,ms)` for time, `yczData()` to read. Loaded by the games that keep score and by the console. |
 | `video.html` | VideoZone. Own app, shares session + theme. |
 | `qmages.html` | Image board. Own app, shares session + theme. |
 | `piano.html` | Multiplayer piano. |
-| `music.html`, `gaming.html` | Static link pages, themed via `ycz-theme.css`. |
+| `music.html` | Static link page, themed via `ycz-theme.css`. |
+| `gaming.html` | The console. A Steam-Big-Picture launcher: wide hero for the selected game, upright capsules for the rest, games open in an iframe here rather than redirecting. Edit the `GAMES` array at the top of its `<script>` to add or remove one — nothing else in the file needs touching. |
 
 ### Supabase Edge Functions
 | Function | Purpose | Notes |
@@ -208,7 +210,13 @@ migration: `ycz_sv_role(text)` (your role in a server, 'owner' if you own it),
 - Emoji still in the interface: landing-page feature cards (`💬 🔊 🎮 …`, arguably
   content), the `🌙`/`☀️` theme buttons on VideoZone/Qmages, and misc toast checkmarks.
   The chat-app chrome (`🏠`, `🟢`, `👤`, `📷`, `🔇`, `📣`, notification icons) is now SVG.
-- Music/Gaming page *content* is still English (only chrome is translated)
+- Music page *content* is still English (only chrome is translated). The Gaming
+  Zone is fully translated now.
+- Minecraft and Subway Surfers use placeholder capsule/hero art (generated, in
+  `art/games/`) — the owner is supplying the real images.
+- Muting a game from the console's settings is best-effort: it stops
+  `<audio>`/`<video>` and suspends any Web Audio context opened *after* the
+  game loads. A context opened during load keeps playing.
 - No screen share
 - Push notifications only fire when the tab is open in the background — real push needs a
   service worker + VAPID keys

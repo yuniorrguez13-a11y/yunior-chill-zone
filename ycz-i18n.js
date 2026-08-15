@@ -93,6 +93,36 @@ en: {
   landingCta:"Free to join — make an account to start chatting.",
   backToChat:"Chill Zone", language:"Language",
 
+  /* ── gaming zone console ── */
+  gz_search:"Search games", gz_fullscreen:"Fullscreen", gz_theme:"Light / dark",
+  gz_play:"Play", gz_settings:"Settings", gz_playtime:"Time played",
+  gz_records:"Your records", gz_noRecord:"No run yet", gz_proto:"Prototype",
+  gz_hBrowse:"Browse", gz_hHold:"Hold for the menu", gz_loading:"Loading",
+  gz_resume:"Back to the game", gz_restart:"Restart", gz_exit:"Quit to the console",
+  gz_reset:"Clear record and time", gz_done:"Done", gz_cleared:"Cleared",
+  gz_zoom:"Zoom", gz_zoomHelp:"For games that draw themselves small in a corner.",
+  gz_sharp:"Sharpness", gz_sharpHelp:"Pixelated keeps old art crisp. Smooth softens it.",
+  gz_smooth:"Smooth", gz_pixel:"Pixelated",
+  gz_mute:"Mute this game", gz_muteHelp:"Works in most games, not every one.",
+  gz_autoFs:"Start in fullscreen", gz_autoFsHelp:"Go fullscreen the moment it opens.",
+  gz_keys:"Keys", gz_keysHelp:"Play with the keys you want, even when the game won't let you change them.",
+  gz_addKey:"Add a key", gz_pressYours:"Press the key YOU want to use…",
+  gz_pressGame:"Now press the key the game expects…",
+  gz_noKeys:"This one doesn't use the keyboard, so there is nothing to remap.",
+  gz_noMaps:"No keys changed — the game's own controls apply.",
+  gz_keysExample:"For example: press W, then the Up arrow. Now W moves you up.",
+  gz_outside:"This game is hosted elsewhere, so these settings can't reach inside it.",
+  gz_hrs:"hrs", gz_min:"min",
+  rec_score:"Best score", rec_wave:"Furthest wave", rec_wins:"Matches won",
+  g_snake:"Eat, grow, don't bite yourself. The one everybody already knows how to play.",
+  g_doom:"Retro shooter rebuilt as plain web pages. Point and click your way through it.",
+  g_mc:"Blocky creative mode, running straight in the browser. Nothing to install.",
+  g_flappy:"One button. Two pipes. Endless regret.",
+  g_subway:"Endless runner. Dodge the trains, keep going.",
+  g_suds:"Bullet-hell survival against the dishwasher uprising. Early build — expect rough edges.",
+  g_sffg:"Stupidly Funny Fighting Game for Dummies. Two on one keyboard, or online with a room code.",
+
+
   /* features update */
   search:"Search", searchMsgs:"Search messages…", noResults:"No results",
   typeToSearch:"Type at least 2 letters to search this server.",
@@ -206,6 +236,36 @@ es: {
   landingCta:"Gratis — crea una cuenta y empieza a chatear.",
   backToChat:"Chill Zone", language:"Idioma",
 
+  /* ── consola de la gaming zone ── */
+  gz_search:"Buscar juegos", gz_fullscreen:"Pantalla completa", gz_theme:"Claro / oscuro",
+  gz_play:"Jugar", gz_settings:"Ajustes", gz_playtime:"Tiempo jugado",
+  gz_records:"Tus récords", gz_noRecord:"Aún sin marca", gz_proto:"Prototipo",
+  gz_hBrowse:"Moverte", gz_hHold:"Mantén para el menú", gz_loading:"Cargando",
+  gz_resume:"Volver al juego", gz_restart:"Reiniciar", gz_exit:"Salir a la consola",
+  gz_reset:"Borrar récord y tiempo", gz_done:"Listo", gz_cleared:"Borrado",
+  gz_zoom:"Zoom", gz_zoomHelp:"Para los juegos que se dibujan pequeños en una esquina.",
+  gz_sharp:"Nitidez", gz_sharpHelp:"Pixelado mantiene el dibujo antiguo limpio. Suavizado lo difumina.",
+  gz_smooth:"Suavizado", gz_pixel:"Pixelado",
+  gz_mute:"Silenciar este juego", gz_muteHelp:"Funciona en casi todos, no en todos.",
+  gz_autoFs:"Arrancar en pantalla completa", gz_autoFsHelp:"Se pone a pantalla completa nada más abrirlo.",
+  gz_keys:"Teclas", gz_keysHelp:"Juega con las teclas que quieras, aunque el juego no te deje cambiarlas.",
+  gz_addKey:"Añadir tecla", gz_pressYours:"Pulsa la tecla que TÚ quieres usar…",
+  gz_pressGame:"Ahora pulsa la que espera el juego…",
+  gz_noKeys:"Este no usa el teclado, así que no hay nada que cambiar.",
+  gz_noMaps:"Sin cambios — valen los controles del propio juego.",
+  gz_keysExample:"Por ejemplo: pulsa W y luego la flecha arriba. Ya subes con W.",
+  gz_outside:"Este juego está alojado fuera, así que estos ajustes no le llegan.",
+  gz_hrs:"h", gz_min:"min",
+  rec_score:"Mejor puntuación", rec_wave:"Oleada más lejos", rec_wins:"Partidas ganadas",
+  g_snake:"Come, crece y no te muerdas. El que ya sabe jugar todo el mundo.",
+  g_doom:"Shooter retro rehecho como páginas web. Se juega apuntando y haciendo clic.",
+  g_mc:"Modo creativo de bloques, directo en el navegador. Sin instalar nada.",
+  g_flappy:"Un botón. Dos tuberías. Arrepentimiento infinito.",
+  g_subway:"Corredor sin fin. Esquiva los trenes y sigue.",
+  g_suds:"Supervivencia bullet-hell contra el alzamiento de los lavavajillas. Versión temprana — tiene asperezas.",
+  g_sffg:"Juego de lucha tontamente divertido para tontos. Dos en un teclado, o en línea con un código de sala.",
+
+
   search:"Buscar", searchMsgs:"Buscar mensajes…", noResults:"Sin resultados",
   typeToSearch:"Escribe al menos 2 letras para buscar en este servidor.",
   pinned:"Mensajes fijados", pinMsg:"Fijar", unpinMsg:"Desfijar",
@@ -317,6 +377,36 @@ fr: {
   fImages:"Qmages", fImagesD:"Un tableau d'images pour sauvegarder et partager des photos.",
   landingCta:"Gratuit — crée un compte pour commencer à discuter.",
   backToChat:"Chill Zone", language:"Langue",
+
+  /* ── console de la gaming zone ── */
+  gz_search:"Chercher un jeu", gz_fullscreen:"Plein écran", gz_theme:"Clair / sombre",
+  gz_play:"Jouer", gz_settings:"Réglages", gz_playtime:"Temps de jeu",
+  gz_records:"Tes records", gz_noRecord:"Pas encore joué", gz_proto:"Prototype",
+  gz_hBrowse:"Naviguer", gz_hHold:"Maintiens pour le menu", gz_loading:"Chargement",
+  gz_resume:"Revenir au jeu", gz_restart:"Recommencer", gz_exit:"Quitter vers la console",
+  gz_reset:"Effacer record et temps", gz_done:"Terminé", gz_cleared:"Effacé",
+  gz_zoom:"Zoom", gz_zoomHelp:"Pour les jeux qui s'affichent tout petits dans un coin.",
+  gz_sharp:"Netteté", gz_sharpHelp:"Pixelisé garde le dessin ancien net. Lissé l'adoucit.",
+  gz_smooth:"Lissé", gz_pixel:"Pixelisé",
+  gz_mute:"Couper le son du jeu", gz_muteHelp:"Marche dans la plupart des jeux, pas tous.",
+  gz_autoFs:"Démarrer en plein écran", gz_autoFsHelp:"Passe en plein écran dès l'ouverture.",
+  gz_keys:"Touches", gz_keysHelp:"Joue avec les touches que tu veux, même si le jeu ne le permet pas.",
+  gz_addKey:"Ajouter une touche", gz_pressYours:"Appuie sur TA touche…",
+  gz_pressGame:"Maintenant celle qu'attend le jeu…",
+  gz_noKeys:"Celui-ci n'utilise pas le clavier, il n'y a rien à changer.",
+  gz_noMaps:"Aucun changement — les commandes du jeu s'appliquent.",
+  gz_keysExample:"Par exemple : appuie sur W, puis sur la flèche haut. W te fait monter.",
+  gz_outside:"Ce jeu est hébergé ailleurs, ces réglages ne l'atteignent pas.",
+  gz_hrs:"h", gz_min:"min",
+  rec_score:"Meilleur score", rec_wave:"Vague la plus loin", rec_wins:"Matchs gagnés",
+  g_snake:"Mange, grandis, ne te mords pas. Celui que tout le monde sait déjà jouer.",
+  g_doom:"Shooter rétro refait en simples pages web. Ça se joue au clic.",
+  g_mc:"Mode créatif en blocs, directement dans le navigateur. Rien à installer.",
+  g_flappy:"Un bouton. Deux tuyaux. Des regrets sans fin.",
+  g_subway:"Course sans fin. Esquive les trains et continue.",
+  g_suds:"Survie bullet-hell contre le soulèvement des lave-vaisselle. Version précoce — ça gratte encore.",
+  g_sffg:"Jeu de combat bêtement drôle pour les nuls. À deux sur un clavier, ou en ligne avec un code.",
+
 
   search:"Rechercher", searchMsgs:"Rechercher des messages…", noResults:"Aucun résultat",
   typeToSearch:"Tape au moins 2 lettres pour chercher sur ce serveur.",
@@ -430,6 +520,36 @@ pt: {
   landingCta:"Grátis — cria uma conta e começa a conversar.",
   backToChat:"Chill Zone", language:"Idioma",
 
+  /* ── consola da gaming zone ── */
+  gz_search:"Procurar jogos", gz_fullscreen:"Ecrã inteiro", gz_theme:"Claro / escuro",
+  gz_play:"Jogar", gz_settings:"Definições", gz_playtime:"Tempo jogado",
+  gz_records:"Os teus recordes", gz_noRecord:"Ainda sem marca", gz_proto:"Protótipo",
+  gz_hBrowse:"Navegar", gz_hHold:"Mantém para o menu", gz_loading:"A carregar",
+  gz_resume:"Voltar ao jogo", gz_restart:"Recomeçar", gz_exit:"Sair para a consola",
+  gz_reset:"Apagar recorde e tempo", gz_done:"Pronto", gz_cleared:"Apagado",
+  gz_zoom:"Zoom", gz_zoomHelp:"Para os jogos que se desenham pequenos num canto.",
+  gz_sharp:"Nitidez", gz_sharpHelp:"Pixelado mantém o desenho antigo limpo. Suavizado esbate-o.",
+  gz_smooth:"Suavizado", gz_pixel:"Pixelado",
+  gz_mute:"Silenciar este jogo", gz_muteHelp:"Funciona na maioria dos jogos, não em todos.",
+  gz_autoFs:"Arrancar em ecrã inteiro", gz_autoFsHelp:"Fica em ecrã inteiro assim que abre.",
+  gz_keys:"Teclas", gz_keysHelp:"Joga com as teclas que quiseres, mesmo que o jogo não deixe mudar.",
+  gz_addKey:"Adicionar tecla", gz_pressYours:"Carrega na tecla que TU queres usar…",
+  gz_pressGame:"Agora na que o jogo espera…",
+  gz_noKeys:"Este não usa o teclado, por isso não há nada para mudar.",
+  gz_noMaps:"Sem alterações — valem os controlos do próprio jogo.",
+  gz_keysExample:"Por exemplo: carrega em W e depois na seta para cima. Já sobes com W.",
+  gz_outside:"Este jogo está alojado fora, por isso estas definições não lhe chegam.",
+  gz_hrs:"h", gz_min:"min",
+  rec_score:"Melhor pontuação", rec_wave:"Onda mais longe", rec_wins:"Partidas ganhas",
+  g_snake:"Come, cresce e não te mordas. Aquele que toda a gente já sabe jogar.",
+  g_doom:"Shooter retro refeito como páginas web simples. Joga-se a apontar e clicar.",
+  g_mc:"Modo criativo de blocos, direto no navegador. Sem instalar nada.",
+  g_flappy:"Um botão. Dois canos. Arrependimento sem fim.",
+  g_subway:"Corrida sem fim. Desvia-te dos comboios e continua.",
+  g_suds:"Sobrevivência bullet-hell contra o levantamento das máquinas de lavar. Versão inicial — tem arestas.",
+  g_sffg:"Jogo de luta estupidamente divertido para totós. Dois num teclado, ou online com um código de sala.",
+
+
   search:"Pesquisar", searchMsgs:"Pesquisar mensagens…", noResults:"Sem resultados",
   typeToSearch:"Escreve pelo menos 2 letras para pesquisar neste servidor.",
   pinned:"Mensagens afixadas", pinMsg:"Afixar", unpinMsg:"Desafixar",
@@ -483,8 +603,15 @@ pt: {
 (function () {
   const SAVED = "ycz-lang";
 
+  /* Storage isn't guaranteed: a page embedded in an iframe can have it
+     denied outright, and that used to throw right here — taking the whole
+     translation engine down with it, on every page. */
+  function saved_() {
+    try { return localStorage.getItem(SAVED); } catch (e) { return null; }
+  }
+
   function pick() {
-    const saved = localStorage.getItem(SAVED);
+    const saved = saved_();
     if (saved && window.YCZ_I18N[saved]) return saved;
     // guess from the browser, e.g. "es-MX" → "es"
     for (const l of navigator.languages || [navigator.language || "en"]) {
@@ -521,7 +648,7 @@ pt: {
   window.setLang = function (code) {
     if (!window.YCZ_I18N[code]) return;
     lang = code;
-    localStorage.setItem(SAVED, code);
+    try { localStorage.setItem(SAVED, code); } catch (e) {}
     window.applyI18n();
     document.dispatchEvent(new CustomEvent("ycz-lang-changed", { detail: code }));
   };

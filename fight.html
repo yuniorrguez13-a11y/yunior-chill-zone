@@ -366,6 +366,7 @@ kbd{
 
 <div id="toast"></div>
 
+<script src="ycz-scores.js"></script>
 <script src="ycz-icons.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1725,6 +1726,9 @@ function onMatchEnd(){
   $('res-wait').classList.remove('on');
   $('btn-rematch').disabled=false;$('btn-reselect').disabled=false;
   show('s-result');
+  /* console record: locally you are player 1, online you are whoever you are */
+  const youWon = mode==='online' ? (net.host===(w===0)) : (w===0);
+  if(window.yczTally && youWon) yczTally('sffg',1);
   if(mode==='online')recordResult(w);
 }
 

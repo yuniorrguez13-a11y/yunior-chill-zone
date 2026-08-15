@@ -157,6 +157,7 @@ const bird = {
         this.speed += this.gravity;
         if (this.y + r >= gnd.y || this.collisioned()) {
           state.curr = state.gameOver;
+          if (window.yczScore) yczScore('flappy', UI.score.curr);   // console record
         }
 
         break;
