@@ -310,6 +310,7 @@ kbd{
       <tr><td>Throw</td><td><b>Light + Heavy</b> together. Unblockable, short range — the answer to turtling. Whiffs on airborne or stunned opponents.</td></tr>
       <tr><td>Dash / backdash</td><td>Double-tap a direction (or the dash button on pad). Backdash is briefly invulnerable.</td></tr>
       <tr><td>Super</td><td><b>Heavy + Special</b> with a full meter (the cyan bar). Every fighter has one. Big damage, big drama.</td></tr>
+      <tr><td>Achilles heel</td><td><b>Sarge counters Truck:</b> Truck takes 30% more damage and extra stun from Sarge. Reel In and Sarge's super break armor.</td></tr>
       <tr><td>Meter</td><td>Builds from dealing and taking hits. Carries across rounds.</td></tr>
       <tr><td>Juggle limit</td><td>Max 4 hits on an airborne opponent, then they drop free. No infinites.</td></tr>
     </table>
@@ -530,9 +531,10 @@ const CHARACTERS=[
   }
 },
 {
-  id:'truck', name:'Truck', tagline:'Not a nickname. A lifestyle.',
+  id:'truck', name:'Truck', tagline:'A moving wall. Sarge knows where it cracks.',
   color:'#ff8c00', color2:'#ffd9a0', skin:'#d8a878',
-  hp:1250, walk:50, back:40, jumpVX:44, jumpVY:-240, grav:15,
+  weakTo:'sarge', weakPct:130, weakHitstun:6, weakBlockstun:3,
+  hp:1100, walk:48, back:38, jumpVX:44, jumpVY:-240, grav:15,
   w:68, h:162, crouchH:118,
   sprite:{ /* user-supplied BruteArm sheets from heavy guy.zip */
     path:'art/truck/', scale:1.85, idleTop:13, v:1,
@@ -550,14 +552,14 @@ const CHARACTERS=[
     }
   },
   moves:{
-    light:{name:'Slap',dmg:75,startup:8,active:3,recovery:12,hitstun:16,blockstun:9,hitstop:6,kbx:80,box:{x:26,y:-130,w:60,h:30}},
-    heavy:{name:'Wrecking Ball',dmg:170,startup:18,active:4,recovery:22,hitstun:26,blockstun:14,hitstop:11,kbx:90,launch:1,kby:-230,box:{x:26,y:-146,w:68,h:46}},
-    special:{name:'Pull Over',dmg:200,startup:22,active:4,recovery:24,hitstun:30,blockstun:16,hitstop:12,kbx:170,armor:1,step:40,anim:'attack3',impact:3,box:{x:30,y:-148,w:74,h:46}},
-    air:{name:'Body Splash',dmg:85,startup:9,active:10,recovery:10,hitstun:18,blockstun:11,hitstop:7,kbx:70,hits:'high',anim:'attack4',impact:6,box:{x:8,y:-104,w:64,h:46}},
-    clight:{name:'Shin Slap',dmg:60,startup:9,active:3,recovery:14,hitstun:15,blockstun:10,hitstop:6,kbx:70,hits:'low',box:{x:28,y:-50,w:62,h:38}},
-    cheavy:{name:'Ground Pound',dmg:140,startup:16,active:4,recovery:24,hitstun:26,blockstun:14,hitstop:10,kbx:80,hits:'low',launch:1,kby:-170,anim:'attack3',impact:3,box:{x:30,y:-44,w:70,h:34}},
-    throw:{name:'Trucked',dmg:160,startup:6,active:3,recovery:26,hitstop:12,kbx:90,launch:1,kby:-210,throw:1,anim:'attack2',impact:3,box:{x:8,y:-140,w:56,h:80}},
-    super:{name:'Full Send',dmg:300,startup:16,active:5,recovery:30,hitstun:32,blockstun:18,hitstop:15,kbx:230,launch:1,kby:-240,step:90,armor:1,super:1,anim:'attack4',impact:6,box:{x:30,y:-150,w:86,h:56}}
+    light:{name:'Slap',dmg:70,startup:9,active:3,recovery:15,hitstun:15,blockstun:9,hitstop:6,kbx:75,box:{x:26,y:-130,w:60,h:30}},
+    heavy:{name:'Wrecking Ball',dmg:155,startup:19,active:4,recovery:27,hitstun:24,blockstun:13,hitstop:10,kbx:90,launch:1,kby:-220,box:{x:26,y:-146,w:68,h:46}},
+    special:{name:'Pull Over',dmg:180,startup:24,active:4,recovery:30,hitstun:27,blockstun:14,hitstop:11,kbx:155,armor:1,step:35,anim:'attack3',impact:3,box:{x:30,y:-148,w:74,h:46}},
+    air:{name:'Body Splash',dmg:75,startup:10,active:9,recovery:12,hitstun:16,blockstun:10,hitstop:6,kbx:65,hits:'high',anim:'attack4',impact:6,box:{x:8,y:-104,w:64,h:46}},
+    clight:{name:'Shin Slap',dmg:50,startup:10,active:3,recovery:18,hitstun:14,blockstun:9,hitstop:5,kbx:65,hits:'low',box:{x:28,y:-50,w:62,h:38}},
+    cheavy:{name:'Ground Pound',dmg:125,startup:18,active:4,recovery:29,hitstun:24,blockstun:13,hitstop:9,kbx:75,hits:'low',launch:1,kby:-160,anim:'attack3',impact:3,box:{x:30,y:-44,w:70,h:34}},
+    throw:{name:'Trucked',dmg:145,startup:7,active:3,recovery:30,hitstop:11,kbx:85,launch:1,kby:-200,throw:1,anim:'attack2',impact:3,box:{x:8,y:-140,w:56,h:80}},
+    super:{name:'Full Send',dmg:275,startup:18,active:5,recovery:36,hitstun:30,blockstun:16,hitstop:14,kbx:215,launch:1,kby:-230,step:80,armor:1,super:1,anim:'attack4',impact:6,box:{x:30,y:-150,w:86,h:56}}
   }
 },
 {
@@ -586,9 +588,9 @@ const CHARACTERS=[
   }
 },
 {
-  id:'sarge', name:'Sarge', tagline:'Chain of command. Literally.',
+  id:'sarge', name:'Sarge', tagline:"Truck's hard counter. Chain breaks armor.",
   color:'#a8b8c8', color2:'#e8f0f8', skin:'#e9d9c8',
-  hp:850, walk:60, back:48, jumpVX:58, jumpVY:-250, grav:14,
+  hp:925, walk:68, back:56, jumpVX:62, jumpVY:-250, grav:14,
   w:48, h:150, crouchH:104,
   sprite:{ /* "Fighter Anime Girl Sprite" by neopixelboyco (itch.io, CC0 option) —
              design verified distinct from any commercial fighter; chroma-keyed,
@@ -618,14 +620,14 @@ const CHARACTERS=[
     }
   },
   moves:{
-    light:{name:'Jab',dmg:55,startup:8,active:3,recovery:14,hitstun:15,blockstun:9,hitstop:5,kbx:70,box:{x:26,y:-128,w:84,h:30}},
-    heavy:{name:'Pirouette Kick',dmg:115,startup:14,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:9,kbx:110,box:{x:28,y:-136,w:100,h:46}},
-    special:{name:'Reel In',dmg:90,startup:13,active:4,recovery:22,hitstun:26,blockstun:13,hitstop:10,kbx:-130,anim:'special',impact:6,box:{x:34,y:-130,w:110,h:40}},
-    air:{name:'Volley Kick',dmg:60,startup:8,active:7,recovery:9,hitstun:15,blockstun:9,hitstop:5,kbx:60,hits:'high',anim:'airatk',box:{x:20,y:-100,w:104,h:40}},
-    clight:{name:'Ankle Sweep',dmg:45,startup:7,active:3,recovery:12,hitstun:14,blockstun:9,hitstop:5,kbx:55,hits:'low',anim:'clight',box:{x:30,y:-44,w:112,h:32}},
-    cheavy:{name:'Braid Riser',dmg:95,startup:12,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:8,kbx:60,launch:1,kby:-230,anim:'cheavy',box:{x:20,y:-150,w:80,h:110}},
-    throw:{name:'Court Martial',dmg:115,startup:5,active:3,recovery:24,hitstop:10,kbx:80,launch:1,kby:-190,throw:1,box:{x:8,y:-130,w:52,h:70}},
-    super:{name:'Dishonorable Discharge',dmg:240,startup:10,active:6,recovery:28,hitstun:30,blockstun:16,hitstop:14,kbx:200,launch:1,kby:-260,inv:1,super:1,anim:'super',box:{x:14,y:-170,w:90,h:130}}
+    light:{name:'Jab',dmg:60,startup:6,active:3,recovery:11,hitstun:16,blockstun:10,hitstop:5,kbx:72,box:{x:26,y:-128,w:88,h:30}},
+    heavy:{name:'Pirouette Kick',dmg:125,startup:12,active:4,recovery:17,hitstun:24,blockstun:13,hitstop:9,kbx:115,box:{x:28,y:-136,w:108,h:46}},
+    special:{name:'Reel In',dmg:105,startup:10,active:5,recovery:18,hitstun:30,blockstun:15,hitstop:10,kbx:-105,armorBreak:1,anim:'special',impact:6,box:{x:34,y:-130,w:124,h:40}},
+    air:{name:'Volley Kick',dmg:70,startup:7,active:7,recovery:8,hitstun:17,blockstun:10,hitstop:6,kbx:65,hits:'high',anim:'airatk',box:{x:20,y:-100,w:110,h:40}},
+    clight:{name:'Ankle Sweep',dmg:50,startup:6,active:3,recovery:10,hitstun:15,blockstun:10,hitstop:5,kbx:58,hits:'low',anim:'clight',box:{x:30,y:-44,w:118,h:32}},
+    cheavy:{name:'Braid Riser',dmg:105,startup:10,active:4,recovery:17,hitstun:24,blockstun:13,hitstop:9,kbx:65,launch:1,kby:-240,anim:'cheavy',box:{x:20,y:-150,w:86,h:110}},
+    throw:{name:'Court Martial',dmg:120,startup:5,active:3,recovery:21,hitstop:10,kbx:85,launch:1,kby:-195,throw:1,box:{x:8,y:-130,w:54,h:70}},
+    super:{name:'Dishonorable Discharge',dmg:260,startup:9,active:6,recovery:24,hitstun:32,blockstun:17,hitstop:14,kbx:210,launch:1,kby:-270,inv:1,armorBreak:1,super:1,anim:'super',box:{x:14,y:-170,w:98,h:130}}
   }
 }];
 
@@ -655,7 +657,7 @@ function charPower(c){
   for(const k in c.moves){const m=c.moves[k];
     p+=((m.dmg*8)/(m.startup+m.active+m.recovery))|0;
     if(m.box)p+=((m.box.x+m.box.w)/6)|0;      // reach is power too (ask Sarge)
-    if(m.launch)p+=15; if(m.armor)p+=20; if(m.step)p+=(m.step/8)|0;
+    if(m.launch)p+=15; if(m.armor)p+=20; if(m.armorBreak)p+=18; if(m.step)p+=(m.step/8)|0;
   }
   return p;
 }
@@ -931,13 +933,20 @@ function findHit(S,i){
 function applyHit(S,i,h){
   const att=S.f[i],def=S.f[1-i],m=h.m;
   att.mvHit=1;
+  const attChar=chr(att),defChar=chr(def);
+  const exploitsWeakness=defChar.weakTo===attChar.id;
+  const weakPct=exploitsWeakness?(defChar.weakPct||100):100;
+  const weakHitstun=exploitsWeakness?(defChar.weakHitstun||0):0;
+  const weakBlockstun=exploitsWeakness?(defChar.weakBlockstun||0):0;
   const kdir=def.x>=att.x?1:-1;
   const cx=(att.x+def.x)/2|0, cy=def.y-110*FP;
   /* armor: defender is inside an armored move's startup/active window */
   const dm=currentMove(def);
-  if(!h.blocked&&!m.throw&&dm&&dm.armor&&!def.armorUsed&&def.t<dm.startup+dm.active){
+  if(!h.blocked&&!m.throw&&!m.armorBreak&&dm&&dm.armor&&!def.armorUsed&&def.t<dm.startup+dm.active){
     def.armorUsed=1;
-    def.hp-=(m.dmg*3/4)|0;
+    let armorDmg=(m.dmg*3/4)|0;
+    if(exploitsWeakness)armorDmg=((armorDmg*weakPct)/100)|0;
+    def.hp-=armorDmg;
     att.meter=Math.min(METER_MAX,att.meter+80);
     def.meter=Math.min(METER_MAX,def.meter+60);
     S.hitstop=Math.max(S.hitstop,4);
@@ -952,7 +961,7 @@ function applyHit(S,i,h){
   }
   S.hitstop=Math.max(S.hitstop,m.hitstop);
   if(h.blocked){
-    def.st=ST.blockstun;def.t=0;def.dur=m.blockstun;def.mv='';def.mvHit=0;
+    def.st=ST.blockstun;def.t=0;def.dur=m.blockstun+weakBlockstun;def.mv='';def.mvHit=0;
     const kb=(m.kbx*3/4)|0;
     if(Math.abs(def.x)>=WALL-2*FP)att.vx=-kdir*kb;      // cornered: attacker eats the push
     else def.vx=kdir*kb;
@@ -962,7 +971,8 @@ function applyHit(S,i,h){
   /* clean hit */
   def.combo=(def.st===ST.hitstun||def.st===ST.launched)?def.combo+1:1;
   const scale=10-Math.min(def.combo-1,6);
-  const dmg=((m.dmg*scale)/10)|0;
+  let dmg=((m.dmg*scale)/10)|0;
+  if(exploitsWeakness)dmg=((dmg*weakPct)/100)|0;
   def.hp-=dmg;
   const airborne=def.st===ST.air||def.st===ST.airattack||def.st===ST.launched;
   if(def.hp<=0){def.hp=0;koFighter(def,kdir,m);}
@@ -974,7 +984,7 @@ function applyHit(S,i,h){
     if(def.y>=GROUND)def.y=-1;                          // lift off the floor
   }else{
     def.juggle=0;
-    def.st=ST.hitstun;def.t=0;def.dur=m.hitstun;def.mv='';def.mvHit=0;
+    def.st=ST.hitstun;def.t=0;def.dur=m.hitstun+weakHitstun;def.mv='';def.mvHit=0;
     def.vx=kdir*m.kbx;
   }
   S.events.push({t:'hit',x:cx,y:cy,big:m.dmg>=100?1:0,combo:def.combo});
