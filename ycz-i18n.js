@@ -113,6 +113,9 @@ en: {
   gz_keysExample:"For example: press W, then the Up arrow. Now W moves you up.",
   gz_outside:"This game is hosted elsewhere, so these settings can't reach inside it.",
   gz_hrs:"hrs", gz_min:"min",
+  gz_menu:"Menu", gz_back:"Back",
+  gz_holdHint:"Hold Esc — or two fingers — for the menu",
+
   rec_score:"Best score", rec_wave:"Furthest wave", rec_wins:"Matches won",
   g_snake:"Eat, grow, don't bite yourself. The one everybody already knows how to play.",
   g_doom:"Retro shooter rebuilt as plain web pages. Point and click your way through it.",
@@ -256,6 +259,9 @@ es: {
   gz_keysExample:"Por ejemplo: pulsa W y luego la flecha arriba. Ya subes con W.",
   gz_outside:"Este juego está alojado fuera, así que estos ajustes no le llegan.",
   gz_hrs:"h", gz_min:"min",
+  gz_menu:"Menú", gz_back:"Atrás",
+  gz_holdHint:"Mantén Esc — o dos dedos — para el menú",
+
   rec_score:"Mejor puntuación", rec_wave:"Oleada más lejos", rec_wins:"Partidas ganadas",
   g_snake:"Come, crece y no te muerdas. El que ya sabe jugar todo el mundo.",
   g_doom:"Shooter retro rehecho como páginas web. Se juega apuntando y haciendo clic.",
@@ -398,6 +404,9 @@ fr: {
   gz_keysExample:"Par exemple : appuie sur W, puis sur la flèche haut. W te fait monter.",
   gz_outside:"Ce jeu est hébergé ailleurs, ces réglages ne l'atteignent pas.",
   gz_hrs:"h", gz_min:"min",
+  gz_menu:"Menu", gz_back:"Retour",
+  gz_holdHint:"Maintiens Échap — ou deux doigts — pour le menu",
+
   rec_score:"Meilleur score", rec_wave:"Vague la plus loin", rec_wins:"Matchs gagnés",
   g_snake:"Mange, grandis, ne te mords pas. Celui que tout le monde sait déjà jouer.",
   g_doom:"Shooter rétro refait en simples pages web. Ça se joue au clic.",
@@ -540,6 +549,9 @@ pt: {
   gz_keysExample:"Por exemplo: carrega em W e depois na seta para cima. Já sobes com W.",
   gz_outside:"Este jogo está alojado fora, por isso estas definições não lhe chegam.",
   gz_hrs:"h", gz_min:"min",
+  gz_menu:"Menu", gz_back:"Voltar",
+  gz_holdHint:"Mantém Esc — ou dois dedos — para o menu",
+
   rec_score:"Melhor pontuação", rec_wave:"Onda mais longe", rec_wins:"Partidas ganhas",
   g_snake:"Come, cresce e não te mordas. Aquele que toda a gente já sabe jogar.",
   g_doom:"Shooter retro refeito como páginas web simples. Joga-se a apontar e clicar.",
