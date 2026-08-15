@@ -498,15 +498,35 @@ const CHARACTERS=[
   color:'#e8162a', color2:'#ffb199', skin:'#e9c9a8',
   hp:1000, walk:68, back:52, jumpVX:56, jumpVY:-252, grav:14,
   w:56, h:150, crouchH:105,
+  sprite:{ /* "Stick Figure Character Sprites 2D" by Raphael Goncalves, CC0 */
+    path:'art/regular/', scale:0.94, smooth:1, idleTop:8, v:1,
+    anims:{
+      idle:{f:'idle.png',n:8,cw:130,ch:184,cx:64,fy:176},
+      run:{f:'run.png',n:8,cw:138,ch:194,cx:55,fy:186},
+      walkback:{f:'walkback.png',n:8,cw:124,ch:193,cx:47,fy:185},
+      dash:{f:'dash.png',n:6,cw:169,ch:188,cx:58,fy:180},
+      backdash:{f:'dash.png',n:6,cw:169,ch:188,cx:58,fy:180},
+      jump:{f:'jump.png',n:2,cw:130,ch:194,cx:55,fy:186},
+      fall:{f:'fall.png',n:2,cw:130,ch:194,cx:55,fy:186},
+      attack1:{f:'attack1.png',n:9,cw:214,ch:181,cx:93,fy:173},
+      attack2:{f:'attack2.png',n:5,cw:214,ch:181,cx:93,fy:173},
+      special:{f:'special.png',n:5,cw:214,ch:181,cx:93,fy:173},
+      super:{f:'super.png',n:19,cw:214,ch:181,cx:93,fy:173},
+      clight:{f:'clight.png',n:8,cw:200,ch:189,cx:136,fy:181},
+      airatk:{f:'airatk.png',n:2,cw:136,ch:173,cx:69,fy:171},
+      hit:{f:'hit.png',n:4,cw:139,ch:174,cx:81,fy:166},
+      death:{f:'death.png',n:10,cw:214,ch:267,cx:103,fy:259}
+    }
+  },
   moves:{
     light:{name:'Jab',dmg:60,startup:5,active:3,recovery:9,hitstun:14,blockstun:8,hitstop:5,kbx:60,box:{x:24,y:-124,w:56,h:26}},
     heavy:{name:'Haymaker',dmg:130,startup:13,active:4,recovery:17,hitstun:22,blockstun:12,hitstop:9,kbx:110,box:{x:26,y:-134,w:66,h:34}},
-    special:{name:'Overtime Lunge',dmg:160,startup:16,active:5,recovery:22,hitstun:26,blockstun:14,hitstop:11,kbx:150,step:70,box:{x:30,y:-136,w:70,h:40}},
-    air:{name:'Air Kick',dmg:70,startup:7,active:8,recovery:10,hitstun:16,blockstun:10,hitstop:6,kbx:70,hits:'high',box:{x:16,y:-92,w:54,h:38}},
-    clight:{name:'Boot Poke',dmg:45,startup:6,active:3,recovery:11,hitstun:13,blockstun:9,hitstop:5,kbx:55,hits:'low',box:{x:26,y:-46,w:58,h:34}},
+    special:{name:'Overtime Lunge',dmg:160,startup:16,active:5,recovery:22,hitstun:26,blockstun:14,hitstop:11,kbx:150,step:70,anim:'special',impact:3,box:{x:30,y:-136,w:70,h:40}},
+    air:{name:'Air Kick',dmg:70,startup:7,active:8,recovery:10,hitstun:16,blockstun:10,hitstop:6,kbx:70,hits:'high',anim:'airatk',impact:1,box:{x:16,y:-92,w:54,h:38}},
+    clight:{name:'Boot Poke',dmg:45,startup:6,active:3,recovery:11,hitstun:13,blockstun:9,hitstop:5,kbx:55,hits:'low',anim:'clight',impact:4,box:{x:26,y:-46,w:58,h:34}},
     cheavy:{name:'Rising Fist',dmg:115,startup:11,active:5,recovery:21,hitstun:24,blockstun:12,hitstop:9,kbx:60,launch:1,kby:-250,box:{x:14,y:-160,w:46,h:100}},
     throw:{name:'Collar Grab',dmg:120,startup:5,active:3,recovery:23,hitstop:10,kbx:70,launch:1,kby:-180,throw:1,box:{x:8,y:-130,w:52,h:70}},
-    super:{name:'Overtime Overtime',dmg:260,startup:9,active:5,recovery:28,hitstun:30,blockstun:16,hitstop:14,kbx:200,launch:1,kby:-260,step:60,inv:1,super:1,box:{x:26,y:-140,w:80,h:52}}
+    super:{name:'Overtime Overtime',dmg:260,startup:9,active:5,recovery:28,hitstun:30,blockstun:16,hitstop:14,kbx:200,launch:1,kby:-260,step:60,inv:1,super:1,anim:'super',impact:17,box:{x:26,y:-140,w:80,h:52}}
   }
 },
 {
@@ -514,15 +534,30 @@ const CHARACTERS=[
   color:'#ff8c00', color2:'#ffd9a0', skin:'#d8a878',
   hp:1250, walk:50, back:40, jumpVX:44, jumpVY:-240, grav:15,
   w:68, h:162, crouchH:118,
+  sprite:{ /* user-supplied BruteArm sheets from heavy guy.zip */
+    path:'art/truck/', scale:1.85, idleTop:13, v:1,
+    anims:{
+      idle:{f:'idle.png',n:8,cw:100,ch:101,cx:50,fy:98},
+      run:{f:'run.png',n:6,cw:100,ch:100,cx:50,fy:98},
+      jump:{f:'jump.png',n:2,cw:120,ch:128,cx:60,fy:126},
+      fall:{f:'fall.png',n:2,cw:120,ch:128,cx:60,fy:126},
+      attack1:{f:'attack1.png',n:7,cw:160,ch:128,cx:80,fy:126},
+      attack2:{f:'attack2.png',n:5,cw:160,ch:128,cx:80,fy:126},
+      attack3:{f:'attack3.png',n:5,cw:160,ch:128,cx:80,fy:126},
+      attack4:{f:'attack4.png',n:8,cw:160,ch:128,cx:80,fy:126},
+      hit:{f:'hit.png',n:4,cw:160,ch:128,cx:80,fy:126},
+      death:{f:'death.png',n:8,cw:160,ch:128,cx:80,fy:126}
+    }
+  },
   moves:{
     light:{name:'Slap',dmg:75,startup:8,active:3,recovery:12,hitstun:16,blockstun:9,hitstop:6,kbx:80,box:{x:26,y:-130,w:60,h:30}},
     heavy:{name:'Wrecking Ball',dmg:170,startup:18,active:4,recovery:22,hitstun:26,blockstun:14,hitstop:11,kbx:90,launch:1,kby:-230,box:{x:26,y:-146,w:68,h:46}},
-    special:{name:'Pull Over',dmg:200,startup:22,active:4,recovery:24,hitstun:30,blockstun:16,hitstop:12,kbx:170,armor:1,step:40,box:{x:30,y:-148,w:74,h:46}},
-    air:{name:'Body Splash',dmg:85,startup:9,active:10,recovery:10,hitstun:18,blockstun:11,hitstop:7,kbx:70,hits:'high',box:{x:8,y:-104,w:64,h:46}},
+    special:{name:'Pull Over',dmg:200,startup:22,active:4,recovery:24,hitstun:30,blockstun:16,hitstop:12,kbx:170,armor:1,step:40,anim:'attack3',impact:3,box:{x:30,y:-148,w:74,h:46}},
+    air:{name:'Body Splash',dmg:85,startup:9,active:10,recovery:10,hitstun:18,blockstun:11,hitstop:7,kbx:70,hits:'high',anim:'attack4',impact:6,box:{x:8,y:-104,w:64,h:46}},
     clight:{name:'Shin Slap',dmg:60,startup:9,active:3,recovery:14,hitstun:15,blockstun:10,hitstop:6,kbx:70,hits:'low',box:{x:28,y:-50,w:62,h:38}},
-    cheavy:{name:'Ground Pound',dmg:140,startup:16,active:4,recovery:24,hitstun:26,blockstun:14,hitstop:10,kbx:80,hits:'low',launch:1,kby:-170,box:{x:30,y:-44,w:70,h:34}},
-    throw:{name:'Trucked',dmg:160,startup:6,active:3,recovery:26,hitstop:12,kbx:90,launch:1,kby:-210,throw:1,box:{x:8,y:-140,w:56,h:80}},
-    super:{name:'Full Send',dmg:300,startup:16,active:5,recovery:30,hitstun:32,blockstun:18,hitstop:15,kbx:230,launch:1,kby:-240,step:90,armor:1,super:1,box:{x:30,y:-150,w:86,h:56}}
+    cheavy:{name:'Ground Pound',dmg:140,startup:16,active:4,recovery:24,hitstun:26,blockstun:14,hitstop:10,kbx:80,hits:'low',launch:1,kby:-170,anim:'attack3',impact:3,box:{x:30,y:-44,w:70,h:34}},
+    throw:{name:'Trucked',dmg:160,startup:6,active:3,recovery:26,hitstop:12,kbx:90,launch:1,kby:-210,throw:1,anim:'attack2',impact:3,box:{x:8,y:-140,w:56,h:80}},
+    super:{name:'Full Send',dmg:300,startup:16,active:5,recovery:30,hitstun:32,blockstun:18,hitstop:15,kbx:230,launch:1,kby:-240,step:90,armor:1,super:1,anim:'attack4',impact:6,box:{x:30,y:-150,w:86,h:56}}
   }
 },
 {
