@@ -1635,7 +1635,7 @@ function spriteFrame(S,f,c){
 }
 
 function drawSpriteFighter(S,f,W2S){
-  const c=chr(f),sp=c.sprite;
+  const c=chr(f),sp=c.sprite,m=currentMove(f);
   let fr=spriteFrame(S,f,c),a=sp.anims[fr.k],img;
   if(sp.archives){
     let frames=sp.imgs[fr.k];
