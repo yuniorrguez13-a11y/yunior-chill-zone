@@ -551,10 +551,10 @@ const CHARACTERS=[
              design verified distinct from any commercial fighter; chroma-keyed,
              cropped and re-composed into strips. Frame mapping identified by
              the owner watching every block animated. See art/sarge/LICENSE.txt */
-    path:'art/sarge/', scale:0.58, smooth:1, idleTop:8, v:4,
+    path:'art/sarge/', scale:0.58, smooth:1, idleTop:8, v:5,
     anims:{
-      idle:{f:'idle.png',n:8,cw:115,ch:270,cx:57,fy:265},
-      run:{f:'run.png',n:9,cw:141,ch:268,cx:70,fy:263},
+      idle:{f:'idle.png',n:9,cw:164,ch:268,cx:82,fy:263},
+      run:{f:'run.png',n:7,cw:141,ch:268,cx:70,fy:263},
       walkback:{f:'walkback.png',n:7,cw:120,ch:270,cx:60,fy:265},
       dash:{f:'dash.png',n:8,cw:257,ch:191,cx:128,fy:186},
       backdash:{f:'backdash.png',n:6,cw:190,ch:272,cx:95,fy:267},
@@ -562,7 +562,7 @@ const CHARACTERS=[
       fall:{f:'fall.png',n:2,cw:209,ch:224,cx:104,fy:219},
       attack1:{f:'attack1.png',n:6,cw:253,ch:259,cx:116,fy:253},
       attack2:{f:'attack2.png',n:8,cw:288,ch:280,cx:105,fy:275},
-      special:{f:'special.png',n:8,cw:270,ch:282,cx:157,fy:276},
+      special:{f:'special.png',n:9,cw:270,ch:281,cx:157,fy:276},
       super:{f:'super.png',n:9,cw:275,ch:324,cx:78,fy:319},
       clight:{f:'clight.png',n:6,cw:276,ch:177,cx:93,fy:172},
       cheavy:{f:'cheavy.png',n:7,cw:262,ch:207,cx:139,fy:202},
@@ -571,13 +571,13 @@ const CHARACTERS=[
       block:{f:'block.png',n:4,cw:203,ch:267,cx:101,fy:262},
       death:{f:'death.png',n:6,cw:264,ch:206,cx:132,fy:201},
       getup:{f:'getup.png',n:5,cw:242,ch:166,cx:121,fy:161},
-      crouch:{f:'crouch.png',n:4,cw:139,ch:268,cx:69,fy:263}
+      crouch:{f:'crouch.png',n:5,cw:182,ch:217,cx:91,fy:212}
     }
   },
   moves:{
     light:{name:'Jab',dmg:55,startup:8,active:3,recovery:14,hitstun:15,blockstun:9,hitstop:5,kbx:70,box:{x:26,y:-128,w:84,h:30}},
     heavy:{name:'Pirouette Kick',dmg:115,startup:14,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:9,kbx:110,box:{x:28,y:-136,w:100,h:46}},
-    special:{name:'Reel In',dmg:90,startup:13,active:4,recovery:22,hitstun:26,blockstun:13,hitstop:10,kbx:-130,anim:'special',box:{x:34,y:-130,w:110,h:40}},
+    special:{name:'Reel In',dmg:90,startup:13,active:4,recovery:22,hitstun:26,blockstun:13,hitstop:10,kbx:-130,anim:'special',impact:6,box:{x:34,y:-130,w:110,h:40}},
     air:{name:'Volley Kick',dmg:60,startup:8,active:7,recovery:9,hitstun:15,blockstun:9,hitstop:5,kbx:60,hits:'high',anim:'airatk',box:{x:20,y:-100,w:104,h:40}},
     clight:{name:'Ankle Sweep',dmg:45,startup:7,active:3,recovery:12,hitstun:14,blockstun:9,hitstop:5,kbx:55,hits:'low',anim:'clight',box:{x:30,y:-44,w:112,h:32}},
     cheavy:{name:'Braid Riser',dmg:95,startup:12,active:4,recovery:20,hitstun:22,blockstun:12,hitstop:8,kbx:60,launch:1,kby:-230,anim:'cheavy',box:{x:20,y:-150,w:80,h:110}},
@@ -1127,10 +1127,14 @@ function spriteFrame(f,c){
       let k=(m.anim&&A[m.anim])?m.anim:
         ((f.mv==='light'||f.mv==='air'||f.mv==='clight'||f.mv==='throw')?'attack1':'attack2');
       const n=A[k].n;
+      const imp=m.impact!=null?m.impact:n-2;   // which drawing is the hit (default: second-to-last)
       let idx;
-      if(f.t<m.startup)idx=Math.min(n-3,((f.t*(n-2))/m.startup)|0); // windup drawings
-      else if(f.t<m.startup+m.active)idx=n-2;                       // the impact frame
-      else idx=n-1;                                                 // follow-through
+      if(f.t<m.startup)idx=Math.min(imp-1,((f.t*imp)/m.startup)|0);          // windup drawings
+      else if(f.t<m.startup+m.active)idx=imp;                                // the impact frame
+      else{                                                                  // follow-through spread over recovery
+        const rec=n-1-imp;
+        idx=rec>0?Math.min(n-1,imp+1+(((f.t-m.startup-m.active)*rec)/Math.max(1,m.recovery)|0)):n-1;
+      }
       const sq=(f.mv==='clight'||f.mv==='cheavy')&&!(m.anim&&A[m.anim])?0.8:1;
       return {k,idx,squash:sq};
     }
