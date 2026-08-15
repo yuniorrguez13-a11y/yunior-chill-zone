@@ -357,6 +357,8 @@ kbd{
       <tr><td>Throw</td><td><b>Light + Heavy</b> together. Unblockable, short range — the answer to turtling. Whiffs on airborne or stunned opponents.</td></tr>
       <tr><td>Dash / backdash</td><td>Double-tap a direction (or the dash button on pad). Backdash is briefly invulnerable.</td></tr>
       <tr><td>Super</td><td><b>Heavy + Special</b> with a full meter (the cyan bar). Every fighter has one. Big damage, big drama.</td></tr>
+      <tr><td>Parasoul chains</td><td>Tap <b>Light</b> or <b>Heavy</b> again after contact to chain W→M→H. Forward/back/down plus an attack selects her command normals; directions plus <b>Special</b> select Shot, Toss, Quake, Luger and Call.</td></tr>
+      <tr><td>Parasoul extras</td><td><b>Forward + Light + Heavy</b>: F+HP. <b>Back + Light + Heavy</b>: Snapback. In the air, back/down + Heavy use their unique attacks. <b>Forward + Heavy + Special</b> at full meter: Silent Scope; neutral: Crimson Hunting. Press all three during hitstun to Burst (half meter), or from neutral to taunt.</td></tr>
       <tr><td>Achilles heel</td><td><b>Sarge counters Truck:</b> Truck takes 30% more damage and extra stun from Sarge. Reel In and Sarge's super break armor.</td></tr>
       <tr><td>Meter</td><td>Builds from dealing and taking hits. Carries across rounds.</td></tr>
       <tr><td>Juggle limit</td><td>Max 4 hits on an airborne opponent, then they drop free. No infinites.</td></tr>
@@ -687,48 +689,180 @@ const CHARACTERS=[
   color:'#4d7cff', color2:'#d7e0ff', skin:'#efd5d2',
   hp:900, walk:64, back:52, jumpVX:58, jumpVY:-250, grav:14,
   w:50, h:155, crouchH:110,
-  sprite:{ /* user-supplied Parasoul WebP frames, optimized into runtime strips */
-    path:'art/parasoul/', scale:0.64, smooth:1, idleTop:0, v:1,
+  commandSet:'parasoul',
+  tierMoves:['light2','heavy2','special','air2','clight2','cheavy2','throw','super'],
+  sprite:{ /* owner-supplied, color-corrected WebPs kept byte-for-byte at source resolution.
+              Each stored ZIP is decoded in the browser; no strip recompression or downscale. */
+    path:'art/parasoul/', scale:0.205, smooth:1, idleTop:0, archives:1, v:2,
     anims:{
-      idle:{f:'idle.webp',n:12,cw:329,ch:250,cx:165,fy:250},
-      run:{f:'run.webp',n:9,cw:334,ch:260,cx:167,fy:260},
-      walkback:{f:'walkback.webp',n:9,cw:334,ch:260,cx:167,fy:260},
-      dash:{f:'dash.webp',n:6,cw:372,ch:272,cx:186,fy:272},
-      backdash:{f:'backdash.webp',n:6,cw:363,ch:250,cx:182,fy:250},
-      jump:{f:'jump.webp',n:2,cw:270,ch:276,cx:135,fy:276},
-      fall:{f:'fall.webp',n:2,cw:309,ch:312,cx:155,fy:312},
-      attack1:{f:'attack1.webp',n:9,cw:416,ch:288,cx:208,fy:288},
-      attack2:{f:'attack2.webp',n:13,cw:332,ch:352,cx:166,fy:352},
-      special:{f:'special.webp',n:13,cw:308,ch:246,cx:154,fy:246},
-      airatk:{f:'airatk.webp',n:7,cw:193,ch:260,cx:97,fy:260},
-      clight:{f:'clight.webp',n:8,cw:395,ch:162,cx:198,fy:162},
-      cheavy:{f:'cheavy.webp',n:11,cw:230,ch:332,cx:115,fy:332},
-      throw:{f:'throw.webp',n:8,cw:339,ch:281,cx:170,fy:281},
-      super:{f:'super.webp',n:13,cw:333,ch:295,cx:167,fy:295},
-      hit:{f:'hit.webp',n:4,cw:304,ch:246,cx:152,fy:246},
-      block:{f:'block.webp',n:4,cw:266,ch:274,cx:133,fy:274},
-      crouch:{f:'crouch.webp',n:7,cw:307,ch:252,cx:154,fy:252},
-      death:{f:'death.webp',n:8,cw:445,ch:96,cx:223,fy:96},
-      getup:{f:'getup.webp',n:6,cw:374,ch:247,cx:187,fy:247}
+      idle:{z:['hq/idle1.zip','hq/idle2.zip'],n:24}, crouchDown:{z:'hq/crouch_down.zip',n:7},
+      crouchIdle:{z:'hq/crouch_idle.zip',n:17}, crouchUp:{z:'hq/crouch_up.zip',n:7},
+      turnStand:{z:'hq/turn_stand.zip',n:7}, turnCrouch:{z:'hq/turn_crouch.zip',n:7},
+      run:{z:'hq/walk_fwd.zip',n:17}, walkback:{z:'hq/walk_back.zip',n:17},
+      dash:{z:'hq/dash_fwd.zip',n:6}, backdash:{z:'hq/dash_back.zip',n:6},
+      jump:{z:['hq/jump_up1.zip','hq/jump_up2.zip'],n:20}, jumpFwd:{z:'hq/jump_fwd.zip',n:20},
+      jumpBack:{z:'hq/jump_back.zip',n:17},
+      block:{z:'hq/block_stand.zip',n:17}, blockCrouch:{z:'hq/block_crouch.zip',n:10},
+      blockAir:{z:'hq/block_air.zip',n:10},
+      hitHigh:{z:'hq/hit_high.zip',n:8}, hitMid:{z:'hq/hit_mid.zip',n:8},
+      hitLow:{z:'hq/hit_low.zip',n:7}, hitCrouch:{z:'hq/hit_crouch.zip',n:6},
+      hitAir:{z:'hq/hit_air.zip',n:7}, death:{z:'hq/death.zip',n:8},
+      getup:{z:'hq/getup.zip',n:10}, intro:{z:'hq/intro.zip',n:18},
+      win:{z:'hq/win.zip',n:12}, taunt:{z:'hq/taunt.zip',n:14},
+      sWP:{z:'hq/s_wp.zip',n:18}, sMP:{z:'hq/s_mp.zip',n:11},
+      sHP:{z:['hq/s_hp1.zip','hq/s_hp2.zip'],n:25},
+      sWK:{z:'hq/s_wk.zip',n:13}, sMK:{z:'hq/s_mk.zip',n:17}, sHK:{z:'hq/s_hk.zip',n:14},
+      sFWP:{z:'hq/s_fwp.zip',n:11}, sFMP:{z:'hq/s_fmp.zip',n:13},
+      sFHP:{z:'hq/s_fhp.zip',n:13}, sBHK:{z:'hq/s_bhk.zip',n:16},
+      cWP:{z:'hq/c_wp.zip',n:8}, cMP:{z:'hq/c_mp.zip',n:8}, cHP:{z:'hq/c_hp.zip',n:13},
+      cWK:{z:'hq/c_wk.zip',n:8}, cMK:{z:'hq/c_mk.zip',n:10}, cHK:{z:'hq/c_hk.zip',n:13},
+      jWP:{z:'hq/j_wp.zip',n:9}, jMP:{z:'hq/j_mp.zip',n:8}, jHP:{z:'hq/j_hp.zip',n:13},
+      jWK:{z:'hq/j_wk.zip',n:14}, jMK:{z:'hq/j_mk.zip',n:13}, jHK:{z:'hq/j_hk.zip',n:12},
+      jBWK:{z:'hq/j_bwk.zip',n:12}, jDMK:{z:'hq/j_dmk.zip',n:11},
+      tearshotM:{z:'hq/tearshot_m.zip',n:13}, tearshotH:{z:'hq/tearshot_h.zip',n:13},
+      teartossGround:{z:'hq/teartoss_ground.zip',n:13}, teartossAir:{z:'hq/teartoss_air.zip',n:13},
+      quakeWeak:{z:'hq/quake_weak.zip',n:16}, quakeStrong:{z:'hq/quake_strong.zip',n:18},
+      lugerLP:{z:['hq/luger_l1.zip','hq/luger_l2.zip','hq/luger_l3.zip'],n:22},
+      lugerMP:{z:['hq/luger_m1.zip','hq/luger_m2.zip','hq/luger_m3.zip'],n:22},
+      lugerHP:{z:['hq/luger_h1.zip','hq/luger_h2.zip','hq/luger_h3.zip'],n:22},
+      call:{z:'hq/call.zip',n:14},
+      snapback:{z:'hq/snapback.zip',n:14}, burst:{z:'hq/burst.zip',n:7},
+      crimsonHunting:{z:['hq/crimson1.zip','hq/crimson2.zip'],n:24},
+      silentScope:{z:'hq/silent_scope.zip',n:23},
+      tearProjectile:{z:'hq/tear_projectile.zip',n:6},
+      lugerBulletLP:{z:'hq/luger_bullet_lp.zip',n:3},
+      lugerBulletMP:{z:'hq/luger_bullet_mp.zip',n:3},
+      lugerBulletHP:{z:'hq/luger_bullet_hp.zip',n:6},
+      crimsonBullet:{z:'hq/crimson_bullet.zip',n:2}, scopeUmbrella:{z:'hq/scope_umbrella.zip',n:1},
+      sMPFx:{z:'hq/s_mp_fx.zip',n:6}, sHPFx:{z:'hq/s_hp_fx.zip',n:19},
+      sFMPFx:{z:'hq/s_fmp_fx.zip',n:7}, cMPFx:{z:'hq/c_mp_fx.zip',n:16},
+      cHPFx:{z:'hq/c_hp_fx.zip',n:8}, jWPFx:{z:'hq/j_wp_fx.zip',n:6},
+      jMPFx:{z:'hq/j_mp_fx.zip',n:7}, jHPFx:{z:'hq/j_hp_fx.zip',n:10},
+      jHKFxA:{z:'hq/j_hk_fx_a.zip',n:8}, jHKFxB:{z:'hq/j_hk_fx_b.zip',n:8},
+      jHKFxC:{z:'hq/j_hk_fx_c.zip',n:8}, jHKFxD:{z:'hq/j_hk_fx_d.zip',n:8},
+      jBWKFx:{z:'hq/j_bwk_fx.zip',n:8}, snapbackFx:{z:'hq/snapback_fx.zip',n:12},
+      burstFx:{z:'hq/burst_fx.zip',n:17}, crimsonIgniteFx:{z:'hq/crimson_ignite_fx.zip',n:10},
+      quakeWeakFx:{z:'hq/quake_weak_fx.zip',n:5}, quakeStrongFx:{z:'hq/quake_strong_fx.zip',n:8},
+      /* Every remaining supplied master (alternate tech/block/hit/intro/effect
+         variants) is retained even where this engine has no separate state. */
+      sourceExtras:{z:['hq/source01.zip','hq/source02.zip','hq/source03.zip','hq/source04.zip',
+        'hq/source05.zip','hq/source06.zip','hq/source07.zip','hq/source08.zip','hq/source09.zip',
+        'hq/source10.zip','hq/source11.zip','hq/source12.zip','hq/source13.zip','hq/source14.zip',
+        'hq/source15.zip','hq/source16.zip','hq/source17.zip','hq/source18.zip','hq/source19.zip',
+        'hq/source20.zip'],n:475}
     }
   },
   moves:{
-    light:{name:'Canopy Check',dmg:55,startup:6,active:3,recovery:9,hitstun:14,blockstun:9,hitstop:5,kbx:62,anim:'attack1',impact:5,box:{x:22,y:-126,w:70,h:28}},
-    heavy:{name:'Royal Sweep',dmg:120,startup:13,active:4,recovery:18,hitstun:22,blockstun:12,hitstop:9,kbx:112,anim:'attack2',impact:9,box:{x:28,y:-138,w:105,h:42}},
-    special:{name:'Napalm Tear',dmg:90,startup:14,active:1,recovery:24,hitstun:20,blockstun:12,hitstop:7,kbx:95,anim:'special',impact:5,projectile:{speed:128,life:80,w:40,h:26},box:{x:90,y:-108,w:1,h:1}},
-    air:{name:'Air Raid',dmg:68,startup:7,active:7,recovery:10,hitstun:17,blockstun:10,hitstop:6,kbx:72,hits:'high',anim:'airatk',impact:4,box:{x:22,y:-106,w:100,h:48}},
-    clight:{name:'Low Command',dmg:45,startup:5,active:3,recovery:11,hitstun:14,blockstun:9,hitstop:5,kbx:58,hits:'low',anim:'clight',impact:4,box:{x:24,y:-43,w:90,h:31}},
-    cheavy:{name:'Napalm Quake',dmg:105,startup:12,active:5,recovery:22,hitstun:24,blockstun:13,hitstop:9,kbx:68,launch:1,kby:-230,anim:'cheavy',impact:7,box:{x:20,y:-150,w:100,h:112}},
-    throw:{name:'Royal Toss',dmg:115,startup:6,active:3,recovery:24,hitstop:10,kbx:78,launch:1,kby:-190,throw:1,anim:'throw',impact:5,box:{x:8,y:-132,w:54,h:72}},
-    super:{name:'Silent Scope',dmg:245,startup:10,active:1,recovery:27,hitstun:29,blockstun:16,hitstop:13,kbx:195,launch:1,kby:-220,inv:1,super:1,anim:'super',impact:7,projectile:{speed:260,life:60,w:54,h:36},box:{x:95,y:-100,w:1,h:1}}
+    light:{name:'s.WP',dmg:38,startup:5,active:3,recovery:8,hitstun:13,blockstun:8,hitstop:4,kbx:42,anim:'sWP',impact:8,nextA:'light2',box:{x:15,y:-135,w:62,h:38}},
+    light2:{name:'s.MP',dmg:58,startup:7,active:3,recovery:11,hitstun:16,blockstun:9,hitstop:5,kbx:58,anim:'sMP',impact:5,effects:[['sMPFx',3]],nextA:'light3',box:{x:18,y:-92,w:72,h:57}},
+    light3:{name:'s.HP',dmg:92,startup:11,active:4,recovery:17,hitstun:22,blockstun:12,hitstop:8,kbx:98,anim:'sHP',impact:18,effects:[['sHPFx',6]],box:{x:16,y:-116,w:72,h:104}},
+    heavy:{name:'s.WK',dmg:42,startup:6,active:3,recovery:9,hitstun:14,blockstun:8,hitstop:4,kbx:46,anim:'sWK',impact:6,nextB:'heavy2',box:{x:15,y:-113,w:59,h:37}},
+    heavy2:{name:'s.MK',dmg:66,startup:8,active:4,recovery:12,hitstun:17,blockstun:10,hitstop:6,kbx:65,anim:'sMK',impact:8,nextB:'heavy3',box:{x:18,y:-102,w:77,h:48}},
+    heavy3:{name:'s.HK',dmg:104,startup:12,active:4,recovery:18,hitstun:23,blockstun:13,hitstop:8,kbx:108,anim:'sHK',impact:7,box:{x:20,y:-142,w:70,h:54}},
+    fLight:{name:'s.F+WP',dmg:52,startup:8,active:3,recovery:12,hitstun:16,blockstun:9,hitstop:5,kbx:55,anim:'sFWP',impact:5,box:{x:18,y:-112,w:80,h:98}},
+    fHeavy:{name:'s.F+MP',dmg:74,startup:10,active:4,recovery:14,hitstun:19,blockstun:11,hitstop:6,kbx:78,anim:'sFMP',impact:6,effects:[['sFMPFx',4]],box:{x:20,y:-151,w:78,h:62}},
+    fBoth:{name:'s.F+HP',dmg:118,startup:15,active:5,recovery:21,hitstun:25,blockstun:14,hitstop:9,kbx:125,anim:'sFHP',impact:7,box:{x:28,y:-132,w:126,h:58}},
+    bHeavy:{name:'s.B+HK',dmg:96,startup:11,active:5,recovery:18,hitstun:21,blockstun:12,hitstop:8,kbx:86,launch:1,kby:-190,anim:'sBHK',impact:8,box:{x:10,y:-148,w:58,h:75}},
+    clight:{name:'c.WP',dmg:36,startup:5,active:3,recovery:8,hitstun:13,blockstun:8,hitstop:4,kbx:40,hits:'low',anim:'cWP',impact:4,nextA:'clight2',box:{x:14,y:-64,w:73,h:42}},
+    clight2:{name:'c.MP',dmg:55,startup:7,active:3,recovery:10,hitstun:15,blockstun:9,hitstop:5,kbx:54,hits:'low',anim:'cMP',impact:4,effects:[['cMPFx',1]],nextA:'clight3',box:{x:16,y:-128,w:78,h:61}},
+    clight3:{name:'c.HP',dmg:90,startup:10,active:4,recovery:17,hitstun:22,blockstun:12,hitstop:8,kbx:67,launch:1,kby:-225,anim:'cHP',impact:7,effects:[['cHPFx',5]],box:{x:8,y:-154,w:58,h:130}},
+    cheavy:{name:'c.WK',dmg:40,startup:6,active:3,recovery:9,hitstun:14,blockstun:8,hitstop:4,kbx:43,hits:'low',anim:'cWK',impact:4,nextB:'cheavy2',box:{x:20,y:-49,w:104,h:35}},
+    cheavy2:{name:'c.MK',dmg:62,startup:8,active:4,recovery:12,hitstun:17,blockstun:10,hitstop:6,kbx:61,hits:'low',anim:'cMK',impact:5,nextB:'cheavy3',box:{x:18,y:-57,w:76,h:40}},
+    cheavy3:{name:'c.HK',dmg:99,startup:12,active:5,recovery:20,hitstun:23,blockstun:13,hitstop:8,kbx:92,hits:'low',launch:1,kby:-155,anim:'cHK',impact:5,box:{x:12,y:-54,w:91,h:42}},
+    air:{name:'j.WP',dmg:37,startup:5,active:5,recovery:7,hitstun:13,blockstun:8,hitstop:4,kbx:42,hits:'high',anim:'jWP',impact:4,effects:[['jWPFx',3]],nextA:'air2',box:{x:12,y:-82,w:82,h:68}},
+    air2:{name:'j.MP',dmg:57,startup:7,active:5,recovery:9,hitstun:16,blockstun:9,hitstop:5,kbx:58,hits:'high',anim:'jMP',impact:4,effects:[['jMPFx',1]],nextA:'air3',box:{x:15,y:-178,w:80,h:70}},
+    air3:{name:'j.HP',dmg:91,startup:10,active:6,recovery:13,hitstun:21,blockstun:12,hitstop:8,kbx:90,hits:'high',anim:'jHP',impact:7,effects:[['jHPFx',3]],box:{x:8,y:-113,w:55,h:104}},
+    airHeavy:{name:'j.WK',dmg:40,startup:6,active:5,recovery:7,hitstun:14,blockstun:8,hitstop:4,kbx:44,hits:'high',anim:'jWK',impact:7,nextB:'airHeavy2',box:{x:15,y:-115,w:92,h:50}},
+    airHeavy2:{name:'j.MK',dmg:63,startup:8,active:6,recovery:9,hitstun:17,blockstun:10,hitstop:6,kbx:64,hits:'high',anim:'jMK',impact:7,nextB:'airHeavy3',box:{x:10,y:-207,w:69,h:72}},
+    airHeavy3:{name:'j.HK',dmg:98,startup:11,active:6,recovery:14,hitstun:22,blockstun:12,hitstop:8,kbx:96,hits:'high',anim:'jHK',impact:7,effects:[['jHKFxA',1],['jHKFxB',2],['jHKFxC',3],['jHKFxD',4]],box:{x:7,y:-106,w:53,h:98}},
+    airBackHeavy:{name:'j.B+WK',dmg:59,startup:7,active:5,recovery:10,hitstun:17,blockstun:10,hitstop:5,kbx:48,hits:'high',anim:'jBWK',impact:6,effects:[['jBWKFx',4]],box:{x:-62,y:-108,w:105,h:72}},
+    airDownHeavy:{name:'j.D+MK',dmg:78,startup:9,active:7,recovery:12,hitstun:20,blockstun:11,hitstop:7,kbx:55,hits:'high',launch:1,kby:-120,anim:'jDMK',impact:6,box:{x:8,y:-91,w:49,h:80}},
+    special:{name:'Napalm Shot M',dmg:72,startup:13,active:1,recovery:20,hitstun:18,blockstun:11,hitstop:6,kbx:79,anim:'tearshotM',impact:7,nextC:'special2',projectileOnly:1,projectile:{speed:125,life:85,w:35,h:25,anim:'tearProjectile'},box:{x:58,y:-112,w:1,h:1}},
+    special2:{name:'Napalm Shot H',dmg:86,startup:15,active:1,recovery:23,hitstun:20,blockstun:12,hitstop:7,kbx:94,anim:'tearshotH',impact:7,projectileOnly:1,projectile:{speed:155,life:78,w:38,h:27,anim:'tearProjectile'},box:{x:62,y:-112,w:1,h:1}},
+    fSpecial:{name:'Napalm Toss',dmg:74,startup:16,active:1,recovery:22,hitstun:21,blockstun:12,hitstop:6,kbx:71,hits:'low',anim:'teartossGround',impact:7,projectileOnly:1,projectile:{speed:82,life:105,w:42,h:30,anim:'tearProjectile'},box:{x:54,y:-76,w:1,h:1}},
+    airSpecial:{name:'Air Napalm Toss',dmg:69,startup:13,active:1,recovery:15,hitstun:19,blockstun:11,hitstop:6,kbx:68,hits:'high',anim:'teartossAir',impact:7,projectileOnly:1,projectile:{speed:90,life:90,w:40,h:29,anim:'tearProjectile'},box:{x:48,y:-80,w:1,h:1}},
+    dSpecial:{name:'Napalm Quake W',dmg:82,startup:11,active:5,recovery:20,hitstun:22,blockstun:12,hitstop:7,kbx:69,hits:'low',anim:'quakeWeak',impact:8,effects:[['quakeWeakFx',5]],box:{x:14,y:-65,w:98,h:55}},
+    dfSpecial:{name:'Napalm Quake S',dmg:108,startup:15,active:6,recovery:24,hitstun:25,blockstun:14,hitstop:9,kbx:92,hits:'low',launch:1,kby:-170,anim:'quakeStrong',impact:9,effects:[['quakeStrongFx',5]],box:{x:16,y:-73,w:133,h:64}},
+    dbSpecial:{name:'Egret Luger L',dmg:62,startup:12,active:1,recovery:18,hitstun:17,blockstun:10,hitstop:5,kbx:71,anim:'lugerLP',impact:11,nextC:'dbSpecial2',projectileOnly:1,projectile:{speed:185,life:70,w:28,h:14,anim:'lugerBulletLP'},box:{x:66,y:-112,w:1,h:1}},
+    dbSpecial2:{name:'Egret Luger M',dmg:72,startup:13,active:1,recovery:20,hitstun:18,blockstun:11,hitstop:6,kbx:81,anim:'lugerMP',impact:11,nextC:'dbSpecial3',projectileOnly:1,projectile:{speed:215,life:66,w:30,h:16,anim:'lugerBulletMP'},box:{x:68,y:-112,w:1,h:1}},
+    dbSpecial3:{name:'Egret Luger H',dmg:84,startup:15,active:1,recovery:23,hitstun:20,blockstun:12,hitstop:7,kbx:95,anim:'lugerHP',impact:11,projectileOnly:1,projectile:{speed:245,life:62,w:34,h:18,anim:'lugerBulletHP'},box:{x:70,y:-112,w:1,h:1}},
+    bSpecial:{name:'Egret Call',dmg:0,startup:1,active:1,recovery:35,hitstop:0,kbx:0,nonAttack:1,anim:'call',impact:8,box:{x:0,y:0,w:0,h:0}},
+    throw:{name:'Royal Toss',dmg:112,startup:6,active:3,recovery:22,hitstop:10,kbx:76,launch:1,kby:-188,throw:1,anim:'sFHP',impact:7,box:{x:7,y:-132,w:55,h:75}},
+    snapback:{name:'Snapback',dmg:104,startup:11,active:4,recovery:23,hitstun:24,blockstun:13,hitstop:9,kbx:150,launch:1,kby:-205,anim:'snapback',impact:7,effects:[['snapbackFx',2]],box:{x:14,y:-148,w:103,h:99}},
+    burst:{name:'Burst',dmg:45,startup:2,active:6,recovery:22,hitstun:15,blockstun:10,hitstop:8,kbx:145,launch:1,kby:-180,inv:1,anim:'burst',impact:3,effects:[['burstFx',0]],box:{x:-82,y:-162,w:164,h:158}},
+    taunt:{name:'Royal Salute',dmg:0,startup:1,active:1,recovery:48,hitstop:0,kbx:0,nonAttack:1,anim:'taunt',impact:7,box:{x:0,y:0,w:0,h:0}},
+    super:{name:'Crimson Hunting',dmg:232,startup:9,active:1,recovery:28,hitstun:29,blockstun:16,hitstop:12,kbx:184,launch:1,kby:-215,inv:1,super:1,anim:'crimsonHunting',impact:13,effects:[['crimsonIgniteFx',12]],projectileOnly:1,projectile:{speed:265,life:58,w:52,h:30,anim:'crimsonBullet'},box:{x:72,y:-118,w:1,h:1}},
+    scopeSuper:{name:'Silent Scope',dmg:248,startup:12,active:1,recovery:31,hitstun:31,blockstun:17,hitstop:13,kbx:198,launch:1,kby:-235,inv:1,super:1,anim:'silentScope',impact:12,effects:[['scopeUmbrella',5]],projectileOnly:1,projectile:{speed:300,life:54,w:56,h:38,anim:'crimsonBullet'},box:{x:74,y:-118,w:1,h:1}}
   }
 }];
 
-/* ── sprite sheet loader — a character whose art fails to load just falls
-     back to the vector puppet, the fight itself never breaks ── */
+/* Stored ZIP loader for full-resolution frame packs. The files inside the ZIP
+   are the original WebPs (method 0 / no recompression), decoded lazily so the
+   roster screen only needs the idle animation. */
+function imageFromBlob(blob){
+  return new Promise((resolve,reject)=>{
+    const im=new Image(),url=URL.createObjectURL(blob);
+    im.onload=()=>{URL.revokeObjectURL(url);resolve(im);};
+    im.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('WebP frame decode failed'));};
+    im.src=url;
+  });
+}
+async function loadArchiveAnim(sp,k){
+  if(sp.imgs[k]){sp._used[k]=++sp._clock;return sp.imgs[k];}
+  if(sp._loads[k])return sp._loads[k];
+  const a=sp.anims[k];
+  const job=(async()=>{
+    const blobs=[];
+    for(const archive of (Array.isArray(a.z)?a.z:[a.z])){
+      const url=sp.path+archive+(sp.v?'?v='+sp.v:'');
+      const res=await fetch(url);
+      if(!res.ok)throw new Error('HTTP '+res.status+' for '+url);
+      const buf=await res.arrayBuffer(),dv=new DataView(buf);
+      let off=0;
+      while(off+30<=buf.byteLength&&dv.getUint32(off,true)===0x04034b50){
+        const flags=dv.getUint16(off+6,true),method=dv.getUint16(off+8,true);
+        const size=dv.getUint32(off+18,true),nameLen=dv.getUint16(off+26,true),extraLen=dv.getUint16(off+28,true);
+        if((flags&9)||method!==0)throw new Error('frame archive must use stored entries: '+url);
+        const begin=off+30+nameLen+extraLen,end=begin+size;
+        if(end>buf.byteLength)throw new Error('truncated frame archive: '+url);
+        blobs.push(new Blob([buf.slice(begin,end)],{type:'image/webp'}));
+        off=end;
+      }
+    }
+    if(blobs.length!==a.n)throw new Error('frame count mismatch for '+k+': '+blobs.length+' / '+a.n);
+    const frames=await Promise.all(blobs.map(imageFromBlob));
+    sp.imgs[k]=frames;sp._used[k]=++sp._clock;
+    /* Original frames decode very large. Keep only the six most recently used
+       animations plus idle; HTTP cache makes an evicted move cheap to revisit. */
+    const loaded=Object.keys(sp.imgs).filter(x=>x!=='idle');
+    if(loaded.length>6){
+      loaded.sort((x,y)=>(sp._used[x]||0)-(sp._used[y]||0));
+      for(const old of loaded.slice(0,loaded.length-6)){delete sp.imgs[old];delete sp._used[old];}
+    }
+    return frames;
+  })();
+  sp._loads[k]=job;
+  try{return await job;}finally{if(sp._loads[k]===job)delete sp._loads[k];}
+}
+function preloadSprites(c){
+  const sp=c&&c.sprite;
+  if(!sp||!sp.archives)return;
+  /* Idle is already present; intro is the only eager animation. Moves stream
+     when selected, retaining the masters at full quality without a multi-GB decode. */
+  if(sp.anims.intro)loadArchiveAnim(sp,'intro').catch(err=>console.warn('[fight]',err.message));
+}
+
+/* ── sprite loader — a character whose art fails to load just falls back to
+     the vector puppet, so art delivery can never break the fight itself. ── */
 function loadSprites(c){
   if(!c.sprite||c.sprite._st)return;
-  const sp=c.sprite;sp._st='loading';sp.imgs={};
+  const sp=c.sprite;sp._st='loading';sp.imgs={};sp._loads={};sp._used={};sp._clock=0;
+  if(sp.archives){
+    loadArchiveAnim(sp,'idle').then(()=>sp._st='ready').catch(err=>{
+      sp._st='failed';console.warn('[fight] full-resolution sprite pack failed:',err.message);
+    });
+    return;
+  }
   let left=0,failed=false;
   for(const k in sp.anims){
     left++;
@@ -749,7 +883,9 @@ const TIERS=['genuine piece of shi','iwannalose','meh','regular guy','steroids w
 const TIER_MIN=[0,350,520,700,900,1080,1260,1450,1700,2000];
 function charPower(c){
   let p=((c.hp/5)|0)+c.walk*2+c.back;
-  for(const k in c.moves){const m=c.moves[k];
+  const ratingKeys=c.tierMoves||Object.keys(c.moves);
+  for(const k of ratingKeys){const m=c.moves[k];
+    if(!m)continue;
     p+=((m.dmg*8)/(m.startup+m.active+m.recovery))|0;
     if(m.box)p+=((m.box.x+m.box.w)/6)|0;      // reach is power too (ask Sarge)
     if(m.launch)p+=15; if(m.armor)p+=20; if(m.armorBreak)p+=18; if(m.step)p+=(m.step/8)|0;
@@ -787,7 +923,7 @@ function newFighter(ci,side){
   const c=CHARACTERS[ci];
   return {c:ci,x:(side===0?-150:150)*FP,y:0,vx:0,vy:0,face:side===0?1:-1,
     hp:c.hp,st:ST.idle,t:0,dur:0,mv:'',mvHit:0,armorUsed:0,airUsed:0,combo:0,prevIn:0,jdir:0,
-    meter:0,juggle:0,tapDir:0,tapF:-999};
+    meter:0,juggle:0,tapDir:0,tapF:-999,hurtAnim:'hitMid',turnT:999};
 }
 function newMatch(c0,c1){
   return {frame:0,phase:PHASES.intro,phaseT:0,round:1,wins:[0,0],timer:ROUND_FRAMES,
@@ -821,6 +957,53 @@ const overlap=(A,B)=>A[0]<B[2]&&B[0]<A[2]&&A[1]<B[3]&&B[1]<A[3];
 
 function currentMove(f){
   return (f.st===ST.attack||f.st===ST.airattack)?chr(f).moves[f.mv]:null;
+}
+
+/* Parasoul's source pack contains six-button-style normals. The game keeps its
+   three-button controls: repeated Light/Heavy chains through W→M→H, while a
+   direction selects command normals and specials. Every supplied attack is
+   therefore reachable on keyboard and pad without adding new bindings. */
+function resolveParasoulMove(f,pressed,IN,dir,air){
+  const pA=!!(pressed&IN_A),pB=!!(pressed&IN_B),pC=!!(pressed&IN_C);
+  const rel=dir*f.face,down=!!(IN&IN_D);
+  if(air){
+    if(pC)return 'airSpecial';
+    if(pA)return 'air';
+    if(pB){
+      if(down)return 'airDownHeavy';
+      if(rel<0)return 'airBackHeavy';
+      return 'airHeavy';
+    }
+    return '';
+  }
+  if(pC){
+    if(down&&rel>0)return 'dfSpecial';
+    if(down&&rel<0)return 'dbSpecial';
+    if(down)return 'dSpecial';
+    if(rel>0)return 'fSpecial';
+    if(rel<0)return 'bSpecial';
+    return 'special';
+  }
+  if(pA){
+    if(down)return 'clight';
+    if(rel>0)return 'fLight';
+    return 'light';
+  }
+  if(pB){
+    if(down)return 'cheavy';
+    if(rel>0)return 'fHeavy';
+    if(rel<0)return 'bHeavy';
+    return 'heavy';
+  }
+  return '';
+}
+function tryMoveChain(f,c,pressed){
+  const m=c.moves[f.mv];
+  if(!m||f.t<m.startup+m.active-1)return false;
+  const key=(pressed&IN_A)?m.nextA:(pressed&IN_B)?m.nextB:(pressed&IN_C)?m.nextC:'';
+  if(!key||!c.moves[key])return false;
+  startMove(f,key,f.st===ST.airattack);
+  return true;
 }
 
 /* one deterministic tick. in0/in1 = input bitmasks for P1/P2 */
@@ -860,7 +1043,7 @@ function step(S,in0,in1){
   }
   /* phase 5: facing (grounded neutral only) */
   for(let i=0;i<2;i++){const f=S.f[i],o=S.f[1-i];
-    if(canAct(f))f.face=o.x>=f.x?1:-1;
+    if(canAct(f)){const nf=o.x>=f.x?1:-1;if(nf!==f.face){f.face=nf;f.turnT=0;}}
     if(i===0&&S.f[0].x===S.f[1].x)f.face=1;
   }
   /* phase 6: round end conditions */
@@ -892,7 +1075,7 @@ function advance(S,f,o,IN){
   const c=chr(f);
   const pressed=IN&~f.prevIn;
   const dir=(IN&IN_R?1:0)-(IN&IN_L?1:0);      // raw screen direction
-  f.t++;
+  f.t++;f.turnT++;
 
   switch(f.st){
     case ST.idle: case ST.walk: case ST.crouch:{
@@ -914,17 +1097,28 @@ function advance(S,f,o,IN){
       else if(dir!==0){f.st=ST.walk;}
       else f.st=ST.idle;
       if(f.st===ST.jumpsquat)break;
-      /* attacks — combos first: super (heavy+special, full bar), throw (light+heavy) */
+      /* attacks — supers / multi-button commands first, then single-button moves */
       const pA=pressed&IN_A,pB=pressed&IN_B,pC=pressed&IN_C;
+      const rel=dir*f.face;
+      if(c.commandSet==='parasoul'&&(IN&(IN_A|IN_B|IN_C))===(IN_A|IN_B|IN_C)&&
+         (pressed&(IN_A|IN_B|IN_C))){startMove(f,'taunt');break;}
       if(((pB&&(IN&IN_C))||(pC&&(IN&IN_B)))&&f.meter>=METER_MAX){
-        f.meter=0;startMove(f,'super');
+        const sk=c.commandSet==='parasoul'&&rel>0?'scopeSuper':'super';
+        f.meter=0;startMove(f,sk);
         S.events.push({t:'super',x:f.x,y:f.y-120*FP});
         break;
       }
-      if((pA&&(IN&IN_B))||(pB&&(IN&IN_A))){startMove(f,'throw');break;}
-      if(pA){startMove(f,f.st===ST.crouch?'clight':'light');break;}
-      if(pB){startMove(f,f.st===ST.crouch?'cheavy':'heavy');break;}
-      if(pC){startMove(f,'special');break;}
+      if((pA&&(IN&IN_B))||(pB&&(IN&IN_A))){
+        startMove(f,c.commandSet==='parasoul'?(rel>0?'fBoth':rel<0?'snapback':'throw'):'throw');break;
+      }
+      if(c.commandSet==='parasoul'){
+        const key=resolveParasoulMove(f,pressed,IN,dir,false);
+        if(key){startMove(f,key);break;}
+      }else{
+        if(pA){startMove(f,f.st===ST.crouch?'clight':'light');break;}
+        if(pB){startMove(f,f.st===ST.crouch?'cheavy':'heavy');break;}
+        if(pC){startMove(f,'special');break;}
+      }
       if(f.st===ST.walk){
         const fwd=dir===f.face;
         f.x+=dir*(fwd?c.walk:c.back);
@@ -942,17 +1136,27 @@ function advance(S,f,o,IN){
       if(f.t>=4){f.st=ST.air;f.vy=c.jumpVY;f.vx=(f.jdir|0)*c.jumpVX;f.airUsed=0;}
       break;
     case ST.air:
-      if((pressed&IN_A)&&!f.airUsed){f.airUsed=1;f.st=ST.airattack;f.mv='air';f.t=0;f.mvHit=0;}
+      if(!f.airUsed){
+        const key=c.commandSet==='parasoul'?resolveParasoulMove(f,pressed,IN,dir,true):
+          ((pressed&IN_A)?'air':'');
+        if(key){f.airUsed=1;startMove(f,key,true);}
+      }
       break;
     case ST.airattack:{
-      const m=c.moves.air;
-      if(f.t===m.startup)S.events.push({t:'whoosh',x:f.x,y:f.y-90*FP});
-      break;}   /* rides physics; ends on land */
+      const m=c.moves[f.mv];
+      if(tryMoveChain(f,c,pressed))break;
+      if(f.t===m.startup){
+        S.events.push({t:'whoosh',x:f.x,y:f.y-90*FP});
+        if(m.projectile)spawnProjectile(S,f,m);
+      }
+      if(f.t>=m.startup+m.active+m.recovery){f.st=ST.air;f.t=0;f.mv='';f.mvHit=0;}
+      break;}   /* rides physics; lands normally */
     case ST.land:
       if(f.t>=5)backToNeutral(f,IN);
       break;
     case ST.attack:{
       const m=c.moves[f.mv];
+      if(tryMoveChain(f,c,pressed))break;
       if(f.t===m.startup){
         S.events.push({t:'whoosh',x:f.x,y:f.y-100*FP});
         if(m.projectile)spawnProjectile(S,f,m);
@@ -961,6 +1165,10 @@ function advance(S,f,o,IN){
       if(f.t>=m.startup+m.active+m.recovery){f.armorUsed=0;backToNeutral(f,IN);}
       break;}
     case ST.hitstun:
+      if(c.moves.burst&&f.meter>=500&&(IN&(IN_A|IN_B|IN_C))===(IN_A|IN_B|IN_C)&&
+         (pressed&(IN_A|IN_B|IN_C))){
+        f.meter-=500;startMove(f,'burst');S.events.push({t:'super',x:f.x,y:f.y-100*FP});break;
+      }
       if(f.t>=f.dur)backToNeutral(f,IN);
       break;
     case ST.blockstun:
@@ -997,8 +1205,9 @@ function advance(S,f,o,IN){
 function backToNeutral(f,IN){
   f.st=(IN&IN_D)?ST.crouch:ST.idle;f.t=0;f.mv='';f.mvHit=0;f.combo=0;f.juggle=0;
 }
-function startMove(f,key){
-  f.st=ST.attack;f.mv=key;f.t=0;f.mvHit=0;f.armorUsed=0;f.vx=0;
+function startMove(f,key,air){
+  f.st=air?ST.airattack:ST.attack;f.mv=key;f.t=0;f.mvHit=0;f.armorUsed=0;
+  if(!air)f.vx=0;
 }
 
 function pushApart(a,b){
@@ -1016,7 +1225,7 @@ function pushApart(a,b){
 function findHit(S,i){
   const att=S.f[i],def=S.f[1-i];
   const m=currentMove(att);
-  if(!m||att.mvHit)return null;
+  if(!m||m.nonAttack||m.projectileOnly||att.mvHit)return null;
   if(att.t<m.startup||att.t>=m.startup+m.active)return null;
   if(def.st===ST.knockdown||def.st===ST.getup||def.st===ST.ko)return null;
   if(def.st===ST.backdash&&def.t<8)return null;          // backdash i-frames
@@ -1094,6 +1303,8 @@ function applyHit(S,i,h){
   if(defChar.passive&&defChar.passive.defense!==100)dmg=((dmg*defChar.passive.defense)/100)|0;
   def.hp-=dmg;
   const airborne=def.st===ST.air||def.st===ST.airattack||def.st===ST.launched;
+  def.hurtAnim=airborne?'hitAir':m.hits==='low'?'hitLow':m.hits==='high'?'hitHigh':
+    ((def.prevIn&IN_D)?'hitCrouch':'hitMid');
   if(def.hp<=0){def.hp=0;koFighter(def,kdir,m);}
   else if(m.launch||airborne){
     def.juggle=airborne?def.juggle+1:1;
@@ -1109,7 +1320,7 @@ function applyHit(S,i,h){
   S.events.push({t:'hit',x:cx,y:cy,big:m.dmg>=100?1:0,combo:def.combo});
 }
 function koFighter(def,kdir,m){
-  def.st=ST.ko;def.t=0;def.mv='';def.vy=-200;def.vx=kdir*90;
+  def.st=ST.ko;def.t=0;def.mv='';def.hurtAnim='hitAir';def.vy=-200;def.vx=kdir*90;
   if(def.y>=GROUND)def.y=-1;
 }
 
@@ -1122,13 +1333,13 @@ function spawnProjectile(S,f,m){
   S.proj.push({ow,mk:f.mv,
     x:f.x+f.face*((m.box.x+((pj.w/2)|0))*FP),
     y:f.y+((m.box.y+((m.box.h/2)|0))*FP),
-    vx:f.face*pj.speed,w:pj.w,h:pj.h,life:pj.life});
+    vx:f.face*pj.speed,w:pj.w,h:pj.h,life:pj.life,age:0,anim:pj.anim||''});
   S.events.push({t:'pshot',x:f.x+f.face*m.box.x*FP,y:f.y+(m.box.y*FP)});
 }
 function stepProjectiles(S){
   for(let i=S.proj.length-1;i>=0;i--){
     const p=S.proj[i];
-    p.x+=p.vx;p.life--;
+    p.x+=p.vx;p.life--;p.age++;
     if(p.life<=0||p.x<-WALL-40*FP||p.x>WALL+40*FP){S.proj.splice(i,1);continue;}
     const att=S.f[p.ow],def=S.f[1-p.ow];
     /* same protections the melee resolver gives */
@@ -1166,9 +1377,9 @@ function checksum(S){
   mix(S.frame);mix(S.phase);mix(S.timer);mix(S.round);mix(S.wins[0]);mix(S.wins[1]);mix(S.hitstop);
   for(const f of S.f){mix(f.x);mix(f.y);mix(f.vx);mix(f.vy);mix(f.hp);mix(f.st);mix(f.t);
     mix(f.face);mix(f.combo);mix(f.prevIn);mix(f.dur);mix(f.mvHit|(f.armorUsed<<1)|(f.airUsed<<2));
-    mix(f.meter);mix(f.juggle);mix(f.tapDir);mix(f.tapF);}
+    mix(f.meter);mix(f.juggle);mix(f.tapDir);mix(f.tapF);mix(f.turnT);}
   mix(S.proj.length);
-  for(const p of S.proj){mix(p.x);mix(p.y);mix(p.vx);mix(p.life);mix(p.ow);}
+  for(const p of S.proj){mix(p.x);mix(p.y);mix(p.vx);mix(p.life);mix(p.age);mix(p.ow);}
   return h>>>0;
 }
 
@@ -1218,12 +1429,24 @@ function render(S){
     const oc=chr(S.f[p.ow]);
     const [px,py]=W2S(p.x/FP,p.y/FP);
     const r=Math.max(p.w,p.h)/2*V.z;
-    const g2=ctx.createRadialGradient(px,py,r*0.15,px,py,r*1.5);
-    g2.addColorStop(0,'#ffffff');
-    g2.addColorStop(0.4,oc.color2||oc.color);
-    g2.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=g2;
-    ctx.beginPath();ctx.arc(px,py,r*1.5,0,Math.PI*2);ctx.fill();
+    let artDrawn=false;
+    if(p.anim&&oc.sprite&&oc.sprite.archives){
+      const sp=oc.sprite,frames=sp.imgs[p.anim];
+      if(frames&&frames.length){
+        const im=frames[((p.age/3)|0)%frames.length];
+        const iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height;
+        const ps=Math.min((p.w*1.7*V.z)/iw,(p.h*1.7*V.z)/ih);
+        ctx.save();ctx.translate(px,py);ctx.scale(p.vx>=0?1:-1,1);
+        ctx.imageSmoothingEnabled=true;ctx.drawImage(im,-iw*ps/2,-ih*ps/2,iw*ps,ih*ps);
+        ctx.restore();artDrawn=true;
+      }else loadArchiveAnim(sp,p.anim).catch(()=>{});
+    }
+    if(!artDrawn){
+      const g2=ctx.createRadialGradient(px,py,r*0.15,px,py,r*1.5);
+      g2.addColorStop(0,'#ffffff');g2.addColorStop(0.4,oc.color2||oc.color);
+      g2.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g2;
+      ctx.beginPath();ctx.arc(px,py,r*1.5,0,Math.PI*2);ctx.fill();
+    }
     if(Math.random()<0.5)V.particles.push({x:p.x/FP-(p.vx/FP)*1.5,y:p.y/FP,
       vx:-(p.vx/FP)*0.3+(Math.random()-0.5),vy:(Math.random()-0.5)*1.2,life:10,col:oc.color2||oc.color,r:2});
   }
@@ -1328,9 +1551,20 @@ function poseOf(S,f){
 /* which sheet + frame a sprite fighter shows right now.
    Art frames get stretched/held to match the move's REAL frame data —
    this is the "few drawings, 60fps game" trick working as designed. */
-function spriteFrame(f,c){
+function spriteFrame(S,f,c){
   const sp=c.sprite,m=currentMove(f);
   const A=sp.anims;
+  if(S.phase===PHASES.intro&&A.intro){
+    return {k:'intro',idx:Math.min(A.intro.n-1,((S.phaseT*A.intro.n)/100)|0),squash:1};
+  }
+  if(S.phase===PHASES.roundend&&S.phaseT>72&&A.win){
+    const other=S.f[0]===f?S.f[1]:S.f[0];
+    if(f.hp>other.hp)return {k:'win',idx:Math.min(A.win.n-1,(((S.phaseT-72)/5)|0)),squash:1};
+  }
+  if(f.turnT<14&&(A.turnStand||A.turnCrouch)){
+    const k=f.st===ST.crouch&&A.turnCrouch?'turnCrouch':'turnStand';
+    return {k,idx:Math.min(A[k].n-1,(f.turnT/2)|0),squash:1};
+  }
   switch(f.st){
     case ST.walk:{
       const dir=((f.prevIn&IN_R)?1:0)-((f.prevIn&IN_L)?1:0);
@@ -1342,13 +1576,23 @@ function spriteFrame(f,c){
     }
     case ST.crouch:
       /* crouch sheets are a stand-to-kneel transition: play once, hold the last frame */
+      if(A.crouchDown&&A.crouchIdle){
+        if(f.t<14)return {k:'crouchDown',idx:Math.min(A.crouchDown.n-1,(f.t/2)|0),squash:1};
+        return {k:'crouchIdle',idx:(((f.t-14)/6)|0)%A.crouchIdle.n,squash:1};
+      }
       if(A.crouch)return {k:'crouch',idx:Math.min(A.crouch.n-1,(f.t/5)|0),squash:1};
       return {k:'idle',idx:((f.t/7)|0)%A.idle.n,squash:0.78};
     case ST.jumpsquat:
+      if(A.crouchDown)return {k:'crouchDown',idx:Math.min(A.crouchDown.n-1,(f.t/2)|0),squash:1};
       if(A.crouch)return {k:'crouch',idx:Math.min(A.crouch.n-1,1),squash:1};
       return {k:'jump',idx:0,squash:0.85};
-    case ST.air: return {k:f.vy<0?'jump':'fall',idx:f.vy<0?(f.vy<-120?0:1):(f.vy>120?1:0),squash:1};
-    case ST.land: return {k:'fall',idx:1,squash:0.9};
+    case ST.air:{
+      const k=A.jumpFwd&&f.jdir!==0?(f.jdir===f.face?'jumpFwd':'jumpBack'):'jump';
+      return {k,idx:Math.min(A[k].n-1,(f.t/3)|0),squash:1};
+    }
+    case ST.land:
+      if(A.crouchUp)return {k:'crouchUp',idx:Math.min(A.crouchUp.n-1,(f.t/2)|0),squash:1};
+      return {k:A.fall?'fall':'jump',idx:(A.fall||A.jump).n-1,squash:0.9};
     case ST.dash:
       if(A.dash)return {k:'dash',idx:((f.t/3)|0)%A.dash.n,squash:1};
       return {k:'run',idx:((f.t/3)|0)%A.run.n,squash:1};
@@ -1372,11 +1616,15 @@ function spriteFrame(f,c){
       const sq=(f.mv==='clight'||f.mv==='cheavy')&&!(m.anim&&A[m.anim])?0.8:1;
       return {k,idx,squash:sq};
     }
-    case ST.hitstun:{const n=A.hit.n;return {k:'hit',idx:Math.min(n-1,((f.t*n)/Math.max(1,f.dur))|0),squash:1};}
+    case ST.hitstun:{
+      const k=A[f.hurtAnim]?f.hurtAnim:(A.hit?'hit':'hitMid'),n=A[k].n;
+      return {k,idx:Math.min(n-1,((f.t*n)/Math.max(1,f.dur))|0),squash:1};
+    }
     case ST.blockstun:
+      if(A.blockCrouch&&(f.prevIn&IN_D))return {k:'blockCrouch',idx:Math.min(A.blockCrouch.n-1,(f.t/3)|0),squash:1};
       if(A.block)return {k:'block',idx:Math.min(A.block.n-1,(f.t/3)|0),squash:1};
-      return {k:'hit',idx:0,squash:1};
-    case ST.launched: return {k:'hit',idx:Math.min(A.hit.n-1,1),squash:1};
+      return {k:A.hit?'hit':'hitMid',idx:0,squash:1};
+    case ST.launched:{const k=A.hitAir?'hitAir':'hit';return {k,idx:Math.min(A[k].n-1,(f.t/3)|0),squash:1};}
     case ST.knockdown:{const n=A.death.n;return {k:'death',idx:Math.min(n-1,(f.t/5)|0),squash:1};}
     case ST.getup:
       if(A.getup)return {k:'getup',idx:Math.min(A.getup.n-1,((f.t*A.getup.n)/14)|0),squash:1};
@@ -1386,11 +1634,41 @@ function spriteFrame(f,c){
   }
 }
 
-function drawSpriteFighter(f,W2S){
+function drawSpriteFighter(S,f,W2S){
   const c=chr(f),sp=c.sprite;
-  const fr=spriteFrame(f,c);
-  const a=sp.anims[fr.k];
-  const img=sp.imgs[fr.k];
+  let fr=spriteFrame(S,f,c),a=sp.anims[fr.k],img;
+  if(sp.archives){
+    let frames=sp.imgs[fr.k];
+    if(!frames||!frames.length){
+      loadArchiveAnim(sp,fr.k).catch(()=>{});fr={k:'idle',idx:0,squash:1};a=sp.anims.idle;frames=sp.imgs.idle;
+    }
+    if(!frames||!frames.length)return;
+    sp._used[fr.k]=++sp._clock;
+    if(m&&m.projectile&&m.projectile.anim&&!sp.imgs[m.projectile.anim])
+      loadArchiveAnim(sp,m.projectile.anim).catch(()=>{});
+    img=frames[fr.idx%frames.length];
+    const [sx,sy]=W2S(f.x/FP,f.y/FP),s=sp.scale*V.z;
+    const paintLayer=(im,meta,dx,dy)=>{
+      const cw=im.naturalWidth||im.width,ch=im.naturalHeight||im.height;
+      const cx=meta.cx!=null?meta.cx:cw/2,fy=meta.fy!=null?meta.fy:ch;
+      ctx.save();ctx.translate(sx+(dx||0)*f.face*V.z,sy+(dy||0)*V.z);ctx.scale(f.face,fr.squash);
+      ctx.imageSmoothingEnabled=true;ctx.drawImage(im,-cx*s,-fy*s,cw*s,ch*s);ctx.restore();
+    };
+    paintLayer(img,a,0,0);
+    /* Flame/slash overlays are separate original files in the source export.
+       Synchronize each layer against its base move instead of omitting it. */
+    if(m&&m.effects){for(const e of m.effects){
+      const k=e[0],at=e[1]||0,ea=sp.anims[k],ef=sp.imgs[k];
+      if(!ef){loadArchiveAnim(sp,k).catch(()=>{});continue;}
+      sp._used[k]=++sp._clock;
+      if(fr.idx<at)continue;
+      const span=Math.max(1,a.n-1-at);
+      const ei=Math.min(ea.n-1,(((fr.idx-at)*(ea.n-1))/span)|0);
+      paintLayer(ef[ei],ea,e[2]||0,e[3]||0);
+    }}
+    return;
+  }
+  img=sp.imgs[fr.k];
   /* per-anim cell geometry (HD packs) with square-cell fallback (pixel packs) */
   const cw=a.cw||sp.cell, ch=a.ch||sp.cell;
   const cx=a.cx!=null?a.cx:sp.centerX, fy=a.fy!=null?a.fy:sp.feetY;
@@ -1406,7 +1684,7 @@ function drawSpriteFighter(f,W2S){
 
 function drawFighter(S,f,W2S){
   const c=chr(f);
-  if(c.sprite&&c.sprite._st==='ready'){drawSpriteFighter(f,W2S);return;}
+  if(c.sprite&&c.sprite._st==='ready'){drawSpriteFighter(S,f,W2S);return;}
   const p=poseOf(S,f);
   const [sx,sy]=W2S(f.x/FP,f.y/FP);
   const z=V.z, H=c.h*z, W=c.w*z;
@@ -1885,6 +2163,8 @@ const test={freeze:false,masks:null};
 
 function startMatch(c0,c1,m){
   mode=m;S=newMatch(c0,c1);
+  /* The 2.8-second round intro doubles as a non-blocking HQ frame prefetch. */
+  preloadSprites(CHARACTERS[c0]);preloadSprites(CHARACTERS[c1]);
   paused=false;resultShown=false;
   V.particles.length=0;V.hpShow=[1,1];V.hpTrail=[1,1];V.shake=0;
   V.camX=0;V.camY=0;V.z=0.9;
@@ -2167,6 +2447,15 @@ function drawPortrait(pcv,c){
     const paint=()=>{
       g.clearRect(0,0,120,140);
       const ia=sp.anims.idle;
+      if(sp.archives){
+        const frames=sp.imgs.idle;if(!frames||!frames.length)return;
+        sp._used.idle=++sp._clock;
+        const im=frames[0],cw=im.naturalWidth||im.width,ch=im.naturalHeight||im.height;
+        const cx=ia.cx!=null?ia.cx:cw/2,fy=ia.fy!=null?ia.fy:ch;
+        const s2=112/(fy-(sp.idleTop||0));
+        g.imageSmoothingEnabled=true;g.save();g.translate(60,130);
+        g.drawImage(im,-cx*s2,-fy*s2,cw*s2,ch*s2);g.restore();return;
+      }
       const cw=ia.cw||sp.cell,ch=ia.ch||sp.cell;
       const cx=ia.cx!=null?ia.cx:sp.centerX,fy=ia.fy!=null?ia.fy:sp.feetY;
       const s2=112/(fy-(sp.idleTop||0));
