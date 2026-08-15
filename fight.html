@@ -551,27 +551,27 @@ const CHARACTERS=[
              design verified distinct from any commercial fighter; chroma-keyed,
              cropped and re-composed into strips. Frame mapping identified by
              the owner watching every block animated. See art/sarge/LICENSE.txt */
-    path:'art/sarge/', scale:0.58, smooth:1, idleTop:8,
+    path:'art/sarge/', scale:0.58, smooth:1, idleTop:8, v:4,
     anims:{
-      idle:{f:'idle.png',n:8,cw:163,ch:269,cx:106,fy:264},
-      run:{f:'run.png',n:9,cw:173,ch:267,cx:88,fy:262},
-      walkback:{f:'walkback.png',n:7,cw:124,ch:268,cx:59,fy:262},
-      dash:{f:'dash.png',n:8,cw:256,ch:190,cx:129,fy:185},
-      backdash:{f:'backdash.png',n:6,cw:216,ch:270,cx:121,fy:265},
-      jump:{f:'jump.png',n:2,cw:194,ch:267,cx:96,fy:262},
-      fall:{f:'fall.png',n:2,cw:163,ch:300,cx:76,fy:295},
-      attack1:{f:'attack1.png',n:6,cw:252,ch:258,cx:115,fy:252},
-      attack2:{f:'attack2.png',n:8,cw:287,ch:278,cx:105,fy:273},
-      special:{f:'special.png',n:8,cw:269,ch:280,cx:156,fy:274},
-      super:{f:'super.png',n:9,cw:273,ch:323,cx:78,fy:317},
-      clight:{f:'clight.png',n:6,cw:274,ch:176,cx:93,fy:171},
-      cheavy:{f:'cheavy.png',n:7,cw:261,ch:206,cx:138,fy:200},
-      airatk:{f:'airatk.png',n:6,cw:323,ch:266,cx:158,fy:260},
-      hit:{f:'hit.png',n:4,cw:202,ch:268,cx:59,fy:262},
-      block:{f:'block.png',n:4,cw:213,ch:266,cx:110,fy:261},
-      death:{f:'death.png',n:6,cw:320,ch:249,cx:135,fy:244},
-      getup:{f:'getup.png',n:5,cw:241,ch:168,cx:120,fy:162},
-      crouch:{f:'crouch.png',n:4,cw:140,ch:268,cx:61,fy:262}
+      idle:{f:'idle.png',n:8,cw:115,ch:270,cx:57,fy:265},
+      run:{f:'run.png',n:9,cw:141,ch:268,cx:70,fy:263},
+      walkback:{f:'walkback.png',n:7,cw:120,ch:270,cx:60,fy:265},
+      dash:{f:'dash.png',n:8,cw:257,ch:191,cx:128,fy:186},
+      backdash:{f:'backdash.png',n:6,cw:190,ch:272,cx:95,fy:267},
+      jump:{f:'jump.png',n:2,cw:179,ch:261,cx:89,fy:256},
+      fall:{f:'fall.png',n:2,cw:209,ch:224,cx:104,fy:219},
+      attack1:{f:'attack1.png',n:6,cw:253,ch:259,cx:116,fy:253},
+      attack2:{f:'attack2.png',n:8,cw:288,ch:280,cx:105,fy:275},
+      special:{f:'special.png',n:8,cw:270,ch:282,cx:157,fy:276},
+      super:{f:'super.png',n:9,cw:275,ch:324,cx:78,fy:319},
+      clight:{f:'clight.png',n:6,cw:276,ch:177,cx:93,fy:172},
+      cheavy:{f:'cheavy.png',n:7,cw:262,ch:207,cx:139,fy:202},
+      airatk:{f:'airatk.png',n:6,cw:325,ch:267,cx:158,fy:262},
+      hit:{f:'hit.png',n:4,cw:184,ch:269,cx:92,fy:264},
+      block:{f:'block.png',n:4,cw:203,ch:267,cx:101,fy:262},
+      death:{f:'death.png',n:6,cw:264,ch:206,cx:132,fy:201},
+      getup:{f:'getup.png',n:5,cw:242,ch:166,cx:121,fy:161},
+      crouch:{f:'crouch.png',n:4,cw:139,ch:268,cx:69,fy:263}
     }
   },
   moves:{
@@ -597,7 +597,7 @@ function loadSprites(c){
     const im=new Image();
     im.onload=()=>{if(--left===0&&!failed)sp._st='ready';};
     im.onerror=()=>{failed=true;sp._st='failed';console.warn('[fight] sprite sheet failed to load:',sp.path+sp.anims[k].f);};
-    im.src=sp.path+sp.anims[k].f;
+    im.src=sp.path+sp.anims[k].f+(sp.v?'?v='+sp.v:'');   // version-bust stale caches
     sp.imgs[k]=im;
   }
 }
