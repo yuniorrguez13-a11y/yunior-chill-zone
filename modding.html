@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SFFG Modding Guide — Yuniors Chill Zone</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+:root{--bg:#0a0a12;--bg2:#12121b;--card:#14141f;--border:rgba(255,255,255,.08);
+  --text:#eceef3;--text2:#9a9aae;--text3:#62627a;--accent:#e8162a;--cyan:#00d4ff;--amber:#ffb020;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;}
+.wrap{width:min(880px,94vw);margin:0 auto;padding:30px 0 90px;}
+h1{font-family:'Syne',sans-serif;font-size:clamp(26px,5vw,42px);
+  background:linear-gradient(135deg,#fff 40%,#7fe4ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.sub{color:var(--text3);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-bottom:24px;}
+h2{font-family:'Syne',sans-serif;font-size:21px;margin:36px 0 10px;color:#fff;}
+h3{font-size:16px;margin:22px 0 8px;color:var(--cyan);}
+p{color:var(--text2);font-size:14.5px;margin-bottom:10px;}
+b{color:var(--text);}
+a{color:var(--cyan);}
+.btnrow{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;padding:10px 18px;
+  border-radius:11px;border:1px solid var(--border);background:var(--bg2);color:var(--text);text-decoration:none;}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+pre{background:#0d0d16;border:1px solid var(--border);border-radius:12px;padding:16px;overflow-x:auto;
+  font-size:12.5px;line-height:1.5;color:#c8d3f5;margin:12px 0;}
+code{background:#0d0d16;border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#c8d3f5;}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;}
+th,td{padding:7px 9px;border-bottom:1px solid var(--border);text-align:left;color:var(--text2);vertical-align:top;}
+th{color:var(--text);font-size:11px;letter-spacing:.08em;text-transform:uppercase;}
+td:first-child{color:var(--cyan);white-space:nowrap;}
+.note{border-left:3px solid var(--amber);background:rgba(255,176,32,.06);padding:10px 14px;border-radius:0 10px 10px 0;
+  font-size:13.5px;color:var(--text2);margin:14px 0;}
+.danger{border-left-color:var(--accent);background:rgba(232,22,42,.06);}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>HOW TO CODE A FIGHTER</h1>
+<div class="sub">SFFG community character format · v2</div>
+
+<p>Everything a fighter is — stats, moves, frame data, hitboxes, sprites, passives, projectiles —
+lives in <b>one JSON object plus a folder of sprite sheets</b>. There is no scripting: a mod is pure
+data, which is exactly why community fighters can't break the game, steal anything or desync online
+matches. If the no-code <a href="create.html">Fighter Creator</a> can express your idea, use it —
+it produces this same format. This page is for people who want to hand-write or generate the JSON.</p>
+
+<div class="btnrow">
+  <a class="btn primary" href="create.html">Open the Fighter Creator</a>
+  <a class="btn" href="fight.html">Back to SFFG</a>
+</div>
+
+<h2>1 · The shape of a fighter</h2>
+<pre>{
+  "name": "Uncle Ekber",            // 3-24 chars
+  "tagline": "He warned you.",      // up to 60 chars
+  "color": "#ff8c00",               // main color (puppet body, projectiles, UI)
+  "color2": "#ffd9a0",              // accent
+  "skin": "#d8a878",                // puppet skin tone
+
+  "hp": 1000,                       // 400-2000
+  "walk": 68, "back": 52,           // px per frame ×16 (30-130 / 20-110)
+  "jumpVX": 56, "jumpVY": -252,     // jump drift / power (negative = up)
+  "grav": 14,
+  "w": 56, "h": 150, "crouchH": 105,  // body box in game pixels
+
+  "passive": {                      // all optional, these are the neutral values
+    "regen": 0,                     // hp per second, 0-4
+    "defense": 100,                 // % damage taken, 70-130
+    "meterMult": 100                // % meter gain, 50-200
+  },
+
+  "sprite": { ... },                // optional — omit for the vector puppet
+  "moves": { ... }                  // required — see below
+}</pre>
+
+<h2>2 · Moves</h2>
+<p>Eight slots. <code>light</code>, <code>heavy</code>, <code>special</code>, <code>air</code>,
+<code>throw</code> and <code>super</code> are required; <code>clight</code> / <code>cheavy</code>
+(crouching) are optional but recommended. Each move:</p>
+<pre>"special": {
+  "name": "Get Off My Lawn",
+  "dmg": 120,                      // 5-400
+  "startup": 12, "active": 4, "recovery": 20,   // frames (60/s)
+  "hitstun": 22, "blockstun": 12, "hitstop": 9,
+  "kbx": 130,                      // knockback; NEGATIVE pulls them toward you
+  "box": {"x": 30, "y": -130, "w": 90, "h": 40}, // hitbox from your feet, facing right
+  "hits": "low",                   // optional: "low" | "high" (air moves are always high)
+  "launch": 1, "kby": -230,        // optional: knocks airborne
+  "step": 60,                      // optional: forward movement during startup+active
+  "armor": 1,                      // optional: absorbs one hit during startup/active
+  "armorBreak": 1,                 // optional: ignores enemy armor
+  "inv": 1,                        // supers only: invulnerable startup
+  "projectile": {                  // optional: fires when the move becomes active
+    "speed": 90,                   // 30-260 (fine units per frame)
+    "life": 50,                    // 20-120 frames
+    "w": 24, "h": 24
+  },
+  "anim": "special",               // optional: which sprite sheet plays
+  "impact": 6                      // optional: which drawing is the hit (default: 2nd-to-last)
+}</pre>
+<p>The rock-paper-scissors rules are engine-wide and free: lows must be blocked crouching, air
+attacks standing, throws beat block but whiff on airborne/stunned targets, max 2 live projectiles
+per player, 4-hit juggle cap, combo damage scaling.</p>
+
+<h2>3 · Sprites</h2>
+<p>Optional — a fighter without sprites plays with the built-in vector puppet, which is a totally
+respectable look in this game. If you do use sprites:</p>
+<ul style="color:var(--text2);font-size:14px;margin:0 0 10px 20px;">
+  <li>Each animation is <b>one horizontal strip PNG</b>: same-size cells, frames left to right.</li>
+  <li><code>cw/ch</code> = cell size · <code>cx</code> = body center x inside the cell ·
+      <code>fy</code> = feet line y inside the cell.</li>
+  <li>Attacks: author strips as <i>windup…, impact, follow-through</i> — the engine plays windup
+      drawings across the startup, holds the <code>impact</code> drawing during active frames, and
+      spreads the rest across recovery. Few drawings + fast gameplay is fine; chunky is a feature.</li>
+</ul>
+<table>
+<tr><th>Required</th><th>Optional</th></tr>
+<tr><td>idle, run, jump, fall, attack1, attack2, hit, death</td>
+<td>walkback, dash, backdash, block, getup, crouch (stand→kneel, held), clight, cheavy, airatk,
+special, super, attack3, attack4 — plus any of these referenced by a move's <code>anim</code></td></tr>
+</table>
+<pre>"sprite": {
+  "scale": 0.58,        // game px per cell px
+  "smooth": 1,          // 1 = HD art, 0 = crisp pixel art
+  "idleTop": 8,         // top of the head in the idle cell (portrait crop)
+  "anims": {
+    "idle": {"f":"idle.png","n":8,"cw":164,"ch":268,"cx":82,"fy":263},
+    "run":  {"f":"run.png","n":7,"cw":141,"ch":268,"cx":70,"fy":263}
+    // ... one entry per sheet; file names: lowercase letters/numbers + .png
+  }
+}</pre>
+<div class="note">The Creator builds all of this for you from loose frame images — including
+background removal and feet alignment. Hand-author strips only if you enjoy pain or scripts.</div>
+
+<h2>4 · Controls & keybinds</h2>
+<p>SFFG's input grammar is fixed for every fighter — 4 directions + light/heavy/special, with
+throws on light+heavy and supers on heavy+special. That's deliberate: online play sends only these
+buttons, so any two fighters are automatically netplay-compatible. Your creativity lives in what
+each slot <i>does</i>: an 8-frame invincible reversal, a slow armored bulldozer, a pull-in whip, a
+projectile zoner — all expressible in data. Players can remap their own buttons in
+<b>Controls</b> on the game menu (bindings are per-player, not per-character, so nobody has to
+learn your layout).</p>
+
+<h2>5 · Validation rules (the bouncer)</h2>
+<p>Before a fighter loads — in the Creator, at upload, and again in every player's game — it runs
+through <code>sffg-mods.js</code>. The validator:</p>
+<ul style="color:var(--text2);font-size:14px;margin:0 0 10px 20px;">
+  <li>Whitelists every field and <b>drops anything unknown</b> (there is no way to smuggle code).</li>
+  <li>Clamps every number to the documented ranges.</li>
+  <li>Strips matchup fields (<code>weakTo</code>) — counters are an official-roster mechanic.</li>
+  <li>Requires the six core moves and, if sprites are used, the eight core animations.</li>
+  <li>Rejects one-touch-kill data and JSON over 60 KB.</li>
+</ul>
+<p>The tier system then rates your fighter with the same formula as the official roster — damage
+per committed frame, reach, mobility, hp, gimmicks, passives. Matchmaking fairness comes from that
+score, so yes, <i>omnipotent regular guy</i> builds get labeled as exactly what they are.</p>
+
+<h2>6 · Publish it</h2>
+<p><b>Publishing needs a Chill Zone account</b> (browsing and playing community fighters doesn't).
+Two ways:</p>
+<ol style="color:var(--text2);font-size:14px;margin:0 0 10px 20px;">
+  <li><b>Creator:</b> <a href="create.html">create.html</a> → build → <i>Publish to SFFG</i>. Done.</li>
+  <li><b>Hand-written JSON:</b> Creator → <i>Import JSON</i> → re-attach your sprite frames →
+      <i>Publish</i>. The importer runs the validator and shows you every complaint.</li>
+</ol>
+<p>Your fighter appears in the <b>community section of the character select</b> for everyone,
+instantly playable in local and online matches (online transfers it by id + content hash so both
+players are guaranteed the same data). You can edit or delete it any time from
+<i>My fighters</i> in the Creator.</p>
+
+<div class="note danger"><b>Own your art.</b> Ripped, traced or repainted sprites from commercial
+games get removed and repeat offenders lose upload rights. CC0/original art only — the same rule
+the official roster follows. If you're unsure whether a pack is legit, ask in the chat first.</div>
+
+<h2>7 · Full example (data-only fighter)</h2>
+<pre>{
+  "name": "Ping Abuser", "tagline": "He lives in your delay.",
+  "color": "#37d67a", "color2": "#b8ffd9", "skin": "#e9c9a8",
+  "hp": 800, "walk": 95, "back": 75, "jumpVX": 80, "jumpVY": -270, "grav": 15,
+  "w": 44, "h": 142, "crouchH": 98,
+  "passive": {"meterMult": 130},
+  "moves": {
+    "light":  {"name":"Poke","dmg":45,"startup":4,"active":2,"recovery":8,
+               "hitstun":13,"blockstun":8,"hitstop":4,"kbx":55,
+               "box":{"x":22,"y":-118,"w":52,"h":24}},
+    "heavy":  {"name":"Lag Spike","dmg":105,"startup":11,"active":4,"recovery":16,
+               "hitstun":21,"blockstun":11,"hitstop":8,"kbx":105,
+               "box":{"x":26,"y":-126,"w":64,"h":32}},
+    "special":{"name":"Packet","dmg":70,"startup":14,"active":2,"recovery":24,
+               "hitstun":18,"blockstun":11,"hitstop":6,"kbx":80,
+               "projectile":{"speed":110,"life":70,"w":20,"h":20},
+               "box":{"x":30,"y":-120,"w":24,"h":24}},
+    "air":    {"name":"Drop","dmg":60,"startup":7,"active":8,"recovery":9,
+               "hitstun":15,"blockstun":9,"hitstop":5,"kbx":60,
+               "box":{"x":16,"y":-90,"w":50,"h":36}},
+    "throw":  {"name":"Disconnect","dmg":110,"startup":5,"active":3,"recovery":22,
+               "hitstop":10,"kbx":80,"throw":1,"launch":1,"kby":-190,
+               "box":{"x":8,"y":-126,"w":50,"h":66}},
+    "super":  {"name":"ADMIN PRIVILEGES","dmg":230,"startup":8,"active":5,"recovery":26,
+               "hitstun":30,"blockstun":16,"hitstop":13,"kbx":200,"launch":1,"kby":-260,
+               "inv":1,"super":1,"box":{"x":24,"y":-136,"w":84,"h":50}}
+  }
+}</pre>
+<p>Paste that into the Creator's <i>Import JSON</i> and it's playable in thirty seconds.</p>
+</div>
+</body>
+</html>

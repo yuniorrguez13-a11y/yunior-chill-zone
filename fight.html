@@ -102,6 +102,29 @@ h1.logo{
 .pick-badge.b1{background:var(--accent);color:#fff;}
 .pick-badge.b2{background:var(--cyan);color:#04222b;}
 #sel-footer{width:min(980px,100%);margin-top:24px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+
+/* community fighters section */
+#cm-sec{width:min(980px,100%);margin-top:30px;display:flex;flex-direction:column;}
+#cm-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;
+  padding-top:18px;border-top:1px solid var(--border);}
+.cm-label{font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--text2);
+  display:inline-flex;align-items:center;gap:7px;margin-right:auto;}
+#cm-q{background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);
+  padding:9px 13px;font-size:13.5px;outline:none;width:210px;font-family:'DM Sans',sans-serif;}
+#cm-q:focus{border-color:rgba(0,212,255,.5);}
+#cm-sort,#cm-filter{background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);padding:9px 10px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;}
+#cm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+#cm-state{color:var(--text3);font-size:13.5px;text-align:center;padding:18px 0;display:none;}
+#cm-state.on{display:block;}
+#cm-state .spin{display:inline-block;vertical-align:-2px;margin-right:8px;}
+.chr-card.cm{border-top:2px solid rgba(0,212,255,.45);}
+.cm-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--cyan);
+  border:1px solid rgba(0,212,255,.4);background:rgba(0,212,255,.08);
+  border-radius:999px;padding:2px 9px;pointer-events:none;}
+.cm-by{color:var(--text3);font-size:11px;margin-top:4px;}
+@media(max-width:600px){#cm-q{width:100%;}}
 #sel-status{color:var(--text2);font-size:14px;}
 #sel-status b{color:var(--text);}
 
@@ -228,6 +251,30 @@ kbd{
     <div class="hint" id="sel-hint">Player 1 — pick a fighter</div>
   </div>
   <div id="sel-grid"></div>
+
+  <!-- community fighters: always below the pinned official roster -->
+  <div id="cm-sec">
+    <div id="cm-bar">
+      <span class="cm-label"><i data-ic="users" data-ic-size="15"></i> COMMUNITY FIGHTERS</span>
+      <input id="cm-q" type="text" placeholder="Search fighters or creators" autocomplete="off">
+      <select id="cm-sort" title="Sort">
+        <option value="new">Newest</option>
+        <option value="name">Name A–Z</option>
+        <option value="plays">Most played</option>
+      </select>
+      <select id="cm-filter" title="Filter">
+        <option value="all">All</option>
+        <option value="sprited">With sprites</option>
+        <option value="puppet">Puppet body</option>
+        <option value="mine">Mine</option>
+      </select>
+      <a class="btn" id="cm-create" href="create.html"><i data-ic="pencil" data-ic-size="15"></i> Create yours</a>
+    </div>
+    <div id="cm-grid"></div>
+    <div id="cm-state"></div>
+    <button class="btn" id="cm-more" style="display:none;margin:14px auto 0;">Load more</button>
+  </div>
+
   <div id="sel-footer">
     <div id="sel-status"></div>
     <div style="display:flex;gap:10px;">
@@ -344,8 +391,12 @@ kbd{
        prompt. The match runs peer-to-peer — the number in the corner is your connection delay.</p>
     <h4>Tiers</h4>
     <p>Every fighter gets a power score computed from its stats and frame data — that's the tier badge on the
-       select screen. When community fighters arrive, the engine rates them the same way so matchmaking can
-       keep things fair.</p>
+       select screen. Community fighters are rated by the exact same formula.</p>
+    <h4>Community fighters</h4>
+    <p>The select screen has the whole community roster under the official four — search it, sort it,
+       play anything. Make your own with the <a href="create.html" style="color:var(--cyan)">Fighter Creator</a>
+       (no code needed) or hand-write one with the <a href="modding.html" style="color:var(--cyan)">modding guide</a>.
+       Publishing needs a Chill Zone account; playing doesn't.</p>
   </div>
 </div>
 
@@ -368,6 +419,7 @@ kbd{
 <div id="toast"></div>
 
 <script src="ycz-scores.js"></script>
+<script src="sffg-mods.js"></script>
 <script src="ycz-icons.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -647,6 +699,8 @@ function loadSprites(c){
   }
 }
 CHARACTERS.forEach(loadSprites);
+/* the official roster is pinned: community fighters only ever append after this */
+const OFFICIAL_COUNT=CHARACTERS.length;
 
 /* ── automatic tier rating — same formula community fighters will get ── */
 const TIERS=['genuine piece of shi','iwannalose','meh','regular guy','steroids were used',
@@ -658,6 +712,12 @@ function charPower(c){
     p+=((m.dmg*8)/(m.startup+m.active+m.recovery))|0;
     if(m.box)p+=((m.box.x+m.box.w)/6)|0;      // reach is power too (ask Sarge)
     if(m.launch)p+=15; if(m.armor)p+=20; if(m.armorBreak)p+=18; if(m.step)p+=(m.step/8)|0;
+    if(m.projectile)p+=30;
+  }
+  if(c.passive){
+    p+=(c.passive.regen||0)*25;
+    p+=(100-(c.passive.defense||100))*3;      // taking less damage is power
+    p+=(((c.passive.meterMult||100)-100)/4)|0;
   }
   return p;
 }
@@ -690,13 +750,14 @@ function newFighter(ci,side){
 }
 function newMatch(c0,c1){
   return {frame:0,phase:PHASES.intro,phaseT:0,round:1,wins:[0,0],timer:ROUND_FRAMES,
-    hitstop:0,roundMsg:'',events:[],f:[newFighter(c0,0),newFighter(c1,1)]};
+    hitstop:0,roundMsg:'',events:[],proj:[],f:[newFighter(c0,0),newFighter(c1,1)]};
 }
 function resetRound(S){
   const a=S.f[0].c,b=S.f[1].c,w0=S.wins[0],w1=S.wins[1],r=S.round;
   const m0=S.f[0].meter,m1=S.f[1].meter;              // super meter carries across rounds
   const N=newMatch(a,b);
   S.phase=N.phase;S.phaseT=0;S.timer=ROUND_FRAMES;S.hitstop=0;S.roundMsg='';S.events=[];
+  S.proj=[];
   S.f=[newFighter(a,0),newFighter(b,1)];S.wins=[w0,w1];S.round=r+1;
   S.f[0].meter=m0;S.f[1].meter=m1;
 }
@@ -747,6 +808,15 @@ function step(S,in0,in1){
   const h0=findHit(S,0),h1=findHit(S,1);
   if(h0)applyHit(S,0,h0);
   if(h1)applyHit(S,1,h1);
+  /* phase 4b: projectiles fly and connect */
+  stepProjectiles(S);
+  /* phase 4c: passive regen (community fighters; officials have none) */
+  if(S.phase===PHASES.fight&&S.frame%60===0){
+    for(const f of S.f){
+      const ps=chr(f).passive;
+      if(ps&&ps.regen&&f.hp>0)f.hp=Math.min(chr(f).hp,f.hp+ps.regen);
+    }
+  }
   /* phase 5: facing (grounded neutral only) */
   for(let i=0;i<2;i++){const f=S.f[i],o=S.f[1-i];
     if(canAct(f))f.face=o.x>=f.x?1:-1;
@@ -842,7 +912,10 @@ function advance(S,f,o,IN){
       break;
     case ST.attack:{
       const m=c.moves[f.mv];
-      if(f.t===m.startup)S.events.push({t:'whoosh',x:f.x,y:f.y-100*FP});
+      if(f.t===m.startup){
+        S.events.push({t:'whoosh',x:f.x,y:f.y-100*FP});
+        if(m.projectile)spawnProjectile(S,f,m);
+      }
       if(m.step&&f.t<m.startup+m.active)f.x+=f.face*m.step;
       if(f.t>=m.startup+m.active+m.recovery){f.armorUsed=0;backToNeutral(f,IN);}
       break;}
@@ -946,6 +1019,7 @@ function applyHit(S,i,h){
     def.armorUsed=1;
     let armorDmg=(m.dmg*3/4)|0;
     if(exploitsWeakness)armorDmg=((armorDmg*weakPct)/100)|0;
+    if(defChar.passive&&defChar.passive.defense!==100)armorDmg=((armorDmg*defChar.passive.defense)/100)|0;
     def.hp-=armorDmg;
     att.meter=Math.min(METER_MAX,att.meter+80);
     def.meter=Math.min(METER_MAX,def.meter+60);
@@ -954,10 +1028,13 @@ function applyHit(S,i,h){
     if(def.hp<=0){def.hp=0;koFighter(def,kdir,m);}
     return;
   }
-  /* super meter: everybody earns by fighting (supers themselves build nothing) */
+  /* super meter: everybody earns by fighting (supers themselves build nothing).
+     meterMult passive (community fighters) scales each side's own gains */
   if(!m.super){
-    att.meter=Math.min(METER_MAX,att.meter+(h.blocked?40:120));
-    def.meter=Math.min(METER_MAX,def.meter+(h.blocked?30:150));
+    const am=(attChar.passive&&attChar.passive.meterMult)||100;
+    const dmm=(defChar.passive&&defChar.passive.meterMult)||100;
+    att.meter=Math.min(METER_MAX,att.meter+((((h.blocked?40:120)*am)/100)|0));
+    def.meter=Math.min(METER_MAX,def.meter+((((h.blocked?30:150)*dmm)/100)|0));
   }
   S.hitstop=Math.max(S.hitstop,m.hitstop);
   if(h.blocked){
@@ -973,6 +1050,7 @@ function applyHit(S,i,h){
   const scale=10-Math.min(def.combo-1,6);
   let dmg=((m.dmg*scale)/10)|0;
   if(exploitsWeakness)dmg=((dmg*weakPct)/100)|0;
+  if(defChar.passive&&defChar.passive.defense!==100)dmg=((dmg*defChar.passive.defense)/100)|0;
   def.hp-=dmg;
   const airborne=def.st===ST.air||def.st===ST.airattack||def.st===ST.launched;
   if(def.hp<=0){def.hp=0;koFighter(def,kdir,m);}
@@ -994,6 +1072,51 @@ function koFighter(def,kdir,m){
   if(def.y>=GROUND)def.y=-1;
 }
 
+/* ── projectiles: data-driven, deterministic, max 2 live per fighter ── */
+function spawnProjectile(S,f,m){
+  const ow=S.f[0]===f?0:1;
+  let live=0;for(const p of S.proj)if(p.ow===ow)live++;
+  if(live>=2)return;
+  const pj=m.projectile;
+  S.proj.push({ow,mk:f.mv,
+    x:f.x+f.face*((m.box.x+((pj.w/2)|0))*FP),
+    y:f.y+((m.box.y+((m.box.h/2)|0))*FP),
+    vx:f.face*pj.speed,w:pj.w,h:pj.h,life:pj.life});
+  S.events.push({t:'pshot',x:f.x+f.face*m.box.x*FP,y:f.y+(m.box.y*FP)});
+}
+function stepProjectiles(S){
+  for(let i=S.proj.length-1;i>=0;i--){
+    const p=S.proj[i];
+    p.x+=p.vx;p.life--;
+    if(p.life<=0||p.x<-WALL-40*FP||p.x>WALL+40*FP){S.proj.splice(i,1);continue;}
+    const att=S.f[p.ow],def=S.f[1-p.ow];
+    /* same protections the melee resolver gives */
+    if(def.st===ST.knockdown||def.st===ST.getup||def.st===ST.ko)continue;
+    if(def.st===ST.backdash&&def.t<8)continue;
+    const dm=currentMove(def);
+    if(dm&&dm.inv&&def.t<dm.startup)continue;
+    if(def.st===ST.launched&&def.juggle>=JUGGLE_MAX)continue;
+    const box=[p.x-((p.w/2)|0)*FP,p.y-((p.h/2)|0)*FP,p.x+((p.w/2)|0)*FP,p.y+((p.h/2)|0)*FP];
+    if(!overlap(box,hurtbox(def)))continue;
+    const m=chr(att).moves[p.mk];
+    if(!m){S.proj.splice(i,1);continue;}
+    const IN=def.prevIn;
+    const awayDir=def.x>=att.x?1:-1;
+    const holding=(IN&IN_R?1:0)-(IN&IN_L?1:0);
+    let blocked=(def.st===ST.idle||def.st===ST.walk||def.st===ST.crouch||def.st===ST.blockstun)
+                &&def.y>=GROUND&&holding===awayDir;
+    if(blocked){
+      const crouching=!!(IN&IN_D);
+      if(m.hits==='low'&&!crouching)blocked=false;
+      if(m.hits==='high'&&crouching)blocked=false;
+    }
+    const hadHit=att.mvHit;
+    applyHit(S,p.ow,{m,blocked});
+    att.mvHit=hadHit;          // the projectile must not consume the move's melee hit
+    S.proj.splice(i,1);
+  }
+}
+
 /* FNV-1a over the numbers that matter — desync tripwire for netplay */
 function checksum(S){
   let h=0x811c9dc5|0;
@@ -1003,6 +1126,8 @@ function checksum(S){
   for(const f of S.f){mix(f.x);mix(f.y);mix(f.vx);mix(f.vy);mix(f.hp);mix(f.st);mix(f.t);
     mix(f.face);mix(f.combo);mix(f.prevIn);mix(f.dur);mix(f.mvHit|(f.armorUsed<<1)|(f.airUsed<<2));
     mix(f.meter);mix(f.juggle);mix(f.tapDir);mix(f.tapF);}
+  mix(S.proj.length);
+  for(const p of S.proj){mix(p.x);mix(p.y);mix(p.vx);mix(p.life);mix(p.ow);}
   return h>>>0;
 }
 
@@ -1047,6 +1172,20 @@ function render(S){
   drawShadow(S.f[order[0]],W2S);drawShadow(S.f[order[1]],W2S);
   drawFighter(S,S.f[order[0]],W2S);
   drawFighter(S,S.f[order[1]],W2S);
+  /* projectiles: glowing bolts in their owner's colors */
+  for(const p of S.proj){
+    const oc=chr(S.f[p.ow]);
+    const [px,py]=W2S(p.x/FP,p.y/FP);
+    const r=Math.max(p.w,p.h)/2*V.z;
+    const g2=ctx.createRadialGradient(px,py,r*0.15,px,py,r*1.5);
+    g2.addColorStop(0,'#ffffff');
+    g2.addColorStop(0.4,oc.color2||oc.color);
+    g2.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g2;
+    ctx.beginPath();ctx.arc(px,py,r*1.5,0,Math.PI*2);ctx.fill();
+    if(Math.random()<0.5)V.particles.push({x:p.x/FP-(p.vx/FP)*1.5,y:p.y/FP,
+      vx:-(p.vx/FP)*0.3+(Math.random()-0.5),vy:(Math.random()-0.5)*1.2,life:10,col:oc.color2||oc.color,r:2});
+  }
   drawParticles(W2S);
   drawHud(S);
   drawBanners(S);
@@ -1330,6 +1469,7 @@ function spawnSparks(S){
       V.shake=4;
     }else if(ev.t==='ko'){V.shake=12;sfx('ko');}
     else if(ev.t==='whoosh'){sfx('whoosh');}
+    else if(ev.t==='pshot'){sfx('whoosh');}
     else if(ev.t==='bell'){sfx('bell');}
     else if(ev.t==='super'){V.flash=14;V.shake=8;sfx('super');}
   }
@@ -1792,6 +1932,71 @@ function onEscape(){
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   COMMUNITY FIGHTERS — loaded from Supabase, appended after the pinned
+   official roster, playable by everyone (browsing needs no account)
+   ════════════════════════════════════════════════════════════════════ */
+const MOD_STORE=SB_URL+'/storage/v1/object/public/avatars/';
+const MODS={byId:{},page:0,pageSize:12,q:'',sort:'new',filter:'all',rows:[],done:false,loading:false};
+
+/* turn a fighter_mods row into an engine character and append it (idempotent) */
+function registerMod(row){
+  if(MODS.byId[row.id])return MODS.byId[row.id].idx;
+  const v=SFFG_MODS.validateMod(row.data);
+  if(!v.ok){console.warn('[fight] mod rejected:',row.id,v.errors);return -1;}
+  const hash=SFFG_MODS.hashMod(v.data);
+  const c=v.data;
+  c.id='mod-'+row.id;
+  c.modId=row.id;
+  c.byName=row.owner_name||'community';
+  c.dataHash=hash;
+  if(c.sprite){
+    c.sprite.path=MOD_STORE+row.owner_id+'/sffg-mods/'+row.id+'/';
+    c.sprite.v=Date.parse(row.updated_at||row.created_at)||1;
+    /* mod sprite geometry is per-anim; give portrait/global fallbacks */
+    c.sprite.smooth=c.sprite.smooth?1:0;
+  }
+  CHARACTERS.push(c);
+  loadSprites(c);
+  const idx=CHARACTERS.length-1;
+  MODS.byId[row.id]={idx,row,char:c};
+  return idx;
+}
+/* fetch one mod by id (for online opponents picking a mod we don't have) */
+async function fetchModById(id){
+  if(MODS.byId[id])return MODS.byId[id];
+  if(!sb)throw new Error('offline');
+  const {data,error}=await sb.from('fighter_mods')
+    .select('id,owner_id,owner_name,name,tagline,data,status,created_at,updated_at')
+    .eq('id',id).maybeSingle();
+  if(error||!data)throw new Error(error?.message||'not found');
+  if(data.status!=='live')throw new Error('mod not available');
+  const idx=registerMod(data);
+  if(idx<0)throw new Error('mod failed validation');
+  return MODS.byId[id];
+}
+/* character references for netplay: indexes differ between clients once
+   community fighters are loaded, so picks travel as refs, never indexes */
+function charRef(idx){
+  const c=CHARACTERS[idx];
+  return idx<OFFICIAL_COUNT?{o:idx}:{m:c.modId,h:c.dataHash};
+}
+async function resolveRef(ref){
+  if(!ref)throw new Error('no ref');
+  if(ref.o!=null){
+    if(ref.o<0||ref.o>=OFFICIAL_COUNT)throw new Error('bad official ref');
+    return ref.o;
+  }
+  const ent=await fetchModById(ref.m);
+  if(ent.char.dataHash!==ref.h)throw new Error('mod version mismatch — both players should refresh');
+  return ent.idx;
+}
+function bumpModPlay(idx){
+  const c=CHARACTERS[idx];
+  if(!c||!c.modId||!sb)return;
+  sb.rpc('sffg_mod_played',{mid:c.modId}).then(()=>{},()=>{});
+}
+
+/* ════════════════════════════════════════════════════════════════════
    CHARACTER SELECT
    ════════════════════════════════════════════════════════════════════ */
 let selMode='local';             // context the select screen was opened for
@@ -1801,7 +2006,7 @@ let onReady=[false,false];       // online: [me, them]
 
 function buildSelect(){
   const grid=$('sel-grid');grid.innerHTML='';
-  CHARACTERS.forEach((c,i)=>{
+  CHARACTERS.slice(0,OFFICIAL_COUNT).forEach((c,i)=>{
     const t=charTier(c);
     const card=document.createElement('div');
     card.className='chr-card';card.dataset.i=i;
@@ -1822,6 +2027,95 @@ function buildSelect(){
   paintNav();
 }
 const stat=(l,v)=>'<div class="chr-stat"><span>'+l+'</span><div class="bar"><i style="width:'+Math.min(100,v)+'%"></i></div></div>';
+
+/* ── community browsing: search + sort + filter + lazy pages ── */
+function rowChar(row){
+  if(row._v===undefined){
+    const v=SFFG_MODS.validateMod(row.data);
+    row._v=v.ok?v.data:null;
+  }
+  return row._v;
+}
+async function loadCommunity(reset){
+  if(reset){MODS.rows=[];MODS.page=0;MODS.done=false;MODS.error=null;}
+  if(MODS.loading||MODS.done)return;
+  MODS.loading=true;
+  renderCommunity();
+  try{
+    if(!sb)throw new Error('servers unreachable');
+    if(MODS.filter==='mine'&&!user)throw new Error('sign in on the Chill Zone to see your fighters');
+    let q=sb.from('fighter_mods')
+      .select('id,owner_id,owner_name,name,tagline,data,status,has_sprites,plays,created_at,updated_at')
+      .eq('status','live');
+    if(MODS.q){
+      const s=MODS.q.replace(/[%,()]/g,'').trim();
+      if(s)q=q.or('name.ilike.%'+s+'%,owner_name.ilike.%'+s+'%');
+    }
+    if(MODS.filter==='sprited')q=q.eq('has_sprites',true);
+    if(MODS.filter==='puppet')q=q.eq('has_sprites',false);
+    if(MODS.filter==='mine')q=q.eq('owner_id',user.id);
+    if(MODS.sort==='name')q=q.order('name',{ascending:true});
+    else if(MODS.sort==='plays')q=q.order('plays',{ascending:false});
+    else q=q.order('created_at',{ascending:false});
+    const from=MODS.page*MODS.pageSize;
+    const {data,error}=await q.range(from,from+MODS.pageSize-1);
+    if(error)throw error;
+    MODS.rows.push(...data);
+    MODS.done=data.length<MODS.pageSize;
+    MODS.page++;
+  }catch(e){MODS.error=e.message||'could not load';}
+  MODS.loading=false;
+  renderCommunity();
+}
+function renderCommunity(){
+  const grid=$('cm-grid'),state=$('cm-state'),more=$('cm-more');
+  grid.innerHTML='';
+  for(const row of MODS.rows){
+    const c=rowChar(row);
+    if(!c)continue;                        // rows that fail validation are hidden
+    const t=charTier(c);
+    const card=document.createElement('div');
+    card.className='chr-card cm';
+    card.dataset.mod=row.id;
+    const spd=Math.round(c.walk/1.1),pow=Math.round((c.moves.heavy?c.moves.heavy.dmg:60)/2),vit=Math.round(c.hp/14);
+    card.innerHTML=
+      '<div class="pick-badges"><span class="pick-badge b1">P1</span><span class="pick-badge b2">'+(selMode==='online'?'THEM':'P2')+'</span></div>'+
+      '<span class="cm-badge">COMMUNITY</span>'+
+      '<canvas width="120" height="140"></canvas>'+
+      '<h3>'+esc(c.name)+'</h3>'+
+      '<div class="tagline">'+esc(c.tagline)+'</div>'+
+      '<div class="cm-by">by '+esc(row.owner_name||'community')+(row.has_sprites?'':' · puppet')+'</div>'+
+      '<span class="chr-tier">'+esc(t.tier)+' · '+t.score+'</span>'+
+      '<div class="chr-stats">'+stat('PWR',pow)+stat('SPD',spd)+stat('HP',vit)+'</div>';
+    grid.appendChild(card);
+    /* preview uses the registered char when we have it (real sprites), the
+       bare data otherwise (puppet placeholder) */
+    drawPortrait(card.querySelector('canvas'),MODS.byId[row.id]?MODS.byId[row.id].char:c);
+    card.addEventListener('click',()=>{
+      const idx=registerMod(row);
+      if(idx<0){toast('This fighter failed validation','err');return;}
+      pickChar(idx);
+    });
+  }
+  state.className='on';
+  if(MODS.loading&&!MODS.rows.length)state.innerHTML='<span class="spin"></span> Loading community fighters…';
+  else if(MODS.error)state.innerHTML='Community fighters unavailable — '+esc(MODS.error)+' · <a href="#" id="cm-retry" style="color:var(--cyan)">retry</a>';
+  else if(!MODS.rows.length)state.textContent='No community fighters here yet — be the first to make one.';
+  else state.className='';
+  const retry=$('cm-retry');
+  if(retry)retry.addEventListener('click',e=>{e.preventDefault();loadCommunity(true);});
+  more.style.display=(!MODS.done&&MODS.rows.length&&!MODS.loading)?'block':'none';
+  paintSelect();
+  paintNav();
+}
+let _cmT;
+$('cm-q').addEventListener('input',()=>{
+  clearTimeout(_cmT);
+  _cmT=setTimeout(()=>{MODS.q=$('cm-q').value;loadCommunity(true);},300);
+});
+$('cm-sort').addEventListener('change',()=>{MODS.sort=$('cm-sort').value;loadCommunity(true);});
+$('cm-filter').addEventListener('change',()=>{MODS.filter=$('cm-filter').value;loadCommunity(true);});
+$('cm-more').addEventListener('click',()=>loadCommunity(false));
 
 function drawPortrait(pcv,c){
   const g=pcv.getContext('2d');
@@ -1879,6 +2173,7 @@ function openSelect(m){
   if(m==='online'){picks=[null,net.peerPick];onReady=[false,net.peerReady];}
   else{picks=[null,null];onReady=[false,false];}
   buildSelect();
+  loadCommunity(true);
   $('sel-go-txt').textContent=m==='online'?'Ready':'Start Fight';
   show('s-select');
 }
@@ -1889,13 +2184,14 @@ function pickChar(i){
   }else{
     if(onReady[0])return;                 // locked in
     picks[0]=i;
-    ctlSend({t:'pick',c:i});
+    /* picks travel as refs: official index, or mod id + data hash */
+    ctlSend({t:'pick',ref:charRef(i)});
   }
   paintSelect();
 }
 function paintSelect(){
   document.querySelectorAll('.chr-card').forEach(card=>{
-    const i=+card.dataset.i;
+    const i=card.dataset.mod?(MODS.byId[card.dataset.mod]?MODS.byId[card.dataset.mod].idx:-1):+card.dataset.i;
     const meP1=selMode==='local'?picks[0]===i:picks[0]===i;
     const p2=selMode==='local'?picks[1]===i:picks[1]===i;
     card.classList.toggle('p1',meP1);
@@ -1921,6 +2217,7 @@ function paintSelect(){
 $('sel-go').addEventListener('click',()=>{
   if(selMode==='local'){
     hudNames=['Player 1','Player 2'];
+    bumpModPlay(picks[0]);bumpModPlay(picks[1]);
     startMatch(picks[0],picks[1],'local');
   }else{
     onReady[0]=true;
@@ -2156,9 +2453,19 @@ function onCtl(m){
     case 'pg': ctlSend({t:'po',n:m.n}); break;
     case 'po': net._pong&&net._pong(); break;
     case 'delay': net.delay=m.d; net.ping=m.rtt||net.ping; break;
-    case 'pick': net.peerPick=m.c; if(selOnlineActive()){picks[1]=m.c;paintSelect();} break;
+    case 'pick':{
+      /* refs resolve asynchronously: a community pick may need a fetch */
+      net.peerPick=null;
+      if(selOnlineActive()){picks[1]=null;paintSelect();}
+      resolveRef(m.ref).then(idx=>{
+        net.peerPick=idx;
+        if(selOnlineActive()){picks[1]=idx;paintSelect();maybeStartOnline();}
+      }).catch(e=>{
+        toast("Couldn't load opponent's fighter: "+(e.message||e),'err');
+      });
+      break;}
     case 'ready': net.peerReady=true; if(selOnlineActive()){onReady[1]=true;paintSelect();maybeStartOnline();} break;
-    case 'start': beginOnlineMatch(m.p0,m.p1,m.d); break;
+    case 'start': beginOnlineMatch(m.r0,m.r1,m.d); break;
     case 'ck': net.peerCks[m.f]=m.h; verifyChecksum(m.f); break;
     case 'rm': net.rematch[1]=true; maybeRematch(); break;
     case 'sel': show('s-select'); resetOnlineSelect(); break;
@@ -2170,18 +2477,27 @@ function maybeStartOnline(){
   if(!net.host)return;
   if(!selOnlineActive())return;        // a stray late 'ready' must never restart a live match
   if(onReady[0]&&onReady[1]&&picks[0]!==null&&picks[1]!==null){
-    /* host is P1/fighter 0 */
-    ctlSend({t:'start',p0:picks[0],p1:picks[1],d:net.delay});
-    beginOnlineMatch(picks[0],picks[1],net.delay);
+    /* host is P1/fighter 0; picks travel as refs so both clients resolve
+       the same characters even when their local rosters differ */
+    ctlSend({t:'start',r0:charRef(picks[0]),r1:charRef(picks[1]),d:net.delay});
+    beginOnlineMatch(charRef(picks[0]),charRef(picks[1]),net.delay);
   }
 }
-function beginOnlineMatch(p0,p1,delay){
+async function beginOnlineMatch(r0,r1,delay){
+  let p0,p1;
+  try{p0=await resolveRef(r0);p1=await resolveRef(r1);}
+  catch(e){
+    toast('Failed to load fighters: '+(e.message||e),'err');
+    if(net.on){show('s-select');resetOnlineSelect();}
+    return;
+  }
   net.delay=delay;
   net.capF=delay;net.localIn={};net.remoteIn={};net.stall=0;
   net.cks={};net.peerCks={};net.rematch=[false,false];net.started=true;
   net.peerReady=false;                 // stale ready must not leak into the next select
   for(let f=0;f<delay;f++){net.localIn[f]=0;net.remoteIn[f]=0;}
   hudNames=net.host?[myName,net.peerName]:[net.peerName,myName];
+  if(net.host){bumpModPlay(p0);bumpModPlay(p1);}
   startMatch(p0,p1,'online');
 }
 function sendInputs(){
@@ -2251,7 +2567,10 @@ function winByForfeit(){
 }
 function maybeRematch(){
   if(net.rematch[0]&&net.rematch[1]){
-    if(net.host){ctlSend({t:'start',p0:picks[0],p1:picks[1],d:net.delay});beginOnlineMatch(picks[0],picks[1],net.delay);}
+    if(net.host){
+      ctlSend({t:'start',r0:charRef(picks[0]),r1:charRef(picks[1]),d:net.delay});
+      beginOnlineMatch(charRef(picks[0]),charRef(picks[1]),net.delay);
+    }
   }
 }
 function resetOnlineSelect(){

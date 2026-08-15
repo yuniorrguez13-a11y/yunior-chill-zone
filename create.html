@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SFFG Fighter Creator — Yuniors Chill Zone</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#0a0a12; --bg2:#12121b; --bg3:#171722; --card:#14141f;
+  --border:rgba(255,255,255,.08); --edge:rgba(255,255,255,.18);
+  --text:#eceef3; --text2:#9a9aae; --text3:#62627a;
+  --accent:#e8162a; --accent2:#ff2438; --cyan:#00d4ff; --grn:#37d67a; --amber:#ffb020;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+::-webkit-scrollbar{width:8px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:6px;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(900px 420px at 50% -80px, rgba(0,212,255,.09), transparent 65%);}
+.wrap{position:relative;z-index:1;width:min(1080px,94vw);margin:0 auto;padding:28px 0 80px;}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:26px;}
+header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(24px,4.5vw,40px);
+  background:linear-gradient(135deg,#fff 40%,#7fe4ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+header .sub{color:var(--text3);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;}
+.hspacer{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+#chip{font-size:12.5px;color:var(--text2);padding:7px 14px;border:1px solid var(--border);border-radius:999px;background:var(--bg2);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:700;
+  padding:10px 18px;border-radius:11px;border:1px solid var(--border);background:var(--bg3);color:var(--text);
+  cursor:pointer;text-decoration:none;transition:all .15s;font-family:'DM Sans',sans-serif;user-select:none;}
+.btn:hover{background:rgba(255,255,255,.08);border-color:var(--edge);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn.primary:hover{background:var(--accent2);}
+.btn.cyan{background:rgba(0,212,255,.1);border-color:rgba(0,212,255,.45);color:var(--cyan);}
+.btn.small{padding:6px 12px;font-size:12.5px;border-radius:9px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+
+section{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:18px;}
+section h2{font-family:'Syne',sans-serif;font-size:19px;margin-bottom:4px;display:flex;align-items:center;gap:10px;}
+section h2 .n{font-size:12px;color:var(--cyan);border:1px solid rgba(0,212,255,.4);border-radius:999px;
+  width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex:none;}
+section .desc{color:var(--text2);font-size:13.5px;margin-bottom:16px;line-height:1.5;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 18px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);
+  display:flex;justify-content:space-between;}
+.field label .v{color:var(--cyan);text-transform:none;letter-spacing:0;}
+.field input[type=text],.field input[type=number],.field select{
+  background:var(--bg2);border:1px solid var(--border);border-radius:9px;color:var(--text);
+  padding:8px 11px;font-size:13.5px;outline:none;font-family:'DM Sans',sans-serif;width:100%;}
+.field input:focus,.field select:focus{border-color:rgba(0,212,255,.5);}
+.field input[type=range]{width:100%;accent-color:var(--cyan);}
+.field input[type=color]{width:100%;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);padding:2px;}
+.hint{color:var(--text3);font-size:11.5px;line-height:1.45;}
+.rowflex{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+
+#tierbox{display:inline-flex;align-items:center;gap:10px;margin-left:auto;}
+.chr-tier{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);
+  border:1px solid rgba(255,176,32,.4);border-radius:999px;padding:4px 12px;background:rgba(255,176,32,.07);}
+
+/* sprites */
+#animgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.animcard{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;}
+.animcard.req{border-left:3px solid var(--accent);}
+.animcard.ok{border-left:3px solid var(--grn);}
+.animcard h4{font-size:13px;display:flex;align-items:center;gap:8px;justify-content:space-between;}
+.animcard h4 .tag{font-size:10px;color:var(--text3);font-weight:600;}
+.animcard canvas{width:100%;height:110px;background:var(--bg);border-radius:8px;margin:8px 0;object-fit:contain;}
+.animcard .meta{font-size:11px;color:var(--text3);}
+.animcard input[type=file]{display:none;}
+
+/* moves */
+#movetabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+#movetabs .mt{padding:7px 13px;border-radius:9px;border:1px solid var(--border);background:var(--bg2);
+  color:var(--text2);font-size:12.5px;font-weight:700;cursor:pointer;}
+#movetabs .mt.on{background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.5);color:var(--cyan);}
+#movetabs .mt.opt{opacity:.7;}
+#movewrap{display:grid;grid-template-columns:1fr 320px;gap:18px;}
+@media(max-width:860px){#movewrap{grid-template-columns:1fr;}}
+#hitprev{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;align-self:start;}
+#hitprev canvas{width:100%;background:var(--bg);border-radius:8px;}
+#hitprev .hint{margin-top:8px;}
+.flags{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;}
+.flags label{font-size:12.5px;color:var(--text2);display:flex;gap:6px;align-items:center;cursor:pointer;}
+
+/* validation + publish */
+#valbox{border-radius:12px;padding:14px;background:var(--bg2);border:1px solid var(--border);font-size:13.5px;}
+#valbox.ok{border-color:rgba(55,214,122,.5);color:var(--grn);}
+#valbox.bad{border-color:rgba(232,22,42,.5);}
+#valbox ul{margin:6px 0 0 18px;color:#ff8b96;}
+#mymods{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.mymod{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;padding:10px 14px;font-size:13.5px;}
+.mymod .nm{font-weight:700;}
+.mymod .st{font-size:11px;color:var(--text3);margin-right:auto;}
+
+.modal-bg{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+  background:rgba(5,5,10,.7);backdrop-filter:blur(5px);padding:18px;}
+.modal-bg.on{display:flex;}
+.modal{width:min(430px,100%);background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center;}
+.modal h3{font-family:'Syne',sans-serif;font-size:20px;margin-bottom:10px;}
+.modal p{color:var(--text2);font-size:14px;margin-bottom:16px;line-height:1.5;}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);z-index:99;
+  background:var(--bg2);border:1px solid var(--edge);border-radius:12px;padding:11px 20px;
+  font-size:14px;font-weight:600;opacity:0;transition:all .22s;pointer-events:none;}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.err{border-color:rgba(232,22,42,.6);color:#ff8b96;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>FIGHTER CREATOR</h1>
+    <div class="sub">build a community fighter · no code needed</div>
+  </div>
+  <div class="hspacer">
+    <span id="chip">Checking session…</span>
+    <a class="btn" href="modding.html">Format docs</a>
+    <a class="btn" href="fight.html">Back to SFFG</a>
+  </div>
+</header>
+
+<!-- 1 · identity -->
+<section>
+  <h2><span class="n">1</span> Identity <span id="tierbox"><span class="chr-tier" id="tier">—</span></span></h2>
+  <div class="desc">Who is this fighter? The tier badge updates live from your numbers — same formula the game uses.</div>
+  <div class="grid">
+    <div class="field"><label>Name</label><input type="text" id="f-name" maxlength="24" placeholder="e.g. Uncle Ekber"></div>
+    <div class="field"><label>Tagline</label><input type="text" id="f-tagline" maxlength="60" placeholder="one funny line"></div>
+    <div class="field"><label>Main color</label><input type="color" id="f-color" value="#00d4ff"></div>
+    <div class="field"><label>Accent color</label><input type="color" id="f-color2" value="#c8f4ff"></div>
+    <div class="field"><label>Skin tone (puppet)</label><input type="color" id="f-skin" value="#e9c9a8"></div>
+  </div>
+</section>
+
+<!-- 2 · stats -->
+<section>
+  <h2><span class="n">2</span> Stats, movement &amp; passives</h2>
+  <div class="desc">Sliders are clamped to the allowed ranges. Passives are optional — leave them neutral if unsure.</div>
+  <div class="grid" id="statgrid"></div>
+</section>
+
+<!-- 3 · sprites -->
+<section>
+  <h2><span class="n">3</span> Sprites <span style="font-size:12px;color:var(--text3);font-weight:400">(optional — skip for a puppet body)</span></h2>
+  <div class="desc">
+    Upload the <b>individual frame images</b> of each animation (select several files at once, in order).
+    The creator removes flat backgrounds, trims, aligns feet and builds the sheet automatically.
+    Red-marked animations are required if you use sprites at all. Click a preview to play it.
+  </div>
+  <div class="rowflex" style="margin-bottom:12px;">
+    <div class="field" style="max-width:230px;">
+      <label>Background removal <span class="v" id="ck-v">auto</span></label>
+      <select id="f-chroma">
+        <option value="auto">Auto (detect flat background)</option>
+        <option value="off">Off (frames already transparent)</option>
+      </select>
+    </div>
+    <div class="field" style="max-width:230px;">
+      <label>In-game height <span class="v" id="h-v">150 px</span></label>
+      <input type="range" id="f-spriteh" min="100" max="200" value="150">
+    </div>
+    <label class="hint" style="display:flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="f-smooth" checked> smooth scaling (uncheck for pixel art)
+    </label>
+  </div>
+  <div id="animgrid"></div>
+</section>
+
+<!-- 4 · moves -->
+<section>
+  <h2><span class="n">4</span> Moves</h2>
+  <div class="desc">
+    Every fighter has 8 slots: 3 standing attacks, 2 crouching, 1 air (auto-overhead), the throw and the super.
+    The red box in the preview is where the move hits, drawn to scale. Times are in frames (60 per second).
+  </div>
+  <div id="movetabs"></div>
+  <div id="movewrap">
+    <div>
+      <div class="grid" id="movegrid"></div>
+      <div class="flags" id="moveflags"></div>
+      <div class="grid" id="projgrid" style="margin-top:10px;"></div>
+    </div>
+    <div id="hitprev">
+      <canvas id="hitcv" width="300" height="240"></canvas>
+      <div class="hint">Fighter at scale, facing right. <span style="color:#ff5f6d">red</span> = hitbox ·
+        <span style="color:var(--cyan)">cyan</span> = body · <span style="color:var(--amber)">amber dot</span> = projectile spawn.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · publish -->
+<section>
+  <h2><span class="n">5</span> Check &amp; publish</h2>
+  <div class="desc">Validation runs the exact same rules the game applies before loading any community fighter.</div>
+  <div id="valbox">Fill in the fields above…</div>
+  <div class="rowflex" style="margin-top:14px;">
+    <button class="btn primary" id="b-publish">Publish to SFFG</button>
+    <button class="btn cyan" id="b-export">Export JSON</button>
+    <button class="btn" id="b-import">Import JSON</button>
+    <input type="file" id="importfile" accept="application/json" style="display:none">
+    <span class="hint" id="pubstate"></span>
+  </div>
+  <div id="mymods"></div>
+</section>
+</div>
+
+<div class="modal-bg" id="login-ov">
+  <div class="modal">
+    <h3>Sign in to publish</h3>
+    <p>Anyone can build and test a fighter here, but publishing to the community roster needs a
+       Chill Zone account — that's how your name goes on your work.</p>
+    <a class="btn primary" href="index.html">Sign in / create account</a>
+    <button class="btn" style="margin-left:8px" id="login-x">Not now</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="sffg-mods.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+'use strict';
+/* ════ SFFG FIGHTER CREATOR — everything runs in your browser until you
+   hit Publish. Uses the shared format/validator in sffg-mods.js. ════ */
+const SB_URL='https://heohcnhgclcnmssjklom.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhlb2hjbmhnY2xjbm1zc2prbG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNDg2NDAsImV4cCI6MjA4NTcyNDY0MH0.Y73DbstnhKAI2IvPcMrL_mtIObmeOQj-rgY0XtdE200';
+let sb=null,user=null,myName='';
+try{
+  if(window.supabase)sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,
+    storageKey:'ycz-auth',storage:window.localStorage,autoRefreshToken:true,detectSessionInUrl:true}});
+}catch(e){}
+
+const $=id=>document.getElementById(id);
+const esc=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function uid(){
+  if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);});
+}
+let _tt;function toast(m,k){const t=$('toast');t.textContent=m;t.className='on'+(k==='err'?' err':'');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.className='',3200);}
+
+const L=SFFG_MODS.LIM;
+
+/* ── the fighter being built ── */
+let editingId=null;        // set when editing one of my published fighters
+const MOD={
+  name:'',tagline:'',color:'#00d4ff',color2:'#c8f4ff',skin:'#e9c9a8',
+  hp:1000,walk:68,back:52,jumpVX:56,jumpVY:-252,grav:14,w:56,h:150,crouchH:105,
+  passive:{regen:0,defense:100,meterMult:100},
+  moves:{
+    light:{name:'Jab',dmg:60,startup:5,active:3,recovery:9,hitstun:14,blockstun:8,hitstop:5,kbx:60,box:{x:24,y:-124,w:56,h:26}},
+    heavy:{name:'Heavy Hit',dmg:130,startup:13,active:4,recovery:17,hitstun:22,blockstun:12,hitstop:9,kbx:110,box:{x:26,y:-134,w:66,h:34}},
+    special:{name:'Special',dmg:150,startup:15,active:5,recovery:22,hitstun:24,blockstun:13,hitstop:10,kbx:140,box:{x:30,y:-136,w:70,h:40}},
+    clight:{name:'Low Poke',dmg:45,startup:6,active:3,recovery:11,hitstun:13,blockstun:9,hitstop:5,kbx:55,hits:'low',box:{x:26,y:-46,w:58,h:34}},
+    cheavy:{name:'Riser',dmg:110,startup:11,active:5,recovery:21,hitstun:24,blockstun:12,hitstop:9,kbx:60,launch:1,kby:-250,box:{x:14,y:-160,w:46,h:100}},
+    air:{name:'Air Kick',dmg:70,startup:7,active:8,recovery:10,hitstun:16,blockstun:10,hitstop:6,kbx:70,hits:'high',box:{x:16,y:-92,w:54,h:38}},
+    throw:{name:'Grab',dmg:120,startup:5,active:3,recovery:23,hitstop:10,kbx:70,launch:1,kby:-180,throw:1,box:{x:8,y:-130,w:52,h:70}},
+    super:{name:'The Big One',dmg:250,startup:9,active:5,recovery:28,hitstun:30,blockstun:16,hitstop:14,kbx:200,launch:1,kby:-260,inv:1,super:1,box:{x:26,y:-140,w:80,h:52}}
+  }
+};
+/* sprites: animKey → {frames:[{cv,bbox}], strip:canvas, meta:{n,cw,ch,cx,fy}} */
+const SPRITES={};
+const PERFRAME=['idle','run','walkback','dash','backdash','hit','block','death','getup','crouch'];
+const XONLY=['jump','fall'];
+const ANIM_INFO={
+  idle:'stance loop',run:'walk forward',walkback:'walk backward',dash:'forward dash',
+  backdash:'back-hop',jump:'rising (≥2)',fall:'falling (≥2)',attack1:'light attacks',
+  attack2:'heavy attacks',special:'special move',super:'super move',clight:'crouch light',
+  cheavy:'crouch heavy',airatk:'air attack',hit:'taking a hit',block:'guarding',
+  death:'falling down/KO',getup:'standing back up',crouch:'stand→kneel (held)'
+};
+
+/* ── tier (same formulas as the game) ── */
+const TIERS=['genuine piece of shi','iwannalose','meh','regular guy','steroids were used',
+  'average guy in dagestan','dagestan pro','quake pro level','metroman','omnipotent regular guy'];
+const TIER_MIN=[0,350,520,700,900,1080,1260,1450,1700,2000];
+function charPower(c){
+  let p=((c.hp/5)|0)+c.walk*2+c.back;
+  for(const k in c.moves){const m=c.moves[k];
+    p+=((m.dmg*8)/(m.startup+m.active+m.recovery))|0;
+    if(m.box)p+=((m.box.x+m.box.w)/6)|0;
+    if(m.launch)p+=15;if(m.armor)p+=20;if(m.armorBreak)p+=18;if(m.step)p+=(m.step/8)|0;
+    if(m.projectile)p+=30;
+  }
+  if(c.passive){p+=(c.passive.regen||0)*25;p+=(100-(c.passive.defense||100))*3;
+    p+=(((c.passive.meterMult||100)-100)/4)|0;}
+  return p;
+}
+function tierOf(c){const p=charPower(c);let t=0;
+  for(let i=0;i<TIER_MIN.length;i++)if(p>=TIER_MIN[i])t=i;
+  return TIERS[t]+' · '+p;}
+
+/* ── stat sliders ── */
+const STATS=[
+  ['hp','Health','hp'],['walk','Walk speed','walk'],['back','Back-walk speed','back'],
+  ['jumpVX','Jump drift','jumpVX'],['jumpVY','Jump power','jumpVY'],['grav','Gravity','grav'],
+  ['w','Body width','w'],['h','Body height','h'],['crouchH','Crouch height','crouchH'],
+  ['p.regen','Passive: regen (hp/s)','regen'],['p.defense','Passive: damage taken %','defense'],
+  ['p.meterMult','Passive: meter gain %','meterMult'],
+];
+function statVal(path){return path.startsWith('p.')?MOD.passive[path.slice(2)]:MOD[path];}
+function setStat(path,v){if(path.startsWith('p.'))MOD.passive[path.slice(2)]=v;else MOD[path]=v;}
+function buildStats(){
+  const g=$('statgrid');g.innerHTML='';
+  for(const [path,label,limKey] of STATS){
+    const lim=L[limKey];
+    const f=document.createElement('div');f.className='field';
+    f.innerHTML='<label>'+label+' <span class="v" id="sv-'+path+'">'+statVal(path)+'</span></label>'+
+      '<input type="range" id="st-'+path+'" min="'+lim[0]+'" max="'+lim[1]+'" value="'+statVal(path)+'">';
+    g.appendChild(f);
+    f.querySelector('input').addEventListener('input',e=>{
+      setStat(path,+e.target.value);
+      $('sv-'+path).textContent=e.target.value;
+      refresh();
+    });
+  }
+}
+
+/* ── sprite processing (browser port of the Sarge pipeline) ── */
+function detectKey(cv){
+  const g=cv.getContext('2d');
+  const d=g.getImageData(0,0,cv.width,cv.height).data;
+  const corners=[0,(cv.width-1)*4,(cv.height-1)*cv.width*4,((cv.height-1)*cv.width+cv.width-1)*4];
+  let r=0,gg=0,b=0,solid=0;
+  for(const o of corners){if(d[o+3]>200){r+=d[o];gg+=d[o+1];b+=d[o+2];solid++;}}
+  if(solid<3)return null;                       // corners transparent → already keyed
+  return [r/solid,gg/solid,b/solid];
+}
+function keyFrame(img){
+  const cv=document.createElement('canvas');cv.width=img.width;cv.height=img.height;
+  const g=cv.getContext('2d');g.drawImage(img,0,0);
+  if($('f-chroma').value!=='off'){
+    const key=detectKey(cv);
+    if(key){
+      const id=g.getImageData(0,0,cv.width,cv.height),d=id.data;
+      const TOL=60;
+      for(let i=0;i<d.length;i+=4){
+        if(Math.abs(d[i]-key[0])<TOL&&Math.abs(d[i+1]-key[1])<TOL&&Math.abs(d[i+2]-key[2])<TOL)d[i+3]=0;
+      }
+      g.putImageData(id,0,0);
+    }
+  }
+  /* alpha bbox */
+  const id=g.getImageData(0,0,cv.width,cv.height),d=id.data;
+  let minX=1e9,minY=1e9,maxX=-1,maxY=-1;
+  for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){
+    if(d[(y*cv.width+x)*4+3]>20){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+  }
+  if(maxX<0)return null;
+  return {cv,bbox:[minX,minY,maxX+1,maxY+1]};
+}
+function idleBodyH(){
+  const s=SPRITES.idle;
+  if(!s||!s.frames.length)return null;
+  return Math.max(...s.frames.map(f=>f.bbox[3]-f.bbox[1]));
+}
+function buildStrip(key){
+  const s=SPRITES[key];if(!s||!s.frames.length)return;
+  const ih=idleBodyH();
+  const S=ih?(+$('f-spriteh').value)/ih*(260/(+$('f-spriteh').value)):1;  // cell px per src px → idle body = 260*h/150? keep simple:
+  const S2=ih?260/ih:1;                          // idle body → 260 cell px, everything shares it
+  const PAD=6,fl=s.frames,bs=fl.map(f=>f.bbox);
+  const mode=PERFRAME.includes(key)?'perframe':(XONLY.includes(key)?'xonly':'shared');
+  let cw,ch,cx,fy,strip;
+  if(mode==='shared'){
+    const u=[Math.min(...bs.map(b=>b[0])),Math.min(...bs.map(b=>b[1])),
+             Math.max(...bs.map(b=>b[2])),Math.max(...bs.map(b=>b[3]))];
+    const Lx=u[0]-PAD,T=u[1]-PAD,R=u[2]+PAD,B=u[3]+PAD;
+    cw=Math.ceil((R-Lx)*S2);ch=Math.ceil((B-T)*S2);
+    cx=Math.round(((bs[0][0]+bs[0][2])/2-Lx)*S2);fy=Math.round((u[3]-T)*S2);
+    strip=document.createElement('canvas');strip.width=cw*fl.length;strip.height=ch;
+    const g=strip.getContext('2d');
+    fl.forEach((f,i)=>g.drawImage(f.cv,Lx,T,R-Lx,B-T,i*cw,0,cw,ch));
+  }else{
+    const maxw=Math.max(...bs.map(b=>b[2]-b[0]));
+    let top=null,bot=null;
+    if(mode==='xonly'){top=Math.min(...bs.map(b=>b[1]));bot=Math.max(...bs.map(b=>b[3]));}
+    const maxh=mode==='xonly'?bot-top:Math.max(...bs.map(b=>b[3]-b[1]));
+    cw=Math.ceil((maxw+2*PAD)*S2);ch=Math.ceil((maxh+2*PAD)*S2);
+    cx=cw>>1;fy=ch-Math.round(PAD*S2)-1;
+    strip=document.createElement('canvas');strip.width=cw*fl.length;strip.height=ch;
+    const g=strip.getContext('2d');
+    fl.forEach((f,i)=>{
+      const b=f.bbox;
+      const sy=mode==='xonly'?top:b[1],sh=mode==='xonly'?bot-top:b[3]-b[1];
+      const dw=Math.round((b[2]-b[0])*S2),dh=Math.round(sh*S2);
+      g.drawImage(f.cv,b[0],sy,b[2]-b[0],sh,i*cw+cx-(dw>>1),fy-dh,dw,dh);
+    });
+  }
+  s.strip=strip;s.meta={n:fl.length,cw,ch,cx,fy};
+}
+function rebuildAllStrips(){for(const k in SPRITES)buildStrip(k);}
+async function onAnimFiles(key,files){
+  const frames=[];
+  const list=[...files].sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+  for(const f of list.slice(0,L.animN[1])){
+    try{
+      const img=await createImageBitmap(f);
+      const kf=keyFrame(img);
+      if(kf)frames.push(kf);
+    }catch(e){}
+  }
+  if(!frames.length){toast('No usable frames in that selection','err');return;}
+  SPRITES[key]={frames};
+  if(key==='idle')rebuildAllStrips();else buildStrip(key);
+  renderAnims();refresh();
+}
+let playTimers={};
+function renderAnims(){
+  const g=$('animgrid');g.innerHTML='';
+  for(const t of Object.values(playTimers))clearInterval(t);
+  playTimers={};
+  for(const key of SFFG_MODS.ANIM_KEYS){
+    if(!(key in ANIM_INFO))continue;
+    const s=SPRITES[key];
+    const req=SFFG_MODS.REQUIRED_ANIMS.includes(key);
+    const card=document.createElement('div');
+    card.className='animcard'+(s?' ok':(req?' req':''));
+    card.innerHTML='<h4>'+key+' <span class="tag">'+ANIM_INFO[key]+(req?' · required':'')+'</span></h4>'+
+      '<canvas width="220" height="110"></canvas>'+
+      '<div class="rowflex"><button class="btn small">'+(s?'Replace frames':'Upload frames')+'</button>'+
+      (s?'<button class="btn small" data-del>Remove</button>':'')+
+      '</div><div class="meta">'+(s?s.meta.n+' frames · cell '+s.meta.cw+'×'+s.meta.ch:'no frames yet')+'</div>'+
+      '<input type="file" accept="image/*" multiple>';
+    g.appendChild(card);
+    const input=card.querySelector('input');
+    card.querySelector('button').addEventListener('click',()=>input.click());
+    input.addEventListener('change',()=>onAnimFiles(key,input.files));
+    const del=card.querySelector('[data-del]');
+    if(del)del.addEventListener('click',()=>{delete SPRITES[key];renderAnims();refresh();});
+    const cv=card.querySelector('canvas');
+    if(s&&s.strip){
+      let fi=0;
+      const draw=()=>{
+        const g2=cv.getContext('2d');g2.clearRect(0,0,220,110);
+        g2.imageSmoothingEnabled=$('f-smooth').checked;
+        const m=s.meta,sc=Math.min(200/m.cw,100/m.ch);
+        g2.drawImage(s.strip,fi*m.cw,0,m.cw,m.ch,(220-m.cw*sc)/2,(110-m.ch*sc)/2,m.cw*sc,m.ch*sc);
+        fi=(fi+1)%m.n;
+      };
+      draw();
+      playTimers[key]=setInterval(draw,140);
+    }
+  }
+}
+
+/* ── moves editor ── */
+const SLOTS=[['light','Light'],['heavy','Heavy'],['special','Special'],['clight','Crouch light'],
+  ['cheavy','Crouch heavy'],['air','Air'],['throw','Throw'],['super','Super']];
+let curSlot='light';
+const MFIELDS=[['dmg','Damage','dmg'],['startup','Startup','startup'],['active','Active','active'],
+  ['recovery','Recovery','recovery'],['hitstun','Hitstun','hitstun'],['blockstun','Blockstun','blockstun'],
+  ['hitstop','Hitstop','hitstop'],['kbx','Knockback (neg = pull)','kbx'],['step','Forward step','step'],
+  ['box.x','Hitbox X','boxX'],['box.y','Hitbox Y (neg = up)','boxY'],['box.w','Hitbox W','boxW'],['box.h','Hitbox H','boxH']];
+function mget(m,path){return path.startsWith('box.')?m.box[path.slice(4)]:m[path];}
+function mset(m,path,v){if(path.startsWith('box.'))m.box[path.slice(4)]=v;else m[path]=v;}
+function buildMoveTabs(){
+  const t=$('movetabs');t.innerHTML='';
+  for(const [k,label] of SLOTS){
+    const b=document.createElement('button');
+    b.className='mt'+(k===curSlot?' on':'');
+    b.textContent=label;
+    b.addEventListener('click',()=>{curSlot=k;buildMoveTabs();buildMoveForm();});
+    t.appendChild(b);
+  }
+}
+function buildMoveForm(){
+  const m=MOD.moves[curSlot];
+  const g=$('movegrid');g.innerHTML='';
+  const nameF=document.createElement('div');nameF.className='field';
+  nameF.innerHTML='<label>Move name</label><input type="text" id="mv-name" maxlength="28" value="'+esc(m.name)+'">';
+  g.appendChild(nameF);
+  nameF.querySelector('input').addEventListener('input',e=>{m.name=e.target.value;refresh();});
+  for(const [path,label,limKey] of MFIELDS){
+    if(curSlot==='throw'&&['hitstun','blockstun'].includes(path))continue;
+    const f=document.createElement('div');f.className='field';
+    f.innerHTML='<label>'+label+'</label><input type="number" min="'+L[limKey][0]+'" max="'+L[limKey][1]+'" value="'+(mget(m,path)??0)+'">';
+    g.appendChild(f);
+    f.querySelector('input').addEventListener('input',e=>{mset(m,path,+e.target.value||0);refresh();});
+  }
+  /* anim + impact */
+  const animF=document.createElement('div');animF.className='field';
+  const opts=['<option value="">(auto)</option>'].concat(
+    Object.keys(SPRITES).map(k=>'<option'+(m.anim===k?' selected':'')+'>'+k+'</option>'));
+  animF.innerHTML='<label>Animation sheet</label><select>'+opts.join('')+'</select>';
+  g.appendChild(animF);
+  animF.querySelector('select').addEventListener('change',e=>{
+    if(e.target.value)m.anim=e.target.value;else delete m.anim;refresh();});
+  const impF=document.createElement('div');impF.className='field';
+  impF.innerHTML='<label>Impact frame (blank = auto)</label><input type="number" min="0" max="30" value="'+(m.impact??'')+'">';
+  g.appendChild(impF);
+  impF.querySelector('input').addEventListener('input',e=>{
+    if(e.target.value==='')delete m.impact;else m.impact=+e.target.value;refresh();});
+  /* flags */
+  const fl=$('moveflags');fl.innerHTML='';
+  const flags=[
+    ['hitsLow','Hits low (block crouching)',()=>m.hits==='low',v=>{if(v)m.hits='low';else if(m.hits==='low')delete m.hits;}],
+    ['launch','Launches airborne',()=>!!m.launch,v=>{if(v){m.launch=1;m.kby=m.kby||-200;}else{delete m.launch;delete m.kby;}}],
+    ['armor','Armor during startup',()=>!!m.armor,v=>{if(v)m.armor=1;else delete m.armor;}],
+    ['armorBreak','Breaks armor',()=>!!m.armorBreak,v=>{if(v)m.armorBreak=1;else delete m.armorBreak;}],
+    ['proj','Fires a projectile',()=>!!m.projectile,v=>{if(v)m.projectile={speed:90,life:50,w:24,h:24};else delete m.projectile;}],
+  ];
+  if(curSlot==='super')flags.push(['inv','Invulnerable startup',()=>!!m.inv,v=>{if(v)m.inv=1;else delete m.inv;}]);
+  for(const [id,label,get,set] of flags){
+    if(curSlot==='throw'&&id!=='launch')continue;
+    if(curSlot==='air'&&id==='hitsLow')continue;
+    const w=document.createElement('label');
+    w.innerHTML='<input type="checkbox"'+(get()?' checked':'')+'> '+label;
+    fl.appendChild(w);
+    w.querySelector('input').addEventListener('change',e=>{set(e.target.checked);buildMoveForm();refresh();});
+  }
+  if(m.launch){
+    const kb=document.createElement('label');
+    kb.innerHTML='launch power <input type="number" style="width:80px" min="'+L.kby[0]+'" max="'+L.kby[1]+'" value="'+(m.kby||-200)+'">';
+    fl.appendChild(kb);
+    kb.querySelector('input').addEventListener('input',e=>{m.kby=+e.target.value||-200;refresh();});
+  }
+  /* projectile grid */
+  const pg=$('projgrid');pg.innerHTML='';
+  if(m.projectile){
+    for(const [k,label,limKey] of [['speed','Projectile speed','projSpeed'],['life','Lifetime (frames)','projLife'],
+      ['w','Projectile width','projW'],['h','Projectile height','projH']]){
+      const f=document.createElement('div');f.className='field';
+      f.innerHTML='<label>'+label+'</label><input type="number" min="'+L[limKey][0]+'" max="'+L[limKey][1]+'" value="'+m.projectile[k]+'">';
+      pg.appendChild(f);
+      f.querySelector('input').addEventListener('input',e=>{m.projectile[k]=+e.target.value||L[limKey][0];refresh();});
+    }
+  }
+  drawHitPrev();
+}
+function drawHitPrev(){
+  const cv=$('hitcv'),g=cv.getContext('2d');
+  g.clearRect(0,0,300,240);
+  const m=MOD.moves[curSlot];
+  const scale=0.8, ox=90, ground=210;
+  g.strokeStyle='rgba(232,22,42,.5)';g.beginPath();g.moveTo(0,ground);g.lineTo(300,ground);g.stroke();
+  /* body box */
+  g.strokeStyle='rgba(0,212,255,.8)';g.lineWidth=1.5;
+  g.strokeRect(ox-MOD.w/2*scale,ground-MOD.h*scale,MOD.w*scale,MOD.h*scale);
+  /* sprite idle frame or puppet blob */
+  const s=SPRITES.idle;
+  if(s&&s.strip){
+    const mm=s.meta,sc=(MOD.h*scale)/(mm.fy-0);
+    g.imageSmoothingEnabled=$('f-smooth').checked;
+    g.globalAlpha=0.85;
+    g.drawImage(s.strip,0,0,mm.cw,mm.ch,ox-mm.cx*sc,ground-mm.fy*sc,mm.cw*sc,mm.ch*sc);
+    g.globalAlpha=1;
+  }else{
+    g.fillStyle=MOD.color;g.globalAlpha=.5;
+    g.fillRect(ox-MOD.w/2*scale,ground-MOD.h*scale,MOD.w*scale,MOD.h*scale);
+    g.globalAlpha=1;
+  }
+  /* hitbox */
+  g.fillStyle='rgba(232,22,42,.3)';g.strokeStyle='#ff5f6d';
+  const bx=ox+m.box.x*scale, by=ground+m.box.y*scale;
+  g.fillRect(bx,by,m.box.w*scale,m.box.h*scale);
+  g.strokeRect(bx,by,m.box.w*scale,m.box.h*scale);
+  if(m.projectile){
+    g.fillStyle='var(--amber)';g.fillStyle='#ffb020';
+    g.beginPath();g.arc(ox+(m.box.x+m.projectile.w/2)*scale,ground+(m.box.y+m.box.h/2)*scale,5,0,Math.PI*2);g.fill();
+  }
+}
+
+/* ── gather → validate → publish ── */
+function gather(){
+  const data={
+    name:$('f-name').value,tagline:$('f-tagline').value,
+    color:$('f-color').value,color2:$('f-color2').value,skin:$('f-skin').value,
+    hp:MOD.hp,walk:MOD.walk,back:MOD.back,jumpVX:MOD.jumpVX,jumpVY:MOD.jumpVY,grav:MOD.grav,
+    w:MOD.w,h:MOD.h,crouchH:MOD.crouchH,passive:{...MOD.passive},
+    moves:JSON.parse(JSON.stringify(MOD.moves))
+  };
+  const keys=Object.keys(SPRITES).filter(k=>SPRITES[k]&&SPRITES[k].strip);
+  if(keys.length){
+    data.sprite={scale:(+$('f-spriteh').value)/260,smooth:$('f-smooth').checked?1:0,idleTop:6,anims:{}};
+    for(const k of keys)data.sprite.anims[k]={f:k+'.png',...SPRITES[k].meta};
+  }
+  return data;
+}
+function refresh(){
+  const v=SFFG_MODS.validateMod(gather());
+  const box=$('valbox');
+  if(v.ok){
+    box.className='ok';
+    box.textContent='All good — this fighter passes every rule the game checks.';
+  }else{
+    box.className='bad';
+    box.innerHTML='Not quite yet:<ul>'+v.errors.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>';
+  }
+  $('tier').textContent=v.data?tierOf(v.data):'—';
+  $('b-publish').disabled=!v.ok;
+  drawHitPrev();
+  return v;
+}
+['f-name','f-tagline','f-color','f-color2','f-skin'].forEach(id=>{
+  $(id).addEventListener('input',()=>{MOD[id.slice(2).replace('color2','color2')]=$(id).value;refresh();});
+});
+$('f-spriteh').addEventListener('input',()=>{$('h-v').textContent=$('f-spriteh').value+' px';MOD.h=+$('f-spriteh').value;rebuildAllStrips();renderAnims();refresh();});
+$('f-smooth').addEventListener('change',()=>{renderAnims();refresh();});
+$('f-chroma').addEventListener('change',()=>toast('Re-upload animations to apply the new background mode'));
+
+async function publish(){
+  const v=refresh();
+  if(!v.ok){toast('Fix the validation errors first','err');return;}
+  if(!sb){toast('Servers unreachable right now','err');return;}
+  if(!user){$('login-ov').classList.add('on');return;}
+  const id=editingId||uid();
+  $('pubstate').textContent='Uploading…';
+  $('b-publish').disabled=true;
+  try{
+    /* sprite strips → storage under my own folder (RLS enforces the path) */
+    const keys=Object.keys(SPRITES).filter(k=>SPRITES[k]&&SPRITES[k].strip);
+    for(const k of keys){
+      const blob=await new Promise(res=>SPRITES[k].strip.toBlob(res,'image/png'));
+      if(blob.size>2500000)throw new Error(k+' sheet is too big — fewer or smaller frames please');
+      const path=user.id+'/sffg-mods/'+id+'/'+k+'.png';
+      const {error}=await sb.storage.from('avatars').upload(path,blob,{upsert:true,contentType:'image/png'});
+      if(error)throw error;
+      $('pubstate').textContent='Uploading… '+k;
+    }
+    const row={
+      id, owner_id:user.id, owner_name:myName,
+      name:v.data.name, tagline:v.data.tagline,
+      data:v.data, has_sprites:keys.length>0, status:'live',
+      updated_at:new Date().toISOString()
+    };
+    const {error}=await sb.from('fighter_mods').upsert(row);
+    if(error)throw error;
+    editingId=id;
+    $('pubstate').textContent='';
+    toast(editingId?'Published! Your fighter is live in SFFG':'Published!');
+    loadMine();
+  }catch(e){
+    $('pubstate').textContent='';
+    toast('Publish failed: '+(e.message||e),'err');
+  }
+  $('b-publish').disabled=false;
+}
+$('b-publish').addEventListener('click',publish);
+$('login-x').addEventListener('click',()=>$('login-ov').classList.remove('on'));
+
+/* export / import */
+$('b-export').addEventListener('click',()=>{
+  const v=refresh();
+  const blob=new Blob([JSON.stringify(v.data||gather(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(v.data?v.data.name.replace(/\s+/g,'-').toLowerCase():'fighter')+'.json';
+  a.click();
+  toast('JSON downloaded — sprite sheets are not included, keep your frames');
+});
+$('b-import').addEventListener('click',()=>$('importfile').click());
+$('importfile').addEventListener('change',async()=>{
+  try{
+    const raw=JSON.parse(await $('importfile').files[0].text());
+    applyData(raw);
+    toast('Imported — re-upload sprite frames if it had any');
+  }catch(e){toast('Not a valid fighter JSON','err');}
+});
+function applyData(raw){
+  const v=SFFG_MODS.validateMod(raw);
+  const d=v.data||raw;
+  $('f-name').value=d.name||'';$('f-tagline').value=d.tagline||'';
+  $('f-color').value=d.color||'#00d4ff';$('f-color2').value=d.color2||'#c8f4ff';$('f-skin').value=d.skin||'#e9c9a8';
+  for(const k of ['hp','walk','back','jumpVX','jumpVY','grav','w','h','crouchH'])if(d[k]!=null)MOD[k]=d[k];
+  if(d.passive)MOD.passive={regen:d.passive.regen||0,defense:d.passive.defense||100,meterMult:d.passive.meterMult||100};
+  if(d.moves)for(const k in MOD.moves)if(d.moves[k])MOD.moves[k]=JSON.parse(JSON.stringify(d.moves[k]));
+  buildStats();buildMoveTabs();buildMoveForm();refresh();
+}
+
+/* ── my fighters ── */
+async function loadMine(){
+  const box=$('mymods');box.innerHTML='';
+  if(!sb||!user)return;
+  const {data,error}=await sb.from('fighter_mods')
+    .select('id,name,status,has_sprites,plays,created_at')
+    .eq('owner_id',user.id).order('created_at',{ascending:false});
+  if(error||!data||!data.length)return;
+  for(const r of data){
+    const el=document.createElement('div');el.className='mymod';
+    el.innerHTML='<span class="nm">'+esc(r.name)+'</span>'+
+      '<span class="st">'+r.status+' · '+(r.plays||0)+' plays'+(r.has_sprites?' · sprites':'')+'</span>'+
+      '<button class="btn small" data-e>Edit</button><button class="btn small" data-d>Delete</button>';
+    box.appendChild(el);
+    el.querySelector('[data-e]').addEventListener('click',async()=>{
+      const {data:full}=await sb.from('fighter_mods').select('*').eq('id',r.id).maybeSingle();
+      if(!full)return;
+      editingId=r.id;
+      applyData(full.data);
+      toast('Editing "'+r.name+'" — sprite sheets stay as published unless you re-upload them');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    el.querySelector('[data-d]').addEventListener('click',async()=>{
+      if(!confirm('Delete "'+r.name+'" for everyone? This cannot be undone.'))return;
+      await sb.from('fighter_mods').delete().eq('id',r.id);
+      if(editingId===r.id)editingId=null;
+      loadMine();
+      toast('Deleted');
+    });
+  }
+}
+
+/* ── auth (shared session with the whole site) ── */
+async function initAuth(){
+  const chip=$('chip');
+  if(!sb){chip.textContent='Offline — you can build & export, publishing needs the site';return;}
+  try{
+    const {data}=await sb.auth.getSession();
+    user=data?.session?.user||null;
+    if(user){
+      try{
+        const {data:p}=await sb.from('user_profiles').select('username').eq('user_id',user.id).maybeSingle();
+        myName=(p&&p.username)||(user.email?user.email.split('@')[0]:'creator');
+      }catch(e){myName=user.email?user.email.split('@')[0]:'creator';}
+      chip.innerHTML='Creating as <b>'+esc(myName)+'</b>';
+      loadMine();
+    }else chip.textContent='Not signed in — you can build, publishing will ask you to sign in';
+    sb.auth.onAuthStateChange((ev,session)=>{
+      const u=session?.user||null;
+      if((u&&u.id)===(user&&user.id))return;
+      user=u;initAuth();
+    });
+  }catch(e){chip.textContent='Offline — building works, publishing needs the site';}
+}
+
+/* boot */
+buildStats();buildMoveTabs();buildMoveForm();renderAnims();refresh();initAuth();
+</script>
+</body>
+</html>
