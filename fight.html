@@ -393,7 +393,7 @@ kbd{
     <p>Every fighter gets a power score computed from its stats and frame data — that's the tier badge on the
        select screen. Community fighters are rated by the exact same formula.</p>
     <h4>Community fighters</h4>
-    <p>The select screen has the whole community roster under the official four — search it, sort it,
+    <p>The select screen has the whole community roster under the official five — search it, sort it,
        play anything. Make your own with the <a href="create.html" style="color:var(--cyan)">Fighter Creator</a>
        (no code needed) or hand-write one with the <a href="modding.html" style="color:var(--cyan)">modding guide</a>.
        Publishing needs a Chill Zone account; playing doesn't.</p>
@@ -680,6 +680,47 @@ const CHARACTERS=[
     cheavy:{name:'Braid Riser',dmg:105,startup:10,active:4,recovery:17,hitstun:24,blockstun:13,hitstop:9,kbx:65,launch:1,kby:-240,anim:'cheavy',box:{x:20,y:-150,w:86,h:110}},
     throw:{name:'Court Martial',dmg:120,startup:5,active:3,recovery:21,hitstop:10,kbx:85,launch:1,kby:-195,throw:1,box:{x:8,y:-130,w:54,h:70}},
     super:{name:'Dishonorable Discharge',dmg:260,startup:9,active:6,recovery:24,hitstun:32,blockstun:17,hitstop:14,kbx:210,launch:1,kby:-270,inv:1,armorBreak:1,super:1,anim:'super',box:{x:14,y:-170,w:98,h:130}}
+  }
+},
+{
+  id:'parasoul', name:'Parasoul', tagline:'Royal reach. One umbrella, zero safe zones.',
+  color:'#4d7cff', color2:'#d7e0ff', skin:'#efd5d2',
+  hp:900, walk:64, back:52, jumpVX:58, jumpVY:-250, grav:14,
+  w:50, h:155, crouchH:110,
+  sprite:{ /* user-supplied Parasoul WebP frames, optimized into runtime strips */
+    path:'art/parasoul/', scale:0.64, smooth:1, idleTop:0, v:1,
+    anims:{
+      idle:{f:'idle.webp',n:12,cw:329,ch:250,cx:165,fy:250},
+      run:{f:'run.webp',n:9,cw:334,ch:260,cx:167,fy:260},
+      walkback:{f:'walkback.webp',n:9,cw:334,ch:260,cx:167,fy:260},
+      dash:{f:'dash.webp',n:6,cw:372,ch:272,cx:186,fy:272},
+      backdash:{f:'backdash.webp',n:6,cw:363,ch:250,cx:182,fy:250},
+      jump:{f:'jump.webp',n:2,cw:270,ch:276,cx:135,fy:276},
+      fall:{f:'fall.webp',n:2,cw:309,ch:312,cx:155,fy:312},
+      attack1:{f:'attack1.webp',n:9,cw:416,ch:288,cx:208,fy:288},
+      attack2:{f:'attack2.webp',n:13,cw:332,ch:352,cx:166,fy:352},
+      special:{f:'special.webp',n:13,cw:308,ch:246,cx:154,fy:246},
+      airatk:{f:'airatk.webp',n:7,cw:193,ch:260,cx:97,fy:260},
+      clight:{f:'clight.webp',n:8,cw:395,ch:162,cx:198,fy:162},
+      cheavy:{f:'cheavy.webp',n:11,cw:230,ch:332,cx:115,fy:332},
+      throw:{f:'throw.webp',n:8,cw:339,ch:281,cx:170,fy:281},
+      super:{f:'super.webp',n:13,cw:333,ch:295,cx:167,fy:295},
+      hit:{f:'hit.webp',n:4,cw:304,ch:246,cx:152,fy:246},
+      block:{f:'block.webp',n:4,cw:266,ch:274,cx:133,fy:274},
+      crouch:{f:'crouch.webp',n:7,cw:307,ch:252,cx:154,fy:252},
+      death:{f:'death.webp',n:8,cw:445,ch:96,cx:223,fy:96},
+      getup:{f:'getup.webp',n:6,cw:374,ch:247,cx:187,fy:247}
+    }
+  },
+  moves:{
+    light:{name:'Canopy Check',dmg:55,startup:6,active:3,recovery:9,hitstun:14,blockstun:9,hitstop:5,kbx:62,anim:'attack1',impact:5,box:{x:22,y:-126,w:70,h:28}},
+    heavy:{name:'Royal Sweep',dmg:120,startup:13,active:4,recovery:18,hitstun:22,blockstun:12,hitstop:9,kbx:112,anim:'attack2',impact:9,box:{x:28,y:-138,w:105,h:42}},
+    special:{name:'Napalm Tear',dmg:90,startup:14,active:1,recovery:24,hitstun:20,blockstun:12,hitstop:7,kbx:95,anim:'special',impact:5,projectile:{speed:128,life:80,w:40,h:26},box:{x:90,y:-108,w:1,h:1}},
+    air:{name:'Air Raid',dmg:68,startup:7,active:7,recovery:10,hitstun:17,blockstun:10,hitstop:6,kbx:72,hits:'high',anim:'airatk',impact:4,box:{x:22,y:-106,w:100,h:48}},
+    clight:{name:'Low Command',dmg:45,startup:5,active:3,recovery:11,hitstun:14,blockstun:9,hitstop:5,kbx:58,hits:'low',anim:'clight',impact:4,box:{x:24,y:-43,w:90,h:31}},
+    cheavy:{name:'Napalm Quake',dmg:105,startup:12,active:5,recovery:22,hitstun:24,blockstun:13,hitstop:9,kbx:68,launch:1,kby:-230,anim:'cheavy',impact:7,box:{x:20,y:-150,w:100,h:112}},
+    throw:{name:'Royal Toss',dmg:115,startup:6,active:3,recovery:24,hitstop:10,kbx:78,launch:1,kby:-190,throw:1,anim:'throw',impact:5,box:{x:8,y:-132,w:54,h:72}},
+    super:{name:'Silent Scope',dmg:245,startup:10,active:1,recovery:27,hitstun:29,blockstun:16,hitstop:13,kbx:195,launch:1,kby:-220,inv:1,super:1,anim:'super',impact:7,projectile:{speed:260,life:60,w:54,h:36},box:{x:95,y:-100,w:1,h:1}}
   }
 }];
 
