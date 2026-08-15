@@ -183,6 +183,9 @@ kbd{
 .pad-row .cur{color:var(--cyan);font-weight:700;font-size:13.5px;}
 .pad-row.listen .cur{color:var(--amber);animation:blink 1s step-end infinite;}
 @keyframes blink{50%{opacity:.35;}}
+/* menu focus ring for gamepad/keyboard navigation */
+.gfocus{outline:2px solid var(--cyan) !important;outline-offset:3px;}
+.chr-card.gfocus{transform:translateY(-3px);}
 
 /* toast */
 #toast{
@@ -322,7 +325,9 @@ kbd{
     <p>Plug in (or pair) an Xbox, PlayStation or generic controller — the browser picks it up
        automatically. With two controllers, Player 1 gets the first one. Default buttons follow
        the fighting-game standard (SF6 Modern / Guilty Gear); change them in <b>Controls</b> on
-       the main menu.</p>
+       the main menu. Menus are fully controller-navigable too: d-pad or stick moves,
+       <kbd>A</kbd>/<kbd>Cross</kbd> confirms, <kbd>B</kbd>/<kbd>Circle</kbd> goes back
+       (keyboard: arrows + <kbd>Enter</kbd>).</p>
     <table class="keys-table">
       <tr><td>Move / crouch</td><td>D-pad or left stick</td></tr>
       <tr><td>Light attack</td><td><kbd>X</kbd> / <kbd>Square</kbd></td></tr>
@@ -433,6 +438,8 @@ function toast(msg,kind){
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   $(id).classList.add('active');
+  NAV.idx=0;
+  if(typeof paintNav==='function')paintNav();
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -606,11 +613,12 @@ CHARACTERS.forEach(loadSprites);
 /* ── automatic tier rating — same formula community fighters will get ── */
 const TIERS=['genuine piece of shi','iwannalose','meh','regular guy','steroids were used',
   'average guy in dagestan','dagestan pro','quake pro level','metroman','omnipotent regular guy'];
-const TIER_MIN=[0,300,450,600,780,950,1120,1300,1500,1750];
+const TIER_MIN=[0,350,520,700,900,1080,1260,1450,1700,2000];
 function charPower(c){
   let p=((c.hp/5)|0)+c.walk*2+c.back;
   for(const k in c.moves){const m=c.moves[k];
     p+=((m.dmg*8)/(m.startup+m.active+m.recovery))|0;
+    if(m.box)p+=((m.box.x+m.box.w)/6)|0;      // reach is power too (ask Sarge)
     if(m.launch)p+=15; if(m.armor)p+=20; if(m.step)p+=(m.step/8)|0;
   }
   return p;
@@ -1466,7 +1474,14 @@ const keysDown=new Set();
 window.addEventListener('keydown',e=>{
   if(e.code==='Escape'){onEscape();return;}
   if(e.code==='KeyM'&&$('s-game').classList.contains('active')){setMuted(!muted);return;}
-  if(!$('s-game').classList.contains('active'))return;
+  if(!$('s-game').classList.contains('active')){
+    /* keyboard menu navigation (skip while typing in an input, e.g. the room code) */
+    if(document.activeElement&&document.activeElement.tagName==='INPUT')return;
+    if(e.code==='ArrowUp'||e.code==='ArrowLeft'){navMove(-1);e.preventDefault();}
+    else if(e.code==='ArrowDown'||e.code==='ArrowRight'){navMove(1);e.preventDefault();}
+    else if(e.code==='Enter'||e.code==='Space'){navActivate();e.preventDefault();}
+    return;
+  }
   if(P1K[e.code]!==undefined||P2K[e.code]!==undefined){keysDown.add(e.code);e.preventDefault();}
 });
 window.addEventListener('keyup',e=>keysDown.delete(e.code));
@@ -1520,6 +1535,72 @@ window.addEventListener('gamepadconnected',e=>{
 });
 window.addEventListener('gamepaddisconnected',()=>toast('Controller disconnected'));
 
+/* ── menu navigation: d-pad/stick moves, A confirms, B backs out, Start confirms ──
+   (keyboard mirrors it: arrows / enter / esc) */
+const NAV={idx:0,last:0};
+function navList(){
+  if($('ctl-ov').classList.contains('on'))
+    return [...document.querySelectorAll('#pad-rows .pad-row'),$('pad-reset'),$('ctl-x')];
+  if($('how-ov').classList.contains('on'))return [$('how-x')];
+  const scr=document.querySelector('.screen.active');
+  if(!scr||scr.id==='s-game')return [];
+  if(scr.id==='s-select')
+    return [...scr.querySelectorAll('.chr-card'),$('sel-back'),$('sel-go')].filter(b=>!b.disabled);
+  return [...scr.querySelectorAll('button')].filter(b=>!b.disabled&&b.offsetParent!==null);
+}
+function paintNav(){
+  document.querySelectorAll('.gfocus').forEach(e=>e.classList.remove('gfocus'));
+  const L=navList();
+  if(!L.length)return;
+  NAV.idx=Math.max(0,Math.min(NAV.idx,L.length-1));
+  L[NAV.idx].classList.add('gfocus');
+}
+function navMove(d){
+  const L=navList();if(!L.length)return;
+  NAV.idx=(NAV.idx+d+L.length)%L.length;
+  paintNav();
+}
+function navActivate(){
+  const L=navList();if(!L.length)return;
+  L[Math.min(NAV.idx,L.length-1)].click();
+  setTimeout(paintNav,60);
+}
+function navBack(){
+  if($('ctl-ov').classList.contains('on')){stopPadListen();closeModal('ctl-ov');return;}
+  if($('how-ov').classList.contains('on')){closeModal('how-ov');return;}
+  const scr=document.querySelector('.screen.active');
+  if(!scr)return;
+  if(scr.id==='s-select')$('sel-back').click();
+  else if(scr.id==='s-online')$('on-back').click();
+}
+function menuPadBits(){
+  let m=0;
+  for(const g of getPads()){
+    const b=i=>!!(g.buttons[i]&&g.buttons[i].pressed);
+    const ax=g.axes[0]||0, ay=g.axes[1]||0;
+    if(b(14)||ax<-0.5)m|=1;
+    if(b(15)||ax>0.5)m|=2;
+    if(b(12)||ay<-0.5)m|=4;
+    if(b(13)||ay>0.5)m|=8;
+    if(b(0))m|=16;                        // A / Cross = confirm
+    if(b(1))m|=32;                        // B / Circle = back
+    if(b(9))m|=64;                        // Start = confirm
+  }
+  return m;
+}
+setInterval(()=>{
+  if($('s-game').classList.contains('active'))return;   // in-game pads fight, not menus
+  if(padListen)return;                                  // rebinding: swallow everything
+  if(!getPads().length)return;
+  const m=menuPadBits();
+  const pressed=m&~NAV.last;
+  NAV.last=m;
+  if(pressed&(1|4))navMove(-1);
+  if(pressed&(2|8))navMove(1);
+  if(pressed&(16|64))navActivate();
+  if(pressed&32)navBack();
+},60);
+
 /* ── controller remapping panel ── */
 let padListen=null,padListenBase=null,padListenTimer=null;
 function renderPadRows(){
@@ -1532,6 +1613,7 @@ function renderPadRows(){
     row.addEventListener('click',()=>startPadListen(key));
     box.appendChild(row);
   }
+  if(typeof paintNav==='function')paintNav();
 }
 function startPadListen(key){
   if(!getPads().length){toast('Connect a controller first','err');return;}
@@ -1649,12 +1731,13 @@ function onMatchEnd(){
 function onEscape(){
   /* Esc closes modals first (site convention) */
   if($('ctl-ov').classList.contains('on')){
-    if(padListen)stopPadListen();else $('ctl-ov').classList.remove('on');
+    if(padListen)stopPadListen();else closeModal('ctl-ov');
     return;
   }
-  if($('how-ov').classList.contains('on')){$('how-ov').classList.remove('on');return;}
+  if($('how-ov').classList.contains('on')){closeModal('how-ov');return;}
   if($('ff-ov').classList.contains('on')){$('ff-ov').classList.remove('on');return;}
-  if(!$('s-game').classList.contains('active')||!S||S.phase===PHASES.matchend)return;
+  if(!$('s-game').classList.contains('active')){navBack();return;}
+  if(!S||S.phase===PHASES.matchend)return;
   if(mode==='local'){paused=!paused;$('pause-ov').classList.toggle('on',paused);}
   else $('ff-ov').classList.add('on');
 }
@@ -1687,6 +1770,7 @@ function buildSelect(){
     card.addEventListener('click',()=>pickChar(i));
   });
   paintSelect();
+  paintNav();
 }
 const stat=(l,v)=>'<div class="chr-stat"><span>'+l+'</span><div class="bar"><i style="width:'+Math.min(100,v)+'%"></i></div></div>';
 
@@ -2177,12 +2261,14 @@ $('btn-online').addEventListener('click',()=>{
   if(!user){toast('Sign in on the Chill Zone first, then come back','err');return;}
   show('s-online');
 });
-$('btn-how').addEventListener('click',()=>$('how-ov').classList.add('on'));
-$('how-x').addEventListener('click',()=>$('how-ov').classList.remove('on'));
-$('how-ov').addEventListener('click',e=>{if(e.target.id==='how-ov')$('how-ov').classList.remove('on');});
-$('btn-controls').addEventListener('click',()=>{renderPadRows();$('ctl-ov').classList.add('on');});
-$('ctl-x').addEventListener('click',()=>{stopPadListen();$('ctl-ov').classList.remove('on');});
-$('ctl-ov').addEventListener('click',e=>{if(e.target.id==='ctl-ov'){stopPadListen();$('ctl-ov').classList.remove('on');}});
+function openModal(id){NAV.saved=NAV.idx;NAV.idx=0;$(id).classList.add('on');paintNav();}
+function closeModal(id){$(id).classList.remove('on');NAV.idx=NAV.saved||0;paintNav();}
+$('btn-how').addEventListener('click',()=>openModal('how-ov'));
+$('how-x').addEventListener('click',()=>closeModal('how-ov'));
+$('how-ov').addEventListener('click',e=>{if(e.target.id==='how-ov')closeModal('how-ov');});
+$('btn-controls').addEventListener('click',()=>{renderPadRows();openModal('ctl-ov');});
+$('ctl-x').addEventListener('click',()=>{stopPadListen();closeModal('ctl-ov');});
+$('ctl-ov').addEventListener('click',e=>{if(e.target.id==='ctl-ov'){stopPadListen();closeModal('ctl-ov');}});
 $('pad-reset').addEventListener('click',()=>{
   padMap={...PAD_DEFAULT};
   try{localStorage.removeItem('sffg-pad');}catch(e){}
@@ -2231,6 +2317,7 @@ if('ontouchstart' in window&&!window.matchMedia('(pointer:fine)').matches){
 
 $('btn-mute').addEventListener('click',()=>setMuted(!muted));
 setMuted(muted);   // paint the initial label
+paintNav();        // focus ring visible from the start
 fitCanvas();
 initAuth();
 
