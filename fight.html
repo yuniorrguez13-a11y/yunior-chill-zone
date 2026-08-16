@@ -259,7 +259,7 @@ kbd{
     <button class="btn ghost" id="btn-mute"></button>
   </div>
   <div id="userchip"><i data-ic="user" data-ic-size="15"></i> <span id="userchip-txt">Checking session…</span></div>
-  <div class="menu-note" id="menu-note">Local versus supports keyboard, one controller or two controllers.
+  <div class="menu-note" id="menu-note">Local versus: Player 1 uses the keyboard and Player 2 uses a controller.
     Or grab a friend online with a room code.</div>
   <a class="backlink" href="index.html"><i data-ic="arrowLeft" data-ic-size="15"></i> Back to the Chill Zone</a>
 </div>
@@ -397,9 +397,9 @@ kbd{
       <tr><td>Heavy attack</td><td><kbd>G</kbd> or <kbd>K</kbd></td></tr>
       <tr><td>Special</td><td><kbd>H</kbd> or <kbd>L</kbd></td></tr>
     </table>
-    <h4>Controllers</h4>
+    <h4>Player 2 — controller</h4>
     <p>Plug in (or pair) an Xbox, PlayStation or generic controller — the browser picks it up
-       automatically. One controller drives Player 1; with two controllers, each player gets one. Default buttons follow
+       automatically. With one controller it drives Player 2; with two controllers, each player gets one. Default buttons follow
        the fighting-game standard (SF6 Modern / Guilty Gear); change them in <b>Controls</b> on
        the main menu. Menus are fully controller-navigable too: d-pad or stick moves,
        <kbd>A</kbd>/<kbd>Cross</kbd> confirms, <kbd>B</kbd>/<kbd>Circle</kbd> goes back
@@ -2107,28 +2107,21 @@ const PAD_BTN_NAMES={0:'A / Cross',1:'B / Circle',2:'X / Square',3:'Y / Triangle
   10:'L3',11:'R3',12:'D-pad Up',13:'D-pad Down',14:'D-pad Left',15:'D-pad Right'};
 let padMap=(()=>{ try{return {...PAD_DEFAULT,...JSON.parse(localStorage.getItem('sffg-pad')||'{}')};}
   catch(e){return {...PAD_DEFAULT};} })();
-const PAD_STATE={forwarded:[],forwardedAt:0,axisPair:new Map(),warned:false};
+const PAD_STATE={forwarded:[],forwardedAt:0,warned:false};
 
 function padButton(gp,i){
   if(!gp||i==null||!gp.buttons)return false;
   const v=gp.buttons[i];
-  if(typeof v==='number')return v>.5;
-  return !!(v&&(v.pressed||Number(v.value)>.5));
+  if(typeof v==='number')return v>.75;
+  return !!(v&&(v.pressed===true||Number(v.value)>.75));
 }
 function padStick(gp){
-  const axes=gp&&gp.axes?Array.from(gp.axes,v=>Number(v)||0):[];
-  if(axes.length<2)return {x:0,y:0};
-  const key=(gp.index??0)+'|'+(gp.id||'controller');
-  let pair=gp.mapping==='standard'?0:(PAD_STATE.axisPair.get(key)||0);
-  if(gp.mapping!=='standard'){
-    let best=pair,bestMag=-1;
-    for(let i=0;i+1<axes.length;i+=2){
-      const mag=Math.max(Math.abs(axes[i]),Math.abs(axes[i+1]));
-      if(mag>bestMag){best=i;bestMag=mag;}
-    }
-    if(bestMag>.28){pair=best;PAD_STATE.axisPair.set(key,pair);}
-  }
-  return {x:axes[pair]||0,y:axes[pair+1]||0};
+  /* Axes 0/1 are the canonical movement stick. Do not auto-pick another
+     pair: many DirectInput pads expose idle triggers as axes fixed at -1
+     or 1, which looks like permanent movement and causes phantom actions. */
+  const axes=gp&&gp.axes?Array.from(gp.axes,v=>Number(v)):[];
+  const clean=v=>Number.isFinite(v)&&Math.abs(v)>=.25?Math.max(-1,Math.min(1,v)):0;
+  return {x:clean(axes[0]),y:clean(axes[1])};
 }
 function padMask(gp){
   if(!gp)return 0;
@@ -2160,7 +2153,7 @@ window.addEventListener('message',e=>{
     })):[]
   }));
   PAD_STATE.forwardedAt=performance.now();
-  if(!hadPads&&PAD_STATE.forwarded.length)toast('Controller connected — Player 1 ready');
+  if(!hadPads&&PAD_STATE.forwarded.length)toast('Controller connected — Player 2 ready');
 });
 
 function getPads(){
@@ -2178,18 +2171,18 @@ function getPads(){
   return [];
 }
 /* local versus input assignment:
-   2+ pads → first pad/P1 keyboard control P1; second pad/P2 keyboard control P2
-   1 pad   → pad/P1 keyboard control P1; P2 keeps the second keyboard layout
+   2+ pads → keyboard/first pad control P1; second pad controls P2
+   1 pad   → keyboard (either layout) controls P1; the pad controls P2
    0 pads  → classic two-on-one-keyboard split */
 function localMasks(){
   const pads=getPads();
   const p1=readMask(P1K),p2=readMask(P2K);
-  if(pads.length>=2)return [p1|padMask(pads[0]),p2|padMask(pads[1])];
-  if(pads.length===1)return [p1|padMask(pads[0]),p2];
+  if(pads.length>=2)return [p1|p2|padMask(pads[0]),padMask(pads[1])];
+  if(pads.length===1)return [p1|p2,padMask(pads[0])];
   return [p1,p2];
 }
 window.addEventListener('gamepadconnected',e=>{
-  toast('Controller connected — Player 1 ready');
+  toast('Controller connected — Player 2 ready');
 });
 window.addEventListener('gamepaddisconnected',()=>toast('Controller disconnected'));
 
