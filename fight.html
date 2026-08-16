@@ -157,6 +157,21 @@ input.code-in:focus{border-color:rgba(232,22,42,.5);}
 #s-game{justify-content:center;background:#000;padding:0;}
 #cv-wrap{position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#000;}
 canvas#cv{display:block;background:#0b0b14;max-width:100vw;max-height:100vh;}
+#meme-load{
+  position:absolute;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;background:#050509;opacity:0;visibility:hidden;transition:opacity .16s ease;
+  pointer-events:none;
+}
+#meme-load.on{opacity:1;visibility:visible;}
+#meme-load-bg{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;
+  filter:blur(28px) brightness(.28) saturate(.85);transform:scale(1.08);}
+#meme-load-img{position:relative;z-index:1;display:block;max-width:92vw;max-height:88vh;
+  width:auto;height:auto;object-fit:contain;box-shadow:0 18px 70px rgba(0,0,0,.72);}
+#meme-load-track{position:absolute;z-index:2;left:50%;bottom:22px;transform:translateX(-50%);
+  width:min(280px,58vw);height:4px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.2);}
+#meme-load-bar{height:100%;width:0;border-radius:inherit;background:#fff;}
+#meme-load.on #meme-load-bar{animation:memeLoad 1.65s linear forwards;}
+@keyframes memeLoad{to{width:100%;}}
 #pause-ov,#ff-ov{
   position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;
   background:rgba(5,5,10,.78);backdrop-filter:blur(6px);z-index:5;
@@ -172,6 +187,8 @@ canvas#cv{display:block;background:#0b0b14;max-width:100vw;max-height:100vh;}
 
 /* result */
 #s-result{justify-content:center;gap:10px;padding:40px 18px;}
+#res-meme{display:block;width:min(360px,86vw);max-height:46vh;object-fit:contain;margin-bottom:8px;
+  border-radius:14px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.5);}
 #res-title{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(34px,7vw,64px);text-align:center;
   background:linear-gradient(135deg,#fff 40%,#ff8b96);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 #res-sub{color:var(--text2);font-size:16px;margin-bottom:22px;text-align:center;}
@@ -222,7 +239,10 @@ kbd{
 @media(max-width:600px){
   .code-box{font-size:26px;}
   #sel-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
+  #meme-load-img{max-width:100vw;max-height:92vh;}
+  #res-meme{max-height:40vh;}
 }
+@media(prefers-reduced-motion:reduce){#meme-load{transition:none;}#meme-load.on #meme-load-bar{animation:none;width:100%;}}
 </style>
 </head>
 <body>
@@ -316,6 +336,11 @@ kbd{
 <div class="screen" id="s-game">
   <div id="cv-wrap">
     <canvas id="cv" width="960" height="540"></canvas>
+    <div id="meme-load" aria-hidden="true">
+      <img id="meme-load-bg" alt="">
+      <img id="meme-load-img" alt="">
+      <div id="meme-load-track"><div id="meme-load-bar"></div></div>
+    </div>
     <div id="net-pill"></div>
     <div id="pause-ov">
       <h2>PAUSED</h2>
@@ -334,6 +359,7 @@ kbd{
 
 <!-- ══════════════ RESULT ══════════════ -->
 <div class="screen" id="s-result">
+  <img id="res-meme" src="art/memes/tournament-podium.png" alt="SFFG tournament podium">
   <div id="res-title">—</div>
   <div id="res-sub">—</div>
   <div id="res-btns">
@@ -481,6 +507,29 @@ async function fetchName(u){
 /* ══════ UTILS ══════ */
 const $=id=>document.getElementById(id);
 const esc=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const MEME_ART={
+  comment:'art/memes/parasoul-sarge-comment.png',
+  podium:'art/memes/tournament-podium.png',
+  rooftop:'art/memes/tokyo-rooftop.png',
+  beach:'art/memes/beach-chase.png'
+};
+const MEME_GENERAL=[MEME_ART.rooftop,MEME_ART.beach];
+let memeCycle=Math.random()<.5?0:1,memeTimer=0;
+for(const src of Object.values(MEME_ART)){const im=new Image();im.src=src;}
+function chooseLoadingMeme(c0,c1){
+  const ids=[CHARACTERS[c0]?.id,CHARACTERS[c1]?.id];
+  if(ids.includes('parasoul')&&ids.includes('sarge')&&Math.random()<.05)return MEME_ART.comment;
+  return MEME_GENERAL[memeCycle++%MEME_GENERAL.length];
+}
+function showLoadingMeme(c0,c1){
+  const ov=$('meme-load'),src=chooseLoadingMeme(c0,c1);
+  clearTimeout(memeTimer);
+  $('meme-load-bg').src=src;$('meme-load-img').src=src;
+  ov.classList.remove('on');
+  void ov.offsetWidth; /* restart the progress bar on rematches */
+  ov.classList.add('on');
+  memeTimer=setTimeout(()=>ov.classList.remove('on'),1650);
+}
 function uid(){ /* crypto.randomUUID needs a secure context — fall back on plain http */
   if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
@@ -2220,6 +2269,7 @@ function startMatch(c0,c1,m){
   V.camX=0;V.camY=0;V.z=0.9;
   acc=0;lastT=0;
   show('s-game');fitCanvas();
+  showLoadingMeme(c0,c1);
   $('pause-ov').classList.remove('on');$('ff-ov').classList.remove('on');
   updateNetPill();
   if(!rafOn){rafOn=true;requestAnimationFrame(loop);}
