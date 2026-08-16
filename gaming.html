@@ -1250,8 +1250,37 @@ function applyFilter(){
 
 /* ── controller ──────────────────────────────────────────────── */
 let padPrev={};
+let padAccessWarned=false;
+function systemPads(){
+  try{
+    return navigator.getGamepads?[...navigator.getGamepads()].filter(p=>p&&p.connected!==false):[];
+  }catch(e){
+    if(!padAccessWarned){
+      padAccessWarned=true;
+      console.warn('[Gaming Zone] Gamepad API is blocked by the browser.',e);
+    }
+    return [];
+  }
+}
+function padSnapshot(p){
+  return {
+    id:p.id||'Controller',index:Number(p.index)||0,connected:p.connected!==false,
+    mapping:p.mapping||'',axes:Array.from(p.axes||[],v=>Number(v)||0),
+    buttons:Array.from(p.buttons||[],b=>({
+      pressed:!!(b&&b.pressed),touched:!!(b&&b.touched),value:Number(b&&b.value)||0
+    }))
+  };
+}
+function forwardPads(pads){
+  if(!playing)return;
+  const frame=$('gz-frame');
+  if(!frame||!frame.contentWindow)return;
+  const target=location.origin==='null'?'*':location.origin;
+  try{frame.contentWindow.postMessage({type:'ycz-gamepads',pads:pads.map(padSnapshot)},target);}catch(e){}
+}
 function padLoop(){
-  const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+  const pads=systemPads();
+  forwardPads(pads);
   for(const p of pads){
     const ax = p.axes[0]||0;
     const right = (p.buttons[15] && p.buttons[15].pressed) || ax > .55;

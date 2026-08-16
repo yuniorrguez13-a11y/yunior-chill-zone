@@ -259,8 +259,8 @@ kbd{
     <button class="btn ghost" id="btn-mute"></button>
   </div>
   <div id="userchip"><i data-ic="user" data-ic-size="15"></i> <span id="userchip-txt">Checking session…</span></div>
-  <div class="menu-note" id="menu-note">Local versus: one player on the keyboard, the other on a
-    controller — plug one in and it just works. Or grab a friend online with a room code.</div>
+  <div class="menu-note" id="menu-note">Local versus supports keyboard, one controller or two controllers.
+    Or grab a friend online with a room code.</div>
   <a class="backlink" href="index.html"><i data-ic="arrowLeft" data-ic-size="15"></i> Back to the Chill Zone</a>
 </div>
 
@@ -397,9 +397,9 @@ kbd{
       <tr><td>Heavy attack</td><td><kbd>G</kbd> or <kbd>K</kbd></td></tr>
       <tr><td>Special</td><td><kbd>H</kbd> or <kbd>L</kbd></td></tr>
     </table>
-    <h4>Player 2 — controller</h4>
+    <h4>Controllers</h4>
     <p>Plug in (or pair) an Xbox, PlayStation or generic controller — the browser picks it up
-       automatically. With two controllers, Player 1 gets the first one. Default buttons follow
+       automatically. One controller drives Player 1; with two controllers, each player gets one. Default buttons follow
        the fighting-game standard (SF6 Modern / Guilty Gear); change them in <b>Controls</b> on
        the main menu. Menus are fully controller-navigable too: d-pad or stick moves,
        <kbd>A</kbd>/<kbd>Cross</kbd> confirms, <kbd>B</kbd>/<kbd>Circle</kbd> goes back
@@ -2092,22 +2092,49 @@ window.addEventListener('keyup',e=>keysDown.delete(e.code));
 window.addEventListener('blur',()=>keysDown.clear());
 function readMask(map){let m=0;for(const k of keysDown)if(map[k]!==undefined)m|=map[k];return m;}
 
-/* ── gamepads (standard mapping: Xbox / PlayStation / most generics) ──
+/* ── gamepads ──
    Default attack buttons follow the genre convention (SF6 Modern /
    Guilty Gear put light on Square/X and the heavy hit on Circle/B):
    X/Square light · B/Circle heavy · Y/Triangle special · A/Cross jump.
-   All four are remappable in the Controls panel (saved per browser). */
+   All four are remappable in the Controls panel (saved per browser).
+
+   The Gaming Zone runs games in an iframe. Some browsers expose gamepads only
+   to the top document, so gaming.html forwards plain controller snapshots here.
+   Native Gamepad API input wins when available; the bridge is the fallback. */
 const PAD_DEFAULT={light:2,heavy:1,special:3,jump:0,dash:4};
 const PAD_BTN_NAMES={0:'A / Cross',1:'B / Circle',2:'X / Square',3:'Y / Triangle',
   4:'LB / L1',5:'RB / R1',6:'LT / L2',7:'RT / R2',8:'View / Share',9:'Menu / Options',
   10:'L3',11:'R3',12:'D-pad Up',13:'D-pad Down',14:'D-pad Left',15:'D-pad Right'};
 let padMap=(()=>{ try{return {...PAD_DEFAULT,...JSON.parse(localStorage.getItem('sffg-pad')||'{}')};}
   catch(e){return {...PAD_DEFAULT};} })();
+const PAD_STATE={forwarded:[],forwardedAt:0,axisPair:new Map(),warned:false};
+
+function padButton(gp,i){
+  if(!gp||i==null||!gp.buttons)return false;
+  const v=gp.buttons[i];
+  if(typeof v==='number')return v>.5;
+  return !!(v&&(v.pressed||Number(v.value)>.5));
+}
+function padStick(gp){
+  const axes=gp&&gp.axes?Array.from(gp.axes,v=>Number(v)||0):[];
+  if(axes.length<2)return {x:0,y:0};
+  const key=(gp.index??0)+'|'+(gp.id||'controller');
+  let pair=gp.mapping==='standard'?0:(PAD_STATE.axisPair.get(key)||0);
+  if(gp.mapping!=='standard'){
+    let best=pair,bestMag=-1;
+    for(let i=0;i+1<axes.length;i+=2){
+      const mag=Math.max(Math.abs(axes[i]),Math.abs(axes[i+1]));
+      if(mag>bestMag){best=i;bestMag=mag;}
+    }
+    if(bestMag>.28){pair=best;PAD_STATE.axisPair.set(key,pair);}
+  }
+  return {x:axes[pair]||0,y:axes[pair+1]||0};
+}
 function padMask(gp){
   if(!gp)return 0;
   let m=0;
-  const b=i=>i!=null&&!!(gp.buttons[i]&&gp.buttons[i].pressed);
-  const ax=gp.axes[0]||0, ay=gp.axes[1]||0;
+  const b=i=>padButton(gp,i);
+  const {x:ax,y:ay}=padStick(gp);
   if(b(14)||ax<-0.35)m|=IN_L;
   if(b(15)||ax>0.35)m|=IN_R;
   if(b(12)||ay<-0.5||b(padMap.jump))m|=IN_U;
@@ -2118,24 +2145,51 @@ function padMask(gp){
   if(b(padMap.dash))m|=IN_DASH;
   return m;
 }
+
+window.addEventListener('message',e=>{
+  if(window.parent===window||e.source!==window.parent||e.origin!==location.origin)return;
+  const msg=e.data;
+  if(!msg||msg.type!=='ycz-gamepads'||!Array.isArray(msg.pads))return;
+  const hadPads=PAD_STATE.forwarded.length>0;
+  PAD_STATE.forwarded=msg.pads.filter(g=>g&&g.connected!==false).map(g=>({
+    id:String(g.id||'Forwarded controller'),index:Number(g.index)||0,
+    connected:true,mapping:String(g.mapping||''),
+    axes:Array.isArray(g.axes)?g.axes.map(v=>Number(v)||0):[],
+    buttons:Array.isArray(g.buttons)?g.buttons.map(b=>({
+      pressed:!!(b&&b.pressed),touched:!!(b&&b.touched),value:Number(b&&b.value)||0
+    })):[]
+  }));
+  PAD_STATE.forwardedAt=performance.now();
+  if(!hadPads&&PAD_STATE.forwarded.length)toast('Controller connected — Player 1 ready');
+});
+
 function getPads(){
   const out=[];
-  try{if(navigator.getGamepads)for(const g of navigator.getGamepads())if(g&&g.connected)out.push(g);}catch(e){}
-  return out;
+  try{
+    if(navigator.getGamepads)for(const g of navigator.getGamepads())if(g&&g.connected!==false)out.push(g);
+  }catch(e){
+    if(!PAD_STATE.warned){
+      PAD_STATE.warned=true;
+      console.warn('[SFFG] Native Gamepad API unavailable; using Gaming Zone bridge.',e);
+    }
+  }
+  if(out.length)return out;
+  if(performance.now()-PAD_STATE.forwardedAt<500)return PAD_STATE.forwarded;
+  return [];
 }
 /* local versus input assignment:
-   2+ pads → pad 1 is P1 (keyboard also feeds P1), pad 2 is P2
-   1 pad   → keyboard (either layout) is P1, the pad is P2
-   0 pads  → classic two-on-one-keyboard split, as a last resort */
+   2+ pads → first pad/P1 keyboard control P1; second pad/P2 keyboard control P2
+   1 pad   → pad/P1 keyboard control P1; P2 keeps the second keyboard layout
+   0 pads  → classic two-on-one-keyboard split */
 function localMasks(){
   const pads=getPads();
-  const kb=readMask(P1K)|readMask(P2K);
-  if(pads.length>=2)return [kb|padMask(pads[0]),padMask(pads[1])];
-  if(pads.length===1)return [kb,padMask(pads[0])];
-  return [readMask(P1K),readMask(P2K)];
+  const p1=readMask(P1K),p2=readMask(P2K);
+  if(pads.length>=2)return [p1|padMask(pads[0]),p2|padMask(pads[1])];
+  if(pads.length===1)return [p1|padMask(pads[0]),p2];
+  return [p1,p2];
 }
 window.addEventListener('gamepadconnected',e=>{
-  toast('Controller connected — it drives Player 2 in local versus');
+  toast('Controller connected — Player 1 ready');
 });
 window.addEventListener('gamepaddisconnected',()=>toast('Controller disconnected'));
 
@@ -2177,11 +2231,11 @@ function navBack(){
   if(scr.id==='s-select')$('sel-back').click();
   else if(scr.id==='s-online')$('on-back').click();
 }
-function menuPadBits(){
+function menuPadBits(pads=getPads()){
   let m=0;
-  for(const g of getPads()){
-    const b=i=>!!(g.buttons[i]&&g.buttons[i].pressed);
-    const ax=g.axes[0]||0, ay=g.axes[1]||0;
+  for(const g of pads){
+    const b=i=>padButton(g,i);
+    const {x:ax,y:ay}=padStick(g);
     if(b(14)||ax<-0.5)m|=1;
     if(b(15)||ax>0.5)m|=2;
     if(b(12)||ay<-0.5)m|=4;
@@ -2195,8 +2249,9 @@ function menuPadBits(){
 setInterval(()=>{
   if($('s-game').classList.contains('active'))return;   // in-game pads fight, not menus
   if(padListen)return;                                  // rebinding: swallow everything
-  if(!getPads().length)return;
-  const m=menuPadBits();
+  const pads=getPads();
+  if(!pads.length){NAV.last=0;return;}
+  const m=menuPadBits(pads);
   const pressed=m&~NAV.last;
   NAV.last=m;
   if(pressed&(1|4))navMove(-1);
@@ -2220,9 +2275,10 @@ function renderPadRows(){
   if(typeof paintNav==='function')paintNav();
 }
 function startPadListen(key){
-  if(!getPads().length){toast('Connect a controller first','err');return;}
+  const initialPads=getPads();
+  if(!initialPads.length){toast('Connect a controller first','err');return;}
   padListen=key;
-  padListenBase=getPads().map(g=>g.buttons.map(b=>b.pressed));
+  padListenBase=initialPads.map(g=>Array.from(g.buttons||[],(_,i)=>padButton(g,i)));
   renderPadRows();
   clearInterval(padListenTimer);
   padListenTimer=setInterval(()=>{
@@ -2230,7 +2286,7 @@ function startPadListen(key){
     for(let gi=0;gi<pads.length;gi++){
       const g=pads[gi];
       for(let bi=0;bi<g.buttons.length;bi++){
-        const pressed=g.buttons[bi].pressed;
+        const pressed=padButton(g,bi);
         const was=padListenBase[gi]&&padListenBase[gi][bi];
         if(!pressed){if(was)padListenBase[gi][bi]=false;continue;}
         if(!was){
