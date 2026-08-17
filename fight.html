@@ -101,7 +101,7 @@ h1.logo{
 .pick-badge.on{opacity:1;}
 .pick-badge.b1{background:var(--accent);color:#fff;}
 .pick-badge.b2{background:var(--cyan);color:#04222b;}
-#sel-footer{width:min(980px,100%);margin-top:24px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+#sel-footer,.sel-footer{width:min(980px,100%);margin-top:24px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
 
 /* community fighters section */
 #cm-sec{width:min(980px,100%);margin-top:30px;display:flex;flex-direction:column;}
@@ -210,6 +210,44 @@ kbd{
 .gfocus{outline:2px solid var(--cyan) !important;outline-offset:3px;}
 .chr-card.gfocus{transform:translateY(-3px);}
 
+/* difficulty picker on the select screen (solo modes only) */
+#sel-diff{display:none;align-items:center;gap:9px;font-size:12.5px;color:var(--text2);}
+#sel-diff.on{display:flex;}
+#sel-diff select{background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);padding:8px 11px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;}
+
+/* arcade ladder */
+#arc-list{width:min(980px,100%);display:flex;flex-direction:column;gap:10px;}
+.arc-row{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:12px 16px;transition:all .18s;}
+.arc-row canvas{width:56px;height:66px;flex:none;}
+.arc-row .n{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--text3);width:26px;flex:none;}
+.arc-row .nm{font-weight:700;font-size:15px;}
+.arc-row .tl{color:var(--text3);font-size:12px;}
+.arc-row .sk{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text3);border:1px solid var(--border);border-radius:999px;padding:3px 11px;}
+.arc-row.done{opacity:.5;}
+.arc-row.done .sk{color:var(--grn);border-color:rgba(55,214,122,.4);}
+.arc-row.now{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 10px 30px rgba(232,22,42,.2);}
+.arc-row.boss{border-color:var(--amber);box-shadow:0 0 0 1px rgba(255,176,32,.5);}
+.arc-row.boss .sk{color:var(--amber);border-color:rgba(255,176,32,.5);}
+#arc-status{color:var(--text2);font-size:14px;}
+#arc-status b{color:var(--text);}
+
+/* training panel */
+#tr-panel{position:absolute;top:12px;left:12px;z-index:6;width:250px;display:none;
+  background:rgba(10,10,18,.92);border:1px solid var(--border);border-radius:14px;padding:14px;
+  backdrop-filter:blur(8px);}
+#tr-panel.on{display:block;}
+#tr-panel h3{font-family:'Syne',sans-serif;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.tr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:12.5px;color:var(--text2);}
+.tr-row select{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);
+  padding:5px 7px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif;max-width:135px;}
+.tr-chk{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);margin-bottom:6px;cursor:pointer;}
+.tr-hint{margin-top:10px;color:var(--text3);font-size:11px;line-height:1.5;}
+.tr-hint kbd{background:var(--bg3);border:1px solid var(--edge);border-bottom-width:2px;border-radius:4px;
+  padding:1px 5px;font-size:10.5px;font-family:'DM Sans',sans-serif;color:var(--text);}
+
 /* toast */
 #toast{
   position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);z-index:99;
@@ -232,8 +270,11 @@ kbd{
   <h1 class="logo">SFFG</h1>
   <div class="sub">stupidly funny fighting game for dummies — prototype</div>
   <div class="menu-box">
-    <button class="btn primary big" id="btn-local"><i data-ic="users" data-ic-size="19"></i> Local Versus</button>
+    <button class="btn primary big" id="btn-arcade"><i data-ic="trophy" data-ic-size="19"></i> Arcade</button>
+    <button class="btn big" id="btn-cpu"><i data-ic="bot" data-ic-size="19"></i> Solo vs CPU</button>
+    <button class="btn big" id="btn-local"><i data-ic="users" data-ic-size="19"></i> Local Versus</button>
     <button class="btn big" id="btn-online"><i data-ic="bolt" data-ic-size="19"></i> Online Match</button>
+    <button class="btn ghost" id="btn-train"><i data-ic="wrench" data-ic-size="17"></i> Training</button>
     <button class="btn ghost" id="btn-how"><i data-ic="scroll" data-ic-size="17"></i> How to Play</button>
     <button class="btn ghost" id="btn-controls"><i data-ic="settings" data-ic-size="17"></i> Controls</button>
     <button class="btn ghost" id="btn-mute"></button>
@@ -277,6 +318,10 @@ kbd{
 
   <div id="sel-footer">
     <div id="sel-status"></div>
+    <div id="sel-diff">
+      <label for="diff-sel">CPU skill</label>
+      <select id="diff-sel"></select>
+    </div>
     <div style="display:flex;gap:10px;">
       <button class="btn" id="sel-back"><i data-ic="arrowLeft" data-ic-size="16"></i> Back</button>
       <button class="btn primary" id="sel-go" disabled><i data-ic="check" data-ic-size="16"></i> <span id="sel-go-txt">Start Fight</span></button>
@@ -312,6 +357,22 @@ kbd{
   <div id="on-status"></div>
 </div>
 
+<!-- ══════════════ ARCADE LADDER ══════════════ -->
+<div class="screen panel-page" id="s-arcade">
+  <div class="page-head">
+    <h2 id="arc-title">Arcade ladder</h2>
+    <div class="hint" id="arc-hint">Five fights. It gets worse.</div>
+  </div>
+  <div id="arc-list"></div>
+  <div class="sel-footer" style="margin-top:22px;">
+    <div id="arc-status"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" id="arc-quit"><i data-ic="logout" data-ic-size="16"></i> Give up</button>
+      <button class="btn primary" id="arc-go"><i data-ic="play" data-ic-size="16"></i> <span id="arc-go-txt">Fight</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ GAME ══════════════ -->
 <div class="screen" id="s-game">
   <div id="cv-wrap">
@@ -322,6 +383,29 @@ kbd{
       <button class="btn primary" id="btn-resume"><i data-ic="play" data-ic-size="16"></i> Resume</button>
       <button class="btn" id="btn-quit"><i data-ic="logout" data-ic-size="16"></i> Quit match</button>
     </div>
+    <!-- training settings, opens with T or from pause -->
+    <div id="tr-panel">
+      <h3><i data-ic="wrench" data-ic-size="16"></i> Training</h3>
+      <div class="tr-row"><span>Dummy</span>
+        <select id="tr-dummy">
+          <option value="stand">Stand still</option>
+          <option value="crouch">Crouch</option>
+          <option value="jump">Jump forever</option>
+          <option value="block">Block everything</option>
+          <option value="blockAfter">Block after first hit</option>
+          <option value="cpu">Fight back (CPU)</option>
+        </select></div>
+      <div class="tr-row"><span>CPU skill</span><select id="tr-diff"></select></div>
+      <label class="tr-chk"><input type="checkbox" id="tr-boxes" checked> Show hitboxes</label>
+      <label class="tr-chk"><input type="checkbox" id="tr-frames" checked> Show frame data</label>
+      <label class="tr-chk"><input type="checkbox" id="tr-infhp" checked> Infinite health</label>
+      <label class="tr-chk"><input type="checkbox" id="tr-infmeter"> Infinite meter</label>
+      <div class="tr-row" style="margin-top:10px;">
+        <button class="btn" id="tr-reset" style="flex:1"><i data-ic="refresh" data-ic-size="15"></i> Reset positions</button>
+      </div>
+      <div class="tr-hint">Press <kbd>T</kbd> to hide · <kbd>R</kbd> to reset · <kbd>Esc</kbd> to quit</div>
+    </div>
+
     <div id="ff-ov">
       <h2>Forfeit the match?</h2>
       <div style="display:flex;gap:12px;">
@@ -392,6 +476,15 @@ kbd{
     <h4>Tiers</h4>
     <p>Every fighter gets a power score computed from its stats and frame data — that's the tier badge on the
        select screen. Community fighters are rated by the exact same formula.</p>
+    <h4>Playing solo</h4>
+    <table class="keys-table">
+      <tr><td>Arcade</td><td>Five fights up a ladder, rising skill, a buffed boss at the top.</td></tr>
+      <tr><td>Solo vs CPU</td><td>One match against the computer at the skill you pick. The CPU reads
+        each fighter's own data, so it plays community characters too.</td></tr>
+      <tr><td>Training</td><td>Endless practice: dummy behaviour, visible hitboxes, live frame data
+        and frame advantage, infinite health/meter. <kbd>T</kbd> hides the panel, <kbd>R</kbd> resets
+        positions. The place to test a fighter you just made.</td></tr>
+    </table>
     <h4>Community fighters</h4>
     <p>The select screen has the whole community roster under the official four — search it, sort it,
        play anything. Make your own with the <a href="create.html" style="color:var(--cyan)">Fighter Creator</a>
@@ -1187,7 +1280,9 @@ function render(S){
       vx:-(p.vx/FP)*0.3+(Math.random()-0.5),vy:(Math.random()-0.5)*1.2,life:10,col:oc.color2||oc.color,r:2});
   }
   drawParticles(W2S);
+  if(TRAIN.on&&TRAIN.boxes)drawBoxes(S,W2S);
   drawHud(S);
+  if(TRAIN.on&&TRAIN.frames)drawFrameData(S);
   drawBanners(S);
   if(V.flash>0){ /* super activation white-out */
     ctx.fillStyle='rgba(255,255,255,'+(V.flash/14*0.5)+')';
@@ -1538,6 +1633,84 @@ function drawParticles(W2S){
   ctx.globalAlpha=1;
 }
 
+/* ── training overlays ── */
+function drawBoxes(S,W2S){
+  ctx.lineWidth=1.5;
+  for(let i=0;i<2;i++){
+    const f=S.f[i];
+    /* hurtbox */
+    const hb=hurtbox(f);
+    const [x1,y1]=W2S(hb[0]/FP,hb[1]/FP),[x2,y2]=W2S(hb[2]/FP,hb[3]/FP);
+    ctx.strokeStyle='rgba(0,212,255,.85)';
+    ctx.fillStyle='rgba(0,212,255,.10)';
+    ctx.fillRect(x1,y1,x2-x1,y2-y1);
+    ctx.strokeRect(x1,y1,x2-x1,y2-y1);
+    /* live hitbox */
+    const m=currentMove(f);
+    if(m&&f.t>=m.startup&&f.t<m.startup+m.active){
+      const ab=attackBox(f,m);
+      const [ax1,ay1]=W2S(ab[0]/FP,ab[1]/FP),[ax2,ay2]=W2S(ab[2]/FP,ab[3]/FP);
+      ctx.strokeStyle=f.mvHit?'rgba(255,176,32,.95)':'rgba(255,60,80,.95)';
+      ctx.fillStyle=f.mvHit?'rgba(255,176,32,.18)':'rgba(255,60,80,.22)';
+      ctx.fillRect(ax1,ay1,ax2-ax1,ay2-ay1);
+      ctx.strokeRect(ax1,ay1,ax2-ax1,ay2-ay1);
+    }
+  }
+  /* projectile boxes */
+  ctx.strokeStyle='rgba(255,60,80,.9)';
+  for(const p of S.proj){
+    const [px1,py1]=W2S((p.x-((p.w/2)|0)*FP)/FP,(p.y-((p.h/2)|0)*FP)/FP);
+    const [px2,py2]=W2S((p.x+((p.w/2)|0)*FP)/FP,(p.y+((p.h/2)|0)*FP)/FP);
+    ctx.strokeRect(px1,py1,px2-px1,py2-py1);
+  }
+}
+const ST_NAME={0:'idle',1:'walk',2:'jumpsquat',3:'air',4:'landing',5:'crouch',6:'attack',
+  7:'air attack',8:'HITSTUN',9:'blockstun',10:'launched',11:'knockdown',12:'getup',13:'KO',
+  14:'dash',15:'backdash'};
+function drawFrameData(S){
+  const me=S.f[0],du=S.f[1];
+  const m=currentMove(me);
+  let phase='—',fr='';
+  if(m){
+    if(me.t<m.startup){phase='startup';fr=(me.t+1)+'/'+m.startup;}
+    else if(me.t<m.startup+m.active){phase='ACTIVE';fr=(me.t-m.startup+1)+'/'+m.active;}
+    else{phase='recovery';fr=(me.t-m.startup-m.active+1)+'/'+m.recovery;}
+  }
+  const box=[14,CH-118,272,86];
+  ctx.fillStyle='rgba(8,8,14,.82)';
+  ctx.fillRect(box[0],box[1],box[2],box[3]);
+  ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=1;
+  ctx.strokeRect(box[0]+.5,box[1]+.5,box[2],box[3]);
+  ctx.textAlign='left';
+  ctx.font='700 11px "DM Sans",sans-serif';
+  ctx.fillStyle='#9a9aae';
+  ctx.fillText('YOU  '+ST_NAME[me.st],box[0]+10,box[1]+18);
+  ctx.fillText('DUMMY  '+ST_NAME[du.st],box[0]+10,box[1]+34);
+  ctx.font='800 12px "DM Sans",sans-serif';
+  if(m){
+    ctx.fillStyle=phase==='ACTIVE'?'#ff5f6d':(phase==='startup'?'#ffb020':'#7fe4ff');
+    ctx.fillText((m.name||'')+'  '+phase+' '+fr,box[0]+10,box[1]+52);
+    ctx.font='600 10.5px "DM Sans",sans-serif';
+    ctx.fillStyle='#62627a';
+    ctx.fillText(m.startup+'/'+m.active+'/'+m.recovery+' · '+m.dmg+' dmg'+
+      (m.hits?' · '+m.hits:''),box[0]+10,box[1]+66);
+  }
+  if(TRAIN.lastAdv!==null){
+    ctx.font='800 12px "DM Sans",sans-serif';
+    ctx.fillStyle=TRAIN.lastAdv>=0?'#37d67a':'#ff5f6d';
+    ctx.textAlign='right';
+    ctx.fillText((TRAIN.lastAdv>=0?'+':'')+TRAIN.lastAdv+' on '+
+      (TRAIN.comboHits?'hit':'block'),box[0]+box[2]-10,box[1]+52);
+  }
+  if(TRAIN.comboHits>=1){
+    ctx.textAlign='right';
+    ctx.font='800 12px "DM Sans",sans-serif';
+    ctx.fillStyle='#eceef3';
+    ctx.fillText(TRAIN.comboHits+' hits · '+TRAIN.comboDmg+' dmg',box[0]+box[2]-10,box[1]+66);
+  }
+  ctx.textAlign='left';
+}
+
 function drawHud(S){
   const names=[hudNames[0]||chr(S.f[0]).name, hudNames[1]||chr(S.f[1]).name];
   const BW=356,BH=17,PAD=24,TOP=20;
@@ -1660,6 +1833,10 @@ const keysDown=new Set();
 window.addEventListener('keydown',e=>{
   if(e.code==='Escape'){onEscape();return;}
   if(e.code==='KeyM'&&$('s-game').classList.contains('active')){setMuted(!muted);return;}
+  if(TRAIN.on&&$('s-game').classList.contains('active')){
+    if(e.code==='KeyT'){$('tr-panel').classList.toggle('on');return;}
+    if(e.code==='KeyR'){trainingReset();return;}
+  }
   if(!$('s-game').classList.contains('active')){
     /* keyboard menu navigation (skip while typing in an input, e.g. the room code) */
     if(document.activeElement&&document.activeElement.tagName==='INPUT')return;
@@ -1835,12 +2012,255 @@ function stopPadListen(){
    GAME LOOP
    ════════════════════════════════════════════════════════════════════ */
 let S=null;                      // live sim state
-let mode='local';                // 'local' | 'online'
+let mode='local';                // 'local' | 'online'  (netcode path)
+let soloMode=null;               // null | 'cpu' | 'arcade' | 'training'
 let paused=false,resultShown=false;
 let hudNames=['',''];
 let acc=0,lastT=0,rafOn=false;
 const SIM_MS=1000/60;
 const test={freeze:false,masks:null};
+
+/* ════════════════════════════════════════════════════════════════════
+   CPU — plays ANY fighter by reading its data: reach comes from each
+   move's hitbox, threat from its startup, anti-airs from whatever
+   launches. No per-character scripting, so community fighters get a
+   competent opponent for free.
+
+   The AI only ever produces input masks; the simulation stays pure.
+   Its dice are a seeded xorshift so a scripted test replays exactly.
+   ════════════════════════════════════════════════════════════════════ */
+/* react   frames of delay before the CPU "sees" a change
+   aggro   how often it attacks when it is safe to
+   risky   how often it attacks anyway inside the enemy's range (low = patient)
+   block   how often it actually guards something it saw coming
+   guard   how often it sits in guard instead of idling inside enemy range */
+const AI_LEVELS=[
+  {id:'iwannalose', name:'iwannalose',   react:26, decide:20, aggro:.40, risky:.95, block:.12, guard:.05, aa:.05, punish:.05, sup:.25, jump:.10, walkBack:.30},
+  {id:'regular',    name:'regular guy',  react:15, decide:13, aggro:.62, risky:.60, block:.55, guard:.45, aa:.35, punish:.35, sup:.55, jump:.22, walkBack:.20},
+  {id:'dagestan',   name:'dagestan pro', react:8,  decide:9,  aggro:.80, risky:.42, block:.82, guard:.72, aa:.65, punish:.65, sup:.85, jump:.30, walkBack:.14},
+  {id:'metroman',   name:'metroman',     react:3,  decide:6,  aggro:.94, risky:.32, block:.96, guard:.88, aa:.92, punish:.90, sup:1,   jump:.36, walkBack:.10},
+];
+const AI={on:false,side:1,lvl:AI_LEVELS[1],seed:1,rng:1,hist:[],seq:null,si:0};
+
+function aiSeed(n){AI.seed=n>>>0||1;AI.rng=AI.seed;}
+function aiRand(){                       // xorshift32 → 0..1
+  let x=AI.rng;
+  x^=x<<13;x>>>=0;x^=x>>17;x^=x<<5;x>>>=0;
+  AI.rng=x;
+  return x/4294967296;
+}
+function aiReset(side,lvl,seed){
+  AI.on=true;AI.side=side;AI.lvl=lvl;AI.hist=[];AI.seq=null;AI.si=0;
+  aiSeed(seed||((Date.now()&0xffff)+1));
+}
+/* how far a move reaches, in stage pixels */
+const reachOf=m=>m?m.box.x+m.box.w:0;
+/* pick the fastest move that reaches dist; null when nothing does */
+function pickPoke(c,dist,keys){
+  let best=null,bestStart=999;
+  for(const k of keys){
+    const m=c.moves[k];
+    if(!m)continue;
+    if(reachOf(m)+6<dist)continue;
+    if(m.startup<bestStart){best=k;bestStart=m.startup;}
+  }
+  return best;
+}
+/* a launcher for anti-air: prefers upward hitboxes */
+function pickAntiAir(c){
+  let best=null,score=-1e9;
+  for(const k of ['cheavy','heavy','special','light']){
+    const m=c.moves[k];
+    if(!m)continue;
+    let s=(m.launch?60:0)-m.startup*2-(m.box.y+m.box.h);   // higher box = better
+    if(s>score){score=s;best=k;}
+  }
+  return best;
+}
+const BTN={light:IN_A,heavy:IN_B,special:IN_C,clight:IN_A|IN_D,cheavy:IN_B|IN_D,
+           air:IN_A,throw:IN_A|IN_B,super:IN_B|IN_C};
+/* how far the opponent can reach us with anything */
+function maxReachOf(c){
+  let r=0;
+  for(const k in c.moves){const m=c.moves[k];if(m&&!m.throw)r=Math.max(r,reachOf(m));}
+  return r;
+}
+/* press the button for 2 frames, then release. The engine locks the
+   fighter for the rest of the move, so the CPU re-decides the instant
+   it becomes actionable again instead of burning its reaction window. */
+function planMove(c,key,holdDir){
+  const m=c.moves[key];if(!m)return null;
+  const btn=BTN[key]|0;
+  const hold=(key==='clight'||key==='cheavy')?IN_D:0;
+  return [btn|holdDir,btn|holdDir,hold,hold];
+}
+function planHold(mask,frames){const s=[];for(let i=0;i<frames;i++)s.push(mask);return s;}
+
+function aiInput(S){
+  const me=S.f[AI.side],opp=S.f[1-AI.side];
+  if(S.phase!==PHASES.fight){AI.seq=null;return 0;}
+  const c=chr(me);
+  const toward=opp.x>=me.x?IN_R:IN_L;
+  const away=toward===IN_R?IN_L:IN_R;
+
+  /* remember what the world looked like, then read it `react` frames late */
+  AI.hist.push({
+    dist:Math.abs(opp.x-me.x)/FP,
+    oppSt:opp.st, oppMv:opp.mv, oppT:opp.t,
+    oppAir:opp.st===ST.air||opp.st===ST.airattack||opp.st===ST.launched,
+    oppY:opp.y, oppHp:opp.hp
+  });
+  if(AI.hist.length>90)AI.hist.shift();
+  const seen=AI.hist[Math.max(0,AI.hist.length-1-AI.lvl.react)];
+
+  /* stunned / on the floor: hold back so we block on wake-up */
+  if(me.st===ST.hitstun||me.st===ST.blockstun||me.st===ST.launched||
+     me.st===ST.knockdown||me.st===ST.getup){
+    AI.seq=null;
+    return aiRand()<AI.lvl.block?away:0;
+  }
+  /* committed to our own move (or a dash): the engine ignores input anyway */
+  if(!canAct(me)){
+    if(AI.seq&&AI.si<AI.seq.length)return AI.seq[AI.si++];
+    return 0;
+  }
+
+  const dist=Math.abs(opp.x-me.x)/FP;
+  const L=AI.lvl;
+  /* what the opponent was doing `react` frames ago — reaction, not omniscience */
+  const seenMove=seen.oppMv?chr(opp).moves[seen.oppMv]:null;
+  const seenAtk=seenMove&&(seen.oppSt===ST.attack||seen.oppSt===ST.airattack);
+  const incoming=seenAtk&&seen.oppT<=seenMove.startup+seenMove.active;
+
+  /* 1 · block first, every frame it matters — this beats any plan we had,
+     because in this engine you can only guard while you're actionable */
+  if(incoming&&seen.dist<reachOf(seenMove)+22&&aiRand()<L.block){
+    const low=seenMove.hits==='low';
+    const high=seenMove.hits==='high';
+    const hold=low?(away|IN_D):(high?away:(aiRand()<.5?away:(away|IN_D)));
+    AI.seq=planHold(hold,Math.max(4,seenMove.active+3));AI.si=0;
+    return AI.seq[AI.si++];
+  }
+  /* mid-plan: keep executing */
+  if(AI.seq&&AI.si<AI.seq.length)return AI.seq[AI.si++];
+
+  /* 2 · anti-air: they are above us and close */
+  if(seen.oppAir&&dist<120&&opp.y<-30*FP&&aiRand()<L.aa){
+    const k=pickAntiAir(c);
+    if(k){AI.seq=planMove(c,k,0);AI.si=0;return AI.seq[AI.si++];}
+  }
+  const oppMove=seenMove;
+  /* 3 · punish: they are stuck in recovery and we are in range */
+  if(oppMove&&seenAtk&&seen.oppT>oppMove.startup+oppMove.active&&aiRand()<L.punish){
+    const k=pickPoke(c,dist,['heavy','special','light']);
+    if(k){AI.seq=planMove(c,k,0);AI.si=0;return AI.seq[AI.si++];}
+  }
+  /* 4 · super when the bar is full and it can land */
+  if(me.meter>=METER_MAX&&c.moves.super&&dist<reachOf(c.moves.super)&&aiRand()<L.sup){
+    AI.seq=planMove(c,'super',0);AI.si=0;return AI.seq[AI.si++];
+  }
+  /* 5 · in range: hit them — but inside THEIR range, be picky and fast */
+  const pokeKey=pickPoke(c,dist,['light','clight','heavy','special','cheavy']);
+  const inDanger=dist<=maxReachOf(chr(opp))+10;
+  if(pokeKey&&aiRand()<(inDanger?L.aggro*L.risky:L.aggro)){
+    let k=pokeKey;
+    const r=aiRand();
+    if(inDanger){                        // trading zone: use the quickest thing that reaches
+      k=pickPoke(c,dist,['light','clight'])||pokeKey;
+      if(dist<52&&c.moves.throw&&r<.22)k='throw';
+    }else{
+      if(dist<52&&c.moves.throw&&r<.18)k='throw';
+      else if(r<.42&&c.moves.clight&&reachOf(c.moves.clight)+6>=dist)k='clight';
+      else if(r<.62&&c.moves.heavy&&reachOf(c.moves.heavy)+6>=dist)k='heavy';
+    }
+    AI.seq=planMove(c,k,0);AI.si=0;return AI.seq[AI.si++];
+  }
+  /* 6 · didn't attack while inside their range: sit in guard rather than
+     stand around — this is what makes the good levels hard to touch */
+  if(inDanger&&aiRand()<L.guard){
+    AI.seq=planHold(aiRand()<.65?away:(away|IN_D),4);AI.si=0;
+    return AI.seq[AI.si++];
+  }
+  /* 7 · or back off to reset spacing */
+  if(pokeKey&&aiRand()<L.walkBack){
+    AI.seq=planHold(away,L.decide);AI.si=0;return AI.seq[AI.si++];
+  }
+  /* 7 · approach — walk, dash, or jump in */
+  if(dist>60){
+    const r=aiRand();
+    if(r<L.jump*0.35){
+      AI.seq=[toward|IN_U,toward|IN_U,toward,toward,toward,toward,toward,toward,
+              toward|IN_A,toward|IN_A,toward,toward];
+      AI.si=0;return AI.seq[AI.si++];
+    }
+    if(dist>170&&r<L.jump*0.35+0.25){    // double-tap forward = dash
+      AI.seq=[toward,toward,0,0,toward,toward,toward,toward,toward];
+      AI.si=0;return AI.seq[AI.si++];
+    }
+    AI.seq=planHold(toward,L.decide);AI.si=0;return AI.seq[AI.si++];
+  }
+  AI.seq=planHold(aiRand()<.5?toward:0,L.decide);AI.si=0;
+  return AI.seq[AI.si++];
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   TRAINING — dummy behaviour, hitbox/frame-data readouts, infinite
+   resources. Everything here reads the same data the CPU does, so it
+   works for community fighters too.
+   ════════════════════════════════════════════════════════════════════ */
+const TRAIN={
+  on:false, dummy:'stand', boxes:true, frames:true, infHp:true, infMeter:false,
+  lastAdv:null, lastDmg:0, comboDmg:0, comboHits:0, blockNext:false
+};
+function trainingDummy(S){
+  const d=S.f[1],p=S.f[0];
+  const away=d.x>=p.x?IN_R:IN_L;
+  switch(TRAIN.dummy){
+    case 'crouch': return IN_D;
+    case 'jump':   return (d.st===ST.idle||d.st===ST.walk||d.st===ST.crouch)?IN_U:0;
+    case 'block':  return away;
+    case 'blockAfter': return TRAIN.blockNext?away:0;
+    case 'cpu':    return aiInput(S);
+    default:       return 0;                       // stand still
+  }
+}
+/* frame advantage + combo damage, measured from the events the sim emits */
+function trainingWatch(S,prevHp,prevSt){
+  if(!TRAIN.on)return;
+  for(const ev of S.events){
+    if(ev.t!=='hit'&&ev.t!=='block')continue;
+    const att=S.f[0],def=S.f[1];
+    const m=att.mv?chr(att).moves[att.mv]:null;
+    if(m){
+      const remaining=(m.startup+m.active+m.recovery)-att.t;
+      const stun=(ev.t==='block')?m.blockstun:m.hitstun;
+      TRAIN.lastAdv=stun-remaining;
+    }
+    if(ev.t==='hit'){
+      TRAIN.lastDmg=prevHp-S.f[1].hp;
+      TRAIN.comboDmg+=TRAIN.lastDmg;
+      TRAIN.comboHits=S.f[1].combo;
+      if(TRAIN.dummy==='blockAfter')TRAIN.blockNext=true;
+    }
+  }
+  /* combo ended: defender is free again */
+  if(TRAIN.comboHits&&(S.f[1].st===ST.idle||S.f[1].st===ST.walk||S.f[1].st===ST.crouch)){
+    TRAIN.comboHits=0;TRAIN.comboDmg=0;
+    if(TRAIN.dummy==='blockAfter')TRAIN.blockNext=false;
+  }
+  if(TRAIN.infHp){S.f[0].hp=chr(S.f[0]).hp;S.f[1].hp=chr(S.f[1]).hp;}
+  if(TRAIN.infMeter){S.f[0].meter=METER_MAX;S.f[1].meter=METER_MAX;}
+}
+function trainingReset(){
+  if(!S)return;
+  const c0=S.f[0].c,c1=S.f[1].c;
+  const w=S.wins.slice();
+  S.f=[newFighter(c0,0),newFighter(c1,1)];
+  S.proj=[];S.wins=w;S.timer=ROUND_FRAMES;S.phase=PHASES.fight;S.phaseT=0;S.hitstop=0;
+  TRAIN.lastAdv=null;TRAIN.comboDmg=0;TRAIN.comboHits=0;TRAIN.blockNext=false;
+  if(TRAIN.infMeter){S.f[0].meter=METER_MAX;S.f[1].meter=METER_MAX;}
+  toast('Positions reset');
+}
 
 function startMatch(c0,c1,m){
   mode=m;S=newMatch(c0,c1);
@@ -1879,8 +2299,21 @@ function loop(ts){
 function advanceOneFrame(){
   if(S.phase===PHASES.matchend){onMatchEnd();return true;}
   if(mode==='local'){
-    const [m0,m1]=test.masks||localMasks();
+    let m0,m1;
+    if(test.masks){[m0,m1]=test.masks;}
+    else{
+      const human=localMasks();
+      m0=human[0];
+      /* P2 is a person, the CPU, or the training dummy */
+      if(TRAIN.on)m1=trainingDummy(S);
+      else if(AI.on)m1=aiInput(S);
+      else m1=human[1];
+    }
+    const prevHp=S.f[1].hp,prevSt=S.f[1].st;
     step(S,m0,m1);
+    trainingWatch(S,prevHp,prevSt);
+    /* training never ends: a KO just puts everyone back on their marks */
+    if(TRAIN.on&&S.phase!==PHASES.fight&&S.phase!==PHASES.intro){trainingReset();return true;}
   }else{
     /* delay-based lockstep — local player uses keyboard (either layout) or any pad */
     while(net.capF<=S.frame+net.delay){
@@ -1905,16 +2338,123 @@ function onMatchEnd(){
   resultShown=true;
   const w=S.winner;
   const names=[hudNames[0]||chr(S.f[0]).name,hudNames[1]||chr(S.f[1]).name];
+  const youWon = mode==='online' ? (net.host===(w===0)) : (w===0);
+  $('res-wait').classList.remove('on');
+  $('btn-rematch').disabled=false;$('btn-reselect').disabled=false;
+  $('btn-rematch').innerHTML=icon('refresh',17)+' Rematch';
+  $('btn-reselect').style.display='';
   $('res-title').textContent=(names[w]||'?').toUpperCase()+' WINS';
   $('res-sub').textContent='Rounds '+S.wins[0]+' — '+S.wins[1]+
     (mode==='online'?(net.host===(w===0)?'  ·  Victory':'  ·  Defeat'):'');
-  $('res-wait').classList.remove('on');
-  $('btn-rematch').disabled=false;$('btn-reselect').disabled=false;
+
+  if(soloMode==='arcade'){
+    arcadeResult(youWon);
+    return;
+  }
+  if(soloMode==='cpu'){
+    $('res-title').textContent=youWon?'YOU WIN':'YOU LOSE';
+    $('res-sub').textContent='Rounds '+S.wins[0]+' — '+S.wins[1]+'  ·  CPU: '+AI.lvl.name;
+  }
   show('s-result');
   /* console record: locally you are player 1, online you are whoever you are */
-  const youWon = mode==='online' ? (net.host===(w===0)) : (w===0);
   if(window.yczTally && youWon) yczTally('sffg',1);
   if(mode==='online')recordResult(w);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   ARCADE — five fights, rising skill, a boss at the top
+   ════════════════════════════════════════════════════════════════════ */
+const ARC={on:false,step:0,list:[],my:0,base:1,bossIdx:-1,bossCache:{}};
+function makeBoss(baseIdx){
+  if(ARC.bossCache[baseIdx]!=null)return ARC.bossCache[baseIdx];   // one boss per base, ever
+  const b=CHARACTERS[baseIdx];
+  const c={...b};
+  c.id='boss-'+b.id;
+  c.name='OMNIPOTENT '+b.name.toUpperCase();
+  c.tagline='regular guy, ascended';
+  c.hp=Math.min(2400,Math.round(b.hp*1.45));
+  c.passive={regen:1,defense:88,meterMult:150};
+  c.sprite=b.sprite;                       // share the loaded sheets, never re-clone Images
+  c.moves={};
+  for(const k in b.moves){
+    const m={...b.moves[k]};
+    m.dmg=Math.round(m.dmg*1.18);
+    m.box={...m.box};
+    c.moves[k]=m;
+  }
+  delete c.weakTo;                         // the boss has no achilles heel
+  CHARACTERS.push(c);
+  ARC.bossCache[baseIdx]=CHARACTERS.length-1;
+  return ARC.bossCache[baseIdx];
+}
+function arcadeBuild(myIdx,baseLvl){
+  ARC.my=myIdx;ARC.base=baseLvl;ARC.step=0;ARC.on=true;
+  /* opponents: the official roster minus you, shuffled by a stable seed,
+     padded if the roster is short, boss last */
+  const pool=[];
+  for(let i=0;i<OFFICIAL_COUNT;i++)if(i!==myIdx)pool.push(i);
+  aiSeed(((Date.now()/1000)|0)^(myIdx*2654435761));
+  for(let i=pool.length-1;i>0;i--){const j=(aiRand()*(i+1))|0;[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const list=[];
+  for(let i=0;i<4;i++)list.push({idx:pool[i%pool.length],lvl:Math.min(AI_LEVELS.length-1,baseLvl+(i>=2?1:0))});
+  const bossBase=pool[(aiRand()*pool.length)|0];
+  ARC.bossIdx=makeBoss(bossBase);
+  list.push({idx:ARC.bossIdx,lvl:AI_LEVELS.length-1,boss:true});
+  ARC.list=list;
+}
+function renderLadder(){
+  const box=$('arc-list');box.innerHTML='';
+  ARC.list.forEach((e,i)=>{
+    const c=CHARACTERS[e.idx];
+    const row=document.createElement('div');
+    row.className='arc-row'+(i<ARC.step?' done':'')+(i===ARC.step?' now':'')+(e.boss?' boss':'');
+    row.innerHTML='<span class="n">'+(e.boss?'★':(i+1))+'</span>'+
+      '<canvas width="120" height="140"></canvas>'+
+      '<div><div class="nm">'+esc(c.name)+'</div><div class="tl">'+esc(c.tagline||'')+'</div></div>'+
+      '<span class="sk">'+(i<ARC.step?'cleared':AI_LEVELS[e.lvl].name)+'</span>';
+    box.appendChild(row);
+    drawPortrait(row.querySelector('canvas'),c);
+  });
+  const done=ARC.step>=ARC.list.length;
+  $('arc-status').innerHTML=done?'<b>Ladder cleared.</b>':
+    'Fight <b>'+(ARC.step+1)+'</b> of '+ARC.list.length+' · playing as <b>'+esc(CHARACTERS[ARC.my].name)+'</b>';
+  $('arc-go-txt').textContent=done?'Done':(ARC.step===0?'Fight':'Next fight');
+  $('arc-go').disabled=done;
+}
+function arcadeStartFight(){
+  const e=ARC.list[ARC.step];
+  if(!e)return;
+  soloMode='arcade';TRAIN.on=false;
+  aiReset(1,AI_LEVELS[e.lvl],(ARC.step+1)*7919);
+  hudNames=['You',CHARACTERS[e.idx].name];
+  startMatch(ARC.my,e.idx,'local');
+}
+function arcadeResult(youWon){
+  const last=ARC.step>=ARC.list.length-1;
+  $('btn-reselect').style.display='none';
+  if(youWon){
+    ARC.step++;
+    if(window.yczTally)yczTally('sffg',1);
+    if(last){
+      $('res-title').textContent='ARCADE CLEARED';
+      $('res-sub').textContent='You beat the whole ladder as '+CHARACTERS[ARC.my].name+
+        '. The boss went home. Somehow you are still a regular guy.';
+      $('btn-rematch').innerHTML=icon('trophy',17)+' Run it again';
+      if(window.yczScore)yczScore('sffg-arcade',AI_LEVELS[ARC.base].name==='metroman'?5:ARC.base+1);
+      ARC.on=false;
+    }else{
+      $('res-title').textContent='VICTORY';
+      $('res-sub').textContent=(ARC.list.length-ARC.step)+' left. Next up: '+
+        CHARACTERS[ARC.list[ARC.step].idx].name;
+      $('btn-rematch').innerHTML=icon('play',17)+' Continue';
+    }
+  }else{
+    $('res-title').textContent='GAME OVER';
+    $('res-sub').textContent='Beaten on fight '+(ARC.step+1)+' of '+ARC.list.length+
+      ' by '+CHARACTERS[ARC.list[ARC.step].idx].name+'.';
+    $('btn-rematch').innerHTML=icon('refresh',17)+' Try again';
+  }
+  show('s-result');
 }
 
 function onEscape(){
@@ -1927,6 +2467,11 @@ function onEscape(){
   if($('ff-ov').classList.contains('on')){$('ff-ov').classList.remove('on');return;}
   if(!$('s-game').classList.contains('active')){navBack();return;}
   if(!S||S.phase===PHASES.matchend)return;
+  if(TRAIN.on){                       // training has no match to forfeit — just leave
+    TRAIN.on=false;soloMode=null;S=null;
+    $('tr-panel').classList.remove('on');
+    show('s-menu');return;
+  }
   if(mode==='local'){paused=!paused;$('pause-ov').classList.toggle('on',paused);}
   else $('ff-ov').classList.add('on');
 }
@@ -2166,6 +2711,7 @@ function drawPortrait(pcv,c){
   g.restore();
 }
 
+const SOLO_MODES=['cpu','arcade','training'];
 function openSelect(m){
   selMode=m;selTurn=0;
   /* online: adopt whatever the peer already told us (their pick/ready can
@@ -2174,13 +2720,17 @@ function openSelect(m){
   else{picks=[null,null];onReady=[false,false];}
   buildSelect();
   loadCommunity(true);
-  $('sel-go-txt').textContent=m==='online'?'Ready':'Start Fight';
+  $('sel-diff').classList.toggle('on',SOLO_MODES.includes(m));
+  $('sel-go-txt').textContent=m==='online'?'Ready':
+    (m==='arcade'?'Enter the ladder':(m==='training'?'Enter training':'Start Fight'));
   show('s-select');
 }
 function pickChar(i){
-  if(selMode==='local'){
+  if(selMode==='local'||selMode==='cpu'||selMode==='training'){
     picks[selTurn]=i;
     if(selTurn===0)selTurn=1;
+  }else if(selMode==='arcade'){
+    picks[0]=i;
   }else{
     if(onReady[0])return;                 // locked in
     picks[0]=i;
@@ -2199,12 +2749,19 @@ function paintSelect(){
     card.querySelector('.b1').classList.toggle('on',meP1);
     card.querySelector('.b2').classList.toggle('on',p2);
   });
-  if(selMode==='local'){
-    $('sel-hint').textContent=picks[0]===null?'Player 1 — pick a fighter':
-      picks[1]===null?'Player 2 — pick a fighter':'Ready to rumble';
+  if(selMode==='arcade'){
+    $('sel-hint').textContent=picks[0]===null?'Pick your fighter for the run':'Ready to climb';
+    $('sel-status').innerHTML=picks[0]!==null?
+      '<b style="color:var(--accent)">You</b> '+esc(CHARACTERS[picks[0]].name):'';
+    $('sel-go').disabled=picks[0]===null;
+  }else if(selMode==='local'||selMode==='cpu'||selMode==='training'){
+    const p2Label=selMode==='cpu'?'CPU':(selMode==='training'?'Dummy':'P2');
+    const p1Label=selMode==='local'?'Player 1':'You';
+    $('sel-hint').textContent=picks[0]===null?p1Label+' — pick a fighter':
+      picks[1]===null?(selMode==='local'?'Player 2 — pick a fighter':'Now pick the '+p2Label):'Ready to rumble';
     $('sel-status').innerHTML=
-      (picks[0]!==null?'<b style="color:var(--accent)">P1</b> '+esc(CHARACTERS[picks[0]].name):'')+
-      (picks[1]!==null?'  ·  <b style="color:var(--cyan)">P2</b> '+esc(CHARACTERS[picks[1]].name):'');
+      (picks[0]!==null?'<b style="color:var(--accent)">'+(selMode==='local'?'P1':'You')+'</b> '+esc(CHARACTERS[picks[0]].name):'')+
+      (picks[1]!==null?'  ·  <b style="color:var(--cyan)">'+p2Label+'</b> '+esc(CHARACTERS[picks[1]].name):'');
     $('sel-go').disabled=picks[0]===null||picks[1]===null;
   }else{
     $('sel-hint').textContent=onReady[0]?'Locked in — waiting for opponent':'Pick your fighter';
@@ -2215,10 +2772,33 @@ function paintSelect(){
   }
 }
 $('sel-go').addEventListener('click',()=>{
+  const lvl=AI_LEVELS[+$('diff-sel').value||0];
   if(selMode==='local'){
+    soloMode=null;AI.on=false;TRAIN.on=false;
     hudNames=['Player 1','Player 2'];
     bumpModPlay(picks[0]);bumpModPlay(picks[1]);
     startMatch(picks[0],picks[1],'local');
+  }else if(selMode==='cpu'){
+    soloMode='cpu';TRAIN.on=false;
+    aiReset(1,lvl);
+    hudNames=['You',CHARACTERS[picks[1]].name];
+    bumpModPlay(picks[0]);bumpModPlay(picks[1]);
+    startMatch(picks[0],picks[1],'local');
+  }else if(selMode==='training'){
+    soloMode='training';AI.on=false;
+    TRAIN.on=true;TRAIN.lastAdv=null;TRAIN.comboDmg=0;TRAIN.comboHits=0;
+    aiReset(1,lvl);AI.on=false;            // seeded, only used by the 'cpu' dummy
+    hudNames=['You','Dummy'];
+    bumpModPlay(picks[0]);bumpModPlay(picks[1]);
+    startMatch(picks[0],picks[1],'local');
+    $('tr-panel').classList.add('on');
+    if(TRAIN.infMeter){S.f[0].meter=METER_MAX;S.f[1].meter=METER_MAX;}
+  }else if(selMode==='arcade'){
+    soloMode='arcade';TRAIN.on=false;
+    bumpModPlay(picks[0]);
+    arcadeBuild(picks[0],+$('diff-sel').value||0);
+    renderLadder();
+    show('s-arcade');
   }else{
     onReady[0]=true;
     ctlSend({t:'ready'});
@@ -2623,7 +3203,35 @@ async function recordResult(winnerIdx){
 /* ════════════════════════════════════════════════════════════════════
    UI WIRING
    ════════════════════════════════════════════════════════════════════ */
+/* difficulty pickers share the same level list */
+function fillDiffSelects(){
+  const opts=AI_LEVELS.map((l,i)=>'<option value="'+i+'">'+esc(l.name)+'</option>').join('');
+  $('diff-sel').innerHTML=opts;$('tr-diff').innerHTML=opts;
+  const saved=+(localStorage.getItem('sffg-diff')||1);
+  $('diff-sel').value=Math.min(AI_LEVELS.length-1,Math.max(0,saved));
+  $('tr-diff').value=$('diff-sel').value;
+}
+$('diff-sel').addEventListener('change',()=>{
+  try{localStorage.setItem('sffg-diff',$('diff-sel').value);}catch(e){}
+  $('tr-diff').value=$('diff-sel').value;
+});
+$('tr-diff').addEventListener('change',()=>{
+  AI.lvl=AI_LEVELS[+$('tr-diff').value||0];
+  $('diff-sel').value=$('tr-diff').value;
+});
+$('tr-dummy').addEventListener('change',()=>{TRAIN.dummy=$('tr-dummy').value;TRAIN.blockNext=false;});
+$('tr-boxes').addEventListener('change',()=>TRAIN.boxes=$('tr-boxes').checked);
+$('tr-frames').addEventListener('change',()=>TRAIN.frames=$('tr-frames').checked);
+$('tr-infhp').addEventListener('change',()=>TRAIN.infHp=$('tr-infhp').checked);
+$('tr-infmeter').addEventListener('change',()=>TRAIN.infMeter=$('tr-infmeter').checked);
+$('tr-reset').addEventListener('click',trainingReset);
+
 $('btn-local').addEventListener('click',()=>openSelect('local'));
+$('btn-cpu').addEventListener('click',()=>openSelect('cpu'));
+$('btn-train').addEventListener('click',()=>openSelect('training'));
+$('btn-arcade').addEventListener('click',()=>openSelect('arcade'));
+$('arc-go').addEventListener('click',arcadeStartFight);
+$('arc-quit').addEventListener('click',()=>{ARC.on=false;soloMode=null;show('s-menu');});
 $('btn-online').addEventListener('click',()=>{
   if(!sb){toast('Servers unreachable — local versus only','err');return;}
   if(!user){toast('Sign in on the Chill Zone first, then come back','err');return;}
@@ -2651,7 +3259,13 @@ $('btn-copy').addEventListener('click',async()=>{
   catch(e){toast('Copy failed — code: '+net.code,'err');}
 });
 $('btn-resume').addEventListener('click',()=>{paused=false;$('pause-ov').classList.remove('on');});
-$('btn-quit').addEventListener('click',()=>{paused=false;$('pause-ov').classList.remove('on');S=null;show('s-menu');});
+$('btn-quit').addEventListener('click',()=>{
+  paused=false;$('pause-ov').classList.remove('on');
+  S=null;AI.on=false;TRAIN.on=false;
+  $('tr-panel').classList.remove('on');
+  if(soloMode==='arcade'&&ARC.on){renderLadder();show('s-arcade');return;}
+  soloMode=null;show('s-menu');
+});
 $('btn-ff-no').addEventListener('click',()=>$('ff-ov').classList.remove('on'));
 $('btn-ff-yes').addEventListener('click',()=>{
   $('ff-ov').classList.remove('on');
@@ -2659,7 +3273,18 @@ $('btn-ff-yes').addEventListener('click',()=>{
   if(S){S.phase=PHASES.matchend;S.winner=net.host?1:0;}
 });
 $('btn-rematch').addEventListener('click',()=>{
-  if(mode==='local'){startMatch(S.f[0].c,S.f[1].c,'local');return;}
+  if(soloMode==='arcade'){
+    if(!ARC.on||ARC.step>=ARC.list.length){          // cleared: fresh run, same fighter
+      arcadeBuild(ARC.my,ARC.base);
+    }
+    renderLadder();show('s-arcade');return;
+  }
+  if(mode==='local'){
+    if(soloMode==='cpu')aiReset(1,AI.lvl);
+    startMatch(S.f[0].c,S.f[1].c,'local');
+    if(soloMode==='training')$('tr-panel').classList.add('on');
+    return;
+  }
   net.rematch[0]=true;
   ctlSend({t:'rm'});
   $('res-wait').classList.add('on');
@@ -2667,14 +3292,16 @@ $('btn-rematch').addEventListener('click',()=>{
   maybeRematch();
 });
 $('btn-reselect').addEventListener('click',()=>{
-  if(mode==='local'){openSelect('local');return;}
+  if(mode==='local'){openSelect(soloMode||'local');return;}
   ctlSend({t:'sel'});
   resetOnlineSelect();
   show('s-select');
 });
 $('btn-leave').addEventListener('click',()=>{
   if(mode==='online'){ctlSend({t:'bye'});netTeardown();}
-  S=null;show('s-menu');
+  S=null;soloMode=null;AI.on=false;TRAIN.on=false;ARC.on=false;
+  $('tr-panel').classList.remove('on');
+  show('s-menu');
 });
 window.addEventListener('beforeunload',()=>{if(net.on)ctlSend({t:'bye'});});
 
@@ -2685,6 +3312,7 @@ if('ontouchstart' in window&&!window.matchMedia('(pointer:fine)').matches){
 
 $('btn-mute').addEventListener('click',()=>setMuted(!muted));
 setMuted(muted);   // paint the initial label
+fillDiffSelects();
 paintNav();        // focus ring visible from the start
 fitCanvas();
 initAuth();
@@ -2693,7 +3321,37 @@ initAuth();
    TEST HOOKS — used by the local Playwright harness, harmless in prod
    ════════════════════════════════════════════════════════════════════ */
 window.__fz={
-  startLocal(a,b){hudNames=['Player 1','Player 2'];startMatch(a??0,b??1,'local');},
+  startLocal(a,b){soloMode=null;AI.on=false;TRAIN.on=false;hudNames=['Player 1','Player 2'];startMatch(a??0,b??1,'local');},
+  startCPU(a,b,lvl,seed){
+    soloMode='cpu';TRAIN.on=false;
+    aiReset(1,AI_LEVELS[lvl??1],seed??12345);
+    hudNames=['You',CHARACTERS[b??1].name];
+    startMatch(a??0,b??1,'local');
+  },
+  startTraining(a,b){
+    soloMode='training';AI.on=false;TRAIN.on=true;
+    TRAIN.lastAdv=null;TRAIN.comboDmg=0;TRAIN.comboHits=0;
+    aiReset(1,AI_LEVELS[1],999);AI.on=false;
+    hudNames=['You','Dummy'];
+    startMatch(a??0,b??1,'local');
+    $('tr-panel').classList.add('on');
+  },
+  /* drive n frames with the CPU/dummy on P2 (test.freeze must be on) */
+  stepAI(n,humanMask){
+    for(let i=0;i<(n||1);i++){
+      if(!S)break;
+      const m1=TRAIN.on?trainingDummy(S):(AI.on?aiInput(S):0);
+      const prevHp=S.f[1].hp;
+      step(S,humanMask|0,m1);
+      trainingWatch(S,prevHp,S.f[1].st);
+      spawnSparks(S);
+      if(TRAIN.on&&S.phase!==PHASES.fight&&S.phase!==PHASES.intro)trainingReset();
+      else if(S.phase===PHASES.matchend){onMatchEnd();break;}
+    }
+  },
+  AI,TRAIN,ARC,AI_LEVELS,
+  arcadeBuild:(my,lvl)=>{arcadeBuild(my,lvl);renderLadder();},
+  arcadeStart:()=>arcadeStartFight(),
   S:()=>S,
   freeze(v){test.freeze=v!==false;},
   masks(m0,m1){test.masks=(m0===null||m0===undefined)?null:[m0|0,m1|0];},
