@@ -11,8 +11,13 @@ Pages on 17 Aug 2026 after a multi-hour GitHub outage blocked three deploys in a
 in `_headers`, and `.assetsignore` keeps `CLAUDE.md`, `.git` and any stray `.sql` out
 of what gets published — GitHub Pages had been serving this file at `/CLAUDE.md`.
 Every push to `main` redeploys in about 80 seconds. GitHub is now only where the code
-lives. Cloudflare also gives unmetered bandwidth, which matters: the site ships ~90 MB
-of art.
+lives; Pages was switched off in the repo settings on 18 Aug 2026. Cloudflare also
+gives unmetered bandwidth, which matters: the site ships ~90 MB of art.
+
+`workers_dev` and `preview_urls` are both **false**, so the site answers only on
+`yuniorschillzone.xyz` — no `*.workers.dev` mirror, and no fresh public URL minted per
+deploy. Don't turn them back on to "test something"; use `python3 -m http.server`
+locally instead.
 
 **The owner is not a professional developer.** Explain changes plainly, one step at a
 time, and don't dump large amounts of technical material at once. He tests on
@@ -127,8 +132,7 @@ scoped `.page:not([id])` for exactly this reason.
   Moderation is done by setting `status='removed'`. `sffg_mod_played(mod_id)` is a
   security-definer RPC that bumps `plays` — the client can't write that column directly.
   Sprite sheets are **not** in this table: they live in the `avatars` bucket under
-  `<uid>/sffg-mods/<id>/<anim>.png`. **This table's SQL has not been run yet** — see
-  Known gaps.
+  `<uid>/sffg-mods/<id>/<anim>.png`. Migration run 18 Aug 2026.
 - `pinned_messages` — message_id (text, no FK on purpose — id types are mixed), room_id,
   pinned_by, created_at. Created by `features-update.sql`. RLS: everyone reads; only room
   moderators (or the two DM participants) insert/delete, via the `ycz_can_pin(text)`
@@ -274,16 +278,6 @@ wrapped a MUGEN rip in a licence he had no right to write.
 
 ## Known gaps / next up
 
-- **SFFG's `fighter_mods` SQL must be run once** in the Supabase SQL editor (table +
-  RLS + the `sffg_mod_played` counter). Handed to the owner in chat, never committed.
-  Until it runs, the community section of the character select shows its error state
-  and publishing from `create.html` fails — everything else in the game works.
-- **Two leaked Google API keys** (GitHub secret-scanning alerts #1/#2, Dec 2025) —
-  leftovers from the Firebase era, found in the old `chat.js` and `index.html`.
-  Firebase web keys are public by design, so this is cleanup rather than an
-  emergency, but nothing on the site uses them any more: delete them in the Google
-  console and close the alerts. Removing them from the code does not help; they are
-  in git history forever.
 - `servers_read` invite-code exposure (above)
 - SFFG: no rollback netcode yet (delay-based lockstep; the engine was built
   deterministic and rewindable specifically so this can be added)
