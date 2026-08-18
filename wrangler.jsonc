@@ -1,0 +1,16 @@
+{
+  // ═══════════════════════════════════════════════════════════════════
+  //  Yuniors Chill Zone — configuración para Cloudflare Workers
+  //
+  //  El sitio es HTML puro: no hay nada que compilar. Esto solo le dice
+  //  a Cloudflare "sirve la carpeta entera tal cual", y las reglas de
+  //  caché salen del archivo _headers.
+  //
+  //  Qué NO se publica: lo que esté en .assetsignore
+  // ═══════════════════════════════════════════════════════════════════
+  "name": "yunior-chill-zone",
+  "compatibility_date": "2026-08-17",
+  "assets": {
+    "directory": "./"
+  }
+}

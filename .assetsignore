@@ -1,0 +1,18 @@
+# Archivos que NO se publican en la web.
+# (En GitHub Pages sí se publicaban — CLAUDE.md incluido, que enseñaba
+#  el esquema entero de la base de datos a cualquiera que lo pidiera.)
+
+**/.git
+**/.github
+**/node_modules
+**/.DS_Store
+
+# notas internas del proyecto
+CLAUDE.md
+
+# configuración del hosting, no hace falta servirla
+wrangler.jsonc
+.assetsignore
+
+# por si alguna vez cae un .sql en la carpeta
+**/*.sql
