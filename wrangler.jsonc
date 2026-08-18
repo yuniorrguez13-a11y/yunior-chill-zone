@@ -19,5 +19,19 @@
   // nueva por cada despliegue), que servían copias enteras del sitio en
   // dominios que no son el tuyo.
   "workers_dev": false,
-  "preview_urls": false
+  "preview_urls": false,
+
+  // Los dominios que sirve este Worker. Escrito aquí para que sobreviva
+  // a cualquier cambio en el panel: si alguien los desconecta a mano, el
+  // siguiente despliegue los vuelve a poner.
+  //
+  // Ojo con el DNS: estos dos nombres no pueden tener registros A/AAAA/CNAME
+  // propios en la zona, o Cloudflare rechaza el dominio con "already has
+  // externally managed DNS records". Los cuatro A a 185.199.x.153 y el CNAME
+  // de www que dejó GitHub Pages se borraron el 18 ago 2026 por esto mismo.
+  // NO tocar el registro Tunnel de movies. (Jellyfin) ni nada de Zoho.
+  "routes": [
+    { "pattern": "yuniorschillzone.xyz", "custom_domain": true },
+    { "pattern": "www.yuniorschillzone.xyz", "custom_domain": true }
+  ]
 }

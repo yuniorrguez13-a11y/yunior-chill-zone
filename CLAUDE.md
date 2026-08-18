@@ -17,7 +17,22 @@ gives unmetered bandwidth, which matters: the site ships ~90 MB of art.
 `workers_dev` and `preview_urls` are both **false**, so the site answers only on
 `yuniorschillzone.xyz` — no `*.workers.dev` mirror, and no fresh public URL minted per
 deploy. Don't turn them back on to "test something"; use `python3 -m http.server`
-locally instead.
+locally instead. The two custom domains are declared in `wrangler.jsonc` under `routes`
+so a redeploy restores them if the dashboard ever loses them.
+
+**DNS, and the trap that cost us an outage.** Deploying the Worker does *not* move the
+domain to it. The zone kept GitHub Pages' four proxied `A` records (`185.199.10x.153`)
+plus a `www` CNAME to `yuniorrguez13-a11y.github.io`, so Cloudflare went on fetching the
+site *from GitHub* and everything looked fine — right up until Pages was switched off and
+the domain started serving GitHub's 404. Attaching a Worker custom domain then fails with
+*"already has externally managed DNS records"* until those five records are deleted.
+Order matters: **delete the old web records first, then attach the custom domain.**
+When touching this zone, only `A`/`AAAA`/`CNAME` for the site itself are ever in play.
+Leave alone: the three Zoho `MX`, the SPF / DKIM (`zoho._domainkey`) / `zoho-verification`
+/ `google-site-verification` / `_discord` TXT records, and — easy to miss —
+`movies.yuniorschillzone.xyz`, a **Cloudflare Tunnel to a Jellyfin box** that has nothing
+to do with the website. Deleting any of those breaks email, mail reputation, or his media
+server. `_dmarc` is still absent (see Known gaps).
 
 **The owner is not a professional developer.** Explain changes plainly, one step at a
 time, and don't dump large amounts of technical material at once. He tests on
@@ -278,6 +293,10 @@ wrapped a MUGEN rip in a licence he had no right to write.
 
 ## Known gaps / next up
 
+- **No DMARC record.** `_dmarc` TXT `v=DMARC1; p=none; rua=mailto:yuni@yuniorschillzone.xyz`
+  — one record in the Cloudflare DNS panel. SPF and DKIM are both live and verified, so
+  this is the last piece; without it iCloud in particular junks or silently drops the
+  signup confirmation mail.
 - `servers_read` invite-code exposure (above)
 - SFFG: no rollback netcode yet (delay-based lockstep; the engine was built
   deterministic and rewindable specifically so this can be added)
