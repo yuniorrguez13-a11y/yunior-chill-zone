@@ -2,7 +2,17 @@
 
 `yuniorschillzone.xyz` — a Discord-style community site. Plain HTML/CSS/JS, no build
 step, no framework. Supabase for auth, database, realtime and storage. Cloudflare for
-DNS and TURN. Deployed by GitHub Pages from `main`.
+DNS, TURN **and hosting**.
+
+**Hosting: Cloudflare Workers static assets, deployed from `main`.** Moved off GitHub
+Pages on 17 Aug 2026 after a multi-hour GitHub outage blocked three deploys in a row
+(build fine every time, the Pages deployment API answered 503). Config lives in
+`wrangler.jsonc` (just "serve this folder" — there is no build command), caching rules
+in `_headers`, and `.assetsignore` keeps `CLAUDE.md`, `.git` and any stray `.sql` out
+of what gets published — GitHub Pages had been serving this file at `/CLAUDE.md`.
+Every push to `main` redeploys in about 80 seconds. GitHub is now only where the code
+lives. Cloudflare also gives unmetered bandwidth, which matters: the site ships ~90 MB
+of art.
 
 **The owner is not a professional developer.** Explain changes plainly, one step at a
 time, and don't dump large amounts of technical material at once. He tests on
@@ -24,6 +34,11 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `piano.html` | Multiplayer piano. |
 | `music.html` | Static link page, themed via `ycz-theme.css`. |
 | `gaming.html` | The console. A Steam-Big-Picture launcher: wide hero for the selected game, upright capsules for the rest, games open in an iframe here rather than redirecting. Edit the `GAMES` array at the top of its `<script>` to add or remove one — nothing else in the file needs touching. |
+| `fight.html` | **SFFG** (Stupidly Funny Fighting Game for Dummies). The fighting game: deterministic 60fps engine, official roster, community fighters, local/CPU/arcade/training/online. See its own section below. |
+| `create.html` | SFFG's no-code fighter creator. Sliders, move editor with a to-scale hitbox overlay, sprite frame upload that chroma-keys/trims/aligns and builds sheets in the browser, live validation, publish to Supabase. |
+| `modding.html` | SFFG's "how to code a fighter" tutorial — the JSON format, limits, sprite contract, validation rules, worked example. |
+| `sffg-mods.js` | The community fighter format (v2): limits, `validateMod()`, `hashMod()`. Shared by `fight.html` and `create.html` so the game and the creator enforce identical rules. |
+| `wrangler.jsonc` · `_headers` · `.assetsignore` | Cloudflare hosting config, cache rules, and what stays unpublished. |
 
 ### Supabase Edge Functions
 | Function | Purpose | Notes |
@@ -105,6 +120,15 @@ scoped `.page:not([id])` for exactly this reason.
   unlock, slowmode, channel_create/rename/delete, invite, transfer, server_update,
   bot_create/delete. Viewer lives in server settings; lines are i18n (`aud_*` keys).
 - `friendships`, `notifications`, `reactions`, `bots`, `bot_commands`, `server_bans`
+- `fighter_mods` — SFFG community fighters. id (text, the mod id), owner_id, owner_name,
+  name, tagline, `data` (jsonb — the whole validated fighter, format v2), has_sprites,
+  status ('live' / 'removed'), plays, created_at, updated_at. RLS: anyone (signed in or
+  not) reads rows with `status='live'`; insert/update/delete only by `owner_id`.
+  Moderation is done by setting `status='removed'`. `sffg_mod_played(mod_id)` is a
+  security-definer RPC that bumps `plays` — the client can't write that column directly.
+  Sprite sheets are **not** in this table: they live in the `avatars` bucket under
+  `<uid>/sffg-mods/<id>/<anim>.png`. **This table's SQL has not been run yet** — see
+  Known gaps.
 - `pinned_messages` — message_id (text, no FK on purpose — id types are mixed), room_id,
   pinned_by, created_at. Created by `features-update.sql`. RLS: everyone reads; only room
   moderators (or the two DM participants) insert/delete, via the `ycz_can_pin(text)`
@@ -198,9 +222,76 @@ migration: `ycz_sv_role(text)` (your role in a server, 'owner' if you own it),
 
 ---
 
+## SFFG — the fighting game (`fight.html`)
+
+Built Aug 2026. A real fighting game, not a toy: **deterministic** 60fps simulation
+(integers only, no `Math.random`/`Date`/floats inside `step()` and friends) so that
+netplay works and rollback stays possible later. Floats live only in the renderer.
+
+- **Roster** — Regular Guy, Truck, Sir Twig, Sarge, Parasoul. `OFFICIAL_COUNT` pins
+  them: community fighters only ever append after that index, and the select screen
+  slices on it so officials always sit on top whatever the sorting says.
+- **Mechanics** — lows/overheads, unblockable throws, dashes with backdash i-frames,
+  super meter that carries across rounds, juggle cap of 4, combo damage scaling,
+  armor and armor-break, per-character counters (`weakTo`, official roster only),
+  data-driven projectiles and passives (regen / defense% / meter%).
+- **Modes** — Local Versus (keyboard vs controller), Solo vs CPU, Arcade (5 fights,
+  rising skill, `OMNIPOTENT <NAME>` boss), Training (dummy behaviours, hitbox and
+  hurtbox overlay, live frame data and real frame advantage, infinite hp/meter),
+  and Online.
+- **CPU** — one brain that plays *any* fighter by reading its data: reach from each
+  hitbox, threat from each startup, anti-airs from whatever launches. Four levels
+  named after the tier ladder. Seeded xorshift, so scripted tests replay exactly.
+- **Online** — Supabase realtime for signalling only, then a raw unordered WebRTC
+  datachannel peer-to-peer, delay-based lockstep, FNV-1a checksum exchange as a
+  desync tripwire. Character picks travel as *refs* (official index, or mod id +
+  content hash) because local roster indexes differ once mods load.
+- **Sprites** — per-animation strips with per-anim cell geometry (`cw/ch/cx/fy`),
+  optional keys (`walkback`, `dash`, `backdash`, `block`, `getup`, `crouch`), and
+  `move.anim` / `move.impact` to point a move at its own sheet and say which drawing
+  is the hit. Sheets load with a `?v=` cache-buster — **always bump `sprite.v` when
+  re-cutting strips**, or browsers pair new geometry with old images.
+- **Sprite-cutting gotcha, learned the hard way:** source packs often record the
+  character *travelling across the canvas*. Cropping a fixed box makes the sprite
+  slide inside its cell while the fighter stands still. Movement/stance/reaction
+  strips are anchored per frame (each frame centred on its own silhouette, feet on
+  its own baseline); attack strips keep shared-canvas alignment so hit geometry
+  stays true.
+
+### Community fighters (the Mods Update)
+A community fighter is **pure data** — that is the sandbox, no mod code is ever
+executed. `sffg-mods.js` whitelists every field, clamps every number, strips markup
+and unknown keys, rejects one-touch-kill data, and removes matchup fields (`weakTo`
+is official-only). Browsing and playing need no account; **publishing requires
+sign-in**. Sprite sheets go to the existing `avatars` bucket under
+`<uid>/sffg-mods/<id>/`, so the existing path RLS covers them.
+
+**Art rule, non-negotiable:** original or CC0 art only. Ripped, traced or repainted
+sprites from commercial games do not go in the repo — recoloring or redrawing over
+someone's frames still starts from their frames. Two packs were rejected on these
+grounds during development; one itch.io pack was rejected because the uploader had
+wrapped a MUGEN rip in a licence he had no right to write.
+
 ## Known gaps / next up
 
+- **SFFG's `fighter_mods` SQL must be run once** in the Supabase SQL editor (table +
+  RLS + the `sffg_mod_played` counter). Handed to the owner in chat, never committed.
+  Until it runs, the community section of the character select shows its error state
+  and publishing from `create.html` fails — everything else in the game works.
+- **Two leaked Google API keys** (GitHub secret-scanning alerts #1/#2, Dec 2025) —
+  leftovers from the Firebase era, found in the old `chat.js` and `index.html`.
+  Firebase web keys are public by design, so this is cleanup rather than an
+  emergency, but nothing on the site uses them any more: delete them in the Google
+  console and close the alerts. Removing them from the code does not help; they are
+  in git history forever.
 - `servers_read` invite-code exposure (above)
+- SFFG: no rollback netcode yet (delay-based lockstep; the engine was built
+  deterministic and rewindable specifically so this can be added)
+- SFFG: no moderation queue for community fighters — moderators currently act by
+  setting `status='removed'`. A preview-and-approve queue is the natural next piece.
+- SFFG: Truck's sprite is drawn much larger than his hurtbox (`scale:1.85` against
+  `w:68`); training mode's hitbox overlay makes the mismatch obvious.
+- SFFG: no touch controls — a keyboard or controller is required.
 - **Both Aug 2026 migrations must each be run once** in the Supabase SQL editor — the
   features migration (pinned messages + `user_profiles.bio`) is done; the **admin-tools
   migration** (audit log, slowmode/lock columns, timeouts, rebuilt RLS) lives in chat
