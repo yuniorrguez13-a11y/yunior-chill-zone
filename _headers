@@ -1,14 +1,11 @@
 # ═══════════════════════════════════════════════════════════════════
-#  Cabeceras para Cloudflare Pages
+#  Cabeceras para Cloudflare
 #
 #  Reglas de caché pensadas para este sitio: el HTML y los scripts se
 #  revalidan siempre (los cambios se ven al instante, se acabaron los
 #  "refresca con Ctrl+Shift+R"), y el arte pesado se cachea de verdad
 #  porque casi nunca cambia — y cuando cambia, los sprites ya viajan
 #  con ?v= detrás, así que el navegador lo pilla igual.
-#
-#  GitHub Pages ignora este archivo, así que no rompe nada mientras
-#  sigamos allí.
 # ═══════════════════════════════════════════════════════════════════
 
 /*
