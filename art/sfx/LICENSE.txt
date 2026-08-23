@@ -1,0 +1,5 @@
+Sound effects in this folder are from the "400 Sounds Pack" by
+Chequered Ink (https://ci.itch.io/400-sounds-pack), edited for the
+game (trimmed, mono, resampled). The pack is free for any use
+including commercial, with or without credit; it may not be resold
+or redistributed as-is as game assets. We credit anyway: thanks CI.

@@ -19,6 +19,8 @@
 <meta name="twitter:image" content="https://yuniorschillzone.xyz/preview.png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+/* hand-drawn face for the tier badges — Colorfiction, SIL OFL (fonts/COLORFICTION-OFL.txt) */
+@font-face{font-family:'CF Sketch';src:url('fonts/colorfiction-sketch.otf');font-display:swap;}
 
 :root{
   --bg:#0a0a12; --bg2:#12121b; --bg3:#171722; --card:#14141f;
@@ -100,7 +102,8 @@ h1.logo{
 .chr-card h3{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;margin-top:6px;}
 .chr-card .tagline{color:var(--text2);font-size:12.5px;margin-top:3px;min-height:17px;}
 .chr-tier{
-  display:inline-block;margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  display:inline-block;margin-top:10px;font-size:13.5px;font-weight:400;letter-spacing:.04em;text-transform:uppercase;
+  font-family:'CF Sketch','DM Sans',sans-serif;
   color:var(--amber);border:1px solid rgba(255,176,32,.4);border-radius:999px;padding:3px 11px;background:rgba(255,176,32,.07);
 }
 .chr-stats{margin-top:12px;display:flex;flex-direction:column;gap:5px;}
@@ -158,6 +161,14 @@ input.code-in{
   padding:12px 6px 12px 14px;outline:none;text-transform:uppercase;transition:border-color .15s;
 }
 input.code-in:focus{border-color:rgba(232,22,42,.5);}
+.lb-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--border);font-size:14px;}
+.lb-row:last-child{border-bottom:0;}
+.lb-row .who{color:var(--text2);}
+.lb-row .who b{color:var(--text);}
+.lb-row .st{margin-left:auto;font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;font-weight:700;flex:none;}
+.lb-row .st.live{color:var(--grn);}
+.lb-row .btn{padding:7px 15px;font-size:13px;flex:none;}
+#lobby-empty{color:var(--text3);font-size:13px;}
 #on-status{min-height:22px;color:var(--text2);font-size:13.5px;display:flex;align-items:center;gap:9px;}
 #on-status.ok{color:var(--grn);}
 #on-status.bad{color:#ff5f6d;}
@@ -385,6 +396,11 @@ kbd{
       <input class="code-in" id="join-in" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false">
       <button class="btn primary" id="btn-join">Join</button>
     </div>
+  </div>
+  <div class="card">
+    <h3><i data-ic="users" data-ic-size="18"></i> Live right now</h3>
+    <p>Open rooms and matches in progress — updates by itself. See a friend waiting? Jump in.</p>
+    <div id="lobby-list"><div id="lobby-empty">Nobody around right now — create a room and it shows up here for everyone.</div></div>
   </div>
   <div id="on-status"></div>
 </div>
@@ -2037,10 +2053,27 @@ function spawnSparks(S){
   }
 }
 
-/* ── sound: everything synthesized live, nothing to download ── */
+/* ── sound: real samples for the impacts (400 Sounds Pack by Chequered Ink,
+     see art/sfx/LICENSE.txt) with the original synth as fallback while they
+     load or if the fetch fails. Bell and super stay synthesized on purpose. ── */
 let AC=null,muted=localStorage.getItem('sffg-mute')==='1';
+const SFX_SRC={hit1:'art/sfx/hit1.wav',hit2:'art/sfx/hit2.wav',block:'art/sfx/block.wav',
+  whoosh:'art/sfx/whoosh.wav',armor:'art/sfx/armor.wav',ko:'art/sfx/ko.wav'};
+const SFX_VOL={hit1:.8,hit2:.9,block:.45,whoosh:.3,armor:.8,ko:1};
+const SFX_RAW={},SFX_BUF={};
+for(const k in SFX_SRC){
+  fetch(SFX_SRC[k]).then(r=>r.ok?r.arrayBuffer():null)
+    .then(b=>{if(b){SFX_RAW[k]=b;decodeSfx();}}).catch(()=>{});
+}
+function decodeSfx(){
+  if(!AC)return;
+  for(const k of Object.keys(SFX_RAW)){
+    const raw=SFX_RAW[k];delete SFX_RAW[k];
+    AC.decodeAudioData(raw).then(buf=>{SFX_BUF[k]=buf;}).catch(()=>{});
+  }
+}
 function ac(){
-  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}}
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();decodeSfx();}catch(e){return null;}}
   if(AC.state==='suspended')AC.resume();
   return AC;
 }
@@ -2049,6 +2082,17 @@ function sfx(kind){
   if(muted)return;
   const a=ac();if(!a||a.state!=='running')return;
   const t=a.currentTime;
+  /* real sample when decoded; tiny pitch wobble so mashing doesn't sound robotic */
+  const buf=SFX_BUF[kind];
+  if(buf){
+    const src=a.createBufferSource(),g=a.createGain();
+    src.buffer=buf;
+    src.playbackRate.value=0.94+Math.random()*0.12;
+    g.gain.value=SFX_VOL[kind]!=null?SFX_VOL[kind]:0.8;
+    src.connect(g);g.connect(a.destination);
+    src.start(t);
+    return;
+  }
   const o=(type,f0,f1,dur,vol)=>{
     const os=a.createOscillator(),g=a.createGain();
     os.type=type;
@@ -3152,9 +3196,21 @@ function renderCommunity(){
       '<span class="chr-tier">'+esc(t.tier)+' · '+t.score+'</span>'+
       '<div class="chr-stats">'+stat('PWR',pow)+stat('SPD',spd)+stat('HP',vit)+'</div>';
     grid.appendChild(card);
-    /* preview uses the registered char when we have it (real sprites), the
-       bare data otherwise (puppet placeholder) */
-    drawPortrait(card.querySelector('canvas'),MODS.byId[row.id]?MODS.byId[row.id].char:c);
+    /* preview: the registered char when we have it; otherwise load JUST the
+       idle sheet for the card, so portraits show without clicking anything */
+    let pchar=MODS.byId[row.id]?MODS.byId[row.id].char:null;
+    if(!pchar&&row.has_sprites&&c.sprite&&c.sprite.anims&&c.sprite.anims.idle){
+      if(!row._pv){
+        row._pv={...c,sprite:{
+          scale:c.sprite.scale,smooth:c.sprite.smooth,idleTop:c.sprite.idleTop,
+          path:MOD_STORE+row.owner_id+'/sffg-mods/'+row.id+'/',
+          v:Date.parse(row.updated_at||row.created_at)||1,
+          anims:{idle:{...c.sprite.anims.idle}}}};
+        loadSprites(row._pv);
+      }
+      pchar=row._pv;
+    }
+    drawPortrait(card.querySelector('canvas'),pchar||c);
     card.addEventListener('click',()=>{
       const idx=registerMod(row);
       if(idx<0){toast('This fighter failed validation','err');return;}
@@ -3211,7 +3267,7 @@ function drawPortrait(pcv,c){
     let tries=0;
     const iv=setInterval(()=>{
       if(sp._st==='ready'){paint();clearInterval(iv);}
-      else if(sp._st==='failed'||++tries>40)clearInterval(iv);
+      else if(sp._st==='failed'||++tries>120)clearInterval(iv);   // slow networks deserve a portrait too
     },150);
     /* fall through: puppet as placeholder while sheets load */
   }
@@ -3369,6 +3425,67 @@ async function getIce(){
   return FALLBACK_ICE;
 }
 
+/* ── live lobby: a presence channel everyone on the online screen shares.
+     Each player tracks what they're doing — browsing, waiting with an open
+     room (code included so friends can join in one click), or fighting.
+     Pure presence: nothing is stored, closing the tab removes you. ── */
+const LOBBY={chan:null,subscribed:false,me:{s:'browse'}};
+function lobbySet(s,extra){
+  LOBBY.me={s:s,name:myName,...(extra||{})};
+  if(LOBBY.chan&&LOBBY.subscribed){try{LOBBY.chan.track(LOBBY.me);}catch(e){}}
+}
+function lobbyJoin(){
+  if(!sb||!user||LOBBY.chan)return;
+  const ch=sb.channel('fight:lobby',{config:{presence:{key:user.id}}});
+  LOBBY.chan=ch;
+  ch.on('presence',{event:'sync'},renderLobby)
+    .subscribe(st=>{
+      if(st==='SUBSCRIBED'&&LOBBY.chan===ch){
+        LOBBY.subscribed=true;
+        try{ch.track(LOBBY.me);}catch(e){}
+      }
+    });
+}
+function lobbyLeave(){
+  LOBBY.subscribed=false;
+  if(LOBBY.chan){try{LOBBY.chan.untrack();sb.removeChannel(LOBBY.chan);}catch(e){}LOBBY.chan=null;}
+  LOBBY.me={s:'browse'};
+}
+function renderLobby(){
+  const box=$('lobby-list');
+  if(!box||!LOBBY.chan)return;
+  const state=LOBBY.chan.presenceState();
+  const waiting=[],playing=[],seen=new Set();
+  for(const id in state){
+    const m=state[id][0];
+    if(!m||!m.s)continue;
+    if(m.s==='wait'&&m.code&&id!==(user&&user.id))waiting.push(m);
+    if(m.s==='play'&&m.vs){
+      const key=[m.name,m.vs].sort().join('~');   // both players report the match; show it once
+      if(!seen.has(key)){seen.add(key);playing.push(m);}
+    }
+  }
+  box.innerHTML='';
+  if(!waiting.length&&!playing.length){
+    box.innerHTML='<div id="lobby-empty">Nobody around right now — create a room and it shows up here for everyone.</div>';
+    return;
+  }
+  for(const m of waiting){
+    const row=document.createElement('div');row.className='lb-row';
+    row.innerHTML='<span class="who"><b>'+esc(m.name||'Player')+'</b> has an open room</span>'+
+      '<span class="st">waiting</span><button class="btn primary">Join</button>';
+    row.querySelector('button').addEventListener('click',()=>{$('join-in').value=m.code;joinRoom();});
+    box.appendChild(row);
+  }
+  for(const m of playing){
+    const row=document.createElement('div');row.className='lb-row';
+    row.innerHTML='<span class="who"><b>'+esc(m.name||'?')+'</b> vs <b>'+esc(m.vs||'?')+'</b></span>'+
+      '<span class="st live">fighting</span>';
+    box.appendChild(row);
+  }
+  paintNav();
+}
+
 const net={
   on:false,host:false,code:'',chan:null,pc:null,ctl:null,game:null,
   peerId:null,peerName:'',delay:4,capF:0,localIn:{},remoteIn:{},stall:0,
@@ -3402,6 +3519,7 @@ async function createRoom(){
   $('code-box').textContent=net.code;
   onStatus('Waiting for an opponent… send them the code','',true);
   joinChannel();
+  lobbySet('wait',{code:net.code});     // the room is now visible in everyone's lobby
 }
 async function joinRoom(){
   if(!netPrereqs())return;
@@ -3605,6 +3723,7 @@ async function beginOnlineMatch(r0,r1,delay){
   net.peerReady=false;                 // stale ready must not leak into the next select
   for(let f=0;f<delay;f++){net.localIn[f]=0;net.remoteIn[f]=0;}
   hudNames=net.host?[myName,net.peerName]:[net.peerName,myName];
+  lobbySet('play',{vs:net.peerName});   // the lobby shows the match instead of the room
   if(net.host){bumpModPlay(p0);bumpModPlay(p1);}
   startMatch(p0,p1,'online');
 }
@@ -3705,6 +3824,7 @@ function netTeardown(msg){
     (selMode==='online'&&$('s-select').classList.contains('active'))||
     (mode==='online'&&($('s-game').classList.contains('active')||$('s-result').classList.contains('active')));
   if(inOnlineFlow){S=null;show('s-online');}
+  if($('s-online').classList.contains('active')){lobbyJoin();lobbySet('browse');}
   updateNetPill();
 }
 
@@ -3764,6 +3884,7 @@ $('btn-online').addEventListener('click',()=>{
   if(!sb){toast('Servers unreachable — local versus only','err');return;}
   if(!user){toast('Sign in on the Chill Zone first, then come back','err');return;}
   show('s-online');
+  lobbyJoin();lobbySet('browse');
 });
 function openModal(id){NAV.saved=NAV.idx;NAV.idx=0;$(id).classList.add('on');paintNav();}
 function closeModal(id){$(id).classList.remove('on');NAV.idx=NAV.saved||0;paintNav();}
@@ -3778,7 +3899,7 @@ $('pad-reset').addEventListener('click',()=>{
   try{localStorage.removeItem('sffg-pad');}catch(e){}
   stopPadListen();
 });
-$('on-back').addEventListener('click',()=>{netTeardown();show('s-menu');});
+$('on-back').addEventListener('click',()=>{netTeardown();lobbyLeave();show('s-menu');});
 $('btn-create').addEventListener('click',createRoom);
 $('btn-join').addEventListener('click',joinRoom);
 $('join-in').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom();});
@@ -3826,7 +3947,7 @@ $('btn-reselect').addEventListener('click',()=>{
   show('s-select');
 });
 $('btn-leave').addEventListener('click',()=>{
-  if(mode==='online'){ctlSend({t:'bye'});netTeardown();}
+  if(mode==='online'){ctlSend({t:'bye'});netTeardown();lobbyLeave();}
   S=null;soloMode=null;AI.on=false;TRAIN.on=false;ARC.on=false;
   $('tr-panel').classList.remove('on');
   show('s-menu');
