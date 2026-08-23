@@ -340,7 +340,6 @@ wrapped a MUGEN rip in a licence he had no right to write.
 - Push notifications only fire when the tab is open in the background — real push needs a
   service worker + VAPID keys
 - Voice is mesh — degrades past ~8 people
-- `preview.png` (1200×630) for link previews doesn't exist
 - Not submitted to Google Search Console
 
 ### Shipped in the Aug 2026 admin-tools update
