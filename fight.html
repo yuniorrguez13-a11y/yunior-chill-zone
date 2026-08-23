@@ -518,6 +518,10 @@ kbd{
        play anything. Make your own with the <a href="create.html" style="color:var(--cyan)">Fighter Creator</a>
        (no code needed) or hand-write one with the <a href="modding.html" style="color:var(--cyan)">modding guide</a>.
        Publishing needs a Chill Zone account; playing doesn't.</p>
+    <p>Community fighters have <b>no balance limits</b> — expect chip damage through your block,
+       lifesteal, chain combos, invincible reversals, arcing / bouncing / piercing projectiles and
+       their own Burst (all three attack buttons during hitstun, costs half meter). The tier badge
+       tells you what you're walking into.</p>
   </div>
 </div>
 
@@ -1065,13 +1069,16 @@ function charPower(c){
     if(!m)continue;
     p+=((m.dmg*8)/(m.startup+m.active+m.recovery))|0;
     if(m.box)p+=((m.box.x+m.box.w)/6)|0;      // reach is power too (ask Sarge)
-    if(m.launch)p+=15; if(m.armor)p+=20; if(m.armorBreak)p+=18; if(m.step)p+=(m.step/8)|0;
-    if(m.projectile)p+=30;
+    if(m.launch)p+=15; if(m.armor)p+=20; if(m.armorBreak)p+=18; if(m.step)p+=(Math.abs(m.step)/8)|0;
+    if(m.projectile){p+=30;if(m.projectile.pierce)p+=m.projectile.pierce*12;}
+    if(m.chip)p+=(m.chip/2)|0;
+    if(m.inv&&!m.super)p+=25;                 // invincible normals are very much power
   }
   if(c.passive){
     p+=(c.passive.regen||0)*25;
     p+=(100-(c.passive.defense||100))*3;      // taking less damage is power
     p+=(((c.passive.meterMult||100)-100)/4)|0;
+    p+=(c.passive.lifesteal||0)*3;
   }
   return p;
 }
@@ -1484,6 +1491,16 @@ function applyHit(S,i,h){
     const kb=(m.kbx*3/4)|0;
     if(Math.abs(def.x)>=WALL-2*FP)att.vx=-kdir*kb;      // cornered: attacker eats the push
     else def.vx=kdir*kb;
+    /* chip damage (v3 mods): a slice of the damage leaks through block — and it can KO */
+    if(m.chip){
+      let cd2=((m.dmg*m.chip)/100)|0;
+      if(exploitsWeakness)cd2=((cd2*weakPct)/100)|0;
+      if(defChar.passive&&defChar.passive.defense!==100)cd2=((cd2*(defChar.passive.defense||0))/100)|0;
+      if(cd2>0){
+        def.hp-=cd2;
+        if(def.hp<=0){def.hp=0;koFighter(def,kdir,m);}
+      }
+    }
     S.events.push({t:'block',x:cx,y:cy});
     return;
   }
@@ -1494,6 +1511,9 @@ function applyHit(S,i,h){
   if(exploitsWeakness)dmg=((dmg*weakPct)/100)|0;
   if(defChar.passive&&defChar.passive.defense!==100)dmg=((dmg*defChar.passive.defense)/100)|0;
   def.hp-=dmg;
+  /* lifesteal passive (v3 mods): heal a slice of the damage actually dealt */
+  const ls=attChar.passive&&attChar.passive.lifesteal;
+  if(ls&&dmg>0&&att.hp>0)att.hp=Math.min(attChar.hp,att.hp+(((dmg*ls)/100)|0));
   const airborne=def.st===ST.air||def.st===ST.airattack||def.st===ST.launched;
   def.hurtAnim=airborne?'hitAir':m.hits==='low'?'hitLow':m.hits==='high'?'hitHigh':
     ((def.prevIn&IN_D)?'hitCrouch':'hitMid');
@@ -1516,23 +1536,37 @@ function koFighter(def,kdir,m){
   if(def.y>=GROUND)def.y=-1;
 }
 
-/* ── projectiles: data-driven, deterministic, max 2 live per fighter ── */
+/* ── projectiles: data-driven, deterministic. Live cap per fighter comes
+     from the character data (projMax, default 2, security-capped at 6).
+     v3 adds arcs (vy/grav), floor bounces and piercing multi-hits. ── */
 function spawnProjectile(S,f,m){
   const ow=S.f[0]===f?0:1;
+  const cap=chr(f).projMax||2;
   let live=0;for(const p of S.proj)if(p.ow===ow)live++;
-  if(live>=2)return;
+  if(live>=cap)return;
   const pj=m.projectile;
   S.proj.push({ow,mk:f.mv,
     x:f.x+f.face*((m.box.x+((pj.w/2)|0))*FP),
     y:f.y+((m.box.y+((m.box.h/2)|0))*FP),
-    vx:f.face*pj.speed,w:pj.w,h:pj.h,life:pj.life,age:0,anim:pj.anim||''});
+    vx:f.face*pj.speed,vy:pj.vy||0,grav:pj.grav||0,bounce:pj.bounce?1:0,
+    hitsLeft:1+(pj.pierce||0),cd:0,
+    w:pj.w,h:pj.h,life:pj.life,age:0,anim:pj.anim||''});
   S.events.push({t:'pshot',x:f.x+f.face*m.box.x*FP,y:f.y+(m.box.y*FP)});
 }
 function stepProjectiles(S){
   for(let i=S.proj.length-1;i>=0;i--){
     const p=S.proj[i];
     p.x+=p.vx;p.life--;p.age++;
+    if(p.grav)p.vy+=p.grav;
+    if(p.vy){
+      p.y+=p.vy;
+      if(p.y>=GROUND&&p.vy>0){          // reached the floor
+        if(p.bounce){p.y=GROUND;p.vy=-((p.vy*2/3)|0);}
+        else{S.proj.splice(i,1);continue;}
+      }
+    }
     if(p.life<=0||p.x<-WALL-40*FP||p.x>WALL+40*FP){S.proj.splice(i,1);continue;}
+    if(p.cd>0){p.cd--;continue;}        // piercing shots pause between hits
     const att=S.f[p.ow],def=S.f[1-p.ow];
     /* same protections the melee resolver gives */
     if(def.st===ST.knockdown||def.st===ST.getup||def.st===ST.ko)continue;
@@ -1557,7 +1591,9 @@ function stepProjectiles(S){
     const hadHit=att.mvHit;
     applyHit(S,p.ow,{m,blocked});
     att.mvHit=hadHit;          // the projectile must not consume the move's melee hit
-    S.proj.splice(i,1);
+    p.hitsLeft--;
+    if(p.hitsLeft<=0)S.proj.splice(i,1);
+    else p.cd=14;
   }
 }
 
@@ -1571,7 +1607,8 @@ function checksum(S){
     mix(f.face);mix(f.combo);mix(f.prevIn);mix(f.dur);mix(f.mvHit|(f.armorUsed<<1)|(f.airUsed<<2));
     mix(f.meter);mix(f.juggle);mix(f.tapDir);mix(f.tapF);mix(f.turnT);}
   mix(S.proj.length);
-  for(const p of S.proj){mix(p.x);mix(p.y);mix(p.vx);mix(p.life);mix(p.age);mix(p.ow);}
+  for(const p of S.proj){mix(p.x);mix(p.y);mix(p.vx);mix(p.vy);mix(p.life);mix(p.age);mix(p.ow);
+    mix(p.hitsLeft|(p.cd<<8));}
   return h>>>0;
 }
 

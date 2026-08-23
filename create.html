@@ -137,7 +137,9 @@ section .desc{color:var(--text2);font-size:13.5px;margin-bottom:16px;line-height
 <!-- 2 · stats -->
 <section>
   <h2><span class="n">2</span> Stats, movement &amp; passives</h2>
-  <div class="desc">Sliders are clamped to the allowed ranges. Passives are optional — leave them neutral if unsure.</div>
+  <div class="desc">Since the Freedom Update there are <b>no balance limits</b> — only wide security bounds
+    (shown next to each field). Passives are optional; neutral is regen 0, damage taken 100%,
+    meter 100%, lifesteal 0. The tier badge will tell everyone exactly what you built.</div>
   <div class="grid" id="statgrid"></div>
 </section>
 
@@ -172,8 +174,11 @@ section .desc{color:var(--text2);font-size:13.5px;margin-bottom:16px;line-height
 <section>
   <h2><span class="n">4</span> Moves</h2>
   <div class="desc">
-    Every fighter has 8 slots: 3 standing attacks, 2 crouching, 1 air (auto-overhead), the throw and the super.
-    The red box in the preview is where the move hits, drawn to scale. Times are in frames (60 per second).
+    The 8 core slots: 3 standing attacks, 2 crouching, 1 air, the throw and the super — plus an optional
+    <b>Burst</b> (all three buttons during hitstun, costs half meter) and as many <b>custom moves</b> as you
+    like, reached by chaining: set "Chain on Light/Heavy/Special" and pressing that button near the end of a
+    move flows into the next one. The red box in the preview is where the move hits, drawn to scale.
+    Times are in frames (60 per second).
   </div>
   <div id="movetabs"></div>
   <div id="movewrap">
@@ -248,7 +253,8 @@ let editingId=null;        // set when editing one of my published fighters
 const MOD={
   name:'',tagline:'',color:'#00d4ff',color2:'#c8f4ff',skin:'#e9c9a8',
   hp:1000,walk:68,back:52,jumpVX:56,jumpVY:-252,grav:14,w:56,h:150,crouchH:105,
-  passive:{regen:0,defense:100,meterMult:100},
+  projMax:2,
+  passive:{regen:0,defense:100,meterMult:100,lifesteal:0},
   moves:{
     light:{name:'Jab',dmg:60,startup:5,active:3,recovery:9,hitstun:14,blockstun:8,hitstop:5,kbx:60,box:{x:24,y:-124,w:56,h:26}},
     heavy:{name:'Heavy Hit',dmg:130,startup:13,active:4,recovery:17,hitstun:22,blockstun:12,hitstop:9,kbx:110,box:{x:26,y:-134,w:66,h:34}},
@@ -269,7 +275,8 @@ const ANIM_INFO={
   backdash:'back-hop',jump:'rising (≥2)',fall:'falling (≥2)',attack1:'light attacks',
   attack2:'heavy attacks',special:'special move',super:'super move',clight:'crouch light',
   cheavy:'crouch heavy',airatk:'air attack',hit:'taking a hit',block:'guarding',
-  death:'falling down/KO',getup:'standing back up',crouch:'stand→kneel (held)'
+  death:'falling down/KO',getup:'standing back up',crouch:'stand→kneel (held)',
+  burst:'burst counter'
 };
 
 /* ── tier (same formulas as the game) ── */
@@ -281,24 +288,28 @@ function charPower(c){
   for(const k in c.moves){const m=c.moves[k];
     p+=((m.dmg*8)/(m.startup+m.active+m.recovery))|0;
     if(m.box)p+=((m.box.x+m.box.w)/6)|0;
-    if(m.launch)p+=15;if(m.armor)p+=20;if(m.armorBreak)p+=18;if(m.step)p+=(m.step/8)|0;
-    if(m.projectile)p+=30;
+    if(m.launch)p+=15;if(m.armor)p+=20;if(m.armorBreak)p+=18;if(m.step)p+=(Math.abs(m.step)/8)|0;
+    if(m.projectile){p+=30;if(m.projectile.pierce)p+=m.projectile.pierce*12;}
+    if(m.chip)p+=(m.chip/2)|0;
+    if(m.inv&&!m.super)p+=25;
   }
   if(c.passive){p+=(c.passive.regen||0)*25;p+=(100-(c.passive.defense||100))*3;
-    p+=(((c.passive.meterMult||100)-100)/4)|0;}
+    p+=(((c.passive.meterMult||100)-100)/4)|0;p+=(c.passive.lifesteal||0)*3;}
   return p;
 }
 function tierOf(c){const p=charPower(c);let t=0;
   for(let i=0;i<TIER_MIN.length;i++)if(p>=TIER_MIN[i])t=i;
   return TIERS[t]+' · '+p;}
 
-/* ── stat sliders ── */
+/* ── stat inputs — free numbers since v3; only security bounds apply ── */
 const STATS=[
   ['hp','Health','hp'],['walk','Walk speed','walk'],['back','Back-walk speed','back'],
   ['jumpVX','Jump drift','jumpVX'],['jumpVY','Jump power','jumpVY'],['grav','Gravity','grav'],
   ['w','Body width','w'],['h','Body height','h'],['crouchH','Crouch height','crouchH'],
+  ['projMax','Max live projectiles','projMax'],
   ['p.regen','Passive: regen (hp/s)','regen'],['p.defense','Passive: damage taken %','defense'],
   ['p.meterMult','Passive: meter gain %','meterMult'],
+  ['p.lifesteal','Passive: lifesteal %','lifesteal'],
 ];
 function statVal(path){return path.startsWith('p.')?MOD.passive[path.slice(2)]:MOD[path];}
 function setStat(path,v){if(path.startsWith('p.'))MOD.passive[path.slice(2)]=v;else MOD[path]=v;}
@@ -307,12 +318,11 @@ function buildStats(){
   for(const [path,label,limKey] of STATS){
     const lim=L[limKey];
     const f=document.createElement('div');f.className='field';
-    f.innerHTML='<label>'+label+' <span class="v" id="sv-'+path+'">'+statVal(path)+'</span></label>'+
-      '<input type="range" id="st-'+path+'" min="'+lim[0]+'" max="'+lim[1]+'" value="'+statVal(path)+'">';
+    f.innerHTML='<label>'+label+' <span class="v">'+lim[0]+' … '+lim[1]+'</span></label>'+
+      '<input type="number" id="st-'+path+'" min="'+lim[0]+'" max="'+lim[1]+'" value="'+statVal(path)+'">';
     g.appendChild(f);
     f.querySelector('input').addEventListener('input',e=>{
-      setStat(path,+e.target.value);
-      $('sv-'+path).textContent=e.target.value;
+      setStat(path,+e.target.value||0);
       refresh();
     });
   }
@@ -448,23 +458,57 @@ function renderAnims(){
 
 /* ── moves editor ── */
 const SLOTS=[['light','Light'],['heavy','Heavy'],['special','Special'],['clight','Crouch light'],
-  ['cheavy','Crouch heavy'],['air','Air'],['throw','Throw'],['super','Super']];
+  ['cheavy','Crouch heavy'],['air','Air'],['throw','Throw'],['super','Super'],['burst','Burst']];
+const STD_SLOT_KEYS=SLOTS.map(s=>s[0]);
 let curSlot='light';
 const MFIELDS=[['dmg','Damage','dmg'],['startup','Startup','startup'],['active','Active','active'],
   ['recovery','Recovery','recovery'],['hitstun','Hitstun','hitstun'],['blockstun','Blockstun','blockstun'],
-  ['hitstop','Hitstop','hitstop'],['kbx','Knockback (neg = pull)','kbx'],['step','Forward step','step'],
+  ['hitstop','Hitstop','hitstop'],['kbx','Knockback (neg = pull)','kbx'],['step','Forward step (neg = back)','step'],
+  ['chip','Chip dmg % on block','chip'],
   ['box.x','Hitbox X','boxX'],['box.y','Hitbox Y (neg = up)','boxY'],['box.w','Hitbox W','boxW'],['box.h','Hitbox H','boxH']];
 function mget(m,path){return path.startsWith('box.')?m.box[path.slice(4)]:m[path];}
 function mset(m,path,v){if(path.startsWith('box.'))m.box[path.slice(4)]=v;else m[path]=v;}
+function defaultMove(key){
+  const base={name:key,dmg:80,startup:8,active:4,recovery:14,hitstun:18,blockstun:10,hitstop:6,
+    kbx:80,box:{x:24,y:-124,w:60,h:32}};
+  if(key==='burst'){base.name='Burst';base.dmg=45;base.startup=3;base.active=6;base.recovery=22;
+    base.launch=1;base.kby=-180;base.inv=1;base.box={x:-70,y:-160,w:140,h:150};}
+  return base;
+}
 function buildMoveTabs(){
   const t=$('movetabs');t.innerHTML='';
   for(const [k,label] of SLOTS){
     const b=document.createElement('button');
+    b.className='mt'+(k===curSlot?' on':'')+(MOD.moves[k]?'':' opt');
+    b.textContent=MOD.moves[k]?label:label+' +';
+    b.addEventListener('click',()=>{
+      if(!MOD.moves[k])MOD.moves[k]=defaultMove(k);   /* optional slot: created on demand */
+      curSlot=k;buildMoveTabs();buildMoveForm();refresh();
+    });
+    t.appendChild(b);
+  }
+  /* custom chain moves (v3): any number of extra slots, reached via chains */
+  for(const k of Object.keys(MOD.moves)){
+    if(STD_SLOT_KEYS.includes(k))continue;
+    const b=document.createElement('button');
     b.className='mt'+(k===curSlot?' on':'');
-    b.textContent=label;
+    b.textContent=k;
     b.addEventListener('click',()=>{curSlot=k;buildMoveTabs();buildMoveForm();});
     t.appendChild(b);
   }
+  const add=document.createElement('button');
+  add.className='mt opt';add.textContent='+ custom move';
+  add.title='An extra move other moves can chain into (lowercase letters + numbers)';
+  add.addEventListener('click',()=>{
+    const k=(prompt('Name for the new move slot (lowercase letters and numbers, e.g. slash2):')||'').trim();
+    if(!k)return;
+    if(!SFFG_MODS.CUSTOM_KEY.test(k)||STD_SLOT_KEYS.includes(k)){toast('Lowercase letters and numbers only, not a standard slot name','err');return;}
+    if(MOD.moves[k]){toast('That slot already exists','err');return;}
+    if(Object.keys(MOD.moves).length>=SFFG_MODS.MAX_MOVES){toast('Move limit reached ('+SFFG_MODS.MAX_MOVES+')','err');return;}
+    MOD.moves[k]=defaultMove(k);
+    curSlot=k;buildMoveTabs();buildMoveForm();refresh();
+  });
+  t.appendChild(add);
 }
 function buildMoveForm(){
   const m=MOD.moves[curSlot];
@@ -480,6 +524,18 @@ function buildMoveForm(){
     g.appendChild(f);
     f.querySelector('input').addEventListener('input',e=>{mset(m,path,+e.target.value||0);refresh();});
   }
+  /* block requirement */
+  if(curSlot!=='throw'){
+    const hitsF=document.createElement('div');hitsF.className='field';
+    hitsF.innerHTML='<label>Block requirement</label><select>'+
+      '<option value="">mid (any block)</option>'+
+      '<option value="low"'+(m.hits==='low'?' selected':'')+'>low — block crouching</option>'+
+      '<option value="high"'+(m.hits==='high'?' selected':'')+'>high — block standing</option>'+
+      '</select>';
+    g.appendChild(hitsF);
+    hitsF.querySelector('select').addEventListener('change',e=>{
+      if(e.target.value)m.hits=e.target.value;else delete m.hits;refresh();});
+  }
   /* anim + impact */
   const animF=document.createElement('div');animF.className='field';
   const opts=['<option value="">(auto)</option>'].concat(
@@ -489,23 +545,32 @@ function buildMoveForm(){
   animF.querySelector('select').addEventListener('change',e=>{
     if(e.target.value)m.anim=e.target.value;else delete m.anim;refresh();});
   const impF=document.createElement('div');impF.className='field';
-  impF.innerHTML='<label>Impact frame (blank = auto)</label><input type="number" min="0" max="30" value="'+(m.impact??'')+'">';
+  impF.innerHTML='<label>Impact frame (blank = auto)</label><input type="number" min="0" max="63" value="'+(m.impact??'')+'">';
   g.appendChild(impF);
   impF.querySelector('input').addEventListener('input',e=>{
     if(e.target.value==='')delete m.impact;else m.impact=+e.target.value;refresh();});
+  /* chains (v3): pressing a button near the end of this move flows into another move */
+  for(const [ck,label] of [['nextA','Chain on Light press'],['nextB','Chain on Heavy press'],['nextC','Chain on Special press']]){
+    const cf=document.createElement('div');cf.className='field';
+    const copts=['<option value="">(none)</option>'].concat(
+      Object.keys(MOD.moves).map(k=>
+        '<option value="'+k+'"'+(m[ck]===k?' selected':'')+'>'+k+'</option>'));
+    cf.innerHTML='<label>'+label+'</label><select>'+copts.join('')+'</select>';
+    g.appendChild(cf);
+    cf.querySelector('select').addEventListener('change',e=>{
+      if(e.target.value)m[ck]=e.target.value;else delete m[ck];refresh();});
+  }
   /* flags */
   const fl=$('moveflags');fl.innerHTML='';
   const flags=[
-    ['hitsLow','Hits low (block crouching)',()=>m.hits==='low',v=>{if(v)m.hits='low';else if(m.hits==='low')delete m.hits;}],
     ['launch','Launches airborne',()=>!!m.launch,v=>{if(v){m.launch=1;m.kby=m.kby||-200;}else{delete m.launch;delete m.kby;}}],
     ['armor','Armor during startup',()=>!!m.armor,v=>{if(v)m.armor=1;else delete m.armor;}],
     ['armorBreak','Breaks armor',()=>!!m.armorBreak,v=>{if(v)m.armorBreak=1;else delete m.armorBreak;}],
+    ['inv','Invulnerable startup',()=>!!m.inv,v=>{if(v)m.inv=1;else delete m.inv;}],
     ['proj','Fires a projectile',()=>!!m.projectile,v=>{if(v)m.projectile={speed:90,life:50,w:24,h:24};else delete m.projectile;}],
   ];
-  if(curSlot==='super')flags.push(['inv','Invulnerable startup',()=>!!m.inv,v=>{if(v)m.inv=1;else delete m.inv;}]);
   for(const [id,label,get,set] of flags){
-    if(curSlot==='throw'&&id!=='launch')continue;
-    if(curSlot==='air'&&id==='hitsLow')continue;
+    if(curSlot==='throw'&&!['launch','inv'].includes(id))continue;
     const w=document.createElement('label');
     w.innerHTML='<input type="checkbox"'+(get()?' checked':'')+'> '+label;
     fl.appendChild(w);
@@ -517,16 +582,40 @@ function buildMoveForm(){
     fl.appendChild(kb);
     kb.querySelector('input').addEventListener('input',e=>{m.kby=+e.target.value||-200;refresh();});
   }
+  /* optional / custom slots can be removed */
+  if(curSlot==='burst'||!STD_SLOT_KEYS.includes(curSlot)){
+    const rm=document.createElement('label');
+    rm.innerHTML='<button class="btn small" type="button">Remove this move</button>';
+    fl.appendChild(rm);
+    rm.querySelector('button').addEventListener('click',()=>{
+      delete MOD.moves[curSlot];
+      /* chains pointing here die with it */
+      for(const k in MOD.moves)for(const ck of ['nextA','nextB','nextC'])
+        if(MOD.moves[k][ck]===curSlot)delete MOD.moves[k][ck];
+      curSlot='light';buildMoveTabs();buildMoveForm();refresh();
+    });
+  }
   /* projectile grid */
   const pg=$('projgrid');pg.innerHTML='';
   if(m.projectile){
-    for(const [k,label,limKey] of [['speed','Projectile speed','projSpeed'],['life','Lifetime (frames)','projLife'],
-      ['w','Projectile width','projW'],['h','Projectile height','projH']]){
+    for(const [k,label,limKey] of [['speed','Projectile speed (neg = backward)','projSpeed'],['life','Lifetime (frames)','projLife'],
+      ['w','Projectile width','projW'],['h','Projectile height','projH'],
+      ['vy','Vertical speed (neg = up)','projVY'],['grav','Projectile gravity (arc)','projGrav'],
+      ['pierce','Pierce (extra hits)','pierce']]){
       const f=document.createElement('div');f.className='field';
-      f.innerHTML='<label>'+label+'</label><input type="number" min="'+L[limKey][0]+'" max="'+L[limKey][1]+'" value="'+m.projectile[k]+'">';
+      f.innerHTML='<label>'+label+'</label><input type="number" min="'+L[limKey][0]+'" max="'+L[limKey][1]+'" value="'+(m.projectile[k]??0)+'">';
       pg.appendChild(f);
-      f.querySelector('input').addEventListener('input',e=>{m.projectile[k]=+e.target.value||L[limKey][0];refresh();});
+      f.querySelector('input').addEventListener('input',e=>{
+        const v=+e.target.value||0;
+        if(['vy','grav','pierce'].includes(k)&&v===0)delete m.projectile[k];else m.projectile[k]=v;
+        refresh();});
     }
+    const bf=document.createElement('div');bf.className='field';
+    bf.innerHTML='<label>Floor bounce</label><label style="font-size:12.5px;color:var(--text2);display:flex;gap:6px;align-items:center;cursor:pointer;">'+
+      '<input type="checkbox"'+(m.projectile.bounce?' checked':'')+'> bounces off the ground</label>';
+    pg.appendChild(bf);
+    bf.querySelector('input[type=checkbox]').addEventListener('change',e=>{
+      if(e.target.checked)m.projectile.bounce=1;else delete m.projectile.bounce;refresh();});
   }
   drawHitPrev();
 }
@@ -569,7 +658,7 @@ function gather(){
     name:$('f-name').value,tagline:$('f-tagline').value,
     color:$('f-color').value,color2:$('f-color2').value,skin:$('f-skin').value,
     hp:MOD.hp,walk:MOD.walk,back:MOD.back,jumpVX:MOD.jumpVX,jumpVY:MOD.jumpVY,grav:MOD.grav,
-    w:MOD.w,h:MOD.h,crouchH:MOD.crouchH,passive:{...MOD.passive},
+    w:MOD.w,h:MOD.h,crouchH:MOD.crouchH,projMax:MOD.projMax,passive:{...MOD.passive},
     moves:JSON.parse(JSON.stringify(MOD.moves))
   };
   const keys=Object.keys(SPRITES).filter(k=>SPRITES[k]&&SPRITES[k].strip);
@@ -664,9 +753,16 @@ function applyData(raw){
   const d=v.data||raw;
   $('f-name').value=d.name||'';$('f-tagline').value=d.tagline||'';
   $('f-color').value=d.color||'#00d4ff';$('f-color2').value=d.color2||'#c8f4ff';$('f-skin').value=d.skin||'#e9c9a8';
-  for(const k of ['hp','walk','back','jumpVX','jumpVY','grav','w','h','crouchH'])if(d[k]!=null)MOD[k]=d[k];
-  if(d.passive)MOD.passive={regen:d.passive.regen||0,defense:d.passive.defense||100,meterMult:d.passive.meterMult||100};
-  if(d.moves)for(const k in MOD.moves)if(d.moves[k])MOD.moves[k]=JSON.parse(JSON.stringify(d.moves[k]));
+  for(const k of ['hp','walk','back','jumpVX','jumpVY','grav','w','h','crouchH','projMax'])if(d[k]!=null)MOD[k]=d[k];
+  if(d.projMax==null)MOD.projMax=2;
+  if(d.passive)MOD.passive={regen:d.passive.regen||0,defense:d.passive.defense||100,
+    meterMult:d.passive.meterMult||100,lifesteal:d.passive.lifesteal||0};
+  if(d.moves){
+    /* drop optional/custom slots from a previous edit, then take the import wholesale */
+    for(const k of Object.keys(MOD.moves))if(!d.moves[k]&&!SFFG_MODS.REQUIRED_MOVES.includes(k)&&k!=='clight'&&k!=='cheavy')delete MOD.moves[k];
+    for(const k in d.moves)MOD.moves[k]=JSON.parse(JSON.stringify(d.moves[k]));
+  }
+  if(!MOD.moves[curSlot])curSlot='light';
   buildStats();buildMoveTabs();buildMoveForm();refresh();
 }
 

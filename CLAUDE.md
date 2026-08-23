@@ -57,7 +57,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `fight.html` | **SFFG** (Stupidly Funny Fighting Game for Dummies). The fighting game: deterministic 60fps engine, official roster, community fighters, local/CPU/arcade/training/online. See its own section below. |
 | `create.html` | SFFG's no-code fighter creator. Sliders, move editor with a to-scale hitbox overlay, sprite frame upload that chroma-keys/trims/aligns and builds sheets in the browser, live validation, publish to Supabase. |
 | `modding.html` | SFFG's "how to code a fighter" tutorial — the JSON format, limits, sprite contract, validation rules, worked example. |
-| `sffg-mods.js` | The community fighter format (v2): limits, `validateMod()`, `hashMod()`. Shared by `fight.html` and `create.html` so the game and the creator enforce identical rules. |
+| `sffg-mods.js` | The community fighter format (v3, the Freedom Update): security bounds, `validateMod()`, `hashMod()`. Shared by `fight.html` and `create.html` so the game and the creator enforce identical rules. |
 | `wrangler.jsonc` · `_headers` · `.assetsignore` | Cloudflare hosting config, cache rules, and what stays unpublished. |
 
 ### Supabase Edge Functions
@@ -277,13 +277,27 @@ netplay works and rollback stays possible later. Floats live only in the rendere
   its own baseline); attack strips keep shared-canvas alignment so hit geometry
   stays true.
 
-### Community fighters (the Mods Update)
+### Community fighters (the Mods Update → the Freedom Update)
 A community fighter is **pure data** — that is the sandbox, no mod code is ever
-executed. `sffg-mods.js` whitelists every field, clamps every number, strips markup
-and unknown keys, rejects one-touch-kill data, and removes matchup fields (`weakTo`
-is official-only). Browsing and playing need no account; **publishing requires
-sign-in**. Sprite sheets go to the existing `avatars` bucket under
-`<uid>/sffg-mods/<id>/`, so the existing path RLS covers them.
+executed. `sffg-mods.js` whitelists every field, strips markup and unknown keys, and
+removes matchup fields (`weakTo` is official-only). Browsing and playing need no
+account; **publishing requires sign-in**. Sprite sheets go to the existing `avatars`
+bucket under `<uid>/sffg-mods/<id>/`, so the existing path RLS covers them.
+
+**Format v3 (Freedom Update, Aug 2026), at the owner's explicit request: no balance
+limits.** Numbers are clamped only into wide *security* ranges (integer safety for
+the deterministic sim, hitstop ≤ 60, grav ≥ 1 so nobody floats forever, 32 moves /
+40 anims / 150 KB JSON / 16384px sheets as browser limits). One-touch-kill data is
+legal — the tier formula just labels it. v3 also exposed everything the engine could
+already do plus new mechanics: chain moves (`nextA/nextB/nextC`, Parasoul-style),
+custom move slots reached via chains, a per-fighter `burst` (engine checks
+`c.moves.burst` generically), `inv` on any move, `chip` (% damage through block, can
+KO), `lifesteal` passive, `projMax` (up to 6 live), and projectiles with `vy`/`grav`
+(arcs), `bounce` and `pierce` (multi-hit with a 14-frame re-hit gap). v2 mods
+validate unchanged under v3. The checksum now mixes projectile vy/hitsLeft/cd —
+irrelevant across clients because HTML/JS is served with `max-age=0`.
+**The owner explicitly does NOT want a moderation queue** — moderation stays
+`status='removed'`.
 
 **Art rule, non-negotiable:** original or CC0 art only. Ripped, traced or repainted
 sprites from commercial games do not go in the repo — recoloring or redrawing over
@@ -300,8 +314,9 @@ wrapped a MUGEN rip in a licence he had no right to write.
 - `servers_read` invite-code exposure (above)
 - SFFG: no rollback netcode yet (delay-based lockstep; the engine was built
   deterministic and rewindable specifically so this can be added)
-- SFFG: no moderation queue for community fighters — moderators currently act by
-  setting `status='removed'`. A preview-and-approve queue is the natural next piece.
+- SFFG: moderation of community fighters is `status='removed'` only — and that's
+  final: **the owner explicitly rejected a preview-and-approve queue** (Aug 2026).
+  Don't propose it again.
 - SFFG: Truck's sprite is drawn much larger than his hurtbox (`scale:1.85` against
   `w:68`); training mode's hitbox overlay makes the mismatch obvious.
 - SFFG: no touch controls — a keyboard or controller is required.

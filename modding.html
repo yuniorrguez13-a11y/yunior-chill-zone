@@ -39,7 +39,7 @@ td:first-child{color:var(--cyan);white-space:nowrap;}
 <body>
 <div class="wrap">
 <h1>HOW TO CODE A FIGHTER</h1>
-<div class="sub">SFFG community character format · v2</div>
+<div class="sub">SFFG community character format · v3 — the Freedom Update</div>
 
 <p>Everything a fighter is — stats, moves, frame data, hitboxes, sprites, passives, projectiles —
 lives in <b>one JSON object plus a folder of sprite sheets</b>. There is no scripting: a mod is pure
@@ -52,24 +52,31 @@ it produces this same format. This page is for people who want to hand-write or 
   <a class="btn" href="fight.html">Back to SFFG</a>
 </div>
 
+<div class="note"><b>The Freedom Update (v3):</b> balance limits are gone. Every number is only
+bounded by wide <i>security ranges</i> that protect the deterministic engine and the renderer —
+not fairness. A 999999-damage jab is legal. The tier system rates it with the same formula as
+everyone else and slaps <i>omnipotent regular guy</i> on the card, so nobody walks in blind.</div>
+
 <h2>1 · The shape of a fighter</h2>
 <pre>{
-  "name": "Uncle Ekber",            // 3-24 chars
-  "tagline": "He warned you.",      // up to 60 chars
+  "name": "Uncle Ekber",            // 1-32 chars
+  "tagline": "He warned you.",      // up to 90 chars
   "color": "#ff8c00",               // main color (puppet body, projectiles, UI)
   "color2": "#ffd9a0",              // accent
   "skin": "#d8a878",                // puppet skin tone
 
-  "hp": 1000,                       // 400-2000
-  "walk": 68, "back": 52,           // px per frame ×16 (30-130 / 20-110)
-  "jumpVX": 56, "jumpVY": -252,     // jump drift / power (negative = up)
-  "grav": 14,
+  "hp": 1000,                       // 1-999999
+  "walk": 68, "back": 52,           // px per frame ×16, 0-2000
+  "jumpVX": 56, "jumpVY": -252,     // jump drift / power (negative = up, to -2000)
+  "grav": 14,                       // 1-200 (1 = moon, 200 = brick)
   "w": 56, "h": 150, "crouchH": 105,  // body box in game pixels
+  "projMax": 2,                     // optional: live projectiles at once, 1-6
 
   "passive": {                      // all optional, these are the neutral values
-    "regen": 0,                     // hp per second, 0-4
-    "defense": 100,                 // % damage taken, 70-130
-    "meterMult": 100                // % meter gain, 50-200
+    "regen": 0,                     // hp per second
+    "defense": 100,                 // % damage taken (0-1000; 50 = tank, 300 = glass)
+    "meterMult": 100,               // % meter gain (0-10000)
+    "lifesteal": 0                  // % of damage dealt healed back, 0-100
   },
 
   "sprite": { ... },                // optional — omit for the vector puppet
@@ -77,33 +84,49 @@ it produces this same format. This page is for people who want to hand-write or 
 }</pre>
 
 <h2>2 · Moves</h2>
-<p>Eight slots. <code>light</code>, <code>heavy</code>, <code>special</code>, <code>air</code>,
-<code>throw</code> and <code>super</code> are required; <code>clight</code> / <code>cheavy</code>
-(crouching) are optional but recommended. Each move:</p>
+<p>Nine standard slots plus unlimited custom ones. <code>light</code>, <code>heavy</code>,
+<code>special</code>, <code>air</code>, <code>throw</code> and <code>super</code> are required;
+<code>clight</code> / <code>cheavy</code> (crouching) and <code>burst</code> are optional.
+Any other lowercase key (e.g. <code>"slash2"</code>) becomes a <b>custom move</b>, reachable only
+through chains — up to 32 moves total. Each move:</p>
 <pre>"special": {
   "name": "Get Off My Lawn",
-  "dmg": 120,                      // 5-400
-  "startup": 12, "active": 4, "recovery": 20,   // frames (60/s)
-  "hitstun": 22, "blockstun": 12, "hitstop": 9,
+  "dmg": 120,                      // 0-999999. yes, really
+  "startup": 12, "active": 4, "recovery": 20,   // frames (60/s), each up to 600
+  "hitstun": 22, "blockstun": 12, "hitstop": 9, // hitstop caps at 60 (a 1s freeze is enough drama)
   "kbx": 130,                      // knockback; NEGATIVE pulls them toward you
   "box": {"x": 30, "y": -130, "w": 90, "h": 40}, // hitbox from your feet, facing right
-  "hits": "low",                   // optional: "low" | "high" (air moves are always high)
+  "hits": "low",                   // optional: "low" | "high" (air moves default to high)
   "launch": 1, "kby": -230,        // optional: knocks airborne
-  "step": 60,                      // optional: forward movement during startup+active
+  "step": 60,                      // optional: movement during startup+active (negative = retreat)
   "armor": 1,                      // optional: absorbs one hit during startup/active
   "armorBreak": 1,                 // optional: ignores enemy armor
-  "inv": 1,                        // supers only: invulnerable startup
+  "inv": 1,                        // v3: invulnerable startup on ANY move
+  "chip": 25,                      // v3: % of dmg that leaks through block (0-100, chip can KO)
+  "crouch": 1,                     // v3: use the crouching hurtbox during this move
+  "nonAttack": 1,                  // v3: pure animation, no hitbox (taunts, stances)
+  "nextA": "slash2",               // v3: chain — pressing Light near the end flows into "slash2"
+  "nextB": "heavy",                // v3: same for Heavy…
+  "nextC": "special",              // v3: …and Special. Chains work whiffed or on hit.
   "projectile": {                  // optional: fires when the move becomes active
-    "speed": 90,                   // 30-260 (fine units per frame)
-    "life": 50,                    // 20-120 frames
-    "w": 24, "h": 24
+    "speed": 90,                   // fine units per frame; NEGATIVE fires backward
+    "life": 50,                    // 1-3600 frames
+    "w": 24, "h": 24,
+    "vy": -60, "grav": 8,          // v3: launch angle + gravity = arcing shots
+    "bounce": 1,                   // v3: bounces off the floor instead of dying
+    "pierce": 2                    // v3: survives this many extra hits (0-8)
   },
   "anim": "special",               // optional: which sprite sheet plays
   "impact": 6                      // optional: which drawing is the hit (default: 2nd-to-last)
 }</pre>
+<p><b>Burst:</b> give your fighter a <code>burst</code> move and it works exactly like Parasoul's —
+all three attack buttons during hitstun, costs half the meter, great with <code>inv</code> and a big
+box around the body. <b>Chains:</b> the classic magic series (light → medium → heavy) is
+<code>light.nextA = "light2"</code>, <code>light2.nextA = "light3"</code> — the chained press has to
+land in the last active frame or later, exactly like Parasoul's.</p>
 <p>The rock-paper-scissors rules are engine-wide and free: lows must be blocked crouching, air
-attacks standing, throws beat block but whiff on airborne/stunned targets, max 2 live projectiles
-per player, 4-hit juggle cap, combo damage scaling.</p>
+attacks standing, throws beat block but whiff on airborne/stunned targets, 4-hit juggle cap,
+combo damage scaling. Live projectiles cap at your <code>projMax</code> (up to 6).</p>
 
 <h2>3 · Sprites</h2>
 <p>Optional — a fighter without sprites plays with the built-in vector puppet, which is a totally
@@ -120,7 +143,8 @@ respectable look in this game. If you do use sprites:</p>
 <tr><th>Required</th><th>Optional</th></tr>
 <tr><td>idle, run, jump, fall, attack1, attack2, hit, death</td>
 <td>walkback, dash, backdash, block, getup, crouch (stand→kneel, held), clight, cheavy, airatk,
-special, super, attack3, attack4 — plus any of these referenced by a move's <code>anim</code></td></tr>
+special, super, attack3, attack4, burst — or since v3 <b>any lowercase custom key</b> a move's
+<code>anim</code> points at (up to 40 animations)</td></tr>
 </table>
 <pre>"sprite": {
   "scale": 0.58,        // game px per cell px
@@ -146,17 +170,23 @@ learn your layout).</p>
 
 <h2>5 · Validation rules (the bouncer)</h2>
 <p>Before a fighter loads — in the Creator, at upload, and again in every player's game — it runs
-through <code>sffg-mods.js</code>. The validator:</p>
+through <code>sffg-mods.js</code>. Since v3 the bouncer checks <b>security, not balance</b>:</p>
 <ul style="color:var(--text2);font-size:14px;margin:0 0 10px 20px;">
-  <li>Whitelists every field and <b>drops anything unknown</b> (there is no way to smuggle code).</li>
-  <li>Clamps every number to the documented ranges.</li>
+  <li>Whitelists every field and <b>drops anything unknown</b> (there is no way to smuggle code —
+      a mod is data, never a script).</li>
+  <li>Clamps every number into wide security ranges that protect the deterministic engine
+      (integer safety, no infinite freezes, no un-renderable sprites). Nothing is clamped for
+      being "too strong".</li>
   <li>Strips matchup fields (<code>weakTo</code>) — counters are an official-roster mechanic.</li>
   <li>Requires the six core moves and, if sprites are used, the eight core animations.</li>
-  <li>Rejects one-touch-kill data and JSON over 60 KB.</li>
+  <li>Caps totals: 32 moves, 40 animations, 150 KB of JSON, sheets ≤16384px wide —
+      browser limits, not creative ones.</li>
+  <li>Drops chain references to moves that don't exist.</li>
 </ul>
 <p>The tier system then rates your fighter with the same formula as the official roster — damage
-per committed frame, reach, mobility, hp, gimmicks, passives. Matchmaking fairness comes from that
-score, so yes, <i>omnipotent regular guy</i> builds get labeled as exactly what they are.</p>
+per committed frame, reach, mobility, hp, gimmicks, passives, and the new v3 toys (chip, pierce,
+lifesteal, invincible normals all score). Your one-touch-kill monster is legal now; it will simply
+wear the <i>omnipotent regular guy</i> badge, and everyone gets to see it coming.</p>
 
 <h2>6 · Publish it</h2>
 <p><b>Publishing needs a Chill Zone account</b> (browsing and playing community fighters doesn't).
