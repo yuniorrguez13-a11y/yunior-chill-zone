@@ -353,10 +353,18 @@ the left half, L/H/S + THROW/SUPER/DASH buttons (both small ones together =
 Burst), pause button — drives P1, OR-ed into both the local and online input
 paths, shown via `body.has-touch` only on coarse-pointer devices. Tier badges use the hand-drawn
 Colorfiction Sketch font (SIL OFL, `fonts/COLORFICTION-OFL.txt`). And a
-**Strive-style restyle of `fight.html` only**: warm dusty palette (near-black +
-`#e10600`), diagonal hairline texture, left-aligned menu with a red block cursor,
-angular clip-path corners, roster art painted big behind the menu (`paintMenuArt`),
-warmed in-game stage. The rest of the site keeps the Discord-style theme on purpose.
+**Strive-style restyle of `fight.html` only**, refined after owner feedback
+("the red palette doesn't fit our characters"): the rule is **color belongs to the
+characters and the stage, the chrome stays neutral ink** (`#0d0c11` family). Red
+`#e10600` is reserved for interaction — the menu's block cursor, primary buttons, P1.
+Diagonal hairline texture, left-aligned menu, angular clip-path corners. The menu
+paints the roster as **flat silhouettes tinted per character** (`paintMenuArt` —
+silhouettes unify the mixed pixel/HD/stick-figure art styles that looked uncanny
+in full color). In-game stage is a dusk gradient (violet→ember) with a low sun,
+skyline and warm windows so every fighter palette reads; P2's health bar is cyan
+(per-player identity, matches the pick badges). Select cards carry a spine tinted
+with each fighter's own color (`--spine`). The rest of the site keeps the
+Discord-style theme on purpose.
 **`art/menu-break/lineup/whistle.png` belong to `suds.html` (Suds of Doom) — never
 delete them; they look like stale SFFG assets but are not.**
 
