@@ -342,6 +342,22 @@ wrapped a MUGEN rip in a licence he had no right to write.
 - Voice is mesh — degrades past ~8 people
 - Not submitted to Google Search Console
 
+### Shipped in the Aug 2026 SFFG update wave (after the Freedom Update)
+Community fighter cards now load their own idle sheet for the preview (no more
+clicking a fighter to see it); slow portraits get 18s instead of 6. A **live lobby**
+on the online screen (Supabase presence channel `fight:lobby`): open rooms appear
+with a one-click Join, matches in progress show "A vs B" deduplicated — pure
+presence, nothing stored. Real impact sounds from Chequered Ink's 400 Sounds Pack
+(`art/sfx/`, licensed free-for-commercial, credited in its LICENSE.txt) with the
+synth as fallback; bell/super stay synthesized. Tier badges use the hand-drawn
+Colorfiction Sketch font (SIL OFL, `fonts/COLORFICTION-OFL.txt`). And a
+**Strive-style restyle of `fight.html` only**: warm dusty palette (near-black +
+`#e10600`), diagonal hairline texture, left-aligned menu with a red block cursor,
+angular clip-path corners, roster art painted big behind the menu (`paintMenuArt`),
+warmed in-game stage. The rest of the site keeps the Discord-style theme on purpose.
+**`art/menu-break/lineup/whistle.png` belong to `suds.html` (Suds of Doom) — never
+delete them; they look like stale SFFG assets but are not.**
+
 ### Shipped in the Aug 2026 admin-tools update
 Server audit log (viewer in server settings, `aud_*` i18n keys), admins can now manage
 roles/kick/ban for mods and members (owner still needed for admin grants — mirrored in
