@@ -241,6 +241,13 @@ canvas#cv{display:block;background:#0e0709;max-width:100vw;max-height:100vh;}
 #s-result{justify-content:center;gap:10px;padding:40px 18px;}
 #res-meme{display:block;width:min(360px,86vw);max-height:46vh;object-fit:contain;margin-bottom:8px;
   border-radius:4px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.5);}
+#res-video{width:min(480px,90vw);max-height:50vh;margin-bottom:4px;border-radius:4px;
+  border:1px solid rgba(225,6,0,.5);box-shadow:0 20px 70px rgba(225,6,0,.25);background:#000;}
+#res-credit{color:var(--text3);font-size:11.5px;margin-bottom:10px;letter-spacing:.04em;}
+#res-mommy{margin-bottom:12px;background:none;border:1px dashed rgba(255,176,32,.45);color:var(--amber);
+  font-family:'CF Sketch','DM Sans',sans-serif;font-size:15px;padding:7px 16px;border-radius:3px;
+  cursor:pointer;opacity:.85;transition:all .15s;}
+#res-mommy:hover{opacity:1;background:rgba(255,176,32,.08);}
 #res-title{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(34px,7vw,64px);text-align:center;
   background:linear-gradient(135deg,#fff 40%,#ff8b96);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 #res-sub{color:var(--text2);font-size:16px;margin-bottom:22px;text-align:center;}
@@ -504,6 +511,9 @@ kbd{
 <!-- ══════════════ RESULT ══════════════ -->
 <div class="screen" id="s-result">
   <img id="res-meme" src="art/memes/tournament-podium.png" alt="SFFG tournament podium">
+  <video id="res-video" playsinline style="display:none;"></video>
+  <div id="res-credit" style="display:none;">mommy asmr by ryomensuskuna on YT · you earned this</div>
+  <button id="res-mommy" style="display:none;">you didn't get hit once. mommy noticed.</button>
   <div id="res-title">—</div>
   <div id="res-sub">—</div>
   <div id="res-btns">
@@ -700,6 +710,7 @@ function toast(msg,kind){
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   $(id).classList.add('active');
+  if(id!=='s-result'&&typeof stopResultMedia==='function')stopResultMedia();
   NAV.idx=0;
   if(typeof paintNav==='function')paintNav();
 }
@@ -1171,7 +1182,7 @@ function newFighter(ci,side){
 }
 function newMatch(c0,c1){
   return {frame:0,phase:PHASES.intro,phaseT:0,round:1,wins:[0,0],timer:ROUND_FRAMES,
-    hitstop:0,roundMsg:'',events:[],proj:[],f:[newFighter(c0,0),newFighter(c1,1)]};
+    hitstop:0,roundMsg:'',events:[],proj:[],perf:[0,0],f:[newFighter(c0,0),newFighter(c1,1)]};
 }
 function resetRound(S){
   const a=S.f[0].c,b=S.f[1].c,w0=S.wins[0],w1=S.wins[1],r=S.round;
@@ -1297,8 +1308,8 @@ function step(S,in0,in1){
     if(d0||d1){
       S.phase=PHASES.roundend;S.phaseT=0;
       S.roundMsg=(d0&&d1)?'DOUBLE K.O.':'K.O.';
-      if(!d0&&S.f[0].hp===chr(S.f[0]).hp)S.roundMsg='PERFECT';
-      if(!d1&&S.f[1].hp===chr(S.f[1]).hp)S.roundMsg='PERFECT';
+      if(!d0&&S.f[0].hp===chr(S.f[0]).hp){S.roundMsg='PERFECT';S.perf[0]=1;}
+      if(!d1&&S.f[1].hp===chr(S.f[1]).hp){S.roundMsg='PERFECT';S.perf[1]=1;}
       S.events.push({t:'ko',x:(d0?S.f[0].x:S.f[1].x),y:-100*FP});
     }else if(S.timer<=0){S.phase=PHASES.roundend;S.phaseT=0;S.roundMsg='TIME';}
   }
@@ -2928,10 +2939,39 @@ function advanceOneFrame(){
   return true;
 }
 
+/* flawless victory easter egg: win without being touched and a quiet claim
+   line appears; only a click starts the 10-minute reward. AV1 video —
+   browsers that can't decode it (old Safari) never see the offer. */
+function showResultMedia(perfect){
+  const img=$('res-meme'),vid=$('res-video'),cr=$('res-credit'),pill=$('res-mommy');
+  try{vid.pause();}catch(e){}
+  vid.style.display='none';cr.style.display='none';img.style.display='block';
+  let canVid=false;
+  try{canVid=!!vid.canPlayType&&vid.canPlayType('video/mp4; codecs="av01.0.05M.08"')!=='';}catch(e){}
+  pill.style.display=(perfect&&canVid)?'block':'none';
+}
+$('res-mommy').addEventListener('click',()=>{
+  const img=$('res-meme'),vid=$('res-video'),cr=$('res-credit'),pill=$('res-mommy');
+  pill.style.display='none';img.style.display='none';
+  vid.style.display='block';cr.style.display='block';
+  if(!vid.getAttribute('src'))vid.setAttribute('src','art/memes/perfect-reward.mp4');
+  vid.onerror=()=>{vid.style.display='none';cr.style.display='none';img.style.display='block';};
+  vid.currentTime=0;vid.muted=false;
+  const p=vid.play();
+  if(p&&p.catch)p.catch(()=>{});
+});
+function stopResultMedia(){
+  const v=$('res-video'),pill=$('res-mommy');
+  if(v){try{v.pause();}catch(e){}}
+  if(pill)pill.style.display='none';
+}
 function onMatchEnd(){
   if(resultShown)return;
   resultShown=true;
   const w=S.winner;
+  /* online: only the flawless winner gets mommy; the loser gets the podium */
+  const flawless=!!(S.perf&&S.perf[w])&&(mode!=='online'||net.host===(w===0));
+  showResultMedia(flawless);
   const names=[hudNames[0]||chr(S.f[0]).name,hudNames[1]||chr(S.f[1]).name];
   const youWon = mode==='online' ? (net.host===(w===0)) : (w===0);
   $('res-wait').classList.remove('on');
