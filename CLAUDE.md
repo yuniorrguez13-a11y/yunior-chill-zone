@@ -319,7 +319,6 @@ wrapped a MUGEN rip in a licence he had no right to write.
   Don't propose it again.
 - SFFG: Truck's sprite is drawn much larger than his hurtbox (`scale:1.85` against
   `w:68`); training mode's hitbox overlay makes the mismatch obvious.
-- SFFG: no touch controls — a keyboard or controller is required.
 - **Both Aug 2026 migrations must each be run once** in the Supabase SQL editor — the
   features migration (pinned messages + `user_profiles.bio`) is done; the **admin-tools
   migration** (audit log, slowmode/lock columns, timeouts, rebuilt RLS) lives in chat
@@ -349,7 +348,10 @@ on the online screen (Supabase presence channel `fight:lobby`): open rooms appea
 with a one-click Join, matches in progress show "A vs B" deduplicated — pure
 presence, nothing stored. Real impact sounds from Chequered Ink's 400 Sounds Pack
 (`art/sfx/`, licensed free-for-commercial, credited in its LICENSE.txt) with the
-synth as fallback; bell/super stay synthesized. Tier badges use the hand-drawn
+synth as fallback; bell/super stay synthesized. Touch controls: floating stick on
+the left half, L/H/S + THROW/SUPER/DASH buttons (both small ones together =
+Burst), pause button — drives P1, OR-ed into both the local and online input
+paths, shown via `body.has-touch` only on coarse-pointer devices. Tier badges use the hand-drawn
 Colorfiction Sketch font (SIL OFL, `fonts/COLORFICTION-OFL.txt`). And a
 **Strive-style restyle of `fight.html` only**: warm dusty palette (near-black +
 `#e10600`), diagonal hairline texture, left-aligned menu with a red block cursor,

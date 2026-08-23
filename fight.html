@@ -326,6 +326,35 @@ kbd{
 .tr-hint kbd{background:var(--bg3);border:1px solid var(--edge);border-bottom-width:2px;border-radius:4px;
   padding:1px 5px;font-size:10.5px;font-family:'DM Sans',sans-serif;color:var(--text);}
 
+/* ── touch controls: only visible on touch devices, in-game ── */
+#touch-ui{display:none;position:absolute;inset:0;z-index:7;pointer-events:none;
+  user-select:none;-webkit-user-select:none;}
+body.has-touch #s-game.active #touch-ui{display:block;}
+#t-zone{position:absolute;left:0;top:0;bottom:0;width:46%;pointer-events:auto;touch-action:none;}
+#t-stick{position:absolute;width:120px;height:120px;border-radius:50%;
+  border:2px solid rgba(255,235,225,.25);background:rgba(14,7,9,.35);
+  transform:translate(-50%,-50%);display:none;pointer-events:none;}
+#t-nub{position:absolute;left:50%;top:50%;width:52px;height:52px;border-radius:50%;
+  background:rgba(225,6,0,.55);border:2px solid rgba(255,235,225,.5);
+  transform:translate(-50%,-50%);}
+#t-btns{position:absolute;right:12px;bottom:16px;display:flex;flex-direction:column;
+  gap:10px;align-items:flex-end;pointer-events:none;}
+.t-row{display:flex;gap:10px;}
+.tb{pointer-events:auto;touch-action:none;width:74px;height:74px;border-radius:50%;
+  border:2px solid rgba(225,6,0,.6);background:rgba(225,6,0,.2);color:var(--text);
+  font-family:'Syne',sans-serif;font-weight:800;font-size:22px;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+.tb.sm{width:60px;height:60px;font-size:10px;letter-spacing:.06em;
+  border-color:rgba(255,235,225,.3);background:rgba(14,7,9,.4);color:var(--text2);}
+.tb.held{background:rgba(225,6,0,.6);color:#fff;}
+.tb.sm.held{background:rgba(255,235,225,.25);color:var(--text);}
+#t-pause{pointer-events:auto;touch-action:none;position:absolute;top:12px;right:12px;
+  width:44px;height:44px;border-radius:4px;border:1px solid rgba(255,235,225,.3);
+  background:rgba(14,7,9,.5);display:flex;align-items:center;justify-content:center;gap:5px;
+  -webkit-tap-highlight-color:transparent;}
+#t-pause span{display:block;width:5px;height:16px;background:var(--text2);}
+@media(min-width:900px) and (pointer:fine){body.has-touch #s-game.active #touch-ui{display:none;}}
+
 /* toast */
 #toast{
   position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);z-index:99;
@@ -505,6 +534,25 @@ kbd{
         <button class="btn primary" id="btn-ff-yes">Forfeit</button>
       </div>
     </div>
+
+    <!-- touch controls: shown only on touch devices, drives Player 1 -->
+    <div id="touch-ui">
+      <div id="t-zone"></div>
+      <div id="t-stick"><div id="t-nub"></div></div>
+      <div id="t-btns">
+        <div class="t-row">
+          <button class="tb sm" data-tm="128">DASH</button>
+          <button class="tb sm" data-tm="48">THROW</button>
+          <button class="tb sm" data-tm="96">SUPER</button>
+        </div>
+        <div class="t-row">
+          <button class="tb" data-tm="16">L</button>
+          <button class="tb" data-tm="32">H</button>
+          <button class="tb" data-tm="64">S</button>
+        </div>
+      </div>
+      <button id="t-pause" aria-label="Pause"><span></span><span></span></button>
+    </div>
   </div>
 </div>
 
@@ -565,6 +613,11 @@ kbd{
       <tr><td>Special</td><td><kbd>Y</kbd> / <kbd>Triangle</kbd> or <kbd>RB</kbd></td></tr>
       <tr><td>Jump</td><td><kbd>A</kbd> / <kbd>Cross</kbd> or up</td></tr>
     </table>
+    <h4>Touch (phone / tablet)</h4>
+    <p>On touch devices the game shows its own controls: the <b>left half of the screen is a
+       floating stick</b> — touch anywhere and drag — and the attack buttons sit on the right.
+       <b>THROW</b> and <b>SUPER</b> press their two-button combos for you; press both at once to
+       Burst. Turn the device sideways.</p>
     <p>No controller at all? Two can still share the keyboard the old cramped way:
        P1 on <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>+<kbd>F</kbd><kbd>G</kbd><kbd>H</kbd>,
        P2 on arrows+<kbd>J</kbd><kbd>K</kbd><kbd>L</kbd>. Not recommended for friendships.</p>
@@ -2405,6 +2458,58 @@ window.addEventListener('keyup',e=>keysDown.delete(e.code));
 window.addEventListener('blur',()=>keysDown.clear());
 function readMask(map){let m=0;for(const k of keysDown)if(map[k]!==undefined)m|=map[k];return m;}
 
+/* ── touch controls: floating stick on the left half, buttons on the right.
+     Drives Player 1, OR-ed with keyboard/pad so nothing else changes. ── */
+const TOUCH={mask:0,stick:0,btns:0,id:null,ax:0,ay:0};
+const IS_TOUCH=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+if(IS_TOUCH)document.body.classList.add('has-touch');
+function touchRecalc(){TOUCH.mask=TOUCH.stick|TOUCH.btns;}
+{
+  const zone=$('t-zone'),stick=$('t-stick'),nub=$('t-nub');
+  const DEAD=16;
+  const setStick=(dx,dy)=>{
+    let m=0;
+    if(dx<-DEAD)m|=IN_L; else if(dx>DEAD)m|=IN_R;
+    if(dy<-DEAD*1.5)m|=IN_U; else if(dy>DEAD*1.1)m|=IN_D;
+    TOUCH.stick=m;touchRecalc();
+    const cl=v=>Math.max(-42,Math.min(42,v));
+    nub.style.transform='translate(calc(-50% + '+cl(dx)+'px),calc(-50% + '+cl(dy)+'px))';
+  };
+  zone.addEventListener('pointerdown',e=>{
+    if(TOUCH.id!==null)return;
+    TOUCH.id=e.pointerId;TOUCH.ax=e.clientX;TOUCH.ay=e.clientY;
+    try{zone.setPointerCapture(e.pointerId);}catch(err){}
+    stick.style.display='block';
+    stick.style.left=e.clientX+'px';stick.style.top=e.clientY+'px';
+    setStick(0,0);
+    e.preventDefault();
+  });
+  zone.addEventListener('pointermove',e=>{
+    if(e.pointerId!==TOUCH.id)return;
+    setStick(e.clientX-TOUCH.ax,e.clientY-TOUCH.ay);
+    e.preventDefault();
+  });
+  const endStick=e=>{
+    if(e.pointerId!==TOUCH.id)return;
+    TOUCH.id=null;TOUCH.stick=0;touchRecalc();
+    stick.style.display='none';
+  };
+  zone.addEventListener('pointerup',endStick);
+  zone.addEventListener('pointercancel',endStick);
+  for(const b of document.querySelectorAll('#t-btns .tb')){
+    const bits=+b.dataset.tm;
+    const down=e=>{TOUCH.btns|=bits;touchRecalc();b.classList.add('held');e.preventDefault();};
+    const up=e=>{TOUCH.btns&=~bits;touchRecalc();b.classList.remove('held');e.preventDefault();};
+    b.addEventListener('pointerdown',down);
+    b.addEventListener('pointerup',up);
+    b.addEventListener('pointercancel',up);
+    b.addEventListener('pointerleave',up);
+    b.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+  $('t-pause').addEventListener('click',()=>onEscape());
+  $('touch-ui').addEventListener('contextmenu',e=>e.preventDefault());
+}
+
 /* ── gamepads ──
    Default attack buttons follow the genre convention (SF6 Modern /
    Guilty Gear put light on Square/X and the heavy hit on Circle/B):
@@ -2489,7 +2594,7 @@ function getPads(){
    0 pads  → classic two-on-one-keyboard split */
 function localMasks(){
   const pads=getPads();
-  const p1=readMask(P1K),p2=readMask(P2K);
+  const p1=readMask(P1K)|TOUCH.mask,p2=readMask(P2K);
   if(pads.length>=2)return [p1|p2|padMask(pads[0]),padMask(pads[1])];
   if(pads.length===1)return [p1|p2,padMask(pads[0])];
   return [p1,p2];
@@ -2923,7 +3028,7 @@ function advanceOneFrame(){
   }else{
     /* delay-based lockstep — local player uses keyboard (either layout) or any pad */
     while(net.capF<=S.frame+net.delay){
-      net.localIn[net.capF]=readMask(P1K)|readMask(P2K)|getPads().reduce((m,g)=>m|padMask(g),0);
+      net.localIn[net.capF]=readMask(P1K)|readMask(P2K)|TOUCH.mask|getPads().reduce((m,g)=>m|padMask(g),0);
       sendInputs();
       net.capF++;
     }
@@ -4026,9 +4131,11 @@ $('btn-leave').addEventListener('click',()=>{
 });
 window.addEventListener('beforeunload',()=>{if(net.on)ctlSend({t:'bye'});});
 
-/* touch devices: warn that a keyboard is needed */
-if('ontouchstart' in window&&!window.matchMedia('(pointer:fine)').matches){
-  $('menu-note').textContent='Heads up: SFFG needs a physical keyboard for now. Controller and touch support come later.';
+/* touch devices: point out the on-screen controls */
+if(IS_TOUCH&&!window.matchMedia('(pointer:fine)').matches){
+  $('menu-note').textContent='Touch controls: left side of the screen is your stick, buttons on the right. '+
+    'L light · H heavy · S special · THROW and SUPER do the two-button moves (both together = Burst). '+
+    'Turn your phone sideways for the good life.';
 }
 
 /* ── menu background: the real roster, drawn big — Strive energy on a budget ── */
