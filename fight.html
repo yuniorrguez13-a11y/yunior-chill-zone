@@ -54,6 +54,9 @@ h1.logo{
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   filter:drop-shadow(0 0 30px rgba(225,6,0,.28));
 }
+h1.logo img{display:block;width:min(430px,74vw);height:auto;
+  filter:drop-shadow(0 8px 28px rgba(0,0,0,.55));}
+h1.logo img~span{display:none;}   /* text is the fallback if the image dies */
 .sub{color:var(--text2);font-size:14px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;}
 
 .btn{
@@ -378,7 +381,7 @@ body.has-touch #s-game.active #touch-ui{display:block;}
 <!-- ══════════════ MENU ══════════════ -->
 <div class="screen active" id="s-menu">
   <div id="menu-art"><canvas id="menu-cv"></canvas></div>
-  <h1 class="logo">SFFG</h1>
+  <h1 class="logo"><img src="art/sffg-logo.png" alt="SFFG" onerror="this.remove()"><span>SFFG</span></h1>
   <div class="sub">stupidly funny fighting game for dummies — prototype</div>
   <div class="menu-box">
     <button class="btn primary big" id="btn-arcade"><i data-ic="trophy" data-ic-size="19"></i> Arcade</button>
@@ -2406,6 +2409,25 @@ function drawHud(S){
   ctx.fillText('ROUND '+S.round,CW/2,TOP+48);
 }
 
+/* graffiti stamps for the round moments (generated to match the logo);
+   the plain text banner stays as the fallback while they load */
+const STAMPS={};
+for(const [txt,f] of [['K.O.','ko'],['PERFECT','perfect'],['TIME','time'],
+                      ['DOUBLE K.O.','doubleko'],['FIGHT','fight']]){
+  const im=new Image();im.src='art/stamps/'+f+'.png';STAMPS[txt]=im;
+}
+function stamp(txt,a,size,col){
+  const im=STAMPS[txt];
+  if(!(im&&im.complete&&im.naturalWidth)){banner(txt,a,size,col);return;}
+  const maxW=CW*(size>=80?0.56:0.46), maxH=CH*0.34;
+  const s=Math.min(maxW/im.naturalWidth,maxH/im.naturalHeight)*(1+0.22*(1-a));
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=22;
+  ctx.drawImage(im,CW/2-im.naturalWidth*s/2,CH*0.40-im.naturalHeight*s/2,
+    im.naturalWidth*s,im.naturalHeight*s);
+  ctx.restore();
+}
 function drawBanners(S){
   ctx.textAlign='center';
   if(S.phase===PHASES.intro){
@@ -2414,11 +2436,11 @@ function drawBanners(S){
       const final=S.wins[0]===1&&S.wins[1]===1;
       banner(final?'FINAL ROUND':'ROUND '+S.round,Math.min(1,t/12),44);
     }else if(t<INTRO_F-8){
-      banner('FIGHT',Math.min(1,(t-100)/6),72,'#ff2438');
+      stamp('FIGHT',Math.min(1,(t-100)/6),72,'#ff2438');
     }
   }
   if(S.phase===PHASES.roundend&&S.phaseT<100){
-    banner(S.roundMsg||'K.O.',Math.min(1,S.phaseT/5),86,'#ff2438');
+    stamp(S.roundMsg||'K.O.',Math.min(1,S.phaseT/5),86,'#ff2438');
   }
 }
 function banner(txt,a,size,col){
