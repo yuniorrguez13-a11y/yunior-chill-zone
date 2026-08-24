@@ -53,6 +53,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `qmages.html` | Image board. Own app, shares session + theme. |
 | `piano.html` | Multiplayer piano. |
 | `music.html` | Static link page, themed via `ycz-theme.css`. |
+| `lite.html` | **YCZ Lite** — the museum edition for PS Vita (with iTLS-Enso homebrew) and other ancient browsers. Pure ES5 + 2010 CSS, XHR polling every 5s against the Supabase REST API, login + read + send in the classic channels. Rule of the file: keep it dumb forever — no modern syntax, no fetch, no realtime, no heavy assets. Not linked from the main UI; shared by URL. |
 | `gaming.html` | The console. A Steam-Big-Picture launcher: wide hero for the selected game, upright capsules for the rest, games open in an iframe here rather than redirecting. Edit the `GAMES` array at the top of its `<script>` to add or remove one — nothing else in the file needs touching. |
 | `fight.html` | **SFFG** (Stupidly Funny Fighting Game for Dummies). The fighting game: deterministic 60fps engine, official roster, community fighters, local/CPU/arcade/training/online. See its own section below. |
 | `create.html` | SFFG's no-code fighter creator. Sliders, move editor with a to-scale hitbox overlay, sprite frame upload that chroma-keys/trims/aligns and builds sheets in the browser, live validation, publish to Supabase. |
