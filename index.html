@@ -1310,6 +1310,34 @@ async function paintPushBtn(){
   const on=Notification.permission==='granted'&&!!(await pushSub());
   b.innerHTML=icon('bell',15)+' '+esc(t(on?'pushOn':'pushOff'));
 }
+/* Push is ON by default, as far as the OS allows: with permission already
+   granted this device subscribes itself silently on every signed-in load;
+   if permission was never asked, the first tap anywhere asks once. The
+   settings toggle is the opt-out and is remembered (ycz-push-off). */
+async function autoPush(){
+  if(!pushSupported()||!user||!sb)return;
+  if(localStorage.getItem('ycz-push-off')==='1')return;
+  try{
+    if(Notification.permission==='granted'){
+      if(!(await pushSub())){
+        const reg=await navigator.serviceWorker.ready;
+        const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:vapidKey(VAPID_PUB)});
+        const {error}=await sb.from('push_subs').upsert({user_id:user.id,endpoint:sub.endpoint,sub:sub.toJSON()});
+        if(error){try{await sub.unsubscribe();}catch(e2){}throw error;}
+        toast('Push notifications enabled on this device ✓','ok');
+      }
+    }else if(Notification.permission==='default'&&localStorage.getItem('ycz-push-asked')!=='1'){
+      const once=async()=>{
+        try{
+          const perm=await Notification.requestPermission();
+          localStorage.setItem('ycz-push-asked','1');
+          if(perm==='granted')autoPush();
+        }catch(e){}
+      };
+      document.addEventListener('pointerdown',once,{once:true});
+    }
+  }catch(e){toast('Push error: '+((e&&e.message)||e),'err');}
+}
 $('s-push').onclick=async()=>{
   if(!pushSupported())return;
   if(!user){toast('Sign in first, then enable push','err');return;}
@@ -1318,8 +1346,10 @@ $('s-push').onclick=async()=>{
     if(cur){
       try{await sb.from('push_subs').delete().eq('endpoint',cur.endpoint);}catch(e){}
       await cur.unsubscribe();
+      localStorage.setItem('ycz-push-off','1');   /* respected: no auto-resubscribe */
       toast('Push disabled on this device');
     }else{
+      localStorage.removeItem('ycz-push-off');
       const perm=await Notification.requestPermission();
       if(perm!=='granted'){toast('Permission was not granted ('+perm+')','err');paintPushBtn();return;}
       const reg=await navigator.serviceWorker.ready;
@@ -3285,7 +3315,7 @@ async function applySession(s,force){
   if(user){
     await loadMe();
     await loadServers();
-    await loadNotifs();watchNotifs();watchPresence();askNotifPerm();
+    await loadNotifs();watchNotifs();watchPresence();askNotifPerm();autoPush();
     if(servers.length&&!curSv)await goServer(servers[0]);
     else await goHome();
   }else{
