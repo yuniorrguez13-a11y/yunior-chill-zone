@@ -400,6 +400,19 @@ SFFG's focused menu item (translateX) no longer pushes the page wider
 (`#s-menu{overflow-x:hidden}`). Verified with Playwright iPhone-emulation screenshots +
 an overflow/font-size scanner (scratchpad `mobile-audit/`): every page now reports
 `scrollWidth === 390` and zero sub-16px visible fields.
+Round 2 (owner sent screenshots of the logged-in UI, which the first pass couldn't
+reach — the sandbox can't sign in to Supabase): topbar dropdowns (search `.tdrop`,
+pins, notifications `#ndrop`) hung off their buttons with fixed 330–340px widths and
+ran off the left screen edge — on phones they're `position:fixed`, full width, 10px
+margins; the composer placeholder drops the "· / for commands" tail ≤760px (it wrapped
+and clipped). Round 3, found by force-opening every overlay with worst-case content
+(`mobile-audit/stress.js` — injects fake messages/long names/full server settings and
+scans 22 states at 390px and 320px): long unbroken usernames/handles now wrap
+(`overflow-wrap:anywhere` on `.m-nm`, `#uc-nm`, `#uc-hd`, `.ni-t`) or truncate
+(`.m-reply .rn`, `#reply-bar b`, `.ac-n`, `#typing`), and VideoZone's
+`.profile-header`/`.channel-info-row` wrap ≤760px instead of forcing the page wider.
+**Lesson: the logged-in UI can't be audited logged-out — stress.js is the tool for
+that; keep it updated when new overlays are added.**
 
 ### Shipped in the Aug 2026 admin-tools update
 Server audit log (viewer in server settings, `aud_*` i18n keys), admins can now manage

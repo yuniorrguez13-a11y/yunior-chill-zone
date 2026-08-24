@@ -300,6 +300,12 @@
       /* the shared theme moves this pill to the top corner on phones,
          where it sits on the fixed topbar — keep it bottom-left here */
       .ycz-back{top:auto !important;bottom:14px !important;left:14px !important;}
+      /* profile / channel headers: wrap instead of forcing the page wider */
+      .profile-header{flex-wrap:wrap;padding:18px;gap:14px;}
+      .profile-header>div[style*="margin-left:auto"]{margin-left:0 !important;width:100%;}
+      .channel-info-row{flex-wrap:wrap;}
+      .channel-stats-row{flex-wrap:wrap;}
+      .profile-name,.channel-username,.channel-handle{overflow-wrap:anywhere;}
     }
   </style>
   <link rel="stylesheet" href="ycz-theme.css">
