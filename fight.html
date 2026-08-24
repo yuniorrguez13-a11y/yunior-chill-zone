@@ -375,6 +375,10 @@ body.has-touch #s-game.active #touch-ui{display:block;}
   #sel-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
   #meme-load-img{max-width:100vw;max-height:92vh;}
   #res-meme{max-height:40vh;}
+  /* the focused menu item slides 10px right — don't let it push the page wider */
+  #s-menu{overflow-x:hidden;}
+  /* iOS auto-zooms fields under 16px */
+  input,select,textarea,#cm-q,#cm-sort,#cm-filter,#sel-diff select,.tr-row select{font-size:16px;}
 }
 @media(prefers-reduced-motion:reduce){#meme-load{transition:none;}#meme-load.on #meme-load-bar{animation:none;width:100%;}}
 </style>

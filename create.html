@@ -111,6 +111,11 @@ section .desc{color:var(--text2);font-size:13.5px;margin-bottom:16px;line-height
   font-size:14px;font-weight:600;opacity:0;transition:all .22s;pointer-events:none;}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 #toast.err{border-color:rgba(232,22,42,.6);color:#ff8b96;}
+/* phones: iOS Safari auto-zooms (and stays zoomed) on fields under 16px */
+@media(max-width:760px){
+  input,select,textarea,
+  .field input[type=text],.field input[type=number],.field select{font-size:16px;}
+}
 </style>
 </head>
 <body>

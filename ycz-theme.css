@@ -187,6 +187,13 @@ input[type="password"],input[type="search"],textarea{
   border-color:rgba(232,22,42,.45) !important;outline:none !important;
 }
 ::placeholder{color:var(--text3) !important;}
+/* iOS Safari auto-zooms (and stays zoomed in) on any field under 16px.
+   On phones every text field gets 16px, whatever the page set. */
+@media(max-width:760px){
+  input[type="text"],input[type="email"],input[type="password"],input[type="search"],
+  input[type="url"],input[type="number"],input[type="tel"],
+  input:not([type]),textarea,select,.comment-input{font-size:16px !important;}
+}
 
 /* ── auth ── */
 .auth-container{

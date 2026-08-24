@@ -376,6 +376,31 @@ Discord-style theme on purpose.
 **`art/menu-break/lineup/whistle.png` belong to `suds.html` (Suds of Doom) — never
 delete them; they look like stale SFFG assets but are not.**
 
+### Shipped in the Aug 2026 mobile pass
+The owner reported the phone experience was clunky: iOS kept zooming in (Safari
+auto-zooms any field under 16px and stays zoomed) and things clipped. Fixes, all
+CSS-first: **every text field is ≥16px on phones** — a global `@media(max-width:760px)`
+rule in `ycz-theme.css` (covers VideoZone/Qmages/Gaming/Music) plus per-page rules in
+`index.html`, `fight.html`, `create.html` and `lite.html`, which don't load the theme.
+Watch the specificity: several pages size inputs via id/descendant selectors, so the
+mobile rule must name them (`#cm-q`, `.tr-row select`, `.field input[type=text]`…).
+Chat got safe-area padding (`env(safe-area-inset-*)` on `#main`, `#comp`, `#me-bar`,
+drawers, toast — the viewport is `viewport-fit=cover`, so without it the composer sat
+under the iPhone home bar), `#t-mem` hidden ≤900px (the member list it toggles is
+already hidden there), hover tooltips hidden on touch, and **tap-to-open message
+actions**: on coarse pointers, tapping a message body toggles `.acts-open` which shows
+`.m-acts` (hover-only before = unreachable on phones; wired at the end of the `#msgs`
+click handler). **VideoZone had no mobile layout at all** — the fixed 220px sidebar +
+`min-width` topbar logo forced the page to 540px wide (browser zoomed out, everything
+clipped); ≤760px the sidebar becomes a horizontal scroll strip under the topbar, the
+logo text hides (span `.tb-name`), and `.ycz-back` is forced back to bottom-left
+(`!important`, because the theme's mobile rule tops it and lands on the fixed topbar).
+`modding.html` tables scroll inside `display:block` boxes instead of widening the page;
+SFFG's focused menu item (translateX) no longer pushes the page wider
+(`#s-menu{overflow-x:hidden}`). Verified with Playwright iPhone-emulation screenshots +
+an overflow/font-size scanner (scratchpad `mobile-audit/`): every page now reports
+`scrollWidth === 390` and zero sub-16px visible fields.
+
 ### Shipped in the Aug 2026 admin-tools update
 Server audit log (viewer in server settings, `aud_*` i18n keys), admins can now manage
 roles/kick/ban for mods and members (owner still needed for admin grants — mirrored in

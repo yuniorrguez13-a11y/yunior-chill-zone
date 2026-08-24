@@ -277,6 +277,30 @@
     .search-header{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:24px;}
     .search-header span{color:var(--accent);}
     ::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+    /* ── phones: the fixed 220px sidebar owned half the screen and forced the
+       page wider than the viewport. It becomes a horizontal strip under the
+       topbar, and the topbar itself learns to shrink. ── */
+    @media(max-width:760px){
+      .topbar{gap:8px;padding:0 10px;}
+      .topbar-logo{min-width:0;flex:none;}
+      .topbar-logo .tb-name{display:none;}
+      .search-bar{min-width:0;}
+      .search-bar input{min-width:0;width:100%;}
+      .topbar-actions{gap:8px;flex:none;}
+      .btn-primary{white-space:nowrap;padding:8px 13px;}
+      .sidebar{top:56px;left:0;right:0;bottom:auto;width:auto;height:50px;
+        display:flex;align-items:center;overflow-x:auto;overflow-y:hidden;
+        padding:0 6px;border-right:none;border-bottom:1px solid var(--border);
+        -webkit-overflow-scrolling:touch;scrollbar-width:none;}
+      .sidebar::-webkit-scrollbar{display:none;}
+      .nav-item{flex:none;margin:0 2px;padding:8px 12px;}
+      .nav-section,.nav-divider{display:none;}
+      .main{margin-left:0;margin-top:106px;padding:14px;}
+      /* the shared theme moves this pill to the top corner on phones,
+         where it sits on the fixed topbar — keep it bottom-left here */
+      .ycz-back{top:auto !important;bottom:14px !important;left:14px !important;}
+    }
   </style>
   <link rel="stylesheet" href="ycz-theme.css">
   <script src="ycz-icons.js"></script>
@@ -287,7 +311,7 @@
 
 
 <div class="topbar">
-  <div class="topbar-logo" id="logoBtn"><div class="logo-icon">▶</div>YuniorVideoZone</div>
+  <div class="topbar-logo" id="logoBtn"><div class="logo-icon">▶</div><span class="tb-name">YuniorVideoZone</span></div>
   <div class="search-bar">
     <input type="text" id="searchInput" placeholder="Search videos...">
     <button id="searchBtn">🔍</button>

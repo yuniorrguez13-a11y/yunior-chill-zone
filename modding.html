@@ -37,6 +37,11 @@ td:first-child{color:var(--cyan);white-space:nowrap;}
 .note{border-left:3px solid var(--amber);background:rgba(255,176,32,.06);padding:10px 14px;border-radius:0 10px 10px 0;
   font-size:13.5px;color:var(--text2);margin:14px 0;}
 .danger{border-left-color:var(--accent);background:rgba(232,22,42,.06);}
+/* phones: the reference tables are wider than the screen — scroll them
+   inside their own box instead of stretching the whole page */
+@media(max-width:760px){
+  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}
 </style>
 </head>
 <body>
