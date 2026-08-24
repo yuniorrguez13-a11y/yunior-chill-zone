@@ -1311,22 +1311,27 @@ async function paintPushBtn(){
   b.innerHTML=icon('bell',15)+' '+esc(t(on?'pushOn':'pushOff'));
 }
 $('s-push').onclick=async()=>{
-  if(!pushSupported()||!user)return;
+  if(!pushSupported())return;
+  if(!user){toast('Sign in first, then enable push','err');return;}
   try{
     const cur=await pushSub();
     if(cur){
       try{await sb.from('push_subs').delete().eq('endpoint',cur.endpoint);}catch(e){}
       await cur.unsubscribe();
+      toast('Push disabled on this device');
     }else{
       const perm=await Notification.requestPermission();
-      if(perm==='granted'){
-        const reg=await navigator.serviceWorker.ready;
-        const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:vapidKey(VAPID_PUB)});
-        const {error}=await sb.from('push_subs').upsert({user_id:user.id,endpoint:sub.endpoint,sub:sub.toJSON()});
-        if(error){await sub.unsubscribe();throw error;}
-      }
+      if(perm!=='granted'){toast('Permission was not granted ('+perm+')','err');paintPushBtn();return;}
+      const reg=await navigator.serviceWorker.ready;
+      const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:vapidKey(VAPID_PUB)});
+      const {error}=await sb.from('push_subs').upsert({user_id:user.id,endpoint:sub.endpoint,sub:sub.toJSON()});
+      if(error){await sub.unsubscribe();throw error;}
+      toast('Push enabled ✓ this device is subscribed','ok');
     }
-  }catch(e){console.warn('[push]',e?.message||e);}
+  }catch(e){
+    /* surfacing this matters: on a phone there is no console to read */
+    toast('Push error: '+((e&&e.message)||e),'err');
+  }
   paintPushBtn();
 };
 $('set-x').onclick=()=>shut('set-ov');
