@@ -668,6 +668,10 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
   /* iOS Safari auto-zooms (and stays zoomed) on any field under 16px */
   input,textarea,select{font-size:16px;}
   .fi,#txt,.m-edit{font-size:16px;}
+  /* search / pins / notification dropdowns hang off buttons mid-topbar and
+     ran off the left edge of the phone — pin them to the viewport instead */
+  .tdrop,#ndrop{position:fixed;top:calc(54px + env(safe-area-inset-top));left:10px;right:10px;width:auto;max-width:none;}
+  #nd-list,.td-list{max-height:min(370px,60dvh);}
 }
 /* touch devices: hover doesn't exist */
 @media(pointer:coarse){
@@ -1932,7 +1936,8 @@ function refreshComposer(){
   $('txt').placeholder=!user?t('sendTip'):!curCh?t('noChannels')
     :lockedOut?t('chLocked')
     :mutedOut?t('mutedNote').replace('{t}',new Date(myMutedUntil).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))
-    :`${t('message')} ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}  ·  /  ${t('forCommands')}`;
+    :`${t('message')} ${curCh.kind==='dm'?'@'+curCh.name:'#'+curCh.name}${
+      window.innerWidth>760?`  ·  /  ${t('forCommands')}`:''}`; /* the long hint wraps and clips on phones */
   const sm=isCh&&on&&(curCh.slowmode||0);
   $('comp-note').textContent=sm&&!canModerate()?t('slowNote').replace('{s}',sm):'';
 }
