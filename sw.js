@@ -19,6 +19,30 @@ self.addEventListener('activate',e=>{
       .then(()=>self.clients.claim())
   );
 });
+/* ── real push: the push-notify edge function sends {title, body, url} ── */
+self.addEventListener('push',e=>{
+  let d={};
+  try{d=e.data?e.data.json():{};}catch(err){d={body:e.data&&e.data.text?e.data.text():''};}
+  const title=d.title||'Yuniors Chill Zone';
+  e.waitUntil(self.registration.showNotification(title,{
+    body:d.body||'',
+    icon:'/art/icons/icon-192.png',
+    badge:'/art/icons/icon-192.png',
+    tag:d.tag||'ycz',
+    data:{url:d.url||'/'}
+  }));
+});
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  const url=(e.notification.data&&e.notification.data.url)||'/';
+  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{
+    for(const c of list){
+      if('focus' in c){c.navigate(url);return c.focus();}
+    }
+    return clients.openWindow(url);
+  }));
+});
+
 self.addEventListener('fetch',e=>{
   const req=e.request;
   if(req.method!=='GET')return;

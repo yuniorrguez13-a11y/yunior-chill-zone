@@ -337,9 +337,14 @@ wrapped a MUGEN rip in a licence he had no right to write.
   `<audio>`/`<video>` and suspends any Web Audio context opened *after* the
   game loads. A context opened during load keeps playing.
 - No screen share
-- Push notifications only fire when the tab is open in the background — the PWA service
-  worker now exists (`sw.js`), so real push is one step away: VAPID keys + an edge
-  function + a subscriptions table
+- Real web push is wired client-side: `sw.js` has push/notificationclick handlers, the
+  chat settings has a per-device toggle that subscribes with the VAPID public key
+  (embedded in `index.html` — public on purpose) and upserts to `push_subs`. The server
+  side lives in Supabase and was handed to the owner in chat (owner rule): `push_subs`
+  table SQL, a `push-notify` edge function (needs secrets `VAPID_PRIVATE_KEY` and
+  `PUSH_HOOK_SECRET`), and a Database Webhook on `notifications` INSERT that calls the
+  function with the secret header. Until he runs those, the toggle subscribes but
+  nothing sends.
 - Voice is mesh — degrades past ~8 people
 - Not submitted to Google Search Console
 
