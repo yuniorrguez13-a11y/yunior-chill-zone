@@ -58,6 +58,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `create.html` | SFFG's no-code fighter creator. Sliders, move editor with a to-scale hitbox overlay, sprite frame upload that chroma-keys/trims/aligns and builds sheets in the browser, live validation, publish to Supabase. |
 | `modding.html` | SFFG's "how to code a fighter" tutorial — the JSON format, limits, sprite contract, validation rules, worked example. |
 | `sffg-mods.js` | The community fighter format (v3, the Freedom Update): security bounds, `validateMod()`, `hashMod()`. Shared by `fight.html` and `create.html` so the game and the creator enforce identical rules. |
+| `manifest.json` · `sw.js` | The PWA: installable app (icons in `art/icons/`, generated from the favicon). `sw.js` is deliberately **network-first, cache as offline fallback only** — never let it get in the way of the 80-second deploy freshness. Every main page links the manifest and registers the worker. The five pages that created their Supabase client unguarded now polyfill a chainable no-op client when the CDN is unreachable, so offline shells paint instead of crashing. |
 | `wrangler.jsonc` · `_headers` · `.assetsignore` | Cloudflare hosting config, cache rules, and what stays unpublished. |
 
 ### Supabase Edge Functions
@@ -336,8 +337,9 @@ wrapped a MUGEN rip in a licence he had no right to write.
   `<audio>`/`<video>` and suspends any Web Audio context opened *after* the
   game loads. A context opened during load keeps playing.
 - No screen share
-- Push notifications only fire when the tab is open in the background — real push needs a
-  service worker + VAPID keys
+- Push notifications only fire when the tab is open in the background — the PWA service
+  worker now exists (`sw.js`), so real push is one step away: VAPID keys + an edge
+  function + a subscriptions table
 - Voice is mesh — degrades past ~8 people
 - Not submitted to Google Search Console
 

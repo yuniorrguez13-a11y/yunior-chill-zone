@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SFFG — Yuniors Chill Zone</title>
 <link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="art/icons/icon-192.png">
+<meta name="theme-color" content="#0a0a12">
 <meta name="description" content="SFFG: a free fighting game in your browser. No install, no account needed to play. Local versus, online 1v1 with a room code, arcade, training — and a no-code creator to build your own fighter.">
 <!-- how the link looks when shared on Discord, WhatsApp, iMessage -->
 <meta property="og:type" content="website">
@@ -4283,6 +4286,10 @@ window.__fz={
     return {h1,h2,equal:h1===h2};
   }
 };
+</script>
+<script>
+/* PWA: makes the site installable; the worker is network-first (see sw.js) */
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>

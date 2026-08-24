@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Yuniors Chill Zone — chat, voice, games and music</title>
 <link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="art/icons/icon-192.png">
 <link rel="canonical" href="https://yuniorschillzone.xyz/">
 <meta name="description" content="Yuniors Chill Zone is a free hangout: servers with text and voice channels, a shared music room, browser games, an image board and a multiplayer piano. Make an account and jump in.">
 <meta name="theme-color" content="#e8162a">
@@ -1039,6 +1041,7 @@ const SB_URL='https://heohcnhgclcnmssjklom.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhlb2hjbmhnY2xjbm1zc2prbG9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNDg2NDAsImV4cCI6MjA4NTcyNDY0MH0.Y73DbstnhKAI2IvPcMrL_mtIObmeOQj-rgY0XtdE200';
 const OWNER='yunior133@icloud.com';
 /* storageKey must match every other YCZ page so one login covers the whole site */
+window.supabase=window.supabase||{createClient:function(){var stub=new Proxy(function(){},{get:function(t,k){if(k==='then')return function(res){if(res)res({data:{session:null},error:{message:'offline'}});return stub;};return stub;},apply:function(){return stub;}});return stub;}}; /* offline: CDN unreachable — chainable no-op client (thenable, resolves {data:null,error}) so the page still paints */
 const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,storageKey:'ycz-auth',
   storage:window.localStorage,autoRefreshToken:true,detectSessionInUrl:true}});
 
@@ -3284,6 +3287,10 @@ window.addEventListener('online',()=>{
 /* keep "last seen" fresh */
 setInterval(()=>{if(user)saveProfile();},4*60*1000);
 })();
+</script>
+<script>
+/* PWA: makes the site installable; the worker is network-first (see sw.js) */
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>

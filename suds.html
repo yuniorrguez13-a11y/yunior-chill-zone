@@ -10120,6 +10120,7 @@ function betConnect(){
   const s = document.createElement('script');
   s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
   s.onload = () => {
+    window.supabase=window.supabase||{createClient:function(){var stub=new Proxy(function(){},{get:function(t,k){if(k==='then')return function(res){if(res)res({data:{session:null},error:{message:'offline'}});return stub;};return stub;},apply:function(){return stub;}});return stub;}}; /* offline: CDN unreachable — chainable no-op client (thenable, resolves {data:null,error}) so the page still paints */
     betSb = window.supabase.createClient(BET_DB.url, BET_DB.key,
       { auth: { persistSession: false } });
     betSbLoading = false;

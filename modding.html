@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SFFG Modding Guide — Yuniors Chill Zone</title>
 <link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="art/icons/icon-192.png">
+<meta name="theme-color" content="#0a0a12">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
 :root{--bg:#0a0a12;--bg2:#12121b;--card:#14141f;--border:rgba(255,255,255,.08);
@@ -236,5 +239,9 @@ the official roster follows. If you're unsure whether a pack is legit, ask in th
 }</pre>
 <p>Paste that into the Creator's <i>Import JSON</i> and it's playable in thirty seconds.</p>
 </div>
+<script>
+/* PWA: makes the site installable; the worker is network-first (see sw.js) */
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
 </body>
 </html>

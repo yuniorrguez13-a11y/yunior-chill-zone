@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Piano Room — Yuniors Chill Zone</title>
   <link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="art/icons/icon-192.png">
+<meta name="theme-color" content="#0a0a12">
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap');
@@ -427,6 +430,7 @@ const SUPABASE_URL = "https://heohcnhgclcnmssjklom.supabase.co";
 const SUPABASE_KEY = "sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq";
 /* SHARED SESSION — storageKey must match every other YCZ page ('ycz-auth')
    so signing in on the main site signs you in here automatically. */
+window.supabase=window.supabase||{createClient:function(){var stub=new Proxy(function(){},{get:function(t,k){if(k==='then')return function(res){if(res)res({data:{session:null},error:{message:'offline'}});return stub;};return stub;},apply:function(){return stub;}});return stub;}}; /* offline: CDN unreachable — chainable no-op client (thenable, resolves {data:null,error}) so the page still paints */
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth:{ persistSession:true, storageKey:'ycz-auth', storage:window.localStorage,
          autoRefreshToken:true, detectSessionInUrl:true }
@@ -1092,6 +1096,10 @@ if(user) {
   showScreen('auth-screen');
 }
 
+</script>
+<script>
+/* PWA: makes the site installable; the worker is network-first (see sw.js) */
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>

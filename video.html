@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YuniorVideoZone</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="art/icons/icon-192.png">
+<meta name="theme-color" content="#0a0a12">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -564,6 +568,7 @@
 <script>
 (function() {
   /* storageKey must match every other YCZ page — one login covers the site */
+  window.supabase=window.supabase||{createClient:function(){var stub=new Proxy(function(){},{get:function(t,k){if(k==='then')return function(res){if(res)res({data:{session:null},error:{message:'offline'}});return stub;};return stub;},apply:function(){return stub;}});return stub;}}; /* offline: CDN unreachable — chainable no-op client (thenable, resolves {data:null,error}) so the page still paints */
   var _sb = supabase.createClient(
     'https://heohcnhgclcnmssjklom.supabase.co',
     'sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq',
@@ -1470,6 +1475,10 @@
 <script>
 /* inside the Chill Zone app these open in an overlay, so the button is noise */
 if(window.self!==window.top){var b=document.querySelector('.ycz-back');if(b)b.remove();}
+</script>
+<script>
+/* PWA: makes the site installable; the worker is network-first (see sw.js) */
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>

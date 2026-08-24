@@ -6,6 +6,9 @@
   <title>Da Gaming Zone — Yuniors Chill Zone</title>
   <meta name="description" content="The Yuniors Chill Zone console — every game in one place, no downloads.">
   <link rel="icon" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="art/icons/icon-192.png">
+<meta name="theme-color" content="#0a0a12">
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
   /* ═══════════════════════════════════════════════════════════════
@@ -1346,6 +1349,10 @@ document.addEventListener('visibilitychange', ()=>{ if(document.hidden) bankTime
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
+</script>
+<script>
+/* PWA: makes the site installable; the worker is network-first (see sw.js) */
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
 </html>

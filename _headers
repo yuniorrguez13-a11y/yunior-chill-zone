@@ -27,6 +27,10 @@
 /art/*
   Cache-Control: public, max-age=604800
 
+# ── PWA: el manifest puede cachearse un rato; sw.js ya cae en la regla js ──
+/manifest.json
+  Cache-Control: public, max-age=3600
+
 # ── imagen de preview para enlaces compartidos ──
 /preview.png
   Cache-Control: public, max-age=86400
