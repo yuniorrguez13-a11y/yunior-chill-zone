@@ -10,6 +10,9 @@
 # notas internas del proyecto
 CLAUDE.md
 
+# material de producción de videos promo — no es parte del sitio
+promo
+
 # configuración del hosting, no hace falta servirla
 wrangler.jsonc
 .assetsignore

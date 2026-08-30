@@ -61,6 +61,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `sffg-mods.js` | The community fighter format (v3, the Freedom Update): security bounds, `validateMod()`, `hashMod()`. Shared by `fight.html` and `create.html` so the game and the creator enforce identical rules. |
 | `manifest.json` · `sw.js` | The PWA: installable app (icons in `art/icons/`, generated from the favicon). `sw.js` is deliberately **network-first, cache as offline fallback only** — never let it get in the way of the 80-second deploy freshness. Every main page links the manifest and registers the worker. The five pages that created their Supabase client unguarded now polyfill a chainable no-op client when the CDN is unreachable, so offline shells paint instead of crashing. |
 | `wrangler.jsonc` · `_headers` · `.assetsignore` | Cloudflare hosting config, cache rules, and what stays unpublished. |
+| `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
 
 ### Supabase Edge Functions
 | Function | Purpose | Notes |
