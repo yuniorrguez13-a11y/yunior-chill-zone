@@ -308,6 +308,58 @@ someone's frames still starts from their frames. Two packs were rejected on thes
 grounds during development; one itch.io pack was rejected because the uploader had
 wrapped a MUGEN rip in a licence he had no right to write.
 
+## Security posture (audited Aug 2026, pre-launch)
+
+A full adversarial audit ran before the site was promoted publicly. **The rule that
+governs every finding: the UI is not a boundary — assume the attacker makes direct
+REST/RPC calls with the public anon key. Only RLS, triggers and edge-function checks
+stop anything.**
+
+Fixed in the client and shipped:
+- **Stored XSS in `video.html`** (critical, proven exploitable): titles, usernames,
+  comment bodies and `avatar_url` were concatenated raw into `innerHTML`, so a video
+  title executed for every visitor to the front page. Same class in `qmages.html`
+  (URL columns into `src="…"`) and a `javascript:` href via `qmages_images.source_url`.
+  Both files now have `esc()` + `safeUrl()` (http(s)-only) applied at every sink.
+  A Playwright harness feeds a hostile row through the real render path; before the
+  fix `window.__PWNED` was set, after it the payload is inert text.
+- **Presence-status injection in `index.html`** (critical): the realtime presence
+  payload is client-written and landed unescaped inside a `class` attribute in the
+  member list and user card. `statusOf()` now whitelists online/idle/dnd.
+- `_headers` gained a **CSP** on the session-holding pages (`/` and `/index.html` both
+  need rules — Cloudflare matches exact paths) plus HSTS. `connect-src` is the point:
+  it stops an injected script shipping the session token off-origin. `'unsafe-inline'`
+  stays until the inline JS moves out. Third-party game bundles are deliberately left
+  without CSP (they talk to their own servers).
+- `index.html` was otherwise clean: `esc()` everywhere and `isUrl()` gating; the
+  `renderText → md(linkify())` markdown pipeline was traced and is **not** injectable.
+  SFFG's mod pipeline is genuinely a whitelist — mod data reaches no script/style/URL
+  sink; "pure data, no mod code executed" holds.
+
+Server-side state as of the live dump (**every table has RLS enabled**; `user_roles`
+has no write policy at all, so nobody can self-promote to owner — that fear is closed;
+DMs are correctly scoped by `ycz_in_dm`; `push_subs` is correctly pinned to `auth.uid()`):
+- Identity guard triggers now live on `messages` and `notifications`
+  (`ycz_msg_identity_guard`, `ycz_notif_guard`): the client used to decide `is_owner`,
+  `role`, `is_bot`, `username` and `pfp_url`, and the renderer trusted them, so any
+  account could post as the Owner. The DB now overwrites those columns with the truth
+  (service_role bypasses, so the bot-post edge function still works).
+- Storage: **7 buckets, not 1** (`avatars`, `files`, `banners`, `thumbnails`, `videos`,
+  `qmages-*`). Only `avatars` had been audited. The qmages delete policies allowed **any
+  logged-in user to delete anyone's images**; several upload policies checked only the
+  bucket, not the `<uid>/` folder; banners/thumbnails/videos had no delete policy at all
+  (moderation impossible) and no size/MIME limit.
+- Still open, needs a coordinated client change: `servers_read USING (true)` leaks every
+  invite code and `server_members` INSERT is self-service, so "join any server" remains
+  possible — which also weakens the new message-read policy. Fixing it needs a
+  `join_server(code)` RPC plus an `index.html` change, in lockstep.
+- `channels.room_key` is client-chosen; without a unique index an attacker can create a
+  shadow channel carrying someone else's room_key and defeat membership checks.
+- **Lesson for future RLS work:** policies are OR'ed — dropping one loose policy does
+  nothing if another still permits. Never reference a table inside a policy expression
+  without a `security definer` helper, or the policy breaks the day that table is locked
+  down (that is why `ycz_can_read_room` / `ycz_can_notify` / `ycz_is_staff` exist).
+
 ## Known gaps / next up
 
 - **No DMARC record.** `_dmarc` TXT `v=DMARC1; p=none; rua=mailto:yuni@yuniorschillzone.xyz`
