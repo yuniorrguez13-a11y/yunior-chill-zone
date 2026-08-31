@@ -962,7 +962,14 @@ function $(id){return document.getElementById(id);}
 function gi(s){return s?s[0].toUpperCase():'?';}
 function fv(n){n=n||0;if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n;}
 function timeAgo(d){var s=(Date.now()-new Date(d))/1000;if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';if(s<604800)return Math.floor(s/86400)+'d ago';return Math.floor(s/604800)+'w ago';}
-function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+/* a URL from the database is user input: prove it is http(s) before it can
+   land in a src=, or "javascript:" and broken-out attributes become code */
+function safeUrl(u){
+  if(!u)return '';
+  try{var x=new URL(u,window.location.origin);
+    return (x.protocol==='http:'||x.protocol==='https:')?esc(x.href):'';}catch(e){return '';}
+}
 
 function tw(el){
   if(!el||!window.twemoji)return;
@@ -997,13 +1004,13 @@ function pinCard(img){
   var aspect=(img.height&&img.width)?(img.height/img.width*100).toFixed(1)+'%':'75%';
   var bg=img.color||'var(--bg3)';
   var imgContent=img.image_url
-    ?'<img class="pin-img" src="'+img.image_url+'" alt="'+esc(img.title)+'" loading="lazy">'
-    :'<div class="pin-color-ph" style="padding-top:'+aspect+';background:'+bg+'"></div>';
+    ?'<img class="pin-img" src="'+safeUrl(img.image_url)+'" alt="'+esc(img.title)+'" loading="lazy">'
+    :'<div class="pin-color-ph" style="padding-top:'+aspect+';background:'+esc(bg)+'"></div>';
   return '<div class="pin-wrap">'
-    +'<div class="pin-card" data-id="'+img.id+'">'
+    +'<div class="pin-card" data-id="'+esc(img.id)+'">'
     +imgContent
     +'<div class="pin-overlay"></div>'
-    +'<div class="pin-actions"><button class="pin-save-btn" data-id="'+img.id+'">Save</button></div>'
+    +'<div class="pin-actions"><button class="pin-save-btn" data-id="'+esc(img.id)+'">Save</button></div>'
     +'<div class="pin-footer">'
     +'<div class="pin-footer-title">'+esc(img.title)+'</div>'
     +'<div class="pin-footer-user">@'+esc(img.username||'unknown')+'</div>'
@@ -1087,7 +1094,7 @@ function openImage(id){
     loadComments(id);
     $('commentInputRow').style.display=currentUser?'block':'none';
     if(currentUser&&currentProfile){
-      $('commentAva').innerHTML=currentProfile.avatar_url?'<img src="'+currentProfile.avatar_url+'" style="width:100%;height:100%;object-fit:cover;">':gi(currentProfile.username);
+      $('commentAva').innerHTML=currentProfile.avatar_url?'<img src="'+safeUrl(currentProfile.avatar_url)+'" style="width:100%;height:100%;object-fit:cover;">':gi(currentProfile.username);
     }
     tw($('viewerAuthor'));
   });
@@ -1251,7 +1258,7 @@ function loadBoards(){
 }
 function boardCardEl(b,isOwn){
   var el=document.createElement('div');el.className='board-card';
-  var cover=b.cover_image_url?'<img src="'+b.cover_image_url+'" loading="lazy">'
+  var cover=b.cover_image_url?'<img src="'+safeUrl(b.cover_image_url)+'" loading="lazy">'
     :'<div class="board-cover-ph">📌</div>';
   el.innerHTML='<div class="board-cover">'+cover+(b.is_private?'<div class="board-lock">🔒</div>':'')+'</div>'
     +'<div class="board-info"><div class="board-name">'+esc(b.name)+'</div><div class="board-count">'+b.pin_count+' pins</div></div>';
@@ -1323,10 +1330,10 @@ function loadProfile(userId){
   _sb.from('profiles').select('*').eq('id',userId).single().then(function(r){
     var p=r.data||{},u=p.username||'Unknown';
     var bEl=$('profileBanner');
-    if(p.banner_url)bEl.innerHTML='<img src="'+p.banner_url+'" style="width:100%;height:100%;object-fit:cover;">';
+    if(p.banner_url)bEl.innerHTML='<img src="'+safeUrl(p.banner_url)+'" style="width:100%;height:100%;object-fit:cover;">';
     else bEl.innerHTML='<div class="profile-banner-bg"></div>';
     var pfpEl=$('profilePfp');
-    if(p.avatar_url)pfpEl.innerHTML='<img src="'+p.avatar_url+'">';else pfpEl.textContent=gi(u);
+    if(p.avatar_url)pfpEl.innerHTML='<img src="'+safeUrl(p.avatar_url)+'">';else pfpEl.textContent=gi(u);
     $('profileUsername').textContent=u;$('profileHandle').textContent='@'+u;$('profileBio').textContent=p.bio||'';
     var isOwn=currentUser&&currentUser.id===userId;
     var actions=$('profileActions');
@@ -1335,7 +1342,7 @@ function loadProfile(userId){
       $('profileEditBtn').addEventListener('click',function(){navigate('edit-profile');});
       $('profileSignoutBtn').addEventListener('click',function(){_sb.auth.signOut().then(function(){currentUser=null;currentProfile=null;updateAuthUI();navigate('home');toast('Signed out');});});
     } else if(currentUser){
-      actions.innerHTML='<button class="btn-follow" id="profileFollowBtn" data-uid="'+userId+'">Follow</button>';
+      actions.innerHTML='<button class="btn-follow" id="profileFollowBtn" data-uid="'+esc(userId)+'">Follow</button>';
       _sb.from('qmages_follows').select('id').eq('follower_id',currentUser.id).eq('following_id',userId).then(function(r){
         var f=r.data&&r.data.length>0;
         var btn=$('profileFollowBtn');if(!btn)return;
@@ -1386,7 +1393,7 @@ function loadEditProfile(){
     if(p.avatar_url){$('editPfpImg').src=p.avatar_url;$('editPfpImg').style.display='block';$('editPfpInitial').style.display='none';}
     else{$('editPfpImg').style.display='none';$('editPfpInitial').style.display='block';}
     var inner=$('editBannerInner');
-    if(p.banner_url)inner.innerHTML='<img src="'+p.banner_url+'" style="width:100%;height:100%;object-fit:cover;">';
+    if(p.banner_url)inner.innerHTML='<img src="'+safeUrl(p.banner_url)+'" style="width:100%;height:100%;object-fit:cover;">';
     else inner.innerHTML='<div style="width:100%;height:100%;background:linear-gradient(135deg,#c026d3,#7c3aed)"></div>';
   });
 }
@@ -1445,7 +1452,7 @@ function updateAuthUI(){
   var av=$('userAvatar');
   if(currentUser){
     $('authButtons').style.display='none';$('userMenu').style.display='block';
-    if(currentProfile&&currentProfile.avatar_url)av.innerHTML='<img src="'+currentProfile.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+    if(currentProfile&&currentProfile.avatar_url)av.innerHTML='<img src="'+safeUrl(currentProfile.avatar_url)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
     else av.textContent=gi(currentProfile&&currentProfile.username||currentUser.email);
   } else{$('authButtons').style.display='block';$('userMenu').style.display='none';}
 }

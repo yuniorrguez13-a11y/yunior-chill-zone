@@ -639,7 +639,25 @@
     return n;
   }
 
-  function gi(s) { return s ? s[0].toUpperCase() : '?'; }
+  function gi(s) { return esc(s ? s[0].toUpperCase() : '?'); }
+
+  /* ── XSS defence ──────────────────────────────────────────────
+     Every string that comes from the database is written by a user,
+     so it must be escaped before it is concatenated into HTML, and
+     any URL must be proven http(s) before it lands in a src=.
+     Without this, a video title or a username is executable code. */
+  function esc(v) {
+    return (v == null ? '' : String(v))
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function safeUrl(u) {
+    if (!u) return '';
+    try {
+      var url = new URL(u, window.location.origin);
+      return (url.protocol === 'http:' || url.protocol === 'https:') ? esc(url.href) : '';
+    } catch (e) { return ''; }
+  }
 
   function toast(msg, type) {
     var t = $('toast');
@@ -676,7 +694,7 @@
     size = size || 32;
     var st = 'width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:' + Math.floor(size*0.4) + 'px;font-weight:700;color:white;overflow:hidden;flex-shrink:0;';
     if (profile && profile.avatar_url) {
-      return '<div style="' + st + '"><img src="' + profile.avatar_url + '" style="width:100%;height:100%;object-fit:cover;"></div>';
+      return '<div style="' + st + '"><img src="' + safeUrl(profile.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;"></div>';
     }
     return '<div style="' + st + '">' + gi(profile && profile.username) + '</div>';
   }
@@ -684,22 +702,22 @@
   function videoCard(v) {
     var p = v.profiles || {};
     var u = p.username || 'Unknown';
-    var thumb = v.thumbnail_url ? '<img src="' + v.thumbnail_url + '" alt="" loading="lazy">' : '<div class="thumb-placeholder">🎬</div>';
+    var thumb = v.thumbnail_url ? '<img src="' + safeUrl(v.thumbnail_url) + '" alt="" loading="lazy">' : '<div class="thumb-placeholder">🎬</div>';
     var ava = p.avatar_url
-      ? '<img src="' + p.avatar_url + '" style="width:100%;height:100%;object-fit:cover;">'
+      ? '<img src="' + safeUrl(p.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;">'
       : gi(u);
-    return '<div class="video-card" data-id="' + v.id + '">' +
+    return '<div class="video-card" data-id="' + esc(v.id) + '">' +
       '<div class="video-thumb">' + thumb + '</div>' +
       '<div class="video-info"><div class="video-info-row">' +
-      '<div class="video-avatar" data-channel-id="' + v.user_id + '">' + ava + '</div>' +
-      '<div class="video-meta"><div class="video-title">' + v.title + '</div>' +
-      '<div class="video-sub"><span class="video-channel-link" data-channel-id="' + v.user_id + '">@' + u + '</span> • ' + fv(v.views) + ' views • ' + timeAgo(v.created_at) + '</div>' +
+      '<div class="video-avatar" data-channel-id="' + esc(v.user_id) + '">' + ava + '</div>' +
+      '<div class="video-meta"><div class="video-title">' + esc(v.title) + '</div>' +
+      '<div class="video-sub"><span class="video-channel-link" data-channel-id="' + esc(v.user_id) + '">@' + esc(u) + '</span> • ' + fv(v.views) + ' views • ' + timeAgo(v.created_at) + '</div>' +
       '</div></div></div></div>';
   }
 
   function shortCard(v) {
-    var c = v.thumbnail_url ? '<img src="' + v.thumbnail_url + '" alt="" loading="lazy">' : '<div class="short-placeholder">⚡</div>';
-    return '<div class="short-card" data-id="' + v.id + '">' + c + '<div class="short-info">' + v.title + '</div></div>';
+    var c = v.thumbnail_url ? '<img src="' + safeUrl(v.thumbnail_url) + '" alt="" loading="lazy">' : '<div class="short-placeholder">⚡</div>';
+    return '<div class="short-card" data-id="' + esc(v.id) + '">' + c + '<div class="short-info">' + esc(v.title) + '</div></div>';
   }
 
   function bindCards(el) {
@@ -795,15 +813,15 @@
   function sfeedItem(v) {
     var p = v.profiles || {};
     var u = p.username || 'Unknown';
-    return '<div class="sfeed-item paused" data-id="' + v.id + '" data-user="' + v.user_id + '">' +
-      '<video src="' + v.video_url + '" loop playsinline preload="none"' +
-        (v.thumbnail_url ? ' poster="' + v.thumbnail_url + '"' : '') + '></video>' +
+    return '<div class="sfeed-item paused" data-id="' + esc(v.id) + '" data-user="' + esc(v.user_id) + '">' +
+      '<video src="' + safeUrl(v.video_url) + '" loop playsinline preload="none"' +
+        (v.thumbnail_url ? ' poster="' + safeUrl(v.thumbnail_url) + '"' : '') + '></video>' +
       '<div class="sfeed-pause">' + icon('play', 62) + '</div>' +
       '<div class="sfeed-info">' +
-        '<div class="sfeed-user" data-channel-id="' + v.user_id + '">' +
-          avatarHTML(p, 34) + '<span class="sfeed-user-name">@' + u + '</span>' +
+        '<div class="sfeed-user" data-channel-id="' + esc(v.user_id) + '">' +
+          avatarHTML(p, 34) + '<span class="sfeed-user-name">@' + esc(u) + '</span>' +
         '</div>' +
-        '<div class="sfeed-title">' + v.title + '</div>' +
+        '<div class="sfeed-title">' + esc(v.title) + '</div>' +
         '<div class="sfeed-sub">' + fv(v.views) + ' views • ' + timeAgo(v.created_at) + '</div>' +
       '</div>' +
       '<div class="sfeed-rail">' +
@@ -975,7 +993,7 @@
       // Channel avatar in player
       var pca = $('playerChannelAvatar');
       if (p.avatar_url) {
-        pca.innerHTML = '<img src="' + p.avatar_url + '" style="width:100%;height:100%;object-fit:cover;">';
+        pca.innerHTML = '<img src="' + safeUrl(p.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;">';
       } else {
         pca.textContent = gi(u);
       }
@@ -1020,12 +1038,12 @@
         var cp = c.profiles || {};
         var cu = cp.username || 'Unknown';
         var cava = cp.avatar_url
-          ? '<img src="' + cp.avatar_url + '" style="width:100%;height:100%;object-fit:cover;">'
+          ? '<img src="' + safeUrl(cp.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;">'
           : gi(cu);
-        var del = currentUser && currentUser.id === c.user_id ? '<span class="delete-btn" data-cid="' + c.id + '">Delete</span>' : '';
+        var del = currentUser && currentUser.id === c.user_id ? '<span class="delete-btn" data-cid="' + esc(c.id) + '">Delete</span>' : '';
         return '<div class="comment"><div class="comment-avatar">' + cava + '</div><div class="comment-body">' +
-          '<div class="comment-author">@' + cu + del + '</div>' +
-          '<div class="comment-text">' + c.content + '</div>' +
+          '<div class="comment-author">@' + esc(cu) + del + '</div>' +
+          '<div class="comment-text">' + esc(c.content) + '</div>' +
           '<div class="comment-time">' + timeAgo(c.created_at) + '</div></div></div>';
       }).join('');
       list.querySelectorAll('.delete-btn').forEach(function(btn) {
@@ -1053,9 +1071,9 @@
       c.innerHTML = r.data.map(function(v) {
         var rp = v.profiles || {};
         var ru = rp.username || 'Unknown';
-        var t = v.thumbnail_url ? '<img src="' + v.thumbnail_url + '" loading="lazy">' : '<div class="related-thumb-placeholder">🎬</div>';
-        return '<div class="related-video" data-id="' + v.id + '"><div class="related-thumb">' + t + '</div>' +
-          '<div><div class="related-title">' + v.title + '</div><div class="related-sub">@' + ru + ' • ' + fv(v.views) + ' views</div></div></div>';
+        var t = v.thumbnail_url ? '<img src="' + safeUrl(v.thumbnail_url) + '" loading="lazy">' : '<div class="related-thumb-placeholder">🎬</div>';
+        return '<div class="related-video" data-id="' + esc(v.id) + '"><div class="related-thumb">' + t + '</div>' +
+          '<div><div class="related-title">' + esc(v.title) + '</div><div class="related-sub">@' + esc(ru) + ' • ' + fv(v.views) + ' views</div></div></div>';
       }).join('');
       c.querySelectorAll('.related-video').forEach(function(el) {
         el.addEventListener('click', function() {
@@ -1077,7 +1095,7 @@
       // Banner
       var banner = $('channelBanner');
       if (p.banner_url) {
-        banner.innerHTML = '<img src="' + p.banner_url + '" style="width:100%;height:100%;object-fit:cover;">';
+        banner.innerHTML = '<img src="' + safeUrl(p.banner_url) + '" style="width:100%;height:100%;object-fit:cover;">';
       } else {
         banner.innerHTML = '<div class="channel-banner-placeholder"></div>';
       }
@@ -1085,7 +1103,7 @@
       // PFP
       var pfp = $('channelPfp');
       if (p.avatar_url) {
-        pfp.innerHTML = '<img src="' + p.avatar_url + '">';
+        pfp.innerHTML = '<img src="' + safeUrl(p.avatar_url) + '">';
       } else {
         pfp.textContent = gi(u);
       }
@@ -1174,7 +1192,7 @@
           _sb.from('profiles').select('avatar_url').eq('id', currentUser.id).single().then(function(pr) {
             var av = $('userAvatar');
             if (pr.data && pr.data.avatar_url) {
-              av.innerHTML = '<img src="' + pr.data.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+              av.innerHTML = '<img src="' + safeUrl(pr.data.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
             } else {
               av.textContent = gi(rawUsername);
             }
@@ -1288,7 +1306,7 @@
       currentUser.username = uname;
       var av = $('userAvatar');
       if (r.data && r.data.avatar_url) {
-        av.innerHTML = '<img src="' + r.data.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+        av.innerHTML = '<img src="' + safeUrl(r.data.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
       } else {
         av.textContent = gi(uname);
       }
@@ -1298,7 +1316,7 @@
       // Comment avatar
       var ca = $('commentAvatar');
       if (r.data && r.data.avatar_url) {
-        ca.innerHTML = '<img src="' + r.data.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+        ca.innerHTML = '<img src="' + safeUrl(r.data.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
       } else {
         ca.textContent = gi(uname);
       }
@@ -1331,7 +1349,7 @@
       var u = p.username || currentUser.email.split('@')[0];
       var pa = $('profileAvatar');
       if (p.avatar_url) {
-        pa.innerHTML = '<img src="' + p.avatar_url + '">';
+        pa.innerHTML = '<img src="' + safeUrl(p.avatar_url) + '">';
       } else {
         pa.textContent = gi(u);
       }
