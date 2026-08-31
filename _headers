@@ -12,6 +12,7 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: SAMEORIGIN
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 # ── Content-Security-Policy ────────────────────────────────────────
 #  El cinturón de seguridad: si algún día se cuela un XSS, esto impide
@@ -22,6 +23,9 @@
 #  Se aplica SOLO a las páginas propias: los juegos de terceros
 #  (minecraft, snake, suds) hablan con sus propios servidores y una CSP
 #  estricta los rompería.
+# el chat se sirve en la raíz Y en /index.html: hacen falta las dos reglas
+/
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net; frame-src 'self' https://www.youtube.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'
 /index.html
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net; frame-src 'self' https://www.youtube.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'
 /video.html
