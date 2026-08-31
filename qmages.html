@@ -1087,7 +1087,10 @@ function openImage(id){
     if($('viewerFollowBtn'))loadFollowState(img.user_id);
 
     $('viewerDeleteBtn').style.display=isOwn?'flex':'none';
-    if(img.source_url){$('viewerSourceLink').href=img.source_url;$('viewerSourceLink').style.display='';}
+    /* the source link is typed by whoever uploaded the image: a
+       "javascript:" href here would run on click, so prove it is http(s) */
+    var srcHref=safeUrl(img.source_url);
+    if(srcHref){$('viewerSourceLink').href=srcHref;$('viewerSourceLink').style.display='';}
     else{$('viewerSourceLink').style.display='none';}
 
     loadSaveState(id);

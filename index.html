@@ -1177,7 +1177,11 @@ applyTheme();
 let myStatus=['online','idle','dnd'].includes(localStorage.getItem('ycz-status'))
   ?localStorage.getItem('ycz-status'):'online';
 let statuses={};            /* uid → status, from presence */
-function statusOf(id){return statuses[id]||'online';}
+/* The status arrives in a realtime presence payload, which any client can
+   write by hand — so it is untrusted input, and it lands inside a class
+   attribute. Only ever hand back one of the three values we know. */
+const ST_OK={online:1,idle:1,dnd:1};
+function statusOf(id){const s=statuses[id];return ST_OK[s]?s:'online';}
 
 /* ══════ NOTIFICATION SOUND ══════
    A tiny two-tone blip made with WebAudio — no audio file needed. */
