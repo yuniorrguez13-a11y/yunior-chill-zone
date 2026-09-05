@@ -499,12 +499,34 @@ the console shows the best pay via `yczScore('overwork', pay)`.
 **Design rules, from the owner, non-negotiable:**
 - **No keyframed animation anywhere.** The walk is *not* an animation: the feet decide
   where to step (a planted foot that falls too far behind the hip flies to a spot ahead
-  along an arc, alternating with the other foot), and the legs are **noodles** — a
-  `TubeGeometry` through a quadratic curve hip → knee → foot whose knee control point is
-  a damped spring that gets kicked on every landing. Body lean, bob, squash and hip
-  twist are springs excited by velocity and acceleration ("Squidward legs" was the
-  reference). Arms are the same idea: lazy velocity springs towards a target (hanging,
-  or holding the box overhead). If you add a new motion, add a spring, not a clip.
+  along an arc, alternating with the other foot). Body lean, bob, squash, hip twist and
+  the **bobblehead** (the head hangs off the neck on a lazy spring) are springs excited
+  by velocity and acceleration. Arms are lazy velocity springs towards a target
+  (hanging, or holding the box overhead). If you add a new motion, add a spring, not a
+  clip.
+- **Limbs are jelly, not tubes** (owner feedback on v1: "solo parecen tubos
+  estirándose"). The `Limb` class sweeps rings along a cubic curve root → c1 → c2 → tip
+  into a preallocated `BufferGeometry` every frame, with three things that make it read
+  as gelatin: **volume preservation** (shorter than rest length → fatter, longer →
+  thinner), a **radius profile** (`LEG_PROFILE`: thick thigh, waist at the knee, calf
+  bulge, thin ankle), and a **travelling ripple** whose amplitude is a spring kicked by
+  every landing/throw/pickup (`limb.kick(v)`). c1 bows forward, c2 bows back, so the leg
+  is an S, not an arc. Ring winding is `(a, a+1, b)` — the other order faces inward and
+  the whole limb renders as its black outline.
+- **Look:** cel-shaded (`MeshToonMaterial` with a 3-step ramp) plus inverted-hull black
+  outlines (`outlined()`), flat Lambert only on the ground. Character is a bean with a
+  vest, name tag, big nose, wide eyes, worried eyebrows when the box is heavy, a red cap
+  with an "O", sausage shoes. Lollipop trees, houses with windows/chimney/mailbox/porch
+  light, doormats that say things ("GO AWAY", "NOT YOU AGAIN"), drifting clouds.
+- **Typography and voice** (owner feedback on v1: "el texto está muy serio, usa fonts
+  que todo el mundo ha visto, se nota que está hecho por IA"): headings/HUD numbers in
+  the hand-drawn Colorfiction Sketch (`CF Sketch`, already in `fonts/`), body copy in
+  Patrick Hand (Google Fonts), panels styled as taped paper with wonky hand-drawn
+  borders and slight rotations. **Copy is written in the voice of a tired coworker**:
+  lowercase, short, specific, a bit mean ("dropped it. classic.", "wrong house. the
+  label says 11 Birch Rd. the label."). Never explain the game like a manual, never
+  "Your job is to…", no exclamation-mark cheer. Toasts pick from small pools so they
+  don't repeat verbatim.
 - **Physics is hand-rolled and simple on purpose** (no Rapier/cannon): a static AABB
   world (`colliders`, with low `stepables` you can step onto), a cylinder-vs-AABB solver
   shared by the courier, the van, the dog and the boxes, boxes that fall/bounce/stack and

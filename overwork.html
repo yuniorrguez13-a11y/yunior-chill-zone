@@ -6,84 +6,97 @@
 <title>Overwork — Yuniors Chill Zone</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <meta name="theme-color" content="#0a0a12">
-<meta name="description" content="Overwork: deliver packages with legs made of jelly. Goofy co-op-in-spirit delivery shifts, straight from Yuniors Chill Zone.">
+<meta name="description" content="Overwork. Six boxes, one van, legs made of jelly. A delivery shift that hates you back.">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
-:root{--ink:#0d0c11;--panel:#15131a;--border:rgba(255,255,255,.1);--txt:#eceef3;--txt2:#a3a3b5;--txt3:#6b6b80;
-  --amber:#ffb020;--red:#e8162a;--cyan:#00d4ff;--grn:#37d67a;}
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
+/* hand-drawn face — Colorfiction, SIL OFL (fonts/COLORFICTION-OFL.txt) */
+@font-face{font-family:'CF Sketch';src:url('fonts/colorfiction-sketch.otf');font-display:swap;}
+:root{--ink:#0d0c11;--paper:#f3ecdc;--paper2:#e9dfc9;--pen:#23212b;--pen2:#5a5566;--pen3:#8b8496;
+  --marker:#e8162a;--hi:#ffd23f;--tape:rgba(255,220,120,.55);--grn:#2f9e5b;}
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--txt);font-family:'DM Sans',system-ui,sans-serif;}
+html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--pen);font-family:'Patrick Hand','Comic Sans MS','Segoe Print',cursive;font-size:18px;}
 #cv{position:fixed;inset:0;display:block;touch-action:none;}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
+.sk{font-family:'CF Sketch','Patrick Hand',cursive;}
+/* hand-drawn boxes: uneven radii + slightly wonky outline */
+.paper{background:var(--paper);color:var(--pen);border:2.5px solid var(--pen);
+  border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;box-shadow:4px 5px 0 rgba(0,0,0,.35);}
+.tape{position:relative;}
+.tape::before{content:'';position:absolute;top:-10px;left:50%;width:90px;height:22px;transform:translateX(-50%) rotate(-3deg);
+  background:var(--tape);border:1px dashed rgba(120,90,20,.35);}
 /* ── HUD ── */
 #hud{position:fixed;inset:0;pointer-events:none;display:none;}
 #hud.on{display:block;}
 .hud-top{position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
-.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:12px;background:rgba(13,12,17,.78);
-  border:1px solid var(--border);backdrop-filter:blur(6px);font-weight:700;font-size:14px;}
-.pill b{font-family:'Syne',sans-serif;font-size:18px;color:var(--amber);font-variant-numeric:tabular-nums;}
-.pill.warn b{color:var(--red);}
-#carry{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);padding:9px 14px;border-radius:12px;
-  background:rgba(13,12,17,.82);border:1px solid rgba(255,176,32,.4);font-size:13.5px;display:none;text-align:center;max-width:92vw;}
+.pill{display:inline-flex;align-items:baseline;gap:8px;padding:6px 14px 4px;font-size:18px;line-height:1;transform:rotate(-1deg);}
+.pill:nth-child(2){transform:rotate(.8deg);} .pill:nth-child(3){transform:rotate(-.6deg);}
+.pill b{font-family:'CF Sketch',cursive;font-size:30px;color:var(--pen);font-variant-numeric:tabular-nums;font-weight:400;}
+.pill.warn b{color:var(--marker);}
+#carry{position:absolute;left:50%;bottom:96px;transform:translateX(-50%) rotate(1.5deg);padding:10px 16px 8px;display:none;text-align:center;max-width:92vw;
+  background:var(--hi);color:var(--pen);border:0;border-radius:3px;box-shadow:3px 4px 0 rgba(0,0,0,.35);font-size:19px;line-height:1.15;}
 #carry.on{display:block;}
-#carry .to{color:var(--amber);font-weight:800;}
-#carry .dmg{color:var(--txt2);font-size:12px;margin-top:2px;}
-#carry .fragile{color:var(--red);font-weight:800;letter-spacing:.06em;}
-#hint{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);font-size:13px;color:var(--txt2);
-  background:rgba(13,12,17,.7);padding:7px 12px;border-radius:9px;border:1px solid var(--border);white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;}
-#hint kbd{display:inline-block;padding:1px 7px;border-radius:5px;background:#26242e;border:1px solid #3a3844;font:700 12px 'DM Sans',sans-serif;color:var(--txt);margin:0 2px;}
-#event{position:absolute;top:70px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:12px;background:rgba(232,22,42,.16);
-  border:1px solid rgba(232,22,42,.5);font-weight:800;font-size:14px;letter-spacing:.04em;text-transform:uppercase;opacity:0;transition:opacity .3s;}
+#carry .to{font-size:22px;}
+#carry .dmg{color:var(--pen2);font-size:16px;margin-top:3px;}
+#carry .fragile{color:var(--marker);font-family:'CF Sketch',cursive;font-size:22px;}
+#hint{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);font-size:17px;color:var(--paper);
+  background:rgba(13,12,17,.72);padding:7px 14px 5px;border-radius:12px 40px 12px 40px / 40px 12px 40px 12px;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;}
+#hint kbd{display:inline-block;padding:0 8px;border-radius:5px;background:var(--paper);color:var(--pen);border:1.5px solid var(--pen);font:inherit;font-size:16px;margin:0 2px;box-shadow:1.5px 1.5px 0 var(--pen);}
+#event{position:absolute;top:78px;left:50%;transform:translateX(-50%) rotate(-1.2deg);padding:10px 20px 8px;font-family:'CF Sketch',cursive;font-size:24px;color:var(--paper);
+  background:var(--marker);border:2.5px solid var(--pen);border-radius:12px 60px 12px 60px / 60px 12px 60px 12px;opacity:0;transition:opacity .3s;max-width:92vw;text-align:center;}
 #event.on{opacity:1;}
-#toasts{position:absolute;right:14px;bottom:44px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
-.toast{padding:8px 12px;border-radius:10px;background:rgba(13,12,17,.85);border:1px solid var(--border);font-size:13px;font-weight:600;animation:tin .2s ease-out;}
-.toast.good{border-color:rgba(55,214,122,.5);color:var(--grn);}
-.toast.bad{border-color:rgba(232,22,42,.5);color:#ff8b96;}
+#toasts{position:absolute;right:14px;bottom:40px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
+.toast{padding:7px 14px 5px;font-size:18px;line-height:1.2;animation:tin .2s ease-out;transform:rotate(.6deg);max-width:70vw;}
+.toast:nth-child(even){transform:rotate(-.8deg);}
+.toast.good{background:#d9f2df;} .toast.bad{background:#ffd9dc;}
 .toast.out{animation:tout .3s ease-in forwards;}
-@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes tin{from{opacity:0;transform:translateY(8px) rotate(.6deg)}to{opacity:1}}
 @keyframes tout{to{opacity:0;transform:translateY(6px)}}
 /* ── screens ── */
 .screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:20px;
-  background:radial-gradient(120% 90% at 50% 0%,rgba(255,176,32,.12),transparent 60%),rgba(10,10,18,.86);backdrop-filter:blur(6px);}
+  background:rgba(10,10,18,.55);backdrop-filter:blur(5px);}
 .screen.on{display:flex;}
-.card{width:min(560px,100%);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:26px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,.6);}
-.logo{font-family:'Syne',sans-serif;font-size:clamp(40px,9vw,66px);font-weight:800;letter-spacing:-.03em;line-height:.95;
-  background:linear-gradient(135deg,#fff 30%,var(--amber));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.sub{color:var(--txt3);font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin:6px 0 18px;}
-.card p{color:var(--txt2);font-size:14px;line-height:1.55;margin-bottom:12px;}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:12px;border:1px solid var(--border);
-  background:#1c1a22;font-weight:700;font-size:14.5px;transition:transform .12s,background .12s;}
-.btn:hover{transform:translateY(-1px);background:#242230;}
-.btn.primary{background:var(--amber);border-color:var(--amber);color:#1c1608;}
-.btn.primary:hover{background:#ffc450;}
-.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
-.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;color:var(--txt2);margin:14px 0 6px;}
-.keys kbd{display:inline-block;min-width:26px;text-align:center;padding:2px 7px;border-radius:6px;background:#26242e;border:1px solid #3a3844;font:700 12px 'DM Sans',sans-serif;color:var(--txt);}
-.stat{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.card{width:min(600px,100%);padding:30px 30px 24px;transform:rotate(-.8deg);}
+.card .inner{transform:rotate(.8deg);}
+.logo{font-family:'CF Sketch',cursive;font-size:clamp(56px,11vw,92px);line-height:.9;color:var(--pen);letter-spacing:.01em;}
+.logo span{color:var(--marker);}
+.sub{color:var(--pen2);font-size:19px;margin:4px 0 16px;}
+.card p{font-size:19px;line-height:1.35;margin-bottom:12px;color:var(--pen);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px 8px;font-size:22px;line-height:1;
+  background:var(--paper2);color:var(--pen);border:2.5px solid var(--pen);border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;
+  box-shadow:3px 3px 0 var(--pen);transition:transform .08s,box-shadow .08s;}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--pen);}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--pen);}
+.btn.primary{background:var(--hi);}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:18px;color:var(--pen);margin:12px 0 10px;align-items:baseline;}
+.keys kbd{display:inline-block;min-width:28px;text-align:center;padding:0 8px;border-radius:5px;background:#fff;border:1.5px solid var(--pen);font:inherit;font-size:16px;box-shadow:1.5px 1.5px 0 var(--pen);color:var(--pen);}
+.note{display:inline-block;padding:4px 12px 2px;background:var(--hi);transform:rotate(-1deg);font-size:18px;box-shadow:2px 2px 0 rgba(0,0,0,.25);}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1.5px dashed rgba(35,33,43,.35);font-size:19px;}
 .stat:last-child{border-bottom:0;}
-.stat b{color:var(--amber);font-variant-numeric:tabular-nums;}
-.stat .bad{color:#ff8b96;}
-.big{font-family:'Syne',sans-serif;font-size:42px;font-weight:800;color:var(--amber);line-height:1;margin:6px 0 2px;}
-.small{font-size:12px;color:var(--txt3);}
-.backlink{position:fixed;left:14px;bottom:12px;font-size:12.5px;color:var(--txt3);text-decoration:none;z-index:5;}
-.backlink:hover{color:var(--txt);}
-#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--txt3);font-size:14px;letter-spacing:.1em;text-transform:uppercase;z-index:9;}
+.stat b{font-family:'CF Sketch',cursive;font-weight:400;font-size:24px;}
+.stat .bad{color:var(--marker);}
+.big{font-family:'CF Sketch',cursive;font-size:64px;line-height:1;margin:6px 0 2px;color:var(--pen);}
+.small{font-size:17px;color:var(--pen2);}
+.stamp{display:inline-block;font-family:'CF Sketch',cursive;font-size:22px;color:var(--marker);border:3px solid var(--marker);padding:2px 10px 0;transform:rotate(-8deg);opacity:.85;border-radius:6px;margin-left:10px;vertical-align:middle;}
+.backlink{position:fixed;left:14px;bottom:12px;font-size:17px;color:rgba(243,236,220,.7);text-decoration:none;z-index:5;}
+.backlink:hover{color:var(--paper);}
+#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--paper);font-family:'CF Sketch',cursive;font-size:28px;z-index:9;}
 @media(max-width:760px){
   .hud-top{flex-wrap:wrap;}
-  .pill{font-size:13px;padding:7px 10px;}
-  #hint{font-size:12px;}
+  .pill{font-size:16px;padding:5px 10px 3px;} .pill b{font-size:24px;}
+  #hint{font-size:15px;} .card{padding:22px 18px 18px;} .logo{font-size:56px;}
 }
 </style>
 </head>
 <body>
 <canvas id="cv"></canvas>
-<div id="loading">Clocking in…</div>
+<div id="loading">clocking in…</div>
 
 <div id="hud">
   <div class="hud-top">
-    <span class="pill" id="p-time">Shift <b id="h-time">4:00</b></span>
-    <span class="pill">Delivered <b id="h-done">0/6</b></span>
-    <span class="pill">Pay <b id="h-pay">$0</b></span>
+    <span class="pill paper" id="p-time">shift <b id="h-time">4:00</b></span>
+    <span class="pill paper">boxes <b id="h-done">0/6</b></span>
+    <span class="pill paper">pay <b id="h-pay">$0</b></span>
   </div>
   <div id="event"></div>
   <div id="carry"><span class="to" id="c-to"></span><div class="dmg" id="c-dmg"></div></div>
@@ -91,44 +104,44 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
   <div id="toasts"></div>
 </div>
 
-<!-- MENU -->
+<!-- MENU: the work order -->
 <div class="screen on" id="s-menu">
-  <div class="card">
-    <div class="logo">OVERWORK</div>
-    <div class="sub">Yuniors Chill Zone · delivery shift · prototype</div>
-    <p>Your legs are made of jelly. Your job is to deliver six packages before the shift ends. Load the van at the
-    warehouse, drive to the right house, carry the box to the doormat. Every drop costs you money. Something weird
-    happens every shift.</p>
+  <div class="card paper tape"><div class="inner">
+    <div class="logo">OVER<span>WORK</span></div>
+    <div class="sub" id="m-sub">shift #1. clock in. don't die.</div>
+    <p>six boxes on the dock. one van. two legs that stopped taking orders a while ago.
+    get every box to the right doormat before the shift ends. every dent comes out of your pay.
+    also something stupid happens every shift. that's kind of the whole thing.</p>
     <div class="keys">
-      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>walk · drive</span>
-      <span><kbd>E</kbd></span><span>pick up · drop · load van · enter / leave van</span>
-      <span><kbd>Click</kbd> / <kbd>Space</kbd></span><span>throw the box (why would you)</span>
-      <span><kbd>Drag mouse</kbd> · <kbd>Wheel</kbd></span><span>look around · zoom</span>
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>walk. also drive. same keys, don't overthink it</span>
+      <span><kbd>E</kbd></span><span>grab, drop, load the van, hop in, hop out</span>
+      <span><kbd>click</kbd> / <kbd>space</kbd></span><span>throw the box. you shouldn't. you will.</span>
+      <span><kbd>drag</kbd> · <kbd>wheel</kbd></span><span>look around · zoom</span>
     </div>
     <div class="row">
-      <button class="btn primary" id="btn-start">Start shift</button>
-      <span class="pill" id="p-best">Best shift <b id="m-best">$0</b></span>
-      <span class="pill">Savings <b id="m-cash">$0</b></span>
+      <button class="btn primary" id="btn-start">clock in</button>
+      <span class="note">best shift <b class="sk" id="m-best">$0</b></span>
+      <span class="note" style="transform:rotate(1.2deg)">sock drawer <b class="sk" id="m-cash">$0</b></span>
     </div>
-    <p class="small" style="margin-top:14px;">Keyboard + mouse for now. Savings will buy Pitty Striker skins one day — looks only, never stats.</p>
-  </div>
+    <p class="small" style="margin-top:14px;">keyboard only for now, phone people, i'm sorry. the money goes in the sock drawer for pitty striker skins later. skins. not stats. don't ask.</p>
+  </div></div>
 </div>
 
-<!-- SUMMARY -->
+<!-- SUMMARY: the pay stub -->
 <div class="screen" id="s-sum">
-  <div class="card">
-    <div class="sub" id="sum-title">Shift over</div>
-    <div class="big" id="sum-pay">$0</div>
+  <div class="card paper tape"><div class="inner">
+    <div class="sub" id="sum-title">shift's over.</div>
+    <div class="big"><span id="sum-pay">$0</span><span class="stamp" id="sum-stamp">PAID</span></div>
     <div class="small" id="sum-note"></div>
-    <div id="sum-list" style="margin:14px 0 6px;"></div>
+    <div id="sum-list" style="margin:14px 0 8px;"></div>
     <div class="row">
-      <button class="btn primary" id="btn-again">Another shift</button>
-      <button class="btn" id="btn-menu">Clock out</button>
+      <button class="btn primary" id="btn-again">another shift</button>
+      <button class="btn" id="btn-menu">clock out</button>
     </div>
-  </div>
+  </div></div>
 </div>
 
-<a class="backlink" href="gaming.html">← Back to the console</a>
+<a class="backlink" href="gaming.html">← back to the console</a>
 
 <script src="ycz-scores.js"></script>
 <script type="module">
@@ -137,7 +150,8 @@ import * as THREE from './vendor/three.module.min.js';
 /* ═══════════════════════════════════════════════════════════════
    OVERWORK — the delivery shift
    No skeletal animation anywhere: the body is driven by springs and the
-   legs are noodles that react to where the feet land (Squidward rules).
+   limbs are jelly — volume-preserving noodles that fatten when squashed,
+   thin when stretched and jiggle after every landing (Squidward rules).
    Physics is hand-rolled and deliberately simple: AABB world, boxes that
    fall, bounce and stack, a capsule-ish player, an arcade van.
    ═══════════════════════════════════════════════════════════════ */
@@ -160,272 +174,357 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-const SKY_DAY = new THREE.Color(0x8fc7ff), SKY_RAIN = new THREE.Color(0x5b6675);
+const SKY_DAY = new THREE.Color(0x9ad0ff), SKY_RAIN = new THREE.Color(0x66707c);
 scene.background = SKY_DAY.clone();
-scene.fog = new THREE.Fog(scene.background, 60, 140);
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 300);
-const sun = new THREE.DirectionalLight(0xfff2d8, 2.2);
+scene.fog = new THREE.Fog(scene.background, 70, 150);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+const sun = new THREE.DirectionalLight(0xfff1d6, 2.4);
 sun.position.set(30, 50, 20); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -45; sun.shadow.camera.right = 45; sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 140; sun.shadow.bias = -0.0006;
 scene.add(sun); scene.add(sun.target);
-const hemi = new THREE.HemisphereLight(0xbfe3ff, 0x5a7a3a, 0.9);
+const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x6a8a4a, 0.85);
 scene.add(hemi);
-
-function resize() {
-  const w = innerWidth, h = innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h; camera.updateProjectionMatrix();
-}
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
-/* ── materials (flat, low-poly look) ── */
-const M = {};
-const mat = (hex, extra) => new THREE.MeshLambertMaterial(Object.assign({ color: hex }, extra || {}));
-M.grass = mat(0x6fae4a); M.road = mat(0x3a3a44); M.walk = mat(0xb9b3a6); M.curb = mat(0x8e887c);
-M.wall = [mat(0xe8d9c0), mat(0xd6c2a8), mat(0xc9d3e0), mat(0xe2c8c8), mat(0xd9e0c6)];
-M.roof = [mat(0x8a3b2f), mat(0x4a4f6a), mat(0x6b5a4a), mat(0x3f6b4f)];
-M.door = mat(0x5a3a22); M.mat = mat(0xffb020, { emissive: 0x5a3c00 }); M.matOff = mat(0x8c7a4a);
-M.wood = mat(0x7a5a3a); M.leaf = mat(0x3f8f3a); M.leaf2 = mat(0x5aa84a); M.pole = mat(0x2b2b33);
-M.skin = mat(0xf3c9a5); M.shirt = mat(0x2d7be0); M.pants = mat(0x2b2f45); M.shoe = mat(0x1a1a22); M.cap = mat(0xe8162a);
-M.box = mat(0xc99a5b); M.boxTape = mat(0x8a6a3a); M.fragile = mat(0xe0b06a);
-M.van = mat(0xf2f2f5); M.vanDark = mat(0x2a2a33); M.glass = mat(0x8fd4ff, { transparent: true, opacity: .7 }); M.tire = mat(0x151518);
-M.dog = mat(0xc48a4a); M.dogDark = mat(0x5a3a22); M.warehouse = mat(0x8f95a3); M.warehouseDark = mat(0x5c6170);
-M.rain = new THREE.LineBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: .55 });
+/* ── materials: cel-shaded (3-step toon ramp) for everything that moves, flat for the ground ── */
+const ramp = new THREE.DataTexture(new Uint8Array([70, 70, 70, 255, 150, 150, 150, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
+ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
+const toon = (hex, extra) => new THREE.MeshToonMaterial(Object.assign({ color: hex, gradientMap: ramp }, extra || {}));
+const flat = (hex, extra) => new THREE.MeshLambertMaterial(Object.assign({ color: hex }, extra || {}));
+const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x14121a, side: THREE.BackSide });
+const M = {
+  grass: flat(0x79b955), road: flat(0x45454f), walk: flat(0xc4bcab), curb: flat(0x9b948a),
+  wall: [toon(0xf0dfc2), toon(0xdcc4a6), toon(0xc7d6e6), toon(0xead0d0), toon(0xdbe4c8), toon(0xf2d6a0)],
+  roof: [toon(0x9a3f33), toon(0x4a4f6a), toon(0x6f5a48), toon(0x3f6b4f), toon(0x7a4a8a)],
+  door: toon(0x6a4028), frame: toon(0xffffff), glass: toon(0x9fdcff, { transparent: true, opacity: .8 }),
+  mat: toon(0xffd23f, { emissive: 0x6a5000 }), matOff: toon(0x8f7f55),
+  wood: toon(0x8a6540), leaf: toon(0x4aa34a), leaf2: toon(0x6cc25c), leaf3: toon(0x3e8f3e), pole: toon(0x2b2b33),
+  skin: toon(0xf6c9a6), shirt: toon(0x2f3550), vest: toon(0xffb020), shorts: toon(0x39405e), sock: toon(0xf4f4f4), shoe: toon(0x1f1f28), cap: toon(0xe8162a),
+  eye: toon(0xffffff), pupil: toon(0x14121a), nose: toon(0xf0a882), mouth: toon(0x7a2a2a),
+  box: toon(0xd0a266), boxDark: toon(0xa8804d), tape: toon(0x8a6a3a), fragile: toon(0xe8bd7a), label: toon(0xfaf6ec),
+  van: toon(0xf4f4f7), vanDark: toon(0x2a2a33), tire: toon(0x1a1a1f), hub: toon(0xbfc2cc), lamp: toon(0xfff2c0, { emissive: 0x7a6420 }), hazard: toon(0xffb020, { emissive: 0x9a6a00 }),
+  dog: toon(0xc8934f), dogDark: toon(0x5a3a22), warehouse: toon(0x9aa0ad), warehouseDark: toon(0x5c6170), cone: toon(0xff7a1a), cloud: toon(0xffffff),
+  rain: new THREE.LineBasicMaterial({ color: 0xdff0ff, transparent: true, opacity: .5 }),
+};
 
 /* ── world data ── */
-const colliders = [];          // {min:{x,y,z}, max:{x,y,z}} static AABBs the player, van and boxes hit
+const colliders = [];          // static AABBs the player, van and boxes hit
 const stepables = [];          // low colliders the player may step onto
-const houses = [];             // {i, x, z, doormat:{min,max}, num, label}
-function addBox(x, y, z, w, h, d, material, opts = {}) {
-  const g = new THREE.BoxGeometry(w, h, d);
-  const m = new THREE.Mesh(g, material);
-  m.position.set(x, y + h / 2, z);
+const houses = [];
+const clouds = [];
+function mesh(geo, material, x, y, z, opts = {}) {
+  const m = new THREE.Mesh(geo, material); m.position.set(x, y, z);
   m.castShadow = opts.shadow !== false; m.receiveShadow = true;
-  scene.add(m);
-  if (opts.solid !== false) {
-    const c = { min: { x: x - w / 2, y, z: z - d / 2 }, max: { x: x + w / 2, y: y + h, z: z + d / 2 } };
-    colliders.push(c); if (opts.step) stepables.push(c);
-  }
+  if (opts.rot) m.rotation.set(opts.rot[0], opts.rot[1], opts.rot[2]);
+  (opts.parent || scene).add(m); return m;
+}
+function addBox(x, y, z, w, h, d, material, opts = {}) {
+  const m = mesh(new THREE.BoxGeometry(w, h, d), material, x, y + h / 2, z, opts);
+  if (opts.solid !== false) { const c = { min: { x: x - w / 2, y, z: z - d / 2 }, max: { x: x + w / 2, y: y + h, z: z + d / 2 } }; colliders.push(c); if (opts.step) stepables.push(c); }
   return m;
 }
+function outlined(m, scale = 1.06) { const o = new THREE.Mesh(m.geometry, OUTLINE); o.scale.setScalar(scale); m.add(o); return m; }
+function makeLabel(text, color, w, h, bg = '#faf6ec', font = 'CF Sketch') {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.fillStyle = color; g.font = `${Math.floor(h * 0.62)}px "${font}", "Patrick Hand", cursive`;
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + h * 0.04);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex }));
+}
+const MATS = ['WELCOME', 'GO AWAY', 'WIPE YOUR FEET', 'NO SOLICITING', 'BEWARE OF DOG', 'LEAVE IT', 'HI', 'NOT YOU AGAIN'];
 function buildWorld() {
-  // ground
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), M.grass);
-  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-  // main road along z, side road along x
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), M.grass); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
   const road = new THREE.Mesh(new THREE.PlaneGeometry(9, 160), M.road); road.rotation.x = -Math.PI / 2; road.position.set(0, 0.01, 0); road.receiveShadow = true; scene.add(road);
   const road2 = new THREE.Mesh(new THREE.PlaneGeometry(120, 9), M.road); road2.rotation.x = -Math.PI / 2; road2.position.set(0, 0.011, -40); road2.receiveShadow = true; scene.add(road2);
-  for (let i = -8; i <= 8; i++) { const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 3), mat(0xe9e2c8)); dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.02, i * 8); scene.add(dash); }
-  // sidewalks
+  for (let i = -8; i <= 8; i++) { const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 3), flat(0xeee6cc)); dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.02, i * 8); scene.add(dash); }
   for (const sx of [-6.5, 6.5]) { const sw = new THREE.Mesh(new THREE.PlaneGeometry(4, 160), M.walk); sw.rotation.x = -Math.PI / 2; sw.position.set(sx, 0.012, 0); sw.receiveShadow = true; scene.add(sw); }
-  // warehouse at the south end
+  // ── warehouse ──
   const WZ = 34;
   addBox(-14, 0, WZ, 22, 7, 14, M.warehouse);
-  addBox(-14, 7, WZ, 23, 0.6, 15, M.warehouseDark);
-  addBox(-2.6, 0, WZ, 1.2, 0.45, 10, M.warehouseDark, { step: true });         // loading dock ledge (step-up height)
-  const sign = makeLabel('OVERWORK LOGISTICS', 0xffb020, 512, 96); sign.position.set(-3.1, 5.2, WZ); sign.rotation.y = Math.PI / 2; sign.scale.set(6, 1.1, 1); scene.add(sign);
-  // houses on both sides of the road
-  const streetNames = ['Maple St', 'Cedar Ave', 'Birch Rd', 'Oak Ln', 'Pine Ct', 'Elm Way', 'Ash Blvd', 'Willow Dr'];
+  addBox(-14, 7, WZ, 23, 0.7, 15, M.warehouseDark);
+  mesh(new THREE.BoxGeometry(0.2, 5, 6), M.vanDark, -2.95, 2.6, WZ + 0.5);                        // rolling door
+  for (let k = 0; k < 6; k++) mesh(new THREE.BoxGeometry(0.06, 0.08, 6), M.warehouse, -2.84, 0.6 + k * 0.8, WZ + 0.5, { shadow: false });
+  addBox(-2.6, 0, WZ, 1.2, 0.45, 10, M.warehouseDark, { step: true });                                // dock
+  const sign = makeLabel('OVERWORK LOGISTICS', '#ffb020', 640, 110, '#2a2a33'); sign.position.set(-3.1, 5.6, WZ - 3); sign.rotation.y = Math.PI / 2; sign.scale.set(6.4, 1.1, 1); scene.add(sign);
+  const sign2 = makeLabel('we deliver. mostly.', '#f4f4f7', 640, 90, '#2a2a33', 'Patrick Hand'); sign2.position.set(-3.1, 4.7, WZ - 3); sign2.rotation.y = Math.PI / 2; sign2.scale.set(5, 0.7, 1); scene.add(sign2);
+  for (const [x, z] of [[-1.2, 40], [1.0, 41.5], [-0.4, 27]]) { const cone = mesh(new THREE.ConeGeometry(0.28, 0.7, 8), M.cone, x, 0.35, z); outlined(cone); colliders.push({ min: { x: x - .25, y: 0, z: z - .25 }, max: { x: x + .25, y: .7, z: z + .25 } }); }
+  for (let k = 0; k < 3; k++) addBox(-6 + k * 1.4, 0, 41.5, 1.2, 0.16, 1.0, M.wood, { solid: false });   // pallets
+  // ── houses ──
+  const streets = ['Maple St', 'Cedar Ave', 'Birch Rd', 'Oak Ln', 'Pine Ct', 'Elm Way', 'Ash Blvd', 'Willow Dr'];
   const spots = [[-14, 14], [14, 14], [-14, -4], [14, -4], [-14, -22], [14, -22], [-30, -50], [30, -50]];
   spots.forEach(([x, z], i) => {
-    const facing = x < 0 ? 1 : -1;                     // faces the road
+    const facing = x < 0 ? 1 : -1;
     const w = 9, d = 8, h = 4.2 + (i % 3) * 0.4;
     addBox(x, 0, z, w, h, d, M.wall[i % M.wall.length]);
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.78, 2.6, 4), M.roof[i % M.roof.length]);
-    roof.position.set(x, h + 1.3, z); roof.rotation.y = Math.PI / 4; roof.castShadow = true; scene.add(roof);
+    mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.8, 2.8, 4), M.roof[i % M.roof.length], x, h + 1.4, z, { rot: [0, Math.PI / 4, 0] });
+    mesh(new THREE.BoxGeometry(0.9, 1.6, 0.9), M.roof[(i + 2) % M.roof.length], x - facing * 2.2, h + 1.6, z + 1.8);            // chimney
     const dx = x + facing * (w / 2 + 0.02);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.2, 1.2), M.door); door.position.set(dx, 1.1, z); scene.add(door);
-    // porch + steps (steps are stepables — the stairs are the enemy)
+    const door = mesh(new THREE.BoxGeometry(0.14, 2.3, 1.25), M.door, dx, 1.15, z); outlined(door, 1.08);
+    mesh(new THREE.SphereGeometry(0.07, 8, 6), M.hub, dx + facing * 0.1, 1.1, z + 0.45);                                       // knob
+    mesh(new THREE.SphereGeometry(0.14, 8, 6), M.lamp, dx + facing * 0.15, 2.7, z, { shadow: false });                           // porch light
+    for (const wz of [z - 2.6, z + 2.6]) {                                                                                       // windows
+      mesh(new THREE.BoxGeometry(0.1, 1.3, 1.3), M.frame, dx, 2.2, wz); mesh(new THREE.BoxGeometry(0.12, 1.1, 1.1), M.glass, dx + facing * 0.02, 2.2, wz, { shadow: false });
+    }
     const steps = 1 + (i % 3);
     for (let s = 0; s < steps; s++) addBox(x + facing * (w / 2 + 0.9 + s * 0.7), 0, z, 0.7, 0.32 * (steps - s), 3.2, M.curb, { step: true, shadow: false });
-    const porchX = x + facing * (w / 2 + 0.45);
-    if (steps > 0) addBox(porchX, 0, z, 0.9, 0.32 * steps, 3.2, M.walk, { step: true, shadow: false });
+    addBox(x + facing * (w / 2 + 0.45), 0, z, 0.9, 0.32 * steps, 3.2, M.walk, { step: true, shadow: false });
     const matX = x + facing * (w / 2 + 1.6 + steps * 0.7);
-    const doormat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 1.2), M.matOff); doormat.position.set(matX, 0.03, z); doormat.receiveShadow = true; scene.add(doormat);
+    const doormat = mesh(new THREE.BoxGeometry(1.7, 0.07, 1.25), M.matOff, matX, 0.035, z);
+    const matLabel = makeLabel(MATS[i % MATS.length], '#3a2a10', 256, 96, '#00000000'); matLabel.material.transparent = true;
+    matLabel.rotation.set(-Math.PI / 2, 0, facing > 0 ? -Math.PI / 2 : Math.PI / 2); matLabel.position.set(matX, 0.075, z); matLabel.scale.set(1.15, 0.5, 1); scene.add(matLabel);
     const num = 3 + i * 4;
-    const label = makeLabel(String(num), 0xffffff, 128, 128); label.position.set(dx + facing * 0.15, 2.9, z + 1.1); label.rotation.y = facing > 0 ? Math.PI / 2 : -Math.PI / 2; label.scale.set(0.7, 0.7, 1); scene.add(label);
-    houses.push({ i, x, z, num, street: streetNames[i], label: `${num} ${streetNames[i]}`, matMesh: doormat, facing,
-      doormat: { min: { x: matX - 1.2, y: -1, z: z - 1.0 }, max: { x: matX + 1.2, y: 3, z: z + 1.0 } },
-      doorPos: new THREE.Vector3(dx + facing * 0.6, 0, z) });
-    // fence bits and a tree per lot
+    const label = makeLabel(String(num), '#14121a', 128, 128, '#faf6ec'); label.position.set(dx + facing * 0.12, 3.1, z + 1.15); label.rotation.y = facing > 0 ? Math.PI / 2 : -Math.PI / 2; label.scale.set(0.7, 0.7, 1); scene.add(label);
+    const mbx = x + facing * (w / 2 + 3.6);                                                                                      // mailbox
+    mesh(new THREE.BoxGeometry(0.12, 1.1, 0.12), M.wood, mbx, 0.55, z + 2.4); outlined(mesh(new THREE.BoxGeometry(0.5, 0.36, 0.34), M.roof[i % M.roof.length], mbx, 1.25, z + 2.4), 1.08);
+    colliders.push({ min: { x: mbx - .1, y: 0, z: z + 2.3 }, max: { x: mbx + .1, y: 1.45, z: z + 2.5 } });
+    houses.push({ i, x, z, num, street: streets[i], label: `${num} ${streets[i]}`, matMesh: doormat, facing,
+      doormat: { min: { x: matX - 1.2, y: -1, z: z - 1.0 }, max: { x: matX + 1.2, y: 3, z: z + 1.0 } } });
     addBox(x - facing * 2, 0, z + d / 2 + 2.2, 6, 0.9, 0.2, M.wood, { shadow: false });
     tree(x - facing * 1.5, z - d / 2 - 3.2, 1 + (i % 2) * 0.4);
+    bush(x + facing * (w / 2 + 0.6), z - 2.6, 0.55 + (i % 2) * 0.15);
   });
-  // street lights + extra trees along the road
   for (let z = -60; z <= 40; z += 20) for (const sx of [-5.2, 5.2]) {
-    addBox(sx, 0, z, 0.22, 5, 0.22, M.pole, { solid: false });
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), mat(0xfff2c0, { emissive: 0x6a5a20 })); lamp.position.set(sx, 5.1, z); scene.add(lamp);
+    mesh(new THREE.CylinderGeometry(0.09, 0.12, 5, 8), M.pole, sx, 2.5, z, { shadow: false });
+    mesh(new THREE.SphereGeometry(0.34, 10, 8), M.lamp, sx, 5.15, z, { shadow: false });
   }
   for (let k = 0; k < 14; k++) { const tx = (Math.random() < .5 ? -1 : 1) * rnd(24, 60); let tz = rnd(-70, 40); if (Math.abs(tx) < 38 && tz > -58 && tz < -42) tz -= 20; tree(tx, tz, rnd(0.9, 1.6)); }
-  // the van, parked in front of the dock
+  for (let k = 0; k < 9; k++) cloud(rnd(-90, 90), rnd(26, 40), rnd(-110, 60), rnd(1.2, 2.4));
   van.group.position.set(3.2, 0, WZ - 2); van.yaw = 0;
 }
-function tree(x, z, s) {
-  addBox(x, 0, z, 0.5 * s, 1.6 * s, 0.5 * s, M.wood);
-  const c1 = new THREE.Mesh(new THREE.ConeGeometry(1.6 * s, 2.6 * s, 6), M.leaf); c1.position.set(x, 2.6 * s, z); c1.castShadow = true; scene.add(c1);
-  const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.1 * s, 2.0 * s, 6), M.leaf2); c2.position.set(x, 3.8 * s, z); c2.castShadow = true; scene.add(c2);
+function tree(x, z, s) {                       // lollipop trees: a trunk and two or three blobs
+  addBox(x, 0, z, 0.5 * s, 1.7 * s, 0.5 * s, M.wood);
+  outlined(mesh(new THREE.DodecahedronGeometry(1.5 * s, 0), M.leaf, x, 2.6 * s, z, { rot: [rnd(0, 1), rnd(0, 1), 0] }), 1.05);
+  outlined(mesh(new THREE.DodecahedronGeometry(1.1 * s, 0), M.leaf2, x + 0.6 * s, 3.3 * s, z - 0.3 * s, { rot: [rnd(0, 1), rnd(0, 1), 0] }), 1.05);
+  if (s > 1.1) outlined(mesh(new THREE.DodecahedronGeometry(0.9 * s, 0), M.leaf3, x - 0.7 * s, 3.4 * s, z + 0.4 * s), 1.05);
 }
-function makeLabel(text, color, w, h) {
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  const g = c.getContext('2d'); g.fillStyle = '#1c1a22'; g.fillRect(0, 0, w, h);
-  g.fillStyle = '#' + color.toString(16).padStart(6, '0'); g.font = `800 ${Math.floor(h * 0.6)}px Syne, DM Sans, sans-serif`;
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + 2);
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex }));
+function bush(x, z, s) { outlined(mesh(new THREE.DodecahedronGeometry(s, 0), M.leaf3, x, s * 0.7, z, { rot: [0.3, rnd(0, 2), 0] }), 1.06); colliders.push({ min: { x: x - s * .6, y: 0, z: z - s * .6 }, max: { x: x + s * .6, y: s, z: z + s * .6 } }); }
+function cloud(x, y, z, s) {
+  const g = new THREE.Group(); g.position.set(x, y, z);
+  for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(s * rnd(0.7, 1.2), 10, 8), M.cloud); m.position.set((i - 1.5) * s * 1.1, rnd(-0.2, 0.4) * s, rnd(-0.4, 0.4) * s); m.scale.y = 0.65; g.add(m); }
+  scene.add(g); clouds.push({ g, v: rnd(0.3, 0.8) });
 }
 
 /* ── springs: the whole animation system is this one struct ── */
 function spring(k, d) { return { x: 0, v: 0, k, d }; }
 function springTo(s, target, dt) { const a = (target - s.x) * s.k - s.v * s.d; s.v += a * dt; s.x += s.v * dt; return s.x; }
 
-/* ── the courier: a body on two noodles ── */
-function makeNoodleMesh(material, radius) {
-  const m = new THREE.Mesh(new THREE.BufferGeometry(), material); m.castShadow = true; m.frustumCulled = false; scene.add(m); return m;
+/* ── jelly limbs ─────────────────────────────────────────────────
+   A limb is a cubic curve (root → c1 → c2 → tip) swept by rings of
+   vertices. Three things make it read as jelly instead of a tube:
+   1. volume preservation: shorter than rest length → fatter, longer → thinner
+   2. a radius profile: thick at the top, a waist near the knee, a calf bulge
+   3. a lateral ripple whose amplitude is a spring kicked on every landing */
+const SEG = 16, RAD = 9;
+class Limb {
+  constructor(material, baseR, restLen) {
+    this.baseR = baseR; this.restLen = restLen;
+    const idx = [];
+    // winding matters: (a, a+1, b) faces outward for a ring built as N·cos + B·sin with B = T × N
+    for (let i = 0; i < SEG; i++) for (let j = 0; j < RAD; j++) { const a = i * (RAD + 1) + j, b = a + RAD + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+    this.geo = new THREE.BufferGeometry(); this.pos = new Float32Array((SEG + 1) * (RAD + 1) * 3);
+    this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3)); this.geo.setIndex(idx);
+    this.mesh = new THREE.Mesh(this.geo, material); this.mesh.castShadow = true; this.mesh.frustumCulled = false; scene.add(this.mesh);
+    this.oGeo = new THREE.BufferGeometry(); this.oPos = new Float32Array(this.pos.length);
+    this.oGeo.setAttribute('position', new THREE.BufferAttribute(this.oPos, 3)); this.oGeo.setIndex(idx);
+    this.outline = new THREE.Mesh(this.oGeo, OUTLINE); this.outline.frustumCulled = false; scene.add(this.outline);
+    this.jiggle = spring(70, 6); this.phase = 0;
+  }
+  kick(v) { this.jiggle.v += v; }
+  /* profile(t): relative thickness along the limb; side: unit vector the ripple moves along */
+  update(dt, p0, c1, c2, p3, side, profile) {
+    springTo(this.jiggle, 0, dt); this.phase += dt * 22;
+    const len = p0.distanceTo(p3);
+    const fat = Math.pow(clamp(this.restLen / Math.max(0.2, len), 0.55, 1.9), 0.55);   // volume preservation
+    const jig = this.jiggle.x * 0.035;
+    const P = _p, T = _t, N = _n, B = _bn;
+    let k = 0;
+    for (let i = 0; i <= SEG; i++) {
+      const t = i / SEG, u = 1 - t;
+      P.set(u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p3.x,
+            u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p3.y,
+            u * u * u * p0.z + 3 * u * u * t * c1.z + 3 * u * t * t * c2.z + t * t * t * p3.z);
+      T.set(3 * u * u * (c1.x - p0.x) + 6 * u * t * (c2.x - c1.x) + 3 * t * t * (p3.x - c2.x),
+            3 * u * u * (c1.y - p0.y) + 6 * u * t * (c2.y - c1.y) + 3 * t * t * (p3.y - c2.y),
+            3 * u * u * (c1.z - p0.z) + 6 * u * t * (c2.z - c1.z) + 3 * t * t * (p3.z - c2.z)).normalize();
+      // ripple: a travelling wave along the limb, zero at both ends so the joints stay put
+      const wave = Math.sin(t * Math.PI * 2.2 - this.phase) * Math.sin(t * Math.PI) * jig;
+      P.addScaledVector(side, wave);
+      N.copy(side).addScaledVector(T, -side.dot(T)); if (N.lengthSq() < 1e-6) N.set(1, 0, 0); N.normalize();
+      B.crossVectors(T, N);
+      const r = this.baseR * fat * profile(t), ro = r + 0.028;
+      for (let j = 0; j <= RAD; j++) {
+        const a = j / RAD * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+        this.pos[k] = P.x + (N.x * ca + B.x * sa) * r; this.pos[k + 1] = P.y + (N.y * ca + B.y * sa) * r; this.pos[k + 2] = P.z + (N.z * ca + B.z * sa) * r;
+        this.oPos[k] = P.x + (N.x * ca + B.x * sa) * ro; this.oPos[k + 1] = P.y + (N.y * ca + B.y * sa) * ro; this.oPos[k + 2] = P.z + (N.z * ca + B.z * sa) * ro;
+        k += 3;
+      }
+    }
+    this.geo.attributes.position.needsUpdate = true; this.geo.computeVertexNormals();
+    this.oGeo.attributes.position.needsUpdate = true;
+  }
+  setVisible(v) { this.mesh.visible = v; this.outline.visible = v; }
 }
-const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
-function updateNoodle(mesh, from, ctrl, to, radius, segs = 9) {
-  const curve = new THREE.QuadraticBezierCurve3(from, ctrl, to);
-  const g = new THREE.TubeGeometry(curve, segs, radius, 6, false);
-  mesh.geometry.dispose(); mesh.geometry = g;
-}
+const _p = new THREE.Vector3(), _t = new THREE.Vector3(), _n = new THREE.Vector3(), _bn = new THREE.Vector3();
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
+const LEG_PROFILE = t => 1.25 - 0.55 * Math.sin(t * Math.PI * 0.9 + 0.3) + 0.45 * Math.exp(-Math.pow((t - 0.62) / 0.16, 2)) - 0.25 * t;   // thigh, waist at the knee, calf bulge, thin ankle
+const ARM_PROFILE = t => 1.1 - 0.35 * t + 0.25 * Math.exp(-Math.pow((t - 0.5) / 0.2, 2));
+
+/* ── the courier ── */
 class Courier {
   constructor() {
     this.pos = new THREE.Vector3(1.5, 0, 26); this.vel = new THREE.Vector3(); this.yaw = Math.PI;
-    this.onGround = true; this.radius = 0.36; this.height = 1.75;
-    this.group = new THREE.Group(); scene.add(this.group);
-    this.torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 0.55, 4, 10), M.shirt); this.torso.castShadow = true; this.group.add(this.torso);
-    this.hips = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.3, 0.42), M.pants); this.hips.castShadow = true; this.group.add(this.hips);
-    this.head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 12), M.skin); this.head.castShadow = true; this.group.add(this.head);
-    this.cap = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.16, 12), M.cap); this.head.add(this.cap); this.cap.position.y = 0.26;
-    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.28), M.cap); brim.position.set(0, 0.2, 0.38); this.head.add(brim);
-    for (const sx of [-0.12, 0.12]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), M.shoe); eye.position.set(sx, 0.05, 0.3); this.head.add(eye); }
-    // legs & arms are noodles; feet & hands are little blocks
-    this.legL = makeNoodleMesh(M.pants, 0.11); this.legR = makeNoodleMesh(M.pants, 0.11);
-    this.armL = makeNoodleMesh(M.shirt, 0.085); this.armR = makeNoodleMesh(M.shirt, 0.085);
-    this.footL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 0.46), M.shoe); this.footR = this.footL.clone();
-    this.handL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), M.skin); this.handR = this.handL.clone();
-    for (const m of [this.footL, this.footR, this.handL, this.handR]) { m.castShadow = true; scene.add(m); }
-    // foot state: where each foot is planted, where it is going, and its step progress
+    this.onGround = true; this.radius = 0.36; this.height = 1.85;
+    const g = this.group = new THREE.Group(); scene.add(g);
+    // bean body with a company vest, shorts, a name tag
+    this.torso = outlined(mesh(new THREE.SphereGeometry(0.44, 18, 14), M.vest, 0, 0.55, 0, { parent: g }), 1.06); this.torso.scale.set(1, 1.18, 0.86);
+    const collar = outlined(mesh(new THREE.SphereGeometry(0.3, 14, 10), M.shirt, 0, 0.98, 0, { parent: g }), 1.08); collar.scale.set(1.2, 0.5, 1);
+    this.hips = outlined(mesh(new THREE.SphereGeometry(0.4, 16, 12), M.shorts, 0, 0.08, 0, { parent: g }), 1.06); this.hips.scale.set(1.05, 0.6, 0.9);
+    mesh(new THREE.BoxGeometry(0.22, 0.12, 0.03), M.label, -0.2, 0.75, 0.38, { parent: g, shadow: false });
+    mesh(new THREE.BoxGeometry(0.14, 0.02, 0.035), M.pupil, -0.2, 0.75, 0.39, { parent: g, shadow: false });
+    // bobblehead: the head hangs on a lazy spring off the neck
+    const head = this.head = new THREE.Group(); g.add(head);
+    outlined(mesh(new THREE.SphereGeometry(0.42, 20, 16), M.skin, 0, 0, 0, { parent: head }), 1.06).scale.set(1.08, 1, 1);
+    outlined(mesh(new THREE.SphereGeometry(0.12, 12, 10), M.nose, 0, -0.05, 0.42, { parent: head }), 1.1);
+    for (const sx of [-0.19, 0.19]) {
+      outlined(mesh(new THREE.SphereGeometry(0.11, 12, 10), M.eye, sx, 0.08, 0.34, { parent: head, shadow: false }), 1.1);
+      mesh(new THREE.SphereGeometry(0.05, 8, 6), M.pupil, sx + (sx < 0 ? 0.02 : -0.02), 0.08, 0.44, { parent: head, shadow: false });
+    }
+    this.browL = mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), M.pupil, -0.19, 0.24, 0.38, { parent: head, shadow: false });
+    this.browR = mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), M.pupil, 0.19, 0.24, 0.38, { parent: head, shadow: false });
+    this.mouth = mesh(new THREE.BoxGeometry(0.16, 0.05, 0.04), M.mouth, 0, -0.2, 0.4, { parent: head, shadow: false });
+    outlined(mesh(new THREE.SphereGeometry(0.44, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), M.cap, 0, 0.06, 0, { parent: head }), 1.05);
+    outlined(mesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), M.cap, 0, 0.26, 0.45, { parent: head, rot: [0.15, 0, 0] }), 1.06);
+    const capLogo = makeLabel('O', '#faf6ec', 64, 64, '#e8162a'); capLogo.position.set(0, 0.3, 0.41); capLogo.rotation.x = -0.3; capLogo.scale.set(0.16, 0.16, 1); head.add(capLogo);
+    this.headSpring = { x: spring(60, 6), z: spring(60, 6), y: spring(80, 8) };
+    // limbs
+    this.legL = new Limb(M.sock, 0.12, 0.95); this.legR = new Limb(M.sock, 0.12, 0.95);
+    this.armL = new Limb(M.skin, 0.085, 0.8); this.armR = new Limb(M.skin, 0.085, 0.8);
+    // sausage shoes and mitt hands
+    this.footL = outlined(mesh(new THREE.CapsuleGeometry(0.15, 0.28, 4, 10), M.shoe, 0, 0, 0), 1.08); this.footR = outlined(mesh(new THREE.CapsuleGeometry(0.15, 0.28, 4, 10), M.shoe, 0, 0, 0), 1.08);
+    this.handL = outlined(mesh(new THREE.SphereGeometry(0.13, 10, 8), M.skin, 0, 0, 0), 1.1); this.handR = outlined(mesh(new THREE.SphereGeometry(0.13, 10, 8), M.skin, 0, 0, 0), 1.1);
     this.feet = [
-      { pos: new THREE.Vector3(-0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(60, 7), kneeSide: -1 },
-      { pos: new THREE.Vector3(0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(60, 7), kneeSide: 1 }];
+      { pos: new THREE.Vector3(-0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(55, 6), roll: spring(80, 8) },
+      { pos: new THREE.Vector3(0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(55, 6), roll: spring(80, 8) }];
     this.feet[0].pos.add(this.pos); this.feet[1].pos.add(this.pos);
-    // body springs: lean (pitch/roll), bob, squash — all excited by motion, never keyframed
     this.lean = { x: spring(40, 6), z: spring(40, 6) }; this.bob = spring(90, 8); this.squash = spring(120, 9); this.hipTwist = spring(30, 6);
     this.hands = [{ p: new THREE.Vector3(), v: new THREE.Vector3() }, { p: new THREE.Vector3(), v: new THREE.Vector3() }];
-    this.carry = null; this.stun = 0; this.visible = true; this.stepCooldown = 0;
+    this.carry = null; this.stun = 0; this.stepCooldown = 0; this.worry = 0;
   }
-  setVisible(v) { this.visible = v; this.group.visible = v; for (const m of [this.legL, this.legR, this.armL, this.armR, this.footL, this.footR, this.handL, this.handR]) m.visible = v; }
+  setVisible(v) { this.group.visible = v; for (const m of [this.legL, this.legR, this.armL, this.armR]) m.setVisible(v); for (const m of [this.footL, this.footR, this.handL, this.handR]) m.visible = v; }
   update(dt, input, camYaw) {
-    // ── movement (input is camera-relative) ──
     const slick = world.rain ? 0.55 : 1;
     const weight = this.carry ? this.carry.mass : 0;
     const maxSpeed = (6.2 - weight * 1.1) * (this.stun > 0 ? 0.2 : 1);
     const accel = 26 * slick / (1 + weight * 0.35);
     let mx = 0, mz = 0;
     if (input.f) mz -= 1; if (input.b) mz += 1; if (input.l) mx -= 1; if (input.r) mx += 1;
-    const len = Math.hypot(mx, mz);
-    if (len > 0) { mx /= len; mz /= len; }
+    const len = Math.hypot(mx, mz); if (len > 0) { mx /= len; mz /= len; }
     const s = Math.sin(camYaw), c = Math.cos(camYaw);
     const wx = mx * c + mz * s, wz = -mx * s + mz * c;
     const targetVx = wx * maxSpeed, targetVz = wz * maxSpeed;
     const fr = this.onGround ? (world.rain ? 4.5 : 11) : 1.5;
     this.vel.x += (targetVx - this.vel.x) * Math.min(1, (len > 0 ? accel / maxSpeed : fr) * dt);
     this.vel.z += (targetVz - this.vel.z) * Math.min(1, (len > 0 ? accel / maxSpeed : fr) * dt);
-    if (input.jump && this.onGround && this.stun <= 0) { this.vel.y = 6.5 - weight * 0.8; this.onGround = false; this.squash.v -= 6; input.jump = false; }
+    if (input.jump && this.onGround && this.stun <= 0) { this.vel.y = 6.5 - weight * 0.8; this.onGround = false; this.squash.v -= 6; this.legL.kick(6); this.legR.kick(6); input.jump = false; }
     this.vel.y -= 18 * dt;
-    // integrate + collide
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
     collideCylinder(this, dt);
     this.pos.y += this.vel.y * dt;
     const floor = floorHeight(this.pos.x, this.pos.z, this.pos.y + 0.5, this.radius);
     if (this.pos.y <= floor) {
-      if (!this.onGround && this.vel.y < -4) { this.squash.v -= Math.min(10, -this.vel.y * 0.9); if (this.carry && this.vel.y < -9) dropCarried(this, true); }
+      if (!this.onGround && this.vel.y < -4) { this.squash.v -= Math.min(10, -this.vel.y * 0.9); this.legL.kick(-this.vel.y * 1.5); this.legR.kick(-this.vel.y * 1.5); this.headSpring.y.v -= 3; if (this.carry && this.vel.y < -9) dropCarried(this, true); }
       this.pos.y = floor; this.vel.y = 0; this.onGround = true;
     } else if (this.pos.y > floor + 0.05) this.onGround = false;
     if (this.stun > 0) this.stun -= dt;
-    // facing: where you go (or where the camera looks while idle and carrying)
     const speed = Math.hypot(this.vel.x, this.vel.z);
     if (speed > 0.6) { const ty = Math.atan2(this.vel.x, this.vel.z); this.yaw += angleDelta(this.yaw, ty) * Math.min(1, 10 * dt); }
-    // ── feet: step when the planted foot is too far behind the hip ──
+    // ── feet decide where to step ──
     this.stepCooldown -= dt;
     const dirX = speed > 0.3 ? this.vel.x / speed : Math.sin(this.yaw), dirZ = speed > 0.3 ? this.vel.z / speed : Math.cos(this.yaw);
     const sideX = Math.cos(this.yaw), sideZ = -Math.sin(this.yaw);
-    const stride = clamp(0.35 + speed * 0.13, 0.35, 1.15);
+    const stride = clamp(0.35 + speed * 0.14, 0.35, 1.2);
     const stepDur = clamp(0.32 - speed * 0.022, 0.14, 0.32);
     for (let i = 0; i < 2; i++) {
       const f = this.feet[i], other = this.feet[1 - i], side = i === 0 ? -1 : 1;
-      const hipX = this.pos.x + sideX * side * 0.19, hipZ = this.pos.z + sideZ * side * 0.19;
-      if (f.t < 1) {                                    // mid-step: fly along an arc
+      const hipX = this.pos.x + sideX * side * 0.2, hipZ = this.pos.z + sideZ * side * 0.2;
+      if (f.t < 1) {
         f.t = Math.min(1, f.t + dt / stepDur);
         const e = f.t < .5 ? 2 * f.t * f.t : 1 - Math.pow(-2 * f.t + 2, 2) / 2;
         f.pos.lerpVectors(f.from, f.to, e);
-        f.pos.y = f.to.y + Math.sin(f.t * Math.PI) * clamp(0.12 + speed * 0.05, 0.12, 0.42);
-        if (f.t >= 1) { f.knee.v += 9 + speed * 2; this.bob.v -= 1.2 + speed * 0.5; }   // landing kick: the jelly reacts
+        f.pos.y = f.to.y + Math.sin(f.t * Math.PI) * clamp(0.12 + speed * 0.06, 0.12, 0.48);
+        f.roll.x = Math.sin(f.t * Math.PI) * 0.9;                                    // toes up mid-flight
+        if (f.t >= 1) {                                                             // landing: everything jiggles
+          f.knee.v += 9 + speed * 2; this.bob.v -= 1.2 + speed * 0.5;
+          (i === 0 ? this.legL : this.legR).kick(10 + speed * 4); (i === 0 ? this.armR : this.armL).kick(4 + speed);
+          this.headSpring.y.v -= 1.2 + speed * 0.3; this.headSpring.z.v += side * (0.5 + speed * 0.15);
+          if (speed > 1) sfx('step', speed);
+        }
       } else if (this.onGround) {
         const aheadX = hipX + dirX * stride * (speed > 0.3 ? 1 : 0), aheadZ = hipZ + dirZ * stride * (speed > 0.3 ? 1 : 0);
         const dx = f.pos.x - hipX, dz = f.pos.z - hipZ;
-        const behind = dx * dirX + dz * dirZ;                        // negative = foot is behind the hip
-        const dist = Math.hypot(dx, dz);
+        const behind = dx * dirX + dz * dirZ, dist = Math.hypot(dx, dz);
         const needs = speed > 0.3 ? (behind < -stride * 0.55 || dist > stride * 1.5) : dist > 0.32;
         if (needs && other.t >= 1 && this.stepCooldown <= 0) {
-          f.from.copy(f.pos); f.to.set(aheadX + rnd(-0.06, 0.06), floorHeight(aheadX, aheadZ, this.pos.y + 0.5, 0.15), aheadZ + rnd(-0.06, 0.06));
+          f.from.copy(f.pos); f.to.set(aheadX + rnd(-0.07, 0.07), floorHeight(aheadX, aheadZ, this.pos.y + 0.5, 0.15), aheadZ + rnd(-0.07, 0.07));
           f.t = 0; this.stepCooldown = stepDur * 0.35;
           this.lean.z.v += side * 1.6; this.hipTwist.v += side * 3;
         }
-      } else { f.pos.set(hipX, this.pos.y - 0.2, hipZ); f.t = 1; }   // airborne: legs dangle under
+        springTo(f.roll, 0, dt);
+      } else { f.pos.set(hipX, this.pos.y - 0.25, hipZ); f.t = 1; springTo(f.roll, -0.6, dt); }
       springTo(f.knee, 0, dt);
     }
     // ── body springs ──
     const ax = (targetVx - this.vel.x), az = (targetVz - this.vel.z);
-    const fwdLean = (this.vel.x * dirX + this.vel.z * dirZ) * 0.055 + (ax * dirX + az * dirZ) * 0.02;
+    const fwdLean = (this.vel.x * dirX + this.vel.z * dirZ) * 0.05 + (ax * dirX + az * dirZ) * 0.02;
     const sideLean = (this.vel.x * sideX + this.vel.z * sideZ) * 0.05;
     springTo(this.lean.x, fwdLean, dt); springTo(this.lean.z, -sideLean, dt);
     springTo(this.bob, 0, dt); springTo(this.squash, 0, dt); springTo(this.hipTwist, 0, dt);
-    // ── pose the rigid bits ──
-    const hipY = this.pos.y + 0.98 + this.bob.x * 0.05 + this.squash.x * 0.03 + (this.onGround ? 0 : 0.1);
+    springTo(this.headSpring.x, -this.lean.x.x * 0.35 + (ax * dirX + az * dirZ) * -0.02, dt); springTo(this.headSpring.z, this.lean.z.x * 0.35, dt); springTo(this.headSpring.y, 0, dt);
+    const hipY = this.pos.y + 1.0 + this.bob.x * 0.05 + this.squash.x * 0.03 + (this.onGround ? 0 : 0.1);
     this.group.position.set(this.pos.x, hipY, this.pos.z);
     this.group.rotation.set(this.lean.x.x, this.yaw + this.hipTwist.x * 0.04, this.lean.z.x, 'YXZ');
-    const sq = 1 + this.squash.x * 0.06;
+    const sq = 1 + this.squash.x * 0.07;
     this.group.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
-    this.hips.position.set(0, 0, 0); this.torso.position.set(0, 0.62, 0); this.head.position.set(0, 1.3, 0);
-    this.head.rotation.set(-this.lean.x.x * 0.6, 0, -this.lean.z.x * 0.6);
-    // ── legs: hip → knee (a lagging control point) → foot ──
-    const hipWorld = new THREE.Vector3();
+    this.head.position.set(this.headSpring.z.x * 0.25, 1.45 + this.headSpring.y.x * 0.06, this.headSpring.x.x * 0.25);
+    this.head.rotation.set(this.headSpring.x.x * 0.9 - this.lean.x.x * 0.3, 0, -this.headSpring.z.x * 0.9);
+    // face: worried when carrying something heavy or stunned
+    this.worry = lerp(this.worry, this.stun > 0 ? 1 : this.carry ? clamp(this.carry.mass * 0.35, 0.2, 1) : 0, Math.min(1, 6 * dt));
+    this.browL.rotation.z = 0.35 * this.worry; this.browR.rotation.z = -0.35 * this.worry;
+    this.browL.position.y = this.browR.position.y = 0.24 + this.worry * 0.05;
+    this.mouth.scale.set(1 - this.worry * 0.5, 1 + this.worry * 1.8, 1);
+    // ── legs: hip → knee (c1, bows forward) → shin (c2, bows back) → foot ──
     for (let i = 0; i < 2; i++) {
-      const f = this.feet[i], side = i === 0 ? -1 : 1;
-      hipWorld.set(side * 0.19, -0.1, 0); this.group.localToWorld(hipWorld);
-      const mid = _a.copy(hipWorld).add(f.pos).multiplyScalar(0.5);
-      // the knee bows backwards and outwards with the step kick, and lags the body: that is the jelly
-      const bend = 0.18 + f.knee.x * 0.06;
-      mid.x += -dirX * bend + sideX * side * (0.08 + f.knee.x * 0.02);
-      mid.z += -dirZ * bend + sideZ * side * (0.08 + f.knee.x * 0.02);
-      mid.y -= 0.05 + Math.max(0, f.knee.x) * 0.02;
-      updateNoodle(i === 0 ? this.legL : this.legR, hipWorld.clone(), mid.clone(), f.pos.clone(), 0.11);
+      const f = this.feet[i], side = i === 0 ? -1 : 1, limb = i === 0 ? this.legL : this.legR;
+      const hipW = _d.set(side * 0.2, -0.05, 0); this.group.localToWorld(hipW);
+      const kneeBend = 0.22 + f.knee.x * 0.05 + (1 - f.t) * 0.25;
+      const c1 = _a.copy(hipW).lerp(f.pos, 0.38); c1.x += dirX * kneeBend + sideX * side * 0.05; c1.z += dirZ * kneeBend + sideZ * side * 0.05;
+      const c2 = _b.copy(hipW).lerp(f.pos, 0.72); c2.x -= dirX * kneeBend * 0.6; c2.z -= dirZ * kneeBend * 0.6;
+      limb.update(dt, hipW, c1, c2, f.pos, _c.set(sideX, 0, sideZ), LEG_PROFILE);
       const foot = i === 0 ? this.footL : this.footR;
-      foot.position.set(f.pos.x, f.pos.y + 0.08, f.pos.z); foot.rotation.y = this.yaw;
+      foot.position.set(f.pos.x + dirX * 0.1, f.pos.y + 0.12, f.pos.z + dirZ * 0.1); foot.rotation.set(Math.PI / 2 - f.roll.x, this.yaw, 0, 'YXZ');
     }
-    // ── arms: hang, swing with the body, or hold the box overhead ──
+    // ── arms: hang and swing, or hold the box overhead ──
     for (let i = 0; i < 2; i++) {
-      const side = i === 0 ? -1 : 1, h = this.hands[i];
-      const shoulder = _b.set(side * 0.42, 0.92, 0); this.group.localToWorld(shoulder);
-      let target;
-      if (this.carry) { target = _c.set(side * this.carry.size.x * 0.42, 1.55 + this.carry.size.y * 0.1, 0.05); this.group.localToWorld(target); }
-      else { target = _c.set(side * 0.46, 0.15, -0.05 + fwdLean * 0.6); this.group.localToWorld(target); }
-      // hands are heavy and lazy: a velocity spring towards the target
-      const k = this.carry ? 90 : 26, d = this.carry ? 12 : 5;
+      const side = i === 0 ? -1 : 1, h = this.hands[i], limb = i === 0 ? this.armL : this.armR;
+      const shoulder = _d.set(side * 0.44, 0.9, 0); this.group.localToWorld(shoulder);
+      const target = _e;
+      if (this.carry) { target.set(side * this.carry.size.x * 0.42, 1.7 + this.carry.size.y * 0.1, 0.05); this.group.localToWorld(target); }
+      else { target.set(side * 0.5, 0.1, -0.05 + fwdLean * 0.7 + (i === 0 ? 1 : -1) * Math.sin(this.feet[i].t * Math.PI) * 0.1); this.group.localToWorld(target); }
+      const k = this.carry ? 90 : 24, d = this.carry ? 12 : 4.5;
       h.v.x += ((target.x - h.p.x) * k - h.v.x * d) * dt; h.v.y += ((target.y - h.p.y) * k - h.v.y * d) * dt; h.v.z += ((target.z - h.p.z) * k - h.v.z * d) * dt;
       h.p.addScaledVector(h.v, dt);
-      const elbow = _a.copy(shoulder).add(h.p).multiplyScalar(0.5); elbow.x += sideX * side * 0.16; elbow.z += sideZ * side * 0.16; elbow.y -= this.carry ? -0.05 : 0.12;
-      updateNoodle(i === 0 ? this.armL : this.armR, shoulder.clone(), elbow.clone(), h.p.clone(), 0.085);
+      const c1 = _a.copy(shoulder).lerp(h.p, 0.4); c1.x += sideX * side * 0.22; c1.z += sideZ * side * 0.22; c1.y += this.carry ? 0.1 : -0.05;
+      const c2 = _b.copy(shoulder).lerp(h.p, 0.7); c2.x += sideX * side * 0.1; c2.z += sideZ * side * 0.1; c2.y -= this.carry ? -0.05 : 0.08;
+      limb.update(dt, shoulder, c1, c2, h.p, _c.set(-dirZ, 0, dirX), ARM_PROFILE);
       (i === 0 ? this.handL : this.handR).position.copy(h.p);
     }
-    // ── the carried box rides above the head, wobbling with the body ──
     if (this.carry) {
       const b = this.carry;
-      const top = _a.set(0, 1.75 + b.size.y / 2, 0.05); this.group.localToWorld(top);
+      const top = _a.set(0, 1.95 + b.size.y / 2, 0.05); this.group.localToWorld(top);
       b.pos.lerp(top, Math.min(1, 14 * dt)); b.vel.set(0, 0, 0);
       b.rot = this.yaw + this.hipTwist.x * 0.06 + this.lean.z.x * 0.4; b.tilt = this.lean.x.x * 1.4;
     }
@@ -436,16 +535,13 @@ function angleDelta(a, b) { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d 
 /* ── collision helpers (AABB world) ── */
 function floorHeight(x, z, yRef, r) {
   let best = 0;
-  for (const c of colliders) {
-    if (x + r > c.min.x && x - r < c.max.x && z + r > c.min.z && z - r < c.max.z && c.max.y <= yRef + 0.01 && c.max.y > best) best = c.max.y;
-  }
+  for (const c of colliders) if (x + r > c.min.x && x - r < c.max.x && z + r > c.min.z && z - r < c.max.z && c.max.y <= yRef + 0.01 && c.max.y > best) best = c.max.y;
   return best;
 }
 function collideCylinder(body, dt) {
   const r = body.radius, feetY = body.pos.y, headY = body.pos.y + body.height;
   for (const c of colliders) {
     if (headY <= c.min.y || feetY >= c.max.y - 0.01) continue;
-    // low ledges you can step onto
     if (c.max.y - feetY <= 0.5 && stepables.includes(c)) continue;
     const cx = clamp(body.pos.x, c.min.x, c.max.x), cz = clamp(body.pos.z, c.min.z, c.max.z);
     const dx = body.pos.x - cx, dz = body.pos.z - cz, d = Math.hypot(dx, dz);
@@ -466,47 +562,48 @@ class Package {
     this.house = house; this.fragile = !!opts.fragile; this.oversized = !!opts.oversized;
     const s = this.oversized ? 1.9 : rnd(0.75, 1.1);
     this.size = new THREE.Vector3(0.7 * s, 0.55 * s, 0.6 * s); this.mass = this.oversized ? 3.2 : (this.fragile ? 0.9 : 1 + (s - 0.75) * 1.5);
-    this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3(); this.rot = 0; this.tilt = 0; this.damage = 0; this.state = 'ground'; this.delivered = false;
-    this.group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(this.size.x, this.size.y, this.size.z), this.fragile ? M.fragile : M.box); body.castShadow = true; body.receiveShadow = true; this.group.add(body);
-    const tape = new THREE.Mesh(new THREE.BoxGeometry(this.size.x * 0.22, this.size.y + 0.01, this.size.z + 0.01), M.boxTape); this.group.add(tape);
-    const lab = makeLabel(this.fragile ? 'FRAGILE' : 'TO: ' + house.num, this.fragile ? 0xe8162a : 0x222222, 256, 64); lab.position.set(0, 0, this.size.z / 2 + 0.005); lab.scale.set(this.size.x * 0.8, this.size.y * 0.3, 1); this.group.add(lab);
-    this.mesh = body; scene.add(this.group);
+    this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3(); this.rot = 0; this.tilt = 0; this.damage = 0; this.state = 'ground'; this.delivered = false; this.squish = 0;
+    const g = this.group = new THREE.Group();
+    this.body = outlined(mesh(new THREE.BoxGeometry(this.size.x, this.size.y, this.size.z), this.fragile ? M.fragile : M.box, 0, 0, 0, { parent: g }), 1.04);
+    mesh(new THREE.BoxGeometry(this.size.x * 0.2, this.size.y + 0.012, this.size.z + 0.012), M.tape, rnd(-0.06, 0.06) * s, 0, 0, { parent: g, shadow: false, rot: [0, 0, rnd(-0.06, 0.06)] });
+    mesh(new THREE.BoxGeometry(this.size.x + 0.012, this.size.y * 0.16, this.size.z + 0.012), M.tape, 0, this.size.y * 0.25, 0, { parent: g, shadow: false });
+    this.label = makeLabel(this.fragile ? 'FRAGILE!!' : 'TO: ' + house.num, this.fragile ? '#e8162a' : '#23212b', 256, 72, '#faf6ec', this.fragile ? 'CF Sketch' : 'Patrick Hand');
+    this.label.position.set(0, -this.size.y * 0.1, this.size.z / 2 + 0.008); this.label.rotation.z = rnd(-0.08, 0.08); this.label.scale.set(this.size.x * 0.78, this.size.y * 0.3, 1); g.add(this.label);
+    const up = makeLabel('↑ this way up', '#5a5566', 256, 60, '#00000000', 'Patrick Hand'); up.material.transparent = true; up.position.set(-this.size.x / 2 - 0.006, 0.05, 0); up.rotation.y = -Math.PI / 2; up.scale.set(this.size.z * 0.8, this.size.y * 0.25, 1); g.add(up);
+    scene.add(g);
   }
   hit(impulse) {
     if (this.delivered) return;
     const before = this.damage;
     this.damage = clamp(this.damage + impulse * 0.022 * (this.fragile ? 3.2 : 1), 0, 1);
-    if (this.damage - before > 0.04) { sfx('thud', impulse); if (this.fragile && this.damage - before > 0.15) toast('Something inside broke.', 'bad'); }
+    if (this.damage - before > 0.04) { sfx('thud', impulse); if (this.fragile && this.damage - before > 0.15) toast("that was a sound glass makes.", 'bad'); }
   }
   step(dt) {
     if (this.state !== 'ground') return;
     this.vel.y -= 18 * dt;
     this.pos.addScaledVector(this.vel, dt);
     const hx = this.size.x / 2, hz = this.size.z / 2;
-    // floor: ground, static colliders, other resting boxes
     let floor = floorHeight(this.pos.x, this.pos.z, this.pos.y + this.size.y, Math.min(hx, hz) * 0.8);
     for (const o of boxes) if (o !== this && o.state === 'ground' && Math.abs(o.pos.x - this.pos.x) < (hx + o.size.x / 2) * 0.9 && Math.abs(o.pos.z - this.pos.z) < (hz + o.size.z / 2) * 0.9) {
       const top = o.pos.y + o.size.y / 2; if (top <= this.pos.y - this.size.y / 2 + 0.25 && top > floor) floor = top;
     }
     const bottom = this.pos.y - this.size.y / 2;
     if (bottom <= floor) {
-      if (this.vel.y < -2.5) { this.hit(-this.vel.y); this.vel.y = -this.vel.y * 0.28; this.vel.x *= 0.6; this.vel.z *= 0.6; this.rot += rnd(-0.4, 0.4); }
-      else { this.vel.y = 0; }
+      if (this.vel.y < -2.5) { this.hit(-this.vel.y); this.vel.y = -this.vel.y * 0.28; this.vel.x *= 0.6; this.vel.z *= 0.6; this.rot += rnd(-0.4, 0.4); this.squish = 1; }
+      else this.vel.y = 0;
       this.pos.y = floor + this.size.y / 2;
       const fr = world.rain ? 0.985 : 0.9; this.vel.x *= fr; this.vel.z *= fr;
       if (Math.abs(this.vel.x) < 0.05) this.vel.x = 0; if (Math.abs(this.vel.z) < 0.05) this.vel.z = 0;
     }
-    // walls
-    const fake = { pos: this.pos, vel: this.vel, radius: Math.max(hx, hz) * 0.9, height: this.size.y, onHit: v => { if (v > 3) this.hit(v * 0.7); this.vel.x *= 0.5; this.vel.z *= 0.5; } };
-    fake.pos = new THREE.Vector3(this.pos.x, this.pos.y - this.size.y / 2, this.pos.z);
+    const fake = { pos: new THREE.Vector3(this.pos.x, this.pos.y - this.size.y / 2, this.pos.z), vel: this.vel, radius: Math.max(hx, hz) * 0.9, height: this.size.y, onHit: v => { if (v > 3) this.hit(v * 0.7); this.vel.x *= 0.5; this.vel.z *= 0.5; } };
     collideCylinder(fake, dt); this.pos.x = fake.pos.x; this.pos.z = fake.pos.z;
-    this.tilt *= 0.9;
+    this.tilt *= 0.9; this.squish *= 0.85;
   }
   render() {
     this.group.position.copy(this.pos); this.group.rotation.set(this.tilt, this.rot, 0, 'YXZ');
-    if (this.state === 'van' || this.delivered) this.group.visible = false; else this.group.visible = true;
-    this.mesh.material = this.damage > 0.6 ? M.boxTape : (this.fragile ? M.fragile : M.box);
+    const sq = 1 - this.squish * 0.25; this.group.scale.set(1 + (1 - sq) * 0.6, sq, 1 + (1 - sq) * 0.6);
+    this.group.visible = !(this.state === 'van' || this.delivered);
+    this.body.material = this.damage > 0.6 ? M.boxDark : (this.fragile ? M.fragile : M.box);
   }
 }
 function dropCarried(who, violent) {
@@ -515,35 +612,48 @@ function dropCarried(who, violent) {
   const fwd = new THREE.Vector3(Math.sin(who.yaw), 0, Math.cos(who.yaw));
   b.vel.copy(who.vel).addScaledVector(fwd, violent ? 2.5 : 0.8); b.vel.y = violent ? 1.5 : 0.5;
   b.pos.y = Math.max(b.pos.y, who.pos.y + 1.2);
-  if (violent) toast('You dropped it!', 'bad');
+  if (violent) toast(pick(['dropped it. classic.', 'and there it goes.', 'the box has left the chat.']), 'bad');
   updateCarryHud();
 }
 function throwCarried(who, camDir) {
   const b = who.carry; if (!b) return;
   who.carry = null; b.state = 'ground';
   b.vel.set(camDir.x * 9, 5.5, camDir.z * 9).add(who.vel); b.rot += rnd(-1, 1);
-  who.lean.x.v -= 4; who.squash.v -= 3; sfx('whoosh');
+  who.lean.x.v -= 4; who.squash.v -= 3; who.armL.kick(8); who.armR.kick(8); sfx('whoosh');
+  if (Math.random() < 0.4) toast(pick(['why.', 'that is not how this works.', 'the customer saw that.', 'nice arm. bad idea.']));
   updateCarryHud();
 }
 
-/* ── the van (arcade, kinematic against the AABB world) ── */
+/* ── the van ── */
 const van = { group: new THREE.Group(), yaw: 0, speed: 0, steer: 0, cargo: [], driver: null, bob: spring(60, 7), roll: spring(50, 6), pitch: spring(50, 6) };
 {
   const g = van.group; scene.add(g);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.9, 4.6), M.van); body.position.set(0, 1.35, -0.3); body.castShadow = true; g.add(body);
-  const cab = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.9, 1.3), M.van); cab.position.set(0, 0.85, 2.3); cab.castShadow = true; g.add(cab);
-  const glass = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.8, 0.12), M.glass); glass.position.set(0, 1.75, 1.95); g.add(glass);
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.24, 0.25, 4.62), M.cap); stripe.position.set(0, 1.0, -0.3); g.add(stripe);
-  const logo = makeLabel('OVERWORK', 0xffb020, 512, 96); logo.position.set(1.12, 1.6, -0.4); logo.rotation.y = Math.PI / 2; logo.scale.set(3.2, 0.6, 1); g.add(logo);
+  outlined(mesh(new THREE.BoxGeometry(2.2, 2.0, 4.4), M.van, 0, 1.45, -0.5, { parent: g }), 1.03);                     // cargo box
+  outlined(mesh(new THREE.BoxGeometry(2.1, 1.05, 1.6), M.van, 0, 0.95, 2.4, { parent: g }), 1.04);                     // hood
+  outlined(mesh(new THREE.BoxGeometry(2.05, 1.0, 0.9), M.van, 0, 1.9, 1.5, { parent: g }), 1.04);                     // cab top
+  mesh(new THREE.BoxGeometry(1.95, 0.85, 0.12), M.glass, 0, 1.95, 1.98, { parent: g, rot: [0.35, 0, 0], shadow: false }); // windshield
+  for (const sx of [-1.03, 1.03]) mesh(new THREE.BoxGeometry(0.1, 0.6, 0.7), M.glass, sx, 1.95, 1.5, { parent: g, shadow: false });
+  mesh(new THREE.BoxGeometry(2.24, 0.28, 4.42), M.cap, 0, 1.05, -0.5, { parent: g, shadow: false });                    // stripe
+  mesh(new THREE.BoxGeometry(2.3, 0.3, 0.3), M.vanDark, 0, 0.45, 3.25, { parent: g });                                   // bumpers
+  mesh(new THREE.BoxGeometry(2.3, 0.3, 0.3), M.vanDark, 0, 0.45, -2.85, { parent: g });
+  for (const sx of [-0.75, 0.75]) mesh(new THREE.BoxGeometry(0.4, 0.22, 0.1), M.lamp, sx, 0.9, 3.22, { parent: g, shadow: false });   // headlights
+  for (const sx of [-0.8, 0.8]) mesh(new THREE.BoxGeometry(0.3, 0.2, 0.06), M.cap, sx, 1.3, -2.74, { parent: g, shadow: false });     // tail lights
+  mesh(new THREE.BoxGeometry(0.04, 1.4, 0.06), M.vanDark, 0, 1.4, -2.73, { parent: g, shadow: false });                 // rear door seam
+  for (const sx of [-0.25, 0.25]) mesh(new THREE.BoxGeometry(0.06, 0.28, 0.06), M.hub, sx, 1.3, -2.76, { parent: g, shadow: false }); // handles
+  for (const sx of [-1.2, 1.2]) mesh(new THREE.BoxGeometry(0.16, 0.24, 0.32), M.vanDark, sx, 1.75, 1.85, { parent: g });   // mirrors
+  van.hazard = mesh(new THREE.SphereGeometry(0.16, 10, 8), M.hazard, 0, 2.55, -0.4, { parent: g, shadow: false });
+  const logo = makeLabel('OVERWORK', '#ffb020', 512, 96, '#2a2a33'); logo.position.set(1.12, 1.7, -0.5); logo.rotation.y = Math.PI / 2; logo.scale.set(3.4, 0.64, 1); g.add(logo);
   const logo2 = logo.clone(); logo2.position.x = -1.12; logo2.rotation.y = -Math.PI / 2; g.add(logo2);
+  const slogan = makeLabel("it's probably in there", '#f4f4f7', 512, 70, '#2a2a33', 'Patrick Hand'); slogan.position.set(0, 1.9, -2.75); slogan.rotation.y = Math.PI; slogan.scale.set(1.9, 0.26, 1); g.add(slogan);
   van.wheels = [];
-  for (const [x, z] of [[-1.05, 1.6], [1.05, 1.6], [-1.05, -1.5], [1.05, -1.5]]) {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 12), M.tire); w.rotation.z = Math.PI / 2; w.position.set(x, 0.42, z); w.castShadow = true; g.add(w); van.wheels.push(w);
+  for (const [x, z] of [[-1.08, 1.75], [1.08, 1.75], [-1.08, -1.55], [1.08, -1.55]]) {
+    const w = mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.32, 14), M.tire, x, 0.45, z, { parent: g, rot: [0, 0, Math.PI / 2] }); outlined(w, 1.05);
+    mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.34, 10), M.hub, 0, 0, 0, { parent: w, shadow: false }); van.wheels.push(w);
   }
-  van.doorPos = () => new THREE.Vector3(1.6, 0, 2.2).applyAxisAngle(new THREE.Vector3(0, 1, 0), van.yaw).add(van.group.position);
-  van.rearPos = () => new THREE.Vector3(0, 0, -3.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), van.yaw).add(van.group.position);
-  van.radius = 2.3; van.height = 2.4; van.pos = van.group.position; van.vel = new THREE.Vector3();
-  van.onHit = v => { if (v > 3) { van.pitch.v -= v * 1.5; sfx('crash', v); for (const b of van.cargo) b.hit(v * 0.9); if (v > 6) toast('Cargo shifted…', 'bad'); } };
+  van.doorPos = () => new THREE.Vector3(1.6, 0, 1.6).applyAxisAngle(new THREE.Vector3(0, 1, 0), van.yaw).add(van.group.position);
+  van.rearPos = () => new THREE.Vector3(0, 0, -3.4).applyAxisAngle(new THREE.Vector3(0, 1, 0), van.yaw).add(van.group.position);
+  van.radius = 2.3; van.height = 2.6; van.pos = van.group.position; van.vel = new THREE.Vector3();
+  van.onHit = v => { if (v > 3) { van.pitch.v -= v * 1.5; sfx('crash', v); for (const b of van.cargo) b.hit(v * 0.9); if (v > 6) toast(pick(['that was the cargo. that was all of the cargo.', 'the boxes heard that.', 'nobody saw. everybody saw.']), 'bad'); } };
 }
 function updateVan(dt, input) {
   const drive = van.driver != null;
@@ -561,26 +671,26 @@ function updateVan(dt, input) {
   const before = van.speed;
   collideCylinder(van, dt);
   const vn = van.vel.x * fwd.x + van.vel.z * fwd.z; if (Math.abs(vn) < Math.abs(before) - 0.5) van.speed = vn * 0.4;
-  // stay on the lot
   van.pos.x = clamp(van.pos.x, -70, 70); van.pos.z = clamp(van.pos.z, -80, 44);
-  // body springs
   springTo(van.roll, -van.steer * clamp(Math.abs(van.speed) / 8, 0, 1) * 0.12, dt); springTo(van.pitch, -acc * 0.012, dt); springTo(van.bob, 0, dt);
   van.group.rotation.set(van.pitch.x, van.yaw, van.roll.x, 'YXZ');
   for (const w of van.wheels) w.rotation.x -= van.speed * dt * 2.2;
   van.wheels[0].rotation.y = van.wheels[1].rotation.y = van.steer * 0.5;
+  van.hazard.material.emissive.setHex(drive && Math.floor(performance.now() / 350) % 2 ? 0x9a6a00 : 0x201400);
   if (drive) { courier.pos.copy(van.pos); courier.pos.y = 0; courier.vel.set(0, 0, 0); }
 }
 
-/* ── the dog (an event) ── */
+/* ── the dog ── */
 let dog = null;
 function spawnDog() {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.36, 0.8), M.dog); body.position.y = 0.42; body.castShadow = true; g.add(body);
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.3, 0.34), M.dog); head.position.set(0, 0.62, 0.5); g.add(head);
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.14), M.dogDark); nose.position.set(0, 0.56, 0.72); g.add(nose);
-  for (const sx of [-0.14, 0.14]) { const ear = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, 0.06), M.dogDark); ear.position.set(sx, 0.8, 0.42); g.add(ear); }
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.4), M.dogDark); tail.position.set(0, 0.55, -0.55); g.add(tail);
-  const legs = []; for (const [x, z] of [[-0.14, 0.28], [0.14, 0.28], [-0.14, -0.28], [0.14, -0.28]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.26, 0.1), M.dogDark); l.position.set(x, 0.13, z); g.add(l); legs.push(l); }
+  outlined(mesh(new THREE.SphereGeometry(0.34, 12, 10), M.dog, 0, 0.45, 0, { parent: g }), 1.08).scale.set(0.8, 0.7, 1.3);
+  outlined(mesh(new THREE.SphereGeometry(0.24, 12, 10), M.dog, 0, 0.66, 0.5, { parent: g }), 1.1);
+  mesh(new THREE.SphereGeometry(0.09, 8, 6), M.pupil, 0, 0.6, 0.72, { parent: g, shadow: false });
+  for (const sx of [-0.1, 0.1]) mesh(new THREE.SphereGeometry(0.045, 8, 6), M.pupil, sx, 0.72, 0.68, { parent: g, shadow: false });
+  for (const sx of [-0.17, 0.17]) outlined(mesh(new THREE.BoxGeometry(0.1, 0.24, 0.06), M.dogDark, sx, 0.84, 0.42, { parent: g, rot: [0, 0, sx * 2] }), 1.1);
+  const tail = outlined(mesh(new THREE.BoxGeometry(0.08, 0.08, 0.4), M.dogDark, 0, 0.6, -0.55, { parent: g }), 1.1);
+  const legs = []; for (const [x, z] of [[-0.15, 0.3], [0.15, 0.3], [-0.15, -0.3], [0.15, -0.3]]) legs.push(mesh(new THREE.BoxGeometry(0.1, 0.28, 0.1), M.dogDark, x, 0.14, z, { parent: g }));
   scene.add(g);
   dog = { group: g, pos: new THREE.Vector3(rnd(-8, 8), 0, -30), vel: new THREE.Vector3(), yaw: 0, legs, tail, t: 0, mood: 'wander', target: new THREE.Vector3(), timer: 0, radius: 0.35, height: 0.8, cooldown: 0 };
 }
@@ -592,7 +702,7 @@ function updateDog(dt) {
   else d.target.copy(courier.pos);
   const dx = d.target.x - d.pos.x, dz = d.target.z - d.pos.z, dist = Math.hypot(dx, dz);
   const sp = d.mood === 'chase' ? 6.8 : 2.2;
-  if (dist > 0.4) { d.vel.x = lerp(d.vel.x, dx / dist * sp, 4 * dt); d.vel.z = lerp(d.vel.z, dz / dist * sp, 4 * dt); } else { d.vel.multiplyScalar(0.8); }
+  if (dist > 0.4) { d.vel.x = lerp(d.vel.x, dx / dist * sp, 4 * dt); d.vel.z = lerp(d.vel.z, dz / dist * sp, 4 * dt); } else d.vel.multiplyScalar(0.8);
   d.pos.x += d.vel.x * dt; d.pos.z += d.vel.z * dt; collideCylinder(d, dt);
   if (Math.hypot(d.vel.x, d.vel.z) > 0.3) d.yaw += angleDelta(d.yaw, Math.atan2(d.vel.x, d.vel.z)) * Math.min(1, 8 * dt);
   const sp2 = Math.hypot(d.vel.x, d.vel.z);
@@ -600,12 +710,13 @@ function updateDog(dt) {
   d.legs.forEach((l, i) => { l.rotation.x = Math.sin(d.t * 16 + (i % 2) * Math.PI) * sp2 * 0.09; });
   d.tail.rotation.y = Math.sin(d.t * 12) * 0.6;
   if (d.mood === 'chase' && toPlayer < 0.9 && d.cooldown <= 0 && courier.carry) {
-    d.cooldown = 2.5; courier.stun = 0.7; courier.lean.x.v -= 6; courier.hipTwist.v += 10; dropCarried(courier, true); toast('The dog got you.', 'bad'); sfx('bark');
+    d.cooldown = 2.5; courier.stun = 0.7; courier.lean.x.v -= 6; courier.hipTwist.v += 10; courier.legL.kick(14); courier.legR.kick(14); dropCarried(courier, true);
+    toast(pick(['the dog wins. the dog always wins.', 'he just wanted the box. he has the box.', 'good boy. terrible timing.']), 'bad'); sfx('bark');
     d.mood = 'wander'; d.timer = 3; d.target.set(d.pos.x + rnd(-8, 8), 0, d.pos.z + rnd(-8, 8));
   }
 }
 
-/* ── rain (an event) ── */
+/* ── rain ── */
 let rain = null;
 function spawnRain() {
   const N = 900, pos = new Float32Array(N * 6);
@@ -620,13 +731,15 @@ function updateRain(dt) {
 }
 
 /* ── tiny synth sfx ── */
-let ac = null;
+let ac = null, lastStep = 0;
 function sfx(kind, v = 5) {
   try {
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (kind === 'step') { if (performance.now() - lastStep < 90) return; lastStep = performance.now(); }
     const o = ac.createOscillator(), g = ac.createGain(); o.connect(g); g.connect(ac.destination);
-    const t = ac.currentTime, vol = clamp(v / 12, 0.08, 0.5);
+    const t = ac.currentTime, vol = clamp(v / 12, 0.05, 0.5);
     if (kind === 'thud') { o.type = 'triangle'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.18); }
+    else if (kind === 'step') { o.type = 'sine'; o.frequency.setValueAtTime(90 + rnd(-10, 10), t); o.frequency.exponentialRampToValueAtTime(50, t + 0.07); g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.09); o.start(t); o.stop(t + 0.1); return; }
     else if (kind === 'crash') { o.type = 'sawtooth'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.35); }
     else if (kind === 'ding') { o.type = 'sine'; o.frequency.setValueAtTime(880, t); o.frequency.setValueAtTime(1320, t + 0.09); }
     else if (kind === 'bark') { o.type = 'square'; o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(180, t + 0.12); }
@@ -638,55 +751,58 @@ function sfx(kind, v = 5) {
 
 /* ── HUD helpers ── */
 function toast(text, kind) {
-  const el = document.createElement('div'); el.className = 'toast' + (kind ? ' ' + kind : ''); el.textContent = text; $('toasts').appendChild(el);
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, 2400);
+  const el = document.createElement('div'); el.className = 'toast paper' + (kind ? ' ' + kind : ''); el.textContent = text; $('toasts').appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, 2600);
 }
-function showEvent(text) { const e = $('event'); e.textContent = text; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 4200); }
+function showEvent(text) { const e = $('event'); e.textContent = text; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 4500); }
 function updateCarryHud() {
   const c = $('carry'), b = courier.carry;
   if (!b) { c.classList.remove('on'); return; }
   c.classList.add('on');
-  $('c-to').innerHTML = (b.fragile ? '<span class="fragile">FRAGILE · </span>' : '') + 'To: ' + b.house.label + (b.oversized ? ' · OVERSIZED' : '');
-  $('c-dmg').textContent = 'Condition: ' + Math.round((1 - b.damage) * 100) + '%';
+  $('c-to').innerHTML = (b.fragile ? '<span class="fragile">FRAGILE!! </span>' : '') + 'to: ' + b.house.label + (b.oversized ? " (it's huge)" : '');
+  const cond = Math.round((1 - b.damage) * 100);
+  $('c-dmg').textContent = cond > 90 ? 'box is fine. for now.' : cond > 60 ? 'box is ' + cond + '% okay' : cond > 30 ? 'box is ' + cond + '%. it rattles.' : 'box is ' + cond + "%. it's a bag now.";
 }
 function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
 /* ── the shift ── */
-const world = { rain: false, running: false, time: 0, limit: 240, pay: 0, delivered: 0, events: [], swapped: false, results: [] };
+const world = { rain: false, running: false, time: 0, limit: 240, pay: 0, delivered: 0, events: [], swapped: false };
 const courier = new Courier();
 buildWorld();
-const camState = { yaw: Math.PI, pitch: 0.42, dist: 7.5 };
-const input = { f: 0, b: 0, l: 0, r: 0, jump: 0, act: 0, throw: 0 };
-
+const camState = { yaw: Math.PI, pitch: 0.4, dist: 7.5 };
+const input = { f: 0, b: 0, l: 0, r: 0, jump: 0 };
+const EVENT_TEXT = {
+  rain: "raining. everything's soap now.",
+  dog: "there's a dog. he's not friendly. he's not unfriendly. he's a dog.",
+  fragile: 'one box says FRAGILE. it means it.',
+  oversized: 'one box is the size of your apartment.',
+  swap: 'dispatch will change an address mid-shift. dispatch does that.',
+};
 function startShift() {
-  // reset
   for (const b of boxes) scene.remove(b.group); boxes.length = 0;
   if (dog) { scene.remove(dog.group); dog = null; } if (rain) { scene.remove(rain); rain = null; }
-  world.rain = false; world.time = world.limit; world.pay = 0; world.delivered = 0; world.events = []; world.swapped = false; world.results = [];
-  scene.background.copy(SKY_DAY); scene.fog.color.copy(SKY_DAY); sun.intensity = 2.2; hemi.intensity = 0.9;
+  world.rain = false; world.time = world.limit; world.pay = 0; world.delivered = 0; world.events = []; world.swapped = false;
+  scene.background.copy(SKY_DAY); scene.fog.color.copy(SKY_DAY); sun.intensity = 2.4; hemi.intensity = 0.85;
   courier.carry = null; courier.pos.set(1.5, 0, 26); courier.vel.set(0, 0, 0); courier.yaw = Math.PI; courier.setVisible(true);
   courier.feet[0].pos.set(1.3, 0, 26); courier.feet[1].pos.set(1.7, 0, 26);
   van.driver = null; van.speed = 0; van.cargo = []; van.group.position.set(3.2, 0, 32); van.yaw = 0;
-  camState.yaw = Math.PI; camState.pitch = 0.42;
-  // events: one or two per shift
+  camState.yaw = Math.PI; camState.pitch = 0.4;
   const pool = ['rain', 'dog', 'fragile', 'oversized', 'swap'];
   const n = Math.random() < 0.6 ? 1 : 2;
   while (world.events.length < n) { const e = pick(pool); if (!world.events.includes(e)) world.events.push(e); }
   if (world.events.includes('rain')) { world.rain = true; spawnRain(); scene.background.copy(SKY_RAIN); scene.fog.color.copy(SKY_RAIN); sun.intensity = 1.1; hemi.intensity = 0.6; }
   if (world.events.includes('dog')) spawnDog();
-  // six packages on the dock, each addressed to a different house
   const order = houses.slice().sort(() => Math.random() - 0.5).slice(0, 6);
   order.forEach((h, i) => {
     const b = new Package(h, { fragile: world.events.includes('fragile') && i === 2, oversized: world.events.includes('oversized') && i === 4 });
-    b.pos.set(-2.6, 0.45 + b.size.y / 2 + 0.01, 30 + i * 1.5);
+    b.pos.set(-2.6, 0.45 + b.size.y / 2 + 0.01, 30 + i * 1.5); b.rot = rnd(-0.15, 0.15);
     boxes.push(b);
   });
   for (const h of houses) h.matMesh.material = order.includes(h) ? M.mat : M.matOff;
-  const names = { rain: 'Rain: everything is slippery', dog: 'A dog is loose on the block', fragile: 'One package is FRAGILE', oversized: 'One package is OVERSIZED', swap: 'Dispatch is having a day' };
-  setTimeout(() => showEvent(world.events.map(e => names[e]).join(' · ')), 600);
+  setTimeout(() => showEvent(world.events.map(e => EVENT_TEXT[e]).join('  ·  ')), 600);
   $('s-menu').classList.remove('on'); $('s-sum').classList.remove('on'); $('hud').classList.add('on');
   world.running = true; updateCarryHud(); updateHud();
-  toast('Load the van, then hit the road.', 'good');
+  toast(pick(['load the van. then the road. then regret.', 'six boxes. go.', 'clock started. it always does.']), 'good');
 }
 function endShift(reason) {
   world.running = false;
@@ -695,11 +811,18 @@ function endShift(reason) {
   const total = world.pay + bonus;
   save.cash += total; save.shifts++; if (total > save.best) save.best = total; persist();
   if (window.yczScore) { try { yczScore('overwork', total); yczTally('overwork'); } catch (e) {} }
-  $('sum-title').textContent = reason === 'time' ? 'Shift over — time is up' : 'Shift complete';
+  const left = 6 - world.delivered;
+  $('sum-title').textContent = reason === 'time' ? "time's up. they're locking the gate." : reason === 'quit' ? 'you walked off mid-shift. bold.' : "shift's over.";
   $('sum-pay').textContent = '$' + total;
-  $('sum-note').textContent = (onTime ? `On-time bonus $${bonus} · ` : '') + `Delivered ${world.delivered}/6 · Savings now $${save.cash}`;
-  $('sum-list').innerHTML = boxes.map(b => `<div class="stat"><span>${b.house.label}${b.fragile ? ' · fragile' : ''}${b.oversized ? ' · oversized' : ''}</span>` +
-    (b.delivered ? `<b>$${b.paid} <span class="small">(${Math.round((1 - b.damage) * 100)}%)</span></b>` : `<b class="bad">not delivered</b>`) + `</div>`).join('');
+  $('sum-stamp').textContent = total === 0 ? 'NOPE' : total > 150 ? 'WOW OK' : 'PAID';
+  let note;
+  if (onTime && boxes.every(b => b.damage < 0.15)) note = `every box, on time, barely a scratch. boss said "fine." that's the nicest he gets. bonus $${bonus}.`;
+  else if (onTime) note = `all six delivered with ${Math.ceil(world.time)}s to spare. some of them rattled. bonus $${bonus}.`;
+  else if (left === 6) note = 'zero boxes delivered. the van is exactly where you left it. incredible.';
+  else note = `${left} box${left > 1 ? 'es' : ''} still in the van. they know.`;
+  $('sum-note').textContent = note + ` sock drawer: $${save.cash}.`;
+  $('sum-list').innerHTML = boxes.map(b => `<div class="stat"><span>${b.house.label}${b.fragile ? ' · fragile' : ''}${b.oversized ? ' · the big one' : ''}</span>` +
+    (b.delivered ? `<b>$${b.paid} <span class="small">(${Math.round((1 - b.damage) * 100)}%)</span></b>` : `<b class="bad">still in the van</b>`) + `</div>`).join('');
   $('hud').classList.remove('on'); $('s-sum').classList.add('on');
   if (courier.carry) { courier.carry.state = 'ground'; courier.carry = null; }
   van.driver = null; courier.setVisible(true);
@@ -714,7 +837,8 @@ function deliver(b, house) {
   b.paid = Math.max(2, Math.round(base * (1 - b.damage)));
   world.pay += b.paid; world.delivered++;
   house.matMesh.material = M.matOff;
-  toast(`Delivered to ${house.label} · $${b.paid}` + (b.damage > 0.5 ? ' · they noticed' : ''), 'good'); sfx('ding');
+  const tail = b.damage > 0.5 ? ' · they opened it in front of you. rude.' : b.damage > 0.2 ? ' · they squinted at it.' : '';
+  toast(`delivered to ${house.label} · $${b.paid}${tail}`, 'good'); sfx('ding');
   updateHud();
   if (world.delivered >= 6) setTimeout(() => endShift('done'), 900);
 }
@@ -723,21 +847,19 @@ function deliver(b, house) {
 function nearest(list, from, maxD) { let best = null, bd = maxD; for (const x of list) { const d = from.distanceTo(x.pos); if (d < bd) { bd = d; best = x; } } return best; }
 function interact() {
   if (!world.running) return;
-  if (van.driver) {                                   // leave the van
+  if (van.driver) {
     van.driver = null; van.speed *= 0.5; courier.setVisible(true);
     const p = van.doorPos(); courier.pos.set(p.x, 0, p.z); courier.vel.set(0, 0, 0);
-    courier.feet[0].pos.set(p.x - 0.2, 0, p.z); courier.feet[1].pos.set(p.x + 0.2, 0, p.z);
+    courier.feet[0].pos.set(p.x - 0.2, 0, p.z); courier.feet[1].pos.set(p.x + 0.2, 0, p.z); courier.legL.kick(6); courier.legR.kick(6);
     return;
   }
   const rear = van.rearPos(), door = van.doorPos();
   if (courier.carry) {
-    // drop on a doormat / load into the van / just drop it
     const b = courier.carry;
-    if (courier.pos.distanceTo(rear) < 2.4 && Math.abs(van.speed) < 0.5) { courier.carry = null; b.state = 'van'; van.cargo.push(b); toast('Loaded into the van (' + van.cargo.length + ')'); updateCarryHud(); return; }
-    dropCarried(courier, false);
-    return;
+    if (courier.pos.distanceTo(rear) < 2.4 && Math.abs(van.speed) < 0.5) { courier.carry = null; b.state = 'van'; van.cargo.push(b); toast(`in the van. (${van.cargo.length} of ${boxes.filter(x => !x.delivered).length})`); updateCarryHud(); return; }
+    dropCarried(courier, false); return;
   }
-  if (courier.pos.distanceTo(door) < 2.2 && Math.abs(van.speed) < 0.5) { van.driver = courier; courier.setVisible(false); toast('Driving. W/S gas & brake, A/D steer, E to hop out.'); return; }
+  if (courier.pos.distanceTo(door) < 2.2 && Math.abs(van.speed) < 0.5) { van.driver = courier; courier.setVisible(false); toast("you're driving. W gas, S brake, A D wobble, E to bail."); return; }
   if (courier.pos.distanceTo(rear) < 2.4 && van.cargo.length) {
     const b = van.cargo.pop(); b.state = 'ground'; b.pos.copy(rear); b.pos.y = 1.2; b.vel.set(0, 0, 0); pickUp(b); return;
   }
@@ -746,8 +868,9 @@ function interact() {
 }
 function pickUp(b) {
   courier.carry = b; b.state = 'carried'; b.vel.set(0, 0, 0);
-  courier.squash.v -= 3 + b.mass; courier.lean.x.v -= 1.5; courier.bob.v += 2;
-  if (b.oversized) toast("That's… a big one.");
+  courier.squash.v -= 3 + b.mass; courier.lean.x.v -= 1.5; courier.bob.v += 2; courier.legL.kick(4 + b.mass * 2); courier.legR.kick(4 + b.mass * 2);
+  if (b.oversized) toast(pick(["oh. oh no. it's a fridge or something.", 'this is not a box. this is furniture.']));
+  else if (b.fragile) toast('gently. GENTLY.');
   updateCarryHud();
 }
 function checkDeliveries() {
@@ -757,35 +880,32 @@ function checkDeliveries() {
       const z = h.doormat;
       if (b.pos.x > z.min.x && b.pos.x < z.max.x && b.pos.z > z.min.z && b.pos.z < z.max.z && b.pos.y < 1.2 && b.vel.lengthSq() < 0.05) {
         if (h === b.house) deliver(b, h);
-        else if (!b.wrongToast || performance.now() - b.wrongToast > 4000) { b.wrongToast = performance.now(); toast(`Wrong address — this one goes to ${b.house.label}`, 'bad'); }
+        else if (!b.wrongToast || performance.now() - b.wrongToast > 4000) { b.wrongToast = performance.now(); toast(`wrong house. the label says ${b.house.label}. the label.`, 'bad'); }
       }
     }
   }
 }
 function maybeSwap() {
   if (!world.events.includes('swap') || world.swapped || world.time > world.limit * 0.5) return;
-  const candidates = boxes.filter(b => !b.delivered && b.state !== 'delivered');
-  const b = pick(candidates); if (!b) return;
-  const others = houses.filter(h => h !== b.house && !boxes.some(x => x.house === h && !x.delivered));
-  const nh = pick(others); if (!nh) return;
+  const b = pick(boxes.filter(x => !x.delivered)); if (!b) return;
+  const nh = pick(houses.filter(h => h !== b.house && !boxes.some(x => x.house === h && !x.delivered))); if (!nh) return;
   b.house.matMesh.material = M.matOff; b.house = nh; nh.matMesh.material = M.mat; world.swapped = true;
-  showEvent('Dispatch: an address was updated'); toast(`Package for ${b.house.label} — check the label`, 'bad'); updateCarryHud();
-  // relabel
-  b.group.children[2].material.map.dispose(); const lab = makeLabel(b.fragile ? 'FRAGILE' : 'TO: ' + nh.num, b.fragile ? 0xe8162a : 0x222222, 256, 64); b.group.children[2].material = lab.material;
+  showEvent('dispatch: "yeah so that one goes to ' + nh.label + ' now"'); toast('check the label on the ' + (b.fragile ? 'fragile one' : 'box for ' + nh.num), 'bad'); updateCarryHud();
+  b.label.material.map.dispose(); b.label.material = makeLabel(b.fragile ? 'FRAGILE!!' : 'TO: ' + nh.num, b.fragile ? '#e8162a' : '#23212b', 256, 72, '#faf6ec', b.fragile ? 'CF Sketch' : 'Patrick Hand').material;
 }
 function hintText() {
   if (!world.running) return '';
-  if (van.driver) return '<kbd>W</kbd><kbd>S</kbd> gas / brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>E</kbd> hop out';
+  if (van.driver) return '<kbd>W</kbd> gas · <kbd>S</kbd> brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>E</kbd> bail out';
   const rear = van.rearPos(), door = van.doorPos();
   if (courier.carry) {
-    if (courier.pos.distanceTo(rear) < 2.4) return '<kbd>E</kbd> load into the van';
-    return '<kbd>E</kbd> drop · <kbd>Click</kbd> throw · carry it to the glowing doormat';
+    if (courier.pos.distanceTo(rear) < 2.4) return '<kbd>E</kbd> shove it in the van';
+    return "<kbd>E</kbd> put it down · <kbd>click</kbd> throw it (don't) · get it to the glowing doormat";
   }
-  if (courier.pos.distanceTo(door) < 2.2) return '<kbd>E</kbd> drive the van';
-  if (courier.pos.distanceTo(rear) < 2.4 && van.cargo.length) return `<kbd>E</kbd> take a package out (${van.cargo.length} inside)`;
-  if (nearest(boxes.filter(x => x.state === 'ground' && !x.delivered), courier.pos, 1.9)) return '<kbd>E</kbd> pick up';
-  if (van.cargo.length) return 'Drive to the glowing doormats';
-  return 'Grab a package from the dock';
+  if (courier.pos.distanceTo(door) < 2.2) return '<kbd>E</kbd> drive';
+  if (courier.pos.distanceTo(rear) < 2.4 && van.cargo.length) return `<kbd>E</kbd> grab one out (${van.cargo.length} in there)`;
+  if (nearest(boxes.filter(x => x.state === 'ground' && !x.delivered), courier.pos, 1.9)) return '<kbd>E</kbd> grab it';
+  if (van.cargo.length) return 'drive to a glowing doormat. any glowing doormat. read the label first though.';
+  return boxes.some(x => x.state === 'ground' && !x.delivered) ? 'grab a box off the dock' : 'nothing left out here';
 }
 
 /* ── input ── */
@@ -800,7 +920,7 @@ addEventListener('keyup', e => { if (KEY[e.code]) input[KEY[e.code]] = 0; if (e.
 let dragging = false, lastX = 0, lastY = 0, dragMoved = 0;
 canvas.addEventListener('pointerdown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; dragMoved = 0; canvas.setPointerCapture(e.pointerId); });
 canvas.addEventListener('pointermove', e => { if (!dragging) return; const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; dragMoved += Math.abs(dx) + Math.abs(dy); camState.yaw -= dx * 0.005; camState.pitch = clamp(camState.pitch + dy * 0.004, 0.08, 1.2); });
-canvas.addEventListener('pointerup', e => { dragging = false; if (dragMoved < 6 && world.running && courier.carry && !van.driver) throwCarried(courier, camForward()); });
+canvas.addEventListener('pointerup', () => { dragging = false; if (dragMoved < 6 && world.running && courier.carry && !van.driver) throwCarried(courier, camForward()); });
 canvas.addEventListener('wheel', e => { camState.dist = clamp(camState.dist + e.deltaY * 0.01, 4, 14); }, { passive: true });
 function camForward() { return new THREE.Vector3(-Math.sin(camState.yaw), 0, -Math.cos(camState.yaw)); }
 
@@ -808,11 +928,10 @@ function camForward() { return new THREE.Vector3(-Math.sin(camState.yaw), 0, -Ma
 const camPos = new THREE.Vector3(0, 6, 34), camLook = new THREE.Vector3();
 function updateCamera(dt) {
   const focus = van.driver ? van.pos : courier.pos;
-  const target = _a.set(focus.x, focus.y + (van.driver ? 1.8 : 1.4), focus.z);
+  const target = _a.set(focus.x, focus.y + (van.driver ? 1.8 : 1.5), focus.z);
   const dist = camState.dist * (van.driver ? 1.7 : 1);
   const off = _b.set(Math.sin(camState.yaw) * Math.cos(camState.pitch), Math.sin(camState.pitch), Math.cos(camState.yaw) * Math.cos(camState.pitch)).multiplyScalar(dist);
-  const want = _c.copy(target).add(off);
-  if (want.y < 0.6) want.y = 0.6;
+  const want = _c.copy(target).add(off); if (want.y < 0.6) want.y = 0.6;
   camPos.lerp(want, Math.min(1, 9 * dt)); camLook.lerp(target, Math.min(1, 12 * dt));
   camera.position.copy(camPos); camera.lookAt(camLook);
   sun.position.set(focus.x + 30, 50, focus.z + 20); sun.target.position.set(focus.x, 0, focus.z);
@@ -829,16 +948,14 @@ function frame(now) {
       world.time -= STEP;
       if (world.time <= 0) { world.time = 0; endShift('time'); break; }
       updateVan(STEP, input);
-      if (!van.driver) courier.update(STEP, input, camState.yaw); else courier.update(STEP, { f: 0, b: 0, l: 0, r: 0 }, camState.yaw);
+      courier.update(STEP, van.driver ? { f: 0, b: 0, l: 0, r: 0 } : input, camState.yaw);
       for (const b of boxes) b.step(STEP);
       if (dog) updateDog(STEP);
       checkDeliveries(); maybeSwap();
-    } else {
-      courier.update(STEP, { f: 0, b: 0, l: 0, r: 0 }, camState.yaw);
-      updateVan(STEP, { f: 0, b: 0, l: 0, r: 0 });
-    }
+    } else { courier.update(STEP, { f: 0, b: 0, l: 0, r: 0 }, camState.yaw); updateVan(STEP, { f: 0, b: 0, l: 0, r: 0 }); }
   }
   if (rain) updateRain(dt);
+  for (const c of clouds) { c.g.position.x += c.v * dt; if (c.g.position.x > 110) c.g.position.x = -110; }
   for (const b of boxes) b.render();
   updateCamera(dt);
   if (world.running) { updateHud(); $('hint').innerHTML = hintText(); }
@@ -846,7 +963,11 @@ function frame(now) {
 }
 $('btn-start').onclick = startShift; $('btn-again').onclick = startShift;
 $('btn-menu').onclick = () => { $('s-sum').classList.remove('on'); $('s-menu').classList.add('on'); paintMenu(); };
-function paintMenu() { $('m-best').textContent = '$' + save.best; $('m-cash').textContent = '$' + save.cash; }
+function paintMenu() {
+  $('m-best').textContent = '$' + save.best; $('m-cash').textContent = '$' + save.cash;
+  const n = save.shifts + 1;
+  $('m-sub').textContent = n === 1 ? 'shift #1. first day. nobody expects much.' : n < 5 ? `shift #${n}. you came back. weird.` : n < 15 ? `shift #${n}. this is your life now.` : `shift #${n}. you could quit. you won't.`;
+}
 paintMenu();
 $('loading').remove();
 /* debug handle (also what the Playwright harness drives) */
