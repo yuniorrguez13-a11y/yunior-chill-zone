@@ -210,6 +210,27 @@ img{display:block;}
 .tag.adm{background:var(--cyan);color:#04141a;}
 .tag.mod{background:var(--grn);color:#05170d;}
 .tag.bot{background:#5865f2;color:#fff;}
+/* Denarii titles: amber label after the name (chat, member list, user card) */
+.tag.ttl{background:rgba(255,176,32,.16);color:#ffb020;border:1px solid rgba(255,176,32,.35);text-transform:none;letter-spacing:0;}
+.mem-ttl{font-size:10px;color:#ffb020;font-weight:600;line-height:1.1;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* wallet panel in settings */
+.wallet{background:#0a0a10;border:1px solid var(--border);border-radius:12px;padding:14px 14px 10px;margin-bottom:18px;}
+.w-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.w-bal{font-size:26px;font-weight:800;color:#ffb020;letter-spacing:-.01em;}
+.w-how{font-size:12px;color:var(--cyan);text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+.w-how:hover{text-decoration:underline;}
+.w-today{margin:10px 0 6px;}
+.w-today .row{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--txt2);padding:3px 0;border-bottom:1px solid var(--border);}
+.w-today .row:last-child{border-bottom:0;}
+.w-today .cap{color:#ffb020;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;}
+.shop-it{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.shop-it:last-child{border-bottom:0;}
+.shop-it .nm{font-weight:700;font-size:13px;}
+.shop-it .ds{font-size:11.5px;color:var(--txt3);}
+.shop-it .pr{font-size:12px;color:#ffb020;font-weight:700;white-space:nowrap;}
+.shop-it .upb{flex:0 0 auto;padding:6px 10px;font-size:12px;}
+.shop-it .upb.on{border-color:#ffb020;color:#ffb020;}
+body.light .wallet{background:#f0f0f4;}
 .m-tx{font-size:15px;color:#dcdde3;word-wrap:break-word;overflow-wrap:anywhere;white-space:pre-wrap;}
 .m-tx a{color:var(--cyan);text-decoration:underline;}
 .m-img{margin-top:6px;max-width:380px;border-radius:9px;overflow:hidden;border:1px solid var(--border);cursor:zoom-in;}
@@ -962,6 +983,18 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
   <div id="set-panel">
     <div class="set-h"><span data-i18n="myProfile">My Profile</span><button class="x" id="set-x"><i data-ic="x" data-ic-size="16"></i></button></div>
     <div class="set-b">
+      <!-- Denarii: balance, today's earnings and the title shop -->
+      <div class="wallet" id="wallet">
+        <div class="w-top">
+          <div><div class="fl" data-i18n="denarii">Denarii</div><div class="w-bal" id="w-bal">…</div></div>
+          <a class="w-how" href="denarii.html" target="_blank" rel="noopener"><i data-ic="scroll" data-ic-size="14"></i><span data-i18n="denariiHow">How it works</span></a>
+        </div>
+        <div class="hint" data-i18n="denariiPlural">One denarius, two denarii. It's Latin. Yes, really.</div>
+        <div class="fl" style="margin-top:12px;" data-i18n="denariiToday">Earned today</div>
+        <div class="w-today" id="w-today"></div>
+        <div class="fl" style="margin-top:12px;" data-i18n="denariiShop">Title shop</div>
+        <div id="w-shop"></div>
+      </div>
       <div class="pfp-ring" id="pfp-ring">
         <img class="im" id="pfp-im" alt=""><img class="fr" id="pfp-fr" alt="">
         <span class="ph" id="pfp-ph"><i data-ic="user" data-ic-size="34"></i></span><div class="cam"><i data-ic="camera" data-ic-size="22"></i></div>
@@ -1090,6 +1123,11 @@ let dmList=[],unread=JSON.parse(localStorage.getItem('ycz-unread')||'{}');
 let pending=[];
 let reactions={},replyTo=null,editing=null,online=new Set(),typers={},sitePresence=null,moreOlder=true;
 let pins=[],pinRes=[],searchRes=[],myBio='',newCount=0,jumpedBack=false;
+/* Denarii — the site currency. The server owns every number; the client
+   only displays what ycz_wallet() returns and calls the buy/equip RPCs. */
+let SHOP=[],WALLET=null,ownedItems=new Set(),myTitleId=null;
+const titleName=id=>(SHOP.find(s=>s.id===id)||{}).name||'';
+const denarii=n=>(n===1?'1 denarius':n+' denarii');   /* Latin plural: 1 denarius, 2 denarii */
 let lastSent={},myMutedUntil=null;      /* admin tools: client slowmode + own timeout */
 const PAGE=60;
 
@@ -1241,7 +1279,7 @@ async function loadMe(){
   try{
     const{data}=await sb.from('user_profiles').select('*').eq('user_id',user.id).maybeSingle();
     if(data){uname=data.username||uname;myHandle=data.handle||myHandle;pfpUrl=data.pfp_url||pfpUrl;
-      pfpFrame=data.pfp_frame||pfpFrame;bgUrl=data.bg_url||bgUrl;myBio=data.bio||'';}
+      pfpFrame=data.pfp_frame||pfpFrame;bgUrl=data.bg_url||bgUrl;myBio=data.bio||'';myTitleId=data.title_id||null;}
   }catch(e){}
   if(!uname)uname=user.email.split('@')[0];
   if(!myHandle)await makeHandle();
@@ -1297,9 +1335,86 @@ function openSettings(){
   if(pfpUrl&&isUrl(pfpUrl)){im.src=pfpUrl;im.style.display='block';ph.style.display='none';}else{im.style.display='none';ph.style.display='block';}
   if(pfpFrame&&isUrl(pfpFrame)){fr.src=pfpFrame;fr.style.display='block';}else fr.style.display='none';
   prev('fr-prev',pfpFrame);prev('bg-prev',bgUrl);
-  paintStatusPick();paintSoundBtn();paintPushBtn();
+  paintStatusPick();paintSoundBtn();paintPushBtn();paintWallet();
   open('set-ov');
 }
+/* ══════ DENARII (site currency) ══════ */
+/* The shop catalog is public and tiny; load it once per session so titles
+   can be resolved by id everywhere (member list, user card). */
+async function loadShop(){
+  try{
+    const{data,error}=await sb.from('shop_items').select('id,kind,name,description,price,sort').eq('active',true).order('sort');
+    SHOP=error?[]:(data||[]);
+  }catch(e){SHOP=[];}
+}
+/* Called when Settings opens. One RPC gives balance + today's counts + caps. */
+async function paintWallet(){
+  const bal=$('w-bal'),today=$('w-today'),shop=$('w-shop');
+  if(!bal)return;
+  bal.textContent='…';today.innerHTML=`<div class="hint">${esc(t('denariiLoading'))}</div>`;shop.innerHTML='';
+  try{
+    if(!SHOP.length)await loadShop();
+    const[{data:w,error:we},{data:mine,error:me}]=await Promise.all([
+      sb.rpc('ycz_wallet'),
+      sb.from('user_items').select('item_id').eq('user_id',user.id)]);
+    if(we||!w||w.error)throw we||new Error(w?.error||'no wallet');
+    WALLET=w;ownedItems=new Set(me?[]:(mine||[]).map(r=>r.item_id));
+    renderWallet();
+  }catch(e){
+    WALLET=null;
+    bal.textContent='—';
+    today.innerHTML=`<div class="hint">${esc(t('denariiError'))}</div>`;
+  }
+}
+const REASON_KEY={daily_active:'rDailyActive',message:'rMessage',publish_fighter:'rPublishFighter',fighter_played:'rFighterPlayed',online_match:'rOnlineMatch'};
+function renderWallet(){
+  const w=WALLET;if(!w)return;
+  $('w-bal').textContent=denarii(w.balance|0);
+  /* today's earnings against the daily caps, in a fixed order */
+  $('w-today').innerHTML=Object.keys(REASON_KEY).map(r=>{
+    const n=(w.today||{})[r]|0,cap=(w.caps||{})[r]|0,amt=(w.amounts||{})[r]|0;
+    const earned=n*amt,full=cap&&n>=cap;
+    return `<div class="row"><span>${esc(t(REASON_KEY[r]))}</span><span>${earned?'+'+earned:'0'} · ${n}/${cap}${full?` <span class="cap">${esc(t('denariiCap'))}</span>`:''}</span></div>`;
+  }).join('');
+  /* the title shop */
+  const items=SHOP.filter(s=>s.kind==='title');
+  $('w-shop').innerHTML=items.length?items.map(s=>{
+    const owned=ownedItems.has(s.id),on=myTitleId===s.id;
+    let btn;
+    if(on)btn=`<button class="upb on" data-unequip="${esc(s.id)}">${esc(t('denariiUnequip'))}</button>`;
+    else if(owned)btn=`<button class="upb" data-equip="${esc(s.id)}">${esc(t('denariiEquip'))}</button>`;
+    else btn=`<button class="upb" data-buy="${esc(s.id)}">${esc(t('denariiBuy'))}</button>`;
+    return `<div class="shop-it"><div style="flex:1;min-width:0;"><div class="nm">${esc(s.name)}${owned?` <span class="tag ttl">${esc(on?t('denariiEquipped'):t('denariiOwned'))}</span>`:''}</div><div class="ds">${esc(s.description||'')}</div></div><div class="pr">${owned?'':esc(denarii(s.price|0))}</div>${btn}</div>`;
+  }).join(''):`<div class="hint">${esc(t('denariiNoTitle'))}</div>`;
+}
+$('w-shop').onclick=async e=>{
+  const b=e.target.closest('button');if(!b||!user)return;
+  b.disabled=true;
+  try{
+    if(b.dataset.buy){
+      const{data,error}=await sb.rpc('ycz_buy_item',{p_item:b.dataset.buy});
+      if(error||!data?.ok){
+        const err=data?.error;
+        if(err==='not_enough')toast(t('denariiNotEnough').replace('{n}',(data.price|0)-(data.balance|0)),'err');
+        else if(err==='already_owned')toast(t('denariiOwned'),'err');
+        else toast(t('denariiError'),'err');
+      }else{
+        ownedItems.add(b.dataset.buy);if(WALLET)WALLET.balance=data.balance|0;
+        toast(t('denariiBought'),'ok');
+      }
+    }else if(b.dataset.equip||b.dataset.unequip){
+      const id=b.dataset.equip||null;
+      const{data,error}=await sb.rpc('ycz_equip_title',{p_item:id});
+      if(error||!data?.ok)toast(t('denariiError'),'err');
+      else{
+        myTitleId=id;
+        const meRow=members.find(m=>m.user_id===user.id);if(meRow)meRow.title_id=id;
+        toast(t(id?'denariiEquippedToast':'denariiUnequippedToast'),'ok');paintMembers();
+      }
+    }
+  }catch(err){toast(t('denariiError'),'err');}
+  renderWallet();
+};
 function paintStatusPick(){
   document.querySelectorAll('#s-st button').forEach(b=>b.classList.toggle('on',b.dataset.st===myStatus));
 }
@@ -2006,6 +2121,7 @@ function paintMsgs(jump){
     else if(m.is_owner)tags+='<span class="tag own">Owner</span>';
     else if(m.role==='admin')tags+='<span class="tag adm">Admin</span>';
     else if(m.role==='mod')tags+='<span class="tag mod">Mod</span>';
+    if(m.title)tags+=`<span class="tag ttl">${esc(m.title)}</span>`;   /* stamped by the DB at post time */
     const img=m.image_url&&isUrl(m.image_url)
       ? `<div class="m-img" data-lb="${esc(m.image_url)}"><img src="${esc(m.image_url)}" alt="" loading="lazy"></div>`:'';
     /* quoted parent, if this is a reply */
@@ -2683,7 +2799,10 @@ async function loadMembers(){
     rows=r.data||[];
     const ids=rows.map(m=>m.user_id);
     if(!ids.length){paintMembers();return;}
-    const{data:profs}=await sb.from('user_profiles').select('user_id,username,handle,pfp_url').in('user_id',ids);
+    /* title_id arrives with the Denarii migration — retry without it until then */
+    let pr=await sb.from('user_profiles').select('user_id,username,handle,pfp_url,title_id').in('user_id',ids);
+    if(pr.error)pr=await sb.from('user_profiles').select('user_id,username,handle,pfp_url').in('user_id',ids);
+    const profs=pr.data;
     const byId=Object.fromEntries((profs||[]).map(p=>[p.user_id,p]));
     members=rows.map(m=>({...m,...(byId[m.user_id]||{})}));
     myMutedUntil=(members.find(m=>m.user_id===user?.id)||{}).muted_until||null;
@@ -2702,7 +2821,7 @@ function paintMembers(){
   $('mem').innerHTML=`<div class="mem-cat">${t('members')} — ${up} / ${members.length}</div>`+members.map(m=>`
     <div class="mem-row ${online.has(m.user_id)?'on-now st-'+statusOf(m.user_id)+' ':''}${m.role==='owner'?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':''}" data-uc="${esc(m.user_id)}">
       <div class="mem-av">${m.pfp_url&&isUrl(m.pfp_url)?`<img src="${esc(m.pfp_url)}" alt="">`:esc(ini(m.username))}</div>
-      <div class="mem-nm">${esc(m.username||'Unknown')}</div>
+      <div class="mem-nm">${esc(m.username||'Unknown')}${m.title_id&&titleName(m.title_id)?`<div class="mem-ttl">${esc(titleName(m.title_id))}</div>`:''}</div>
     </div>`).join('');
 }
 $('mem').onclick=e=>{const r=e.target.closest('[data-uc]');if(r)userCard(r.dataset.uc);};
@@ -2791,6 +2910,7 @@ async function userCard(uid){
   if(r==='owner')tags+=`<span class="tag own">${icon('crown',11)} Site Owner</span>`;
   else if(r==='admin')tags+=`<span class="tag adm">${icon('shield',11)} Admin</span>`;
   else if(r==='mod')tags+='<span class="tag mod">Mod</span>';
+  if(p.title_id&&titleName(p.title_id))tags+=`<span class="tag ttl">${esc(titleName(p.title_id))}</span>`;
   if(svRole&&curSv)tags+=`<span class="tag" style="background:var(--hover);color:var(--txt2);">${esc(svRole)} of ${esc(curSv.name)}</span>`;
   if(!tags)tags='<span class="tag" style="background:var(--hover);color:var(--txt2);">Member</span>';
   $('uc-tags').innerHTML=tags;
@@ -3350,12 +3470,14 @@ async function applySession(s,force){
   user=next;
   if(user){
     await loadMe();
+    await loadShop();
     await loadServers();
     await loadNotifs();watchNotifs();watchPresence();askNotifPerm();autoPush();
     if(servers.length&&!curSv)await goServer(servers[0]);
     else await goHome();
   }else{
     uname='';myHandle='';pfpUrl='';pfpFrame='';bgUrl='';myBio='';gRole=null;
+    WALLET=null;ownedItems=new Set();myTitleId=null;
     servers=[];curSv=null;channels=[];curCh=null;dmList=[];members=[];
     pins=[];statuses={};newCount=0;jumpedBack=false;paintJump(false);paintDMBadge();
     await leaveVoice();

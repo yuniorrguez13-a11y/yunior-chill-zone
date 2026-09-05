@@ -61,6 +61,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `sffg-mods.js` | The community fighter format (v3, the Freedom Update): security bounds, `validateMod()`, `hashMod()`. Shared by `fight.html` and `create.html` so the game and the creator enforce identical rules. |
 | `manifest.json` · `sw.js` | The PWA: installable app (icons in `art/icons/`, generated from the favicon). `sw.js` is deliberately **network-first, cache as offline fallback only** — never let it get in the way of the 80-second deploy freshness. Every main page links the manifest and registers the worker. The five pages that created their Supabase client unguarded now polyfill a chainable no-op client when the CDN is unreachable, so offline shells paint instead of crashing. |
 | `wrangler.jsonc` · `_headers` · `.assetsignore` | Cloudflare hosting config, cache rules, and what stays unpublished. |
+| `denarii.html` | The public guide to **Denarii**, the site currency: the plural rule, how you earn, the title catalog, troubleshooting, FAQ. Static, no scripts (its CSP has `script-src 'none'`). Linked from the wallet panel in chat settings. |
 | `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
 
 ### Supabase Edge Functions
@@ -359,6 +360,66 @@ DMs are correctly scoped by `ycz_in_dm`; `push_subs` is correctly pinned to `aut
   nothing if another still permits. Never reference a table inside a policy expression
   without a `security definer` helper, or the policy breaks the day that table is locked
   down (that is why `ycz_can_read_room` / `ycz_can_notify` / `ycz_is_staff` exist).
+
+## Denarii — the site currency (Sep 2026)
+
+**Name: Denarius. Plural: denarii.** `1 denarius`, `2 denarii`, `0 denarii` — the
+`denarii(n)` helper in `index.html` is the only place that spells it, and the small
+note under the balance ("One denarius, two denarii. It's Latin. Yes, really.") is the
+i18n key `denariiPlural`. Not real money, can't be bought, can't be transferred
+between accounts (deliberately — transfers are what make alt-account farming pay).
+Cosmetics only: the shop sells **titles**, an amber label next to the name in chat,
+the member list and the user card. **All code and SQL for this feature is English**
+— the owner asked for that explicitly after earlier Spanish comments confused him.
+
+**Security model — the database owns every number.** The client never writes to
+`shop_items`, `user_wallets`, `denarii_ledger` or `user_items`: those tables have
+SELECT policies only (own rows; the catalog is public). Earning happens in
+`security definer` AFTER triggers that award `auth.uid()` (never an id from the row),
+spending in RPCs that `FOR UPDATE` the wallet row, and every reason has a
+**per-UTC-day cap** checked against the ledger, so a script posting all night earns
+the same as one hello. `ycz_award(...)` is the internal primitive; EXECUTE is revoked
+from `anon`/`authenticated`. Service-role writes (bots, edge functions) have no
+`auth.uid()` and earn nothing.
+
+| reason | amount | cap/day | fires on |
+|---|---|---|---|
+| `daily_active` | 10 | 1 | first message of the day (`messages` INSERT) |
+| `message` | 1 | 20 | every message |
+| `publish_fighter` | 25 | 3 | `fighter_mods` INSERT |
+| `fighter_played` | 1 | 30 | `fighter_mods.plays` goes up, awarded to the *owner*, skipped when the player is the owner (anonymous plays do count) |
+| `online_match` | 5 | 6 | `fighter_matches` INSERT (trigger only attached if that table exists) |
+| `grant` | any | — | `ycz_grant(user, amount, reason)`, staff only via `ycz_is_staff()`, negative clamps at zero |
+
+- Tables: `shop_items` (id text, kind 'title', name, description, price, sort, active),
+  `user_wallets` (user_id, balance ≥ 0, lifetime_earned), `denarii_ledger` (append-only,
+  delta/reason/ref), `user_items` (user_id, item_id). Plus two columns:
+  `user_profiles.title_id` (the equipped title) and `messages.title` (display text
+  stamped at post time — old messages keep the title you wore then, by design).
+- RPCs: `ycz_wallet()` → `{balance, lifetime, today:{reason:count}, caps, amounts}` (one
+  call feeds the whole panel); `ycz_buy_item(p_item)` → `{ok, balance}` or `{ok:false,
+  error: not_found | already_owned | not_enough (+price, balance) | not_signed_in}`;
+  `ycz_equip_title(p_item)` (null = unequip, error `not_owned`).
+- Guards: `ycz_guard_title` (BEFORE INSERT/UPDATE on `user_profiles`) nulls `title_id`
+  on insert and silently reverts any update to a title the user doesn't own — so the
+  client's existing own-row upsert can't equip anything unbought. The message identity
+  guard (`ycz_guard_message_identity`, from the security audit) now also stamps
+  `new.title` from `shop_items.name` via the profile's `title_id`; whatever the client
+  sends in `title` is discarded.
+- Client (`index.html`): `SHOP` (catalog, loaded once per session by `loadShop()`),
+  `WALLET`, `ownedItems`, `myTitleId`; `paintWallet()` runs when Settings opens and
+  `renderWallet()` paints balance, today-vs-caps rows and the shop (Buy / Equip /
+  Unequip buttons via `data-buy` / `data-equip` / `data-unequip`). Titles render as
+  `.tag.ttl` in `paintMsgs` (from `m.title`), `.mem-ttl` in `paintMembers` and a tag in
+  `userCard` (both resolve `title_id` through `titleName()`). `loadMembers` selects
+  `title_id` and retries without it until the migration is run. Everything is `esc()`-ed;
+  a hostile title in a message row renders as inert text (Playwright-verified).
+- **The migration (`denarii.sql`) was handed to the owner in chat, never committed**
+  (owner rule). Until he runs it the panel shows "Couldn't load your wallet" and the
+  rest of the app is unaffected.
+- The i18n keys are `denarii*` and `rDailyActive`/`rMessage`/`rPublishFighter`/
+  `rFighterPlayed`/`rOnlineMatch` in all four languages; the currency name itself is
+  never translated.
 
 ## Known gaps / next up
 
