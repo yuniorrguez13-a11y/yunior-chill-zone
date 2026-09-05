@@ -536,9 +536,60 @@ the console shows the best pay via `yczScore('overwork', pay)`.
   own CSP (`script-src 'self'`), no CDN.
 - Art is primitives + canvas-texture labels, all original. Style: flat Lambert
   materials, low-poly blocks, soft shadows.
-- Debug/test handle: `window.__ow = {courier, boxes, van, world, houses, startShift,
-  interact, camState, input}` — the Playwright harness (`scratchpad/test-overwork.js`,
-  Chromium with `--use-angle=swiftshader`) drives a whole shift through it.
+- Debug/test handle: `window.__ow = {courier, boxes, van, world, houses, props,
+  customers, startShift, interact, honk, camState, input}` — the Playwright harness
+  (`scratchpad/test-overwork.js`, Chromium with `--use-angle=swiftshader`) drives a whole
+  shift through it; `ow-scenic.js` frames the neighbourhood and exercises the trampoline,
+  a gnome kick, the honk and a customer reaction. Under swiftshader the sim runs slower
+  than wall-clock (dt is capped), so poll state instead of sleeping fixed times.
+
+**v3 — the neighbourhood pass (owner: "haz los modelos 3d mejor, especialmente el barrio,
+la camioneta y pues todo, y hazlo más funny").** Geometry helpers: `sideProfile()` (a
+[z,y] silhouette extruded sideways — the van cab, car cabins), `roundedBox()` (rounded
+rect + bevel; the contour is an *explicit polygon*, because Path arc/line joints leave
+duplicate points that make the extrude bevel fold), `gable()` (triangular prism roof).
+**Outline hull gotcha:** `outlined()` scales about the mesh origin, so geometry must be
+centred on its bounding box or the hull pokes through neighbours (that is why
+`sideProfile`/`gable` recentre). Where a bevelled body dips under another part (the van's
+cargo box under the cab roof) the hull shows as a black crease — hide the seam with a
+covering part (the van's collar) rather than fighting the scale.
+- **Houses** (`house(i,x,z)`, four styles by `i % 4`: front gable + TV antenna, tall hip
+  roof with dormer + dish, side gable + garage/driveway/parked car with a bumper sticker,
+  flat roof with parapet/AC/two dishes) at x = ±17 so there is a real front yard: picket
+  fences (0.5 high, stepable = hop-over), flower beds, hedge at the back, porch railings,
+  path to the sidewalk, doorbell, house number, a FOR SALE sign on #7. Doormat labels
+  read the right way up from the street (`rotation.z = facing>0 ? π/2 : -π/2`).
+- **Props** (`class Prop`, kickable): gnomes, flamingos, trash cans, a soccer ball,
+  the dock cones. Pushed by the courier and the van (`shove()`), they fall, bounce, tip
+  over (`tipped`) and each kind has a toast pool (`PROP_LINES`). `reset()` on every
+  shift. The dog chases a moving ball and kicks it.
+- **Yard hazards:** trampoline (stepable 0.45 collider; landing on it launches the
+  courier `vel.y = 15 − weight·1.5`, boxes bounce at 0.8), sprinkler (rotating water
+  arcs; `wetAt()` makes the courier as slippery as rain inside its radius), kiddie pool
+  with a duck (also wet), potholes (`potholeAt()`: the van jumps and the cargo takes
+  damage, the courier trips at speed). Once-per-shift toasts via `tr.hint` /
+  `world.wetToast`.
+- **Street:** crosswalk, manholes, curbs, STOP (ish) sign, hydrant, bus stop ("BUS ·
+  eventually."), the PITTY STRIKER billboard, hills on the horizon, pines and a dead
+  tree, a forklift parked on the sidewalk (never on the road — it was, once).
+  Warehouse signs: "DAYS WITHOUT INCIDENT: 0", "EMPLOYEE OF THE MONTH: the van",
+  a vending machine that is out of order.
+- **The van:** rounded cargo box + one sloped cab silhouette, round headlights, grille,
+  mirrors, sliding-door seams, roof ladder, rack feet, antenna with a "hi" flag that
+  flutters with speed, exhaust puffs while accelerating (`puffs` pool), plate
+  `0V3RW0RK`, sticker "HOW'S MY DRIVING? don't.", `H` honks (`honk()`: sad two-tone
+  sawtooth, scatters the birds, spooks the dog, a nearby customer comes out to say "?").
+- **Customers** (`class Customer`, one per house, hidden inside): on delivery they walk
+  out, look at the box, say something (a camera-facing sprite bubble, `makeBubble()`,
+  from `REACT[kind]` where kind = fine/meh/bad/big/mystery by damage), pose with their
+  arms (up / crossed / on hips), then carry the box indoors (the box stays visible until
+  `hidden`). Wrong house → they come out and say "not mine." Linger on a lawn for 1.5s →
+  "off the grass." (`lawnPatrol`). Five hair styles, glasses on every third one.
+- **Mystery box** event (`???`, purple): trembles, squeaks when you are near, jitters
+  your hips while carried, pays 35, its customer says "is it still... moving. good."
+- **Sky:** a sun with a bored half-lidded face that blinks (`makeSun`, hidden in rain),
+  two flocks of birds circling (`class Flock`), the old clouds.
+- Sounds added to `sfx()`: `honk`, `squeak`, `door`.
 
 Not done yet: the apartment/PC hub, Pitty Striker, multiplayer (planned as host-
 authoritative over the existing WebRTC + Supabase lobby, since ragdoll physics can't be
