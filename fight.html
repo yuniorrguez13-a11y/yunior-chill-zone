@@ -391,13 +391,13 @@ body.has-touch #s-game.active #touch-ui{display:block;}
   <h1 class="logo"><img src="art/sffg-logo.png" alt="SFFG" onerror="this.remove()"><span>SFFG</span></h1>
   <div class="sub">stupidly funny fighting game for dummies — prototype</div>
   <div class="menu-box">
-    <button class="btn primary big" id="btn-arcade"><i data-ic="trophy" data-ic-size="19"></i> Arcade</button>
-    <button class="btn big" id="btn-cpu"><i data-ic="bot" data-ic-size="19"></i> Solo vs CPU</button>
-    <button class="btn big" id="btn-local"><i data-ic="users" data-ic-size="19"></i> Local Versus</button>
-    <button class="btn big" id="btn-online"><i data-ic="bolt" data-ic-size="19"></i> Online Match</button>
-    <button class="btn ghost" id="btn-train"><i data-ic="wrench" data-ic-size="17"></i> Training</button>
-    <button class="btn ghost" id="btn-how"><i data-ic="scroll" data-ic-size="17"></i> How to Play</button>
-    <button class="btn ghost" id="btn-controls"><i data-ic="settings" data-ic-size="17"></i> Controls</button>
+    <button class="btn primary big" id="btn-arcade"><i data-ic="b:medal1" data-ic-size="20"></i> Arcade</button>
+    <button class="btn big" id="btn-cpu"><i data-ic="b:skull" data-ic-size="20"></i> Solo vs CPU</button>
+    <button class="btn big" id="btn-local"><i data-ic="b:gamepad" data-ic-size="20"></i> Local Versus</button>
+    <button class="btn big" id="btn-online"><i data-ic="b:link" data-ic-size="20"></i> Online Match</button>
+    <button class="btn ghost" id="btn-train"><i data-ic="b:wrench" data-ic-size="17"></i> Training</button>
+    <button class="btn ghost" id="btn-how"><i data-ic="b:question" data-ic-size="17"></i> How to Play</button>
+    <button class="btn ghost" id="btn-controls"><i data-ic="b:keyboard" data-ic-size="17"></i> Controls</button>
     <button class="btn ghost" id="btn-mute"></button>
   </div>
   <div id="userchip"><i data-ic="user" data-ic-size="15"></i> <span id="userchip-txt">Checking session…</span></div>
@@ -2243,7 +2243,7 @@ function setMuted(v){
   muted=v;
   try{localStorage.setItem('sffg-mute',v?'1':'0');}catch(e){}
   const b=$('btn-mute');
-  if(b)b.innerHTML=(v?icon('volumeOff',17):icon('volume',17))+' Sound: '+(v?'off':'on');
+  if(b)b.innerHTML=(v?icon('b:mute',17):icon('b:volume',17))+' Sound: '+(v?'off':'on');
   if(!v)ac();
 }
 function drawParticles(W2S){

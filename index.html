@@ -233,7 +233,8 @@ img{display:block;}
 .lc-link{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--cyan);text-decoration:none;}
 .lc-link:hover{text-decoration:underline;}
 /* ── the Treasury ── */
-.tr-card{max-width:560px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:88dvh;}
+/* .card.tr-card: the generic .card rule comes later in the file and caps width at 400px */
+.card.tr-card{max-width:600px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:88dvh;}
 .tr-head{display:flex;align-items:center;gap:14px;padding:18px 20px 12px;border-bottom:1px solid var(--border);}
 .tr-title{display:flex;align-items:center;gap:9px;font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#ffb020;flex:1;}
 .tr-head .x{width:32px;height:32px;border-radius:8px;color:var(--txt2);display:flex;align-items:center;justify-content:center;}
@@ -264,19 +265,54 @@ img{display:block;}
 .tr-hist b{color:#ffb020;font-variant-numeric:tabular-nums;}
 .tr-hist b.neg{color:var(--txt2);}
 .tr-hist .when{color:var(--txt3);font-size:11px;white-space:nowrap;}
-.shop-it{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
-.shop-it:last-child{border-bottom:0;}
-.shop-it .nm{font-weight:700;font-size:13.5px;}
-.shop-it .ds{font-size:11.5px;color:var(--txt3);}
-.shop-it .pr{font-size:12px;color:#ffb020;font-weight:700;white-space:nowrap;}
-.shop-it .upb{flex:0 0 auto;padding:6px 10px;font-size:12px;}
-.shop-it .upb.on{border-color:#ffb020;color:#ffb020;}
-.shop-it .sw{width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:-2px;margin-right:6px;border:1px solid rgba(255,255,255,.25);}
+.tr-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+/* ── the shop: cards with a live preview of how the item looks on YOU ── */
+.shop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+.shop-head .bal{display:inline-flex;align-items:center;gap:8px;font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#ffb020;}
+.chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chips button{padding:6px 11px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--txt2);font-size:12px;font-weight:600;}
+.chips button.on{border-color:#ffb020;color:#ffb020;background:rgba(255,176,32,.1);}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:12px;margin-top:8px;}
+.shop-card{--tier:#8a8aa0;position:relative;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:14px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--tier) 14%,#0a0a10),#0a0a10 70%);
+  border:1px solid color-mix(in srgb,var(--tier) 45%,transparent);transition:transform .15s,box-shadow .15s;}
+.shop-card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,.45),0 0 0 1px color-mix(in srgb,var(--tier) 70%,transparent);}
+.shop-card.tier-rare{--tier:#00d4ff;}
+.shop-card.tier-epic{--tier:#b48cff;}
+.shop-card.tier-legendary{--tier:#ffb020;}
+.shop-card.equipped{box-shadow:0 0 0 2px #ffb020 inset;}
+.sc-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+.sc-tier{color:var(--tier);display:inline-flex;align-items:center;gap:5px;}
+.sc-price{color:#ffb020;font-variant-numeric:tabular-nums;}
+.sc-price.owned{color:var(--grn);}
+.sc-prev{display:flex;align-items:flex-start;gap:9px;padding:10px;border-radius:10px;background:var(--main);border:1px solid var(--border);min-height:54px;}
+.sc-av{width:30px;height:30px;border-radius:50%;flex:none;background:var(--hover);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;overflow:hidden;}
+.sc-av img{width:100%;height:100%;object-fit:cover;}
+.sc-line{min-width:0;display:flex;flex-direction:column;gap:2px;}
+.sc-hd{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;}
+.sc-hd .nm{font-weight:700;font-size:13.5px;}
+.sc-hd .tm{font-size:10px;color:var(--txt3);}
+.sc-msg{font-size:12.5px;color:#dcdde3;}
+.sc-name{font-weight:800;font-size:14px;display:flex;align-items:center;gap:6px;}
+.sc-name .sw{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.25);flex:none;}
+.sc-ds{font-size:11.5px;color:var(--txt3);line-height:1.4;flex:1;}
+.sc-act{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;}
+.sc-act .upb{flex:1;padding:8px 10px;font-size:12.5px;font-weight:700;}
+.sc-act .upb.buy{background:#ffb020;color:#1c1608;border-color:#ffb020;}
+.sc-act .upb.buy:hover{background:#ffc450;color:#1c1608;}
+.sc-act .upb.on{border-color:#ffb020;color:#ffb020;}
+.sc-act .upb.locked{opacity:.55;cursor:not-allowed;}
+.sc-need{font-size:11px;color:var(--txt3);white-space:nowrap;display:inline-flex;align-items:center;gap:4px;}
+.sc-star{position:absolute;top:-8px;right:10px;color:#ffb020;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));}
+body.light .shop-card{background:linear-gradient(180deg,color-mix(in srgb,var(--tier) 16%,#fff),#f7f7fa 70%);}
+body.light .sc-msg{color:#2c2c38;}
 .lb-row{display:grid;grid-template-columns:28px 34px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);}
 .lb-row:last-child{border-bottom:0;}
 .lb-row.me{background:rgba(255,176,32,.07);margin:0 -8px;padding:7px 8px;border-radius:8px;}
-.lb-row .rk{font-family:'Syne',sans-serif;font-weight:800;color:var(--txt3);text-align:center;}
+.lb-row .rk{font-family:'Syne',sans-serif;font-weight:800;color:var(--txt3);text-align:center;display:flex;align-items:center;justify-content:center;}
 .lb-row .rk.top{color:#ffb020;}
+.lb-row:nth-child(2) .rk.top{color:#c9ced8;}
+.lb-row:nth-child(3) .rk.top{color:#d08a4a;}
 .lb-row .av{width:34px;height:34px;border-radius:50%;background:var(--hover);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;overflow:hidden;}
 .lb-row .av img{width:100%;height:100%;object-fit:cover;}
 .lb-row .who{min-width:0;}
@@ -288,7 +324,7 @@ img{display:block;}
 body.light .wallet{background:#f0f0f4;}
 body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#ffd07a);color:#5a3d00;}
 @media(max-width:760px){
-  .tr-card{max-width:none;width:100%;height:100dvh;max-height:100dvh;border-radius:0;}
+  .card.tr-card{max-width:none;width:100%;height:100dvh;max-height:100dvh;border-radius:0;}
   #top .tp{display:none;}
 }
 .m-tx{font-size:15px;color:#dcdde3;word-wrap:break-word;overflow-wrap:anywhere;white-space:pre-wrap;}
@@ -846,17 +882,17 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
       <!-- Static copy: this is what search engines and link previews read
            before any JavaScript runs. Replaced once the app boots. -->
       <div class="hero" id="landing">
-        <div class="ic">👋</div>
+        <div class="ic"><i data-ic="b:house" data-ic-size="30"></i></div>
         <h2 data-i18n="welcome">Welcome to Yuniors Chill Zone</h2>
         <p data-i18n="landingSub">A free place to hang out with friends — text and voice channels, games, music and more.</p>
         <div class="landing-grid">
-          <div class="lc"><b>💬 <span data-i18n="fServers">Servers &amp; channels</span></b><span data-i18n="fServersD">Make your own server with text and voice channels, invite friends with a code, and give people roles.</span></div>
-          <div class="lc"><b>🔊 <span data-i18n="fVoice">Voice chat</span></b><span data-i18n="fVoiceD">Drop into a voice channel and talk. Works across phones and computers.</span></div>
-          <div class="lc"><b>🎮 <span data-i18n="fGames">Games</span></b><span data-i18n="fGamesD">Snake, Doom, Minecraft, Flappy Bird and Subway Surfers, all in the browser.</span></div>
-          <div class="lc"><b>🎵 <span data-i18n="fMusic">Music room</span></b><span data-i18n="fMusicD">Shared playlists, plus a piano you can play with other people at the same time.</span></div>
-          <div class="lc"><b>📺 <span data-i18n="fVideo">VideoZone</span></b><span data-i18n="fVideoD">Upload and watch videos with the community.</span></div>
-          <div class="lc"><b>🖼️ <span data-i18n="fImages">Qmages</span></b><span data-i18n="fImagesD">An image board for saving and sharing pictures onto boards.</span></div>
-          <div class="lc lc-coin"><b><i data-ic="coin" data-ic-size="16"></i> <span data-i18n="fDenarii">Denarii</span></b><span data-i18n="fDenariiD">The site's own currency. Chat, play and create to earn it, then spend it on titles and name colors. Not real money — better.</span><a href="denarii.html" class="lc-link" data-i18n="denariiHow">How it works</a></div>
+          <div class="lc"><b><i data-ic="b:message" data-ic-size="17"></i> <span data-i18n="fServers">Servers &amp; channels</span></b><span data-i18n="fServersD">Make your own server with text and voice channels, invite friends with a code, and give people roles.</span></div>
+          <div class="lc"><b><i data-ic="b:volume" data-ic-size="17"></i> <span data-i18n="fVoice">Voice chat</span></b><span data-i18n="fVoiceD">Drop into a voice channel and talk. Works across phones and computers.</span></div>
+          <div class="lc"><b><i data-ic="b:gamepad" data-ic-size="17"></i> <span data-i18n="fGames">Games</span></b><span data-i18n="fGamesD">Snake, Doom, Minecraft, Flappy Bird and Subway Surfers, all in the browser.</span></div>
+          <div class="lc"><b><i data-ic="b:music" data-ic-size="17"></i> <span data-i18n="fMusic">Music room</span></b><span data-i18n="fMusicD">Shared playlists, plus a piano you can play with other people at the same time.</span></div>
+          <div class="lc"><b><i data-ic="b:video" data-ic-size="17"></i> <span data-i18n="fVideo">VideoZone</span></b><span data-i18n="fVideoD">Upload and watch videos with the community.</span></div>
+          <div class="lc"><b><i data-ic="b:camera" data-ic-size="17"></i> <span data-i18n="fImages">Qmages</span></b><span data-i18n="fImagesD">An image board for saving and sharing pictures onto boards.</span></div>
+          <div class="lc lc-coin"><b><i data-ic="b:money" data-ic-size="17"></i> <span data-i18n="fDenarii">Denarii</span></b><span data-i18n="fDenariiD">The site's own currency. Chat, play and create to earn it, then spend it on titles and name colors. Not real money — better.</span><a href="denarii.html" class="lc-link" data-i18n="denariiHow">How it works</a></div>
         </div>
         <p class="landing-cta" data-i18n="landingCta">Free to join — make an account to start chatting.</p>
       </div>
@@ -1052,9 +1088,9 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
       <button class="x" id="tr-x"><i data-ic="x" data-ic-size="18"></i></button>
     </div>
     <div class="tabs tr-tabs" id="tr-tabs">
-      <button class="on" data-tab="overview" data-i18n="denariiOverview">Overview</button>
-      <button data-tab="shop" data-i18n="denariiShop">Title shop</button>
-      <button data-tab="board" data-i18n="denariiLeaderboard">Leaderboard</button>
+      <button class="on" data-tab="overview"><i data-ic="b:money" data-ic-size="15"></i><span data-i18n="denariiOverview">Overview</span></button>
+      <button data-tab="shop"><i data-ic="b:market" data-ic-size="15"></i><span data-i18n="denariiShop">Title shop</span></button>
+      <button data-tab="board"><i data-ic="b:ranking" data-ic-size="15"></i><span data-i18n="denariiLeaderboard">Leaderboard</span></button>
     </div>
     <div class="tr-body" id="tr-body"></div>
   </div>
@@ -1500,27 +1536,43 @@ function renderOverview(){
     :`<div class="tr-empty">${esc(t('denariiNoHistory'))}</div>`;
   return h;
 }
-function shopRow(s){
+/* rarity is just a label derived from the price — flavour, nothing mechanical */
+function tierOf(price){return price>=600?'legendary':price>=250?'epic':price>=100?'rare':'common';}
+let shopFilter='all';
+/* one card = how the item would look on YOU, right now, in a real chat line */
+function shopCard(s){
   const owned=ownedItems.has(s.id),on=s.kind==='color'?myColorId===s.id:myTitleId===s.id;
-  let btn;
-  if(on)btn=`<button class="upb on" data-unequip="${esc(s.id)}" data-kind="${esc(s.kind)}">${esc(t('denariiUnequip'))}</button>`;
-  else if(owned)btn=`<button class="upb" data-equip="${esc(s.id)}" data-kind="${esc(s.kind)}">${esc(t('denariiEquip'))}</button>`;
-  else btn=`<button class="upb" data-buy="${esc(s.id)}">${esc(t('denariiBuy'))}</button>`;
-  /* colour ids resolve through the client whitelist only */
+  const bal=WALLET?WALLET.balance|0:0,need=Math.max(0,(s.price|0)-bal),tier=tierOf(s.price|0);
   const hex=s.kind==='color'?NAME_COLORS[s.id]:null;
-  const nm=hex?`<span class="sw" style="background:${hex}"></span><span style="color:${hex}">${esc(s.name)}</span>`:esc(s.name);
-  return `<div class="shop-it"><div style="flex:1;min-width:0;"><div class="nm">${nm}${owned?` <span class="tag ttl">${esc(on?t('denariiEquipped'):t('denariiOwned'))}</span>`:''}</div><div class="ds">${esc(s.description||'')}</div></div><div class="pr">${owned?'':esc(denarii(s.price|0))}</div>${btn}</div>`;
+  /* preview: my avatar + my name (in this colour, or my current one) + the title (this one, or my current one) */
+  const prevColor=hex||NAME_COLORS[myColorId]||'';
+  const prevTitle=s.kind==='title'?s.name:titleName(myTitleId);
+  const av=pfpUrl&&isUrl(pfpUrl)?`<img src="${esc(pfpUrl)}" alt="">`:esc(ini(uname));
+  const prev=`<div class="sc-prev"><span class="sc-av">${av}</span><span class="sc-line"><span class="sc-hd"><span class="nm"${prevColor?` style="color:${prevColor}"`:''}>${esc(uname||'You')}</span>${prevTitle?`<span class="tag ttl">${esc(prevTitle)}</span>`:''}<span class="tm">${esc(t('denariiNow'))}</span></span><span class="sc-msg">${esc(t('denariiPreviewMsg'))}</span></span></div>`;
+  let btn;
+  if(on)btn=`<button class="upb on" data-unequip="${esc(s.id)}" data-kind="${esc(s.kind)}">${icon('b:star',13)} ${esc(t('denariiUnequip'))}</button>`;
+  else if(owned)btn=`<button class="upb" data-equip="${esc(s.id)}" data-kind="${esc(s.kind)}">${esc(t('denariiEquip'))}</button>`;
+  else if(need>0)btn=`<button class="upb locked" data-buy="${esc(s.id)}" title="${esc(t('denariiNotEnough').replace('{n}',need))}">${icon('b:lock',13)} ${esc(t('denariiBuy'))}</button><span class="sc-need">${esc(t('denariiNeedMore').replace('{n}',need))}</span>`;
+  else btn=`<button class="upb buy" data-buy="${esc(s.id)}">${icon('b:money',14)} ${esc(t('denariiBuy'))}</button>`;
+  const price=owned?`<span class="sc-price owned">${esc(on?t('denariiEquipped'):t('denariiOwned'))}</span>`:`<span class="sc-price">${esc(denarii(s.price|0))}</span>`;
+  const name=hex?`<span class="sw" style="background:${hex}"></span><span style="color:${hex}">${esc(s.name)}</span>`:esc(s.name);
+  return `<div class="shop-card tier-${tier}${owned?' owned':''}${on?' equipped':''}">${on?`<span class="sc-star">${icon('b:star',18)}</span>`:''}
+    <div class="sc-top"><span class="sc-tier">${icon(tier==='legendary'?'b:medal1':tier==='epic'?'b:medal2':tier==='rare'?'b:medal3':'b:like',12)} ${esc(t('denariiTier_'+tier))}</span>${price}</div>
+    ${prev}<div class="sc-name">${name}</div><div class="sc-ds">${esc(s.description||'')}</div><div class="sc-act">${btn}</div></div>`;
 }
 function renderShop(){
-  const titles=SHOP.filter(s=>s.kind==='title'),colors=SHOP.filter(s=>s.kind==='color'&&NAME_COLORS[s.id]);
-  let h=`<div class="tr-bal"><div class="n" style="font-size:26px;">${esc(denarii(WALLET.balance|0))}</div></div>`;
-  h+=`<div class="tr-sec">${esc(t('denariiTitles'))}</div>`+(titles.length?titles.map(shopRow).join(''):`<div class="tr-empty">${esc(t('denariiNoTitle'))}</div>`);
-  if(colors.length)h+=`<div class="tr-sec">${esc(t('denariiColors'))}</div>`+colors.map(shopRow).join('');
+  const bal=WALLET.balance|0;
+  const keep=s=>shopFilter==='owned'?ownedItems.has(s.id):shopFilter==='afford'?(!ownedItems.has(s.id)&&(s.price|0)<=bal):true;
+  const titles=SHOP.filter(s=>s.kind==='title'&&keep(s)),colors=SHOP.filter(s=>s.kind==='color'&&NAME_COLORS[s.id]&&keep(s));
+  let h=`<div class="shop-head"><span class="bal">${icon('b:money',20)} ${esc(denarii(bal))}</span>
+    <div class="chips">${[['all','denariiAll'],['afford','denariiAffordable'],['owned','denariiOwnedOnly']].map(([k,key])=>`<button data-filter="${k}"${shopFilter===k?' class="on"':''}>${esc(t(key))}</button>`).join('')}</div></div>`;
+  h+=`<div class="tr-sec">${icon('b:gift',13)} ${esc(t('denariiTitles'))}</div>`+(titles.length?`<div class="shop-grid">${titles.map(shopCard).join('')}</div>`:`<div class="tr-empty">${esc(t('denariiNoTitle'))}</div>`);
+  if(colors.length)h+=`<div class="tr-sec">${icon('b:star',13)} ${esc(t('denariiColors'))}</div><div class="shop-grid">${colors.map(shopCard).join('')}</div>`;
   return h;
 }
 function renderBoard(){
   if(!LEADER||!LEADER.top.length)return `<div class="tr-empty">${esc(t('denariiNoBoard'))}</div>`;
-  let h=LEADER.top.map((r,i)=>`<div class="lb-row${r.user_id===user.id?' me':''}" data-uc="${esc(r.user_id)}"><span class="rk${i<3?' top':''}">${i+1}</span>
+  let h=LEADER.top.map((r,i)=>`<div class="lb-row${r.user_id===user.id?' me':''}" data-uc="${esc(r.user_id)}"><span class="rk${i<3?' top':''}">${i<3?icon('b:medal'+(i+1),22):i+1}</span>
     <span class="av">${r.pfp_url&&isUrl(r.pfp_url)?`<img src="${esc(r.pfp_url)}" alt="">`:esc(ini(r.username))}</span>
     <span class="who"><div class="nm${NAME_COLORS[r.color_id]?' nc':''}"${ncAttr(r.color_id)}>${esc(r.username||'Unknown')}</div>${r.title?`<div class="tt">${esc(r.title)}</div>`:''}</span>
     <span class="life">${r.lifetime|0} <small>denarii</small></span></div>`).join('');
@@ -1531,6 +1583,7 @@ $('tr-body').onclick=async e=>{
   const row=e.target.closest('.lb-row[data-uc]');
   if(row){shut('tr-ov');userCard(row.dataset.uc);return;}
   const b=e.target.closest('button');if(!b||!user)return;
+  if(b.dataset.filter){shopFilter=b.dataset.filter;renderTreasury();return;}
   b.disabled=true;
   try{
     if(b.dataset.buy){

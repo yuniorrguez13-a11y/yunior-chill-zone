@@ -47,7 +47,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `index.html` | The main app. ~2,600 lines, everything inline. Chat, servers, channels, voice, DMs, friends, profiles, bots, notifications. |
 | `ycz-theme.css` | Shared stylesheet. Loaded **after** each page's own `<style>` so it wins the cascade. |
 | `ycz-i18n.js` | Translation engine + dictionaries (en/es/fr/pt). `t('key')` in JS, `data-i18n="key"` in markup. |
-| `ycz-icons.js` | SVG icon set (~47). `icon('hash')` in JS, `<i data-ic="hash">` in markup. |
+| `ycz-icons.js` | Two icon families. **Stroke set** (~49 inline SVGs, Discord-like): `icon('hash')` / `<i data-ic="hash">`. **Bold set** (Sep 2026): chunky filled glyphs from Itcherpro's free game-asset pack, 36 white PNGs trimmed to 160px squares in `art/icons-bold/`, rendered as CSS masks so they take `currentColor`: `icon('b:gift')` / `<i data-ic="b:gift">`, names whitelisted in `YCZ_BOLD`. Used where a game-UI feel fits: SFFG menu, the Treasury (tabs, shop tiers, leaderboard medals), the landing feature cards (this killed the landing emoji). The pack's brand logos (Steam/Twitch/YouTube/Apple/Facebook) were **left out** — trademarks. The zip carried no licence text; the owner supplied it and was asked to confirm the itch.io page allows use. |
 | `ycz-scores.js` | Records + playtime, kept in `localStorage` under `ycz-games`. `yczScore(id,n)` for a high score, `yczTally(id)` for a running count, `yczPlay(id,ms)` for time, `yczData()` to read. Loaded by the games that keep score and by the console. |
 | `video.html` | VideoZone. Own app, shares session + theme. |
 | `qmages.html` | Image board. Own app, shares session + theme. |
@@ -391,9 +391,17 @@ some stupid feature you can access only via the profile"). Where it shows:
   person is on, because the pill listens to realtime inserts on `denarii_ledger`.
 - The **Treasury** (`#tr-ov` in `index.html`): a full overlay with three tabs —
   Overview (balance, lifetime, day **streak** with flame, the plural note, today's
-  earnings as progress bars against each cap, recent ledger), Shop (titles and name
-  colours, Buy / Equip / Unequip), Leaderboard (`ycz_leaderboard`, top 20 by lifetime,
-  own row highlighted, own rank underneath, rows open the user card). Reached from the
+  earnings as progress bars against each cap, recent ledger), Shop, Leaderboard
+  (`ycz_leaderboard`, top 20 by lifetime, bold medals for the top three, own row
+  highlighted, own rank underneath, rows open the user card).
+  The **shop is a card grid** (`shopCard()`): every card carries a live preview — a fake
+  chat line with *your* avatar, *your* name in the colour being sold (or your current
+  one) and the title being sold (or your current one) — so people see the item on
+  themselves before buying. Rarity tiers are pure flavour derived from price
+  (`tierOf`: <100 common, <250 rare, <600 epic, else legendary) and tint the card via
+  `--tier`; equipped cards get a gold star; unaffordable ones show a lock + "N more".
+  Filter chips: All / Can afford / Owned (`shopFilter`). Buttons still carry
+  `data-buy` / `data-equip` / `data-unequip` + `data-kind`. Reached from the
   pill, the gold rail item `#r-coin`, `/denarii` `/wallet` `/treasury` `/shop`, the
   "Open the Treasury" row in Settings, and `index.html#denarii` (what the pill on the
   other pages links to).

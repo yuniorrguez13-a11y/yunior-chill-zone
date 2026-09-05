@@ -75,7 +75,37 @@ window.YCZ_ICONS = {
   battery:   '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M5 10h7v4H5z" fill="currentColor" stroke="none"/>',
 };
 
+/* ── Bold set ──────────────────────────────────────────────────────
+   Chunky filled glyphs from Itcherpro's free game-asset pack (itch.io),
+   trimmed to 160px squares in art/icons-bold/. They are white PNGs used
+   as CSS masks, so they take currentColor exactly like the stroke set.
+   USE:  <i data-ic="b:gift"></i>   /   icon('b:gift', 20)
+   Brand logos from the pack (Steam, Twitch, YouTube, Apple, Facebook)
+   are deliberately NOT included — trademarks. */
+window.YCZ_BOLD = [
+  "camera","danger","gamepad","gift","house","key","keyboard","like","link","lock","mail",
+  "market","medal1","medal2","medal3","message","money","monitor","mouse","music","mute",
+  "play","power","question","ranking","save","search","settings","share","skull","star",
+  "unlock","video","volume","wave","wrench",
+];
+(function () {
+  const st = document.createElement("style");
+  st.textContent =
+    ".ic-bold{display:inline-block;vertical-align:-3px;flex:none;background:currentColor;" +
+    "-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat;}";
+  (document.head || document.documentElement).appendChild(st);
+})();
+window.boldIcon = function (name, size) {
+  if (window.YCZ_BOLD.indexOf(name) < 0) return "";
+  const s = size || 18;
+  return (
+    `<span class="ic-bold" style="width:${s}px;height:${s}px;--ic:url('art/icons-bold/${name}.png')" ` +
+    `aria-hidden="true"></span>`
+  );
+};
+
 window.icon = function (name, size) {
+  if (name && name.slice(0, 2) === "b:") return window.boldIcon(name.slice(2), size);
   const body = window.YCZ_ICONS[name];
   if (!body) return "";
   const s = size || 18;
