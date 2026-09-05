@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="art/icons/icon-192.png">
 <meta name="theme-color" content="#0a0a12">
-<meta name="description" content="How the Denarii site currency works: how you earn it, what it buys, and why the plural is denarii.">
+<meta name="description" content="How the Denarii site currency works: where to see it, how you earn it, streaks, the leaderboard, what it buys, and why the plural is denarii.">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
 :root{--bg:#0a0a12;--bg2:#12121b;--card:#14141f;--border:rgba(255,255,255,.08);
@@ -68,6 +68,15 @@ td:first-child{color:var(--amber);white-space:nowrap;}
   <p>Why give a site full of stupidly funny games an imperial currency? Because the mismatch
   <b>is</b> the joke. Same reason the fighting game is "for Dummies".</p>
 
+  <h2>Where it lives</h2>
+  <p>Your balance is the <b>gold coin</b> at the top of every page — the chat, SFFG, VideoZone and
+  Qmages all show it. Every time the server hands you denarii the coin bumps, a little
+  <b>+1</b> floats off it and a note in the corner tells you why. That happens live, whatever page
+  you're on: someone playing your fighter while you chat still shows up.</p>
+  <p>Tap the coin (or the coin in the left rail of the chat, or type <code>/denarii</code> in any
+  channel) to open the <b>Treasury</b>: your balance, your day streak, today's earnings against
+  each cap, your recent activity, the shop and the leaderboard.</p>
+
   <h2>How you earn</h2>
   <p>Every reward is handed out by the server the moment the thing actually happens. There is no
   button to press and nothing to claim. Each reason has a <b>daily cap</b> so it stays fair.</p>
@@ -76,25 +85,45 @@ td:first-child{color:var(--amber);white-space:nowrap;}
     <tbody>
       <tr><td>Send your first message of the day</td><td>10 denarii</td><td>once</td></tr>
       <tr><td>Send a message (any channel or DM)</td><td>1 denarius each</td><td>20 messages</td></tr>
+      <tr><td>Keep a streak: every 7th day in a row</td><td>50 denarii</td><td>once</td></tr>
       <tr><td>Publish a community fighter in SFFG</td><td>25 denarii</td><td>3 fighters</td></tr>
       <tr><td>Someone <i>else</i> plays a fighter you made</td><td>1 denarius per play</td><td>30 plays</td></tr>
       <tr><td>Finish an online SFFG match</td><td>5 denarii</td><td>6 matches</td></tr>
+      <tr><td>Upload a video to VideoZone</td><td>15 denarii</td><td>2 videos</td></tr>
+      <tr><td>Post an image on Qmages</td><td>5 denarii</td><td>5 images</td></tr>
     </tbody>
   </table>
   <p>A normal, chatty day lands somewhere around <b>30 to 45 denarii</b>. If you hit every cap
-  it's 165, but you'd need a very busy day and a popular fighter. Caps reset at <b>midnight UTC</b>
-  — that's 8 PM Eastern, 5 PM Pacific, 2 AM in Madrid.</p>
+  it's 220, but you'd need a very busy day, a popular fighter and an upload or two. Caps reset
+  at <b>midnight UTC</b> — that's 8 PM Eastern, 5 PM Pacific, 2 AM in Madrid.</p>
+
+  <h3>Streaks</h3>
+  <p>Post at least once a day and your <b>day streak</b> goes up by one. Miss a whole UTC day and
+  it drops back to zero. Every 7th day in a row (7, 14, 21…) pays a <b>50 denarii bonus</b> on
+  top of the usual daily 10. The flame in the Treasury shows where you are.</p>
   <div class="note">Caps exist for one reason: so a script that posts every ten seconds all night
   earns exactly the same as a person who said hello. Farming with a second account is pointless
   too — denarii can't be sent anywhere, so an alt's balance just sits there.</div>
 
   <h2>How you spend</h2>
-  <p>Right now the shop sells <b>titles</b>: a short amber label that shows next to your name in
-  chat, in the member list and on your profile card. Buy one, equip it, wear it. You can equip one
-  title at a time, swap whenever you like, take it off whenever you like, and you keep everything
-  you've bought forever.</p>
-  <p>Find the shop in <b>Settings</b> (tap your name at the bottom left of the chat). Your balance
-  and today's earnings are right above it.</p>
+  <p>The shop sells two kinds of cosmetics. <b>Titles</b> are a short amber label next to your
+  name in chat, in the member list and on your profile card. <b>Name colors</b> paint your name
+  itself — everywhere it appears. You can wear one title and one color at a time, swap whenever
+  you like, take them off whenever you like, and you keep everything you've bought forever.</p>
+  <p>Staff keep their role colors: an admin's name stays cyan and the owner's stays red no matter
+  what color they bought. Everyone else's name shows the color they equipped.</p>
+  <p>Find the shop in the <b>Treasury</b> (the gold coin at the top, or <code>/shop</code>).</p>
+  <table>
+    <thead><tr><th>Name color</th><th>Price</th></tr></thead>
+    <tbody>
+      <tr><td>Gold</td><td>150</td></tr>
+      <tr><td>Cyan</td><td>150</td></tr>
+      <tr><td>Lime</td><td>200</td></tr>
+      <tr><td>Rose</td><td>250</td></tr>
+      <tr><td>Violet</td><td>300</td></tr>
+      <tr><td>Ember</td><td>400</td></tr>
+    </tbody>
+  </table>
   <table>
     <thead><tr><th>Title</th><th>Price</th><th>What it says about you</th></tr></thead>
     <tbody>
@@ -113,12 +142,27 @@ td:first-child{color:var(--amber);white-space:nowrap;}
     </tbody>
   </table>
 
+  <h2>The leaderboard</h2>
+  <p>The Treasury's third tab ranks everyone by denarii <b>earned all-time</b> — spending doesn't
+  move you down. Top three get gold numbers; your own row is highlighted, and your rank is shown
+  underneath even if you're not in the top 20. Tap a row to see that person's profile.</p>
+
   <h2>Troubleshooting</h2>
 
-  <h3>I sent a message and my balance didn't move</h3>
-  <p>The wallet loads when you <b>open Settings</b>, so close it and open it again. If it still
-  hasn't moved, check the "Earned today" list right under your balance: the daily bonus is once
-  per UTC day, and messages stop paying after 20 in a day.</p>
+  <h3>I sent a message and the coin didn't move</h3>
+  <p>Normally the coin bumps within a second. If it didn't, check the Treasury's "Earned today"
+  list: the daily bonus is once per UTC day, and messages stop paying after 20 in a day. A row
+  marked <b>max</b> is done for today. If the coin shows <b>…</b> or nothing, reload the page.</p>
+
+  <h3>My streak reset</h3>
+  <p>Streaks count UTC days. If your last message was at 7 PM Eastern on Monday and your next
+  one at 9 PM Eastern on Tuesday, that's Tuesday and <i>Thursday</i> in UTC — Wednesday was
+  missed. Post earlier in your day and it's never a problem. A streak that's still alive but
+  hasn't been extended today shows yesterday's count until you post.</p>
+
+  <h3>I bought a color and my name didn't change</h3>
+  <p>Buying and equipping are two steps. Open the shop, find the color marked <b>Owned</b> and
+  press <b>Equip</b>. Admins and the owner keep their role color on purpose.</p>
 
   <h3>"Not enough denarii — you need N more"</h3>
   <p>Exactly what it says. The number is how far you are from that title. Come back tomorrow, or
@@ -145,7 +189,7 @@ td:first-child{color:var(--amber);white-space:nowrap;}
 
   <h3>"Couldn't load your wallet"</h3>
   <p>Either the currency isn't switched on yet for the site, or your connection hiccupped. Refresh
-  the page and open Settings again. If it keeps happening, tell the owner in <b>#global</b>.</p>
+  the page and open the Treasury again. If it keeps happening, tell the owner in <b>#global</b>.</p>
 
   <h3>Somebody is clearly cheating</h3>
   <p>Site staff can add or remove denarii from any wallet, including down to zero. Report it in
@@ -162,6 +206,9 @@ td:first-child{color:var(--amber);white-space:nowrap;}
   <h3>What's coming to the shop?</h3>
   <p>More cosmetics. When the next game lands, weapon <i>skins</i> — looks only, never stats.
   Nothing you buy with denarii will ever make you hit harder or shoot straighter.</p>
+  <h3>Do I earn denarii from the arcade games or high scores?</h3>
+  <p>No. Those scores live only in your browser, so the server can't verify them — and anything
+  the server can't verify can't pay out. Earning is tied to things the database sees happen.</p>
   <h3>Why "Denarius"?</h3>
   <p>Because a goofy site deserves an imperial currency, and because it's funny to hear people
   argue about the plural.</p>

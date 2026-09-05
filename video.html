@@ -311,6 +311,7 @@
   <link rel="stylesheet" href="ycz-theme.css">
   <script src="ycz-icons.js"></script>
   <script src="ycz-i18n.js"></script>
+  <script src="ycz-denarii.js"></script>
 </head>
 <body>
 <a class="ycz-back" href="index.html" title="Back to the Chill Zone"><i data-ic="arrowLeft" data-ic-size="15"></i> <span data-i18n="backToChat">Chill Zone</span></a>
@@ -323,6 +324,7 @@
     <button id="searchBtn">🔍</button>
   </div>
   <div class="topbar-actions">
+    <div id="coin-slot"></div>
     <button class="btn-icon" id="themeBtn">🌙</button>
     <div id="authButtons"><button class="btn-primary" id="signInBtn">Sign in</button></div>
     <div id="userMenu" style="display:none"><div class="avatar" id="userAvatar"></div></div>
@@ -1301,6 +1303,7 @@
 
   function setUser(user) {
     currentUser = user;
+    if (window.YCZDenarii) YCZDenarii.setUser(user);
     _sb.from('profiles').select('username, avatar_url').eq('id', user.id).single().then(function(r) {
       var uname = r.data && r.data.username ? r.data.username : user.email.split('@')[0];
       currentUser.username = uname;
@@ -1471,6 +1474,7 @@
   $('signoutBtn').addEventListener('click', function() {
     _sb.auth.signOut().then(function() {
       currentUser = null;
+      if (window.YCZDenarii) YCZDenarii.setUser(null);
       $('userMenu').style.display = 'none';
       $('authButtons').style.display = 'block';
       $('commentInputRow').style.display = 'none';
@@ -1504,6 +1508,7 @@
   $('cancelEditBtn').addEventListener('click', function() { navigate('profile'); });
 
   // INIT
+  if (window.YCZDenarii) YCZDenarii.mount(_sb, { into: $('coin-slot') });   /* Denarii coin pill */
   _sb.auth.getSession().then(function(r) {
     if (r.data && r.data.session) setUser(r.data.session.user);
     loadHome();
@@ -1512,6 +1517,7 @@
     if (session) { setUser(session.user); }
     else {
       currentUser = null;
+      if (window.YCZDenarii) YCZDenarii.setUser(null);
       $('userMenu').style.display = 'none';
       $('authButtons').style.display = 'block';
       $('commentInputRow').style.display = 'none';

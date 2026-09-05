@@ -401,6 +401,7 @@ body.has-touch #s-game.active #touch-ui{display:block;}
     <button class="btn ghost" id="btn-mute"></button>
   </div>
   <div id="userchip"><i data-ic="user" data-ic-size="15"></i> <span id="userchip-txt">Checking session…</span></div>
+  <div id="coin-slot" style="display:flex;margin-top:8px;"></div>
   <div class="menu-note" id="menu-note">Local versus: Player 1 uses the keyboard and Player 2 uses a controller.
     Or grab a friend online with a room code.</div>
   <a class="backlink" href="index.html"><i data-ic="arrowLeft" data-ic-size="15"></i> Back to the Chill Zone</a>
@@ -679,6 +680,7 @@ body.has-touch #s-game.active #touch-ui{display:block;}
 <script src="ycz-scores.js"></script>
 <script src="sffg-mods.js"></script>
 <script src="ycz-icons.js"></script>
+<script src="ycz-denarii.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 'use strict';
@@ -711,16 +713,20 @@ let user=null,myName='Player';
 async function initAuth(){
   const chip=$('userchip-txt');
   if(!sb){chip.textContent='Offline — local versus only';return;}
+  /* Denarii coin pill: live balance, pops when an online match pays out */
+  const coins=u=>{if(window.YCZDenarii)YCZDenarii.setUser(u);};
+  if(window.YCZDenarii)YCZDenarii.mount(sb,{into:$('coin-slot')});
   try{
     const {data}=await sb.auth.getSession();
     if(data?.session?.user){user=data.session.user;myName=await fetchName(user);
       chip.innerHTML='Fighting as <b>'+esc(myName)+'</b>';}
     else chip.textContent='Not signed in — sign in on the Chill Zone to play online';
+    coins(user);
     /* tab focus re-fires SIGNED_IN; only react when the user actually changed */
     sb.auth.onAuthStateChange(async(ev,session)=>{
       const u=session?.user||null;
       if((u&&u.id)===(user&&user.id))return;
-      user=u;
+      user=u;coins(user);
       if(user){myName=await fetchName(user);chip.innerHTML='Fighting as <b>'+esc(myName)+'</b>';}
       else{myName='Player';chip.textContent='Not signed in — sign in on the Chill Zone to play online';}
     });

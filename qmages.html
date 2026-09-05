@@ -600,6 +600,7 @@ select.form-input{cursor:pointer;}
   <link rel="stylesheet" href="ycz-theme.css">
   <script src="ycz-icons.js"></script>
   <script src="ycz-i18n.js"></script>
+  <script src="ycz-denarii.js"></script>
 </head>
 <body>
 <a class="ycz-back" href="index.html" title="Back to the Chill Zone"><i data-ic="arrowLeft" data-ic-size="15"></i> <span data-i18n="backToChat">Chill Zone</span></a>
@@ -617,6 +618,7 @@ select.form-input{cursor:pointer;}
   </div>
   <div class="topbar-right">
     <div class="topbar-search-icon btn-icon" id="mobileSearchBtn">🔍</div>
+    <div id="coin-slot"></div>
     <button class="btn-icon" id="themeBtn" title="Toggle theme">🌙</button>
     <div id="authButtons"><button class="btn-primary" id="signInBtn">Sign in</button></div>
     <div id="userMenu" style="display:none">
@@ -1343,7 +1345,7 @@ function loadProfile(userId){
     if(isOwn){
       actions.innerHTML='<button class="btn-primary" id="profileEditBtn">✏️ Edit</button><button class="btn-action" id="profileSignoutBtn">Sign Out</button>';
       $('profileEditBtn').addEventListener('click',function(){navigate('edit-profile');});
-      $('profileSignoutBtn').addEventListener('click',function(){_sb.auth.signOut().then(function(){currentUser=null;currentProfile=null;updateAuthUI();navigate('home');toast('Signed out');});});
+      $('profileSignoutBtn').addEventListener('click',function(){_sb.auth.signOut().then(function(){currentUser=null;currentProfile=null;updateAuthUI();if(window.YCZDenarii)YCZDenarii.setUser(null);navigate('home');toast('Signed out');});});
     } else if(currentUser){
       actions.innerHTML='<button class="btn-follow" id="profileFollowBtn" data-uid="'+esc(userId)+'">Follow</button>';
       _sb.from('qmages_follows').select('id').eq('follower_id',currentUser.id).eq('following_id',userId).then(function(r){
@@ -1449,6 +1451,7 @@ function switchAuthTab(tab){
 function showAuthErr(msg){var e=$('authError');e.textContent=msg;e.style.display='block';}
 function setUser(user){
   currentUser=user;
+  if(window.YCZDenarii)YCZDenarii.setUser(user);
   _sb.from('profiles').select('*').eq('id',user.id).single().then(function(r){currentProfile=r.data;updateAuthUI();});
 }
 function updateAuthUI(){
@@ -1610,13 +1613,14 @@ tw(document.querySelector('.bottom-nav'));
 $('viewerBackBtn').addEventListener('click',function(){history.length>1?history.back():navigate('home');});
 $('viewerBackBtn').textContent='← Back';tw($('viewerBackBtn'));
 
+if(window.YCZDenarii)YCZDenarii.mount(_sb,{into:$('coin-slot')});   /* Denarii coin pill */
 _sb.auth.getSession().then(function(r){
   if(r.data&&r.data.session)setUser(r.data.session.user);
   loadHome();
 });
 _sb.auth.onAuthStateChange(function(event,session){
   if(session)setUser(session.user);
-  else{currentUser=null;currentProfile=null;updateAuthUI();}
+  else{currentUser=null;currentProfile=null;updateAuthUI();if(window.YCZDenarii)YCZDenarii.setUser(null);}
 });
 
 })();
