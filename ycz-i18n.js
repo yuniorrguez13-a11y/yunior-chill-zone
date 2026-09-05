@@ -122,6 +122,7 @@ en: {
   g_mc:"Blocky creative mode, running straight in the browser. Nothing to install.",
   g_flappy:"One button. Two pipes. Endless regret.",
   g_subway:"Endless runner. Dodge the trains, keep going.",
+  g_overwork:"Deliver six packages on legs made of jelly. Load the van, drive, don't drop the box. Something weird happens every shift.", rec_pay:"Best shift pay",
   g_suds:"Bullet-hell survival against the dishwasher uprising. Early build — expect rough edges.",
   g_sffg:"Stupidly Funny Fighting Game for Dummies. Two on one keyboard, or online with a room code.",
 
@@ -290,6 +291,7 @@ es: {
   g_mc:"Modo creativo de bloques, directo en el navegador. Sin instalar nada.",
   g_flappy:"Un botón. Dos tuberías. Arrepentimiento infinito.",
   g_subway:"Corredor sin fin. Esquiva los trenes y sigue.",
+  g_overwork:"Entrega seis paquetes con piernas de gelatina. Carga la furgoneta, conduce, no sueltes la caja. Cada turno pasa algo raro.", rec_pay:"Mejor paga por turno",
   g_suds:"Supervivencia bullet-hell contra el alzamiento de los lavavajillas. Versión temprana — tiene asperezas.",
   g_sffg:"Juego de lucha tontamente divertido para tontos. Dos en un teclado, o en línea con un código de sala.",
 
@@ -457,6 +459,7 @@ fr: {
   g_mc:"Mode créatif en blocs, directement dans le navigateur. Rien à installer.",
   g_flappy:"Un bouton. Deux tuyaux. Des regrets sans fin.",
   g_subway:"Course sans fin. Esquive les trains et continue.",
+  g_overwork:"Livre six colis avec des jambes en gelée. Charge le van, conduis, ne lâche pas le carton. Il se passe un truc bizarre à chaque service.", rec_pay:"Meilleure paie",
   g_suds:"Survie bullet-hell contre le soulèvement des lave-vaisselle. Version précoce — ça gratte encore.",
   g_sffg:"Jeu de combat bêtement drôle pour les nuls. À deux sur un clavier, ou en ligne avec un code.",
 
@@ -624,6 +627,7 @@ pt: {
   g_mc:"Modo criativo de blocos, direto no navegador. Sem instalar nada.",
   g_flappy:"Um botão. Dois canos. Arrependimento sem fim.",
   g_subway:"Corrida sem fim. Desvia-te dos comboios e continua.",
+  g_overwork:"Entregue seis pacotes com pernas de gelatina. Carregue a van, dirija, não derrube a caixa. Algo estranho acontece em todo turno.", rec_pay:"Melhor pagamento por turno",
   g_suds:"Sobrevivência bullet-hell contra o levantamento das máquinas de lavar. Versão inicial — tem arestas.",
   g_sffg:"Jogo de luta estupidamente divertido para totós. Dois num teclado, ou online com um código de sala.",
 

@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Overwork — Yuniors Chill Zone</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<meta name="theme-color" content="#0a0a12">
+<meta name="description" content="Overwork: deliver packages with legs made of jelly. Goofy co-op-in-spirit delivery shifts, straight from Yuniors Chill Zone.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+:root{--ink:#0d0c11;--panel:#15131a;--border:rgba(255,255,255,.1);--txt:#eceef3;--txt2:#a3a3b5;--txt3:#6b6b80;
+  --amber:#ffb020;--red:#e8162a;--cyan:#00d4ff;--grn:#37d67a;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--txt);font-family:'DM Sans',system-ui,sans-serif;}
+#cv{position:fixed;inset:0;display:block;touch-action:none;}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
+/* ── HUD ── */
+#hud{position:fixed;inset:0;pointer-events:none;display:none;}
+#hud.on{display:block;}
+.hud-top{position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:12px;background:rgba(13,12,17,.78);
+  border:1px solid var(--border);backdrop-filter:blur(6px);font-weight:700;font-size:14px;}
+.pill b{font-family:'Syne',sans-serif;font-size:18px;color:var(--amber);font-variant-numeric:tabular-nums;}
+.pill.warn b{color:var(--red);}
+#carry{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);padding:9px 14px;border-radius:12px;
+  background:rgba(13,12,17,.82);border:1px solid rgba(255,176,32,.4);font-size:13.5px;display:none;text-align:center;max-width:92vw;}
+#carry.on{display:block;}
+#carry .to{color:var(--amber);font-weight:800;}
+#carry .dmg{color:var(--txt2);font-size:12px;margin-top:2px;}
+#carry .fragile{color:var(--red);font-weight:800;letter-spacing:.06em;}
+#hint{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);font-size:13px;color:var(--txt2);
+  background:rgba(13,12,17,.7);padding:7px 12px;border-radius:9px;border:1px solid var(--border);white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;}
+#hint kbd{display:inline-block;padding:1px 7px;border-radius:5px;background:#26242e;border:1px solid #3a3844;font:700 12px 'DM Sans',sans-serif;color:var(--txt);margin:0 2px;}
+#event{position:absolute;top:70px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:12px;background:rgba(232,22,42,.16);
+  border:1px solid rgba(232,22,42,.5);font-weight:800;font-size:14px;letter-spacing:.04em;text-transform:uppercase;opacity:0;transition:opacity .3s;}
+#event.on{opacity:1;}
+#toasts{position:absolute;right:14px;bottom:44px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+.toast{padding:8px 12px;border-radius:10px;background:rgba(13,12,17,.85);border:1px solid var(--border);font-size:13px;font-weight:600;animation:tin .2s ease-out;}
+.toast.good{border-color:rgba(55,214,122,.5);color:var(--grn);}
+.toast.bad{border-color:rgba(232,22,42,.5);color:#ff8b96;}
+.toast.out{animation:tout .3s ease-in forwards;}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes tout{to{opacity:0;transform:translateY(6px)}}
+/* ── screens ── */
+.screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(120% 90% at 50% 0%,rgba(255,176,32,.12),transparent 60%),rgba(10,10,18,.86);backdrop-filter:blur(6px);}
+.screen.on{display:flex;}
+.card{width:min(560px,100%);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:26px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,.6);}
+.logo{font-family:'Syne',sans-serif;font-size:clamp(40px,9vw,66px);font-weight:800;letter-spacing:-.03em;line-height:.95;
+  background:linear-gradient(135deg,#fff 30%,var(--amber));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.sub{color:var(--txt3);font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin:6px 0 18px;}
+.card p{color:var(--txt2);font-size:14px;line-height:1.55;margin-bottom:12px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:12px;border:1px solid var(--border);
+  background:#1c1a22;font-weight:700;font-size:14.5px;transition:transform .12s,background .12s;}
+.btn:hover{transform:translateY(-1px);background:#242230;}
+.btn.primary{background:var(--amber);border-color:var(--amber);color:#1c1608;}
+.btn.primary:hover{background:#ffc450;}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;color:var(--txt2);margin:14px 0 6px;}
+.keys kbd{display:inline-block;min-width:26px;text-align:center;padding:2px 7px;border-radius:6px;background:#26242e;border:1px solid #3a3844;font:700 12px 'DM Sans',sans-serif;color:var(--txt);}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.stat:last-child{border-bottom:0;}
+.stat b{color:var(--amber);font-variant-numeric:tabular-nums;}
+.stat .bad{color:#ff8b96;}
+.big{font-family:'Syne',sans-serif;font-size:42px;font-weight:800;color:var(--amber);line-height:1;margin:6px 0 2px;}
+.small{font-size:12px;color:var(--txt3);}
+.backlink{position:fixed;left:14px;bottom:12px;font-size:12.5px;color:var(--txt3);text-decoration:none;z-index:5;}
+.backlink:hover{color:var(--txt);}
+#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--txt3);font-size:14px;letter-spacing:.1em;text-transform:uppercase;z-index:9;}
+@media(max-width:760px){
+  .hud-top{flex-wrap:wrap;}
+  .pill{font-size:13px;padding:7px 10px;}
+  #hint{font-size:12px;}
+}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="loading">Clocking in…</div>
+
+<div id="hud">
+  <div class="hud-top">
+    <span class="pill" id="p-time">Shift <b id="h-time">4:00</b></span>
+    <span class="pill">Delivered <b id="h-done">0/6</b></span>
+    <span class="pill">Pay <b id="h-pay">$0</b></span>
+  </div>
+  <div id="event"></div>
+  <div id="carry"><span class="to" id="c-to"></span><div class="dmg" id="c-dmg"></div></div>
+  <div id="hint"></div>
+  <div id="toasts"></div>
+</div>
+
+<!-- MENU -->
+<div class="screen on" id="s-menu">
+  <div class="card">
+    <div class="logo">OVERWORK</div>
+    <div class="sub">Yuniors Chill Zone · delivery shift · prototype</div>
+    <p>Your legs are made of jelly. Your job is to deliver six packages before the shift ends. Load the van at the
+    warehouse, drive to the right house, carry the box to the doormat. Every drop costs you money. Something weird
+    happens every shift.</p>
+    <div class="keys">
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>walk · drive</span>
+      <span><kbd>E</kbd></span><span>pick up · drop · load van · enter / leave van</span>
+      <span><kbd>Click</kbd> / <kbd>Space</kbd></span><span>throw the box (why would you)</span>
+      <span><kbd>Drag mouse</kbd> · <kbd>Wheel</kbd></span><span>look around · zoom</span>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="btn-start">Start shift</button>
+      <span class="pill" id="p-best">Best shift <b id="m-best">$0</b></span>
+      <span class="pill">Savings <b id="m-cash">$0</b></span>
+    </div>
+    <p class="small" style="margin-top:14px;">Keyboard + mouse for now. Savings will buy Pitty Striker skins one day — looks only, never stats.</p>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="screen" id="s-sum">
+  <div class="card">
+    <div class="sub" id="sum-title">Shift over</div>
+    <div class="big" id="sum-pay">$0</div>
+    <div class="small" id="sum-note"></div>
+    <div id="sum-list" style="margin:14px 0 6px;"></div>
+    <div class="row">
+      <button class="btn primary" id="btn-again">Another shift</button>
+      <button class="btn" id="btn-menu">Clock out</button>
+    </div>
+  </div>
+</div>
+
+<a class="backlink" href="gaming.html">← Back to the console</a>
+
+<script src="ycz-scores.js"></script>
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+/* ═══════════════════════════════════════════════════════════════
+   OVERWORK — the delivery shift
+   No skeletal animation anywhere: the body is driven by springs and the
+   legs are noodles that react to where the feet land (Squidward rules).
+   Physics is hand-rolled and deliberately simple: AABB world, boxes that
+   fall, bounce and stack, a capsule-ish player, an arcade van.
+   ═══════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+/* ── save ── */
+const SAVE_KEY = 'overwork-save';
+let save = { cash: 0, best: 0, shifts: 0 };
+try { save = Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
+const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} };
+
+/* ── renderer / scene ── */
+const canvas = $('cv');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const SKY_DAY = new THREE.Color(0x8fc7ff), SKY_RAIN = new THREE.Color(0x5b6675);
+scene.background = SKY_DAY.clone();
+scene.fog = new THREE.Fog(scene.background, 60, 140);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 300);
+const sun = new THREE.DirectionalLight(0xfff2d8, 2.2);
+sun.position.set(30, 50, 20); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -45; sun.shadow.camera.right = 45; sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 140; sun.shadow.bias = -0.0006;
+scene.add(sun); scene.add(sun.target);
+const hemi = new THREE.HemisphereLight(0xbfe3ff, 0x5a7a3a, 0.9);
+scene.add(hemi);
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+/* ── materials (flat, low-poly look) ── */
+const M = {};
+const mat = (hex, extra) => new THREE.MeshLambertMaterial(Object.assign({ color: hex }, extra || {}));
+M.grass = mat(0x6fae4a); M.road = mat(0x3a3a44); M.walk = mat(0xb9b3a6); M.curb = mat(0x8e887c);
+M.wall = [mat(0xe8d9c0), mat(0xd6c2a8), mat(0xc9d3e0), mat(0xe2c8c8), mat(0xd9e0c6)];
+M.roof = [mat(0x8a3b2f), mat(0x4a4f6a), mat(0x6b5a4a), mat(0x3f6b4f)];
+M.door = mat(0x5a3a22); M.mat = mat(0xffb020, { emissive: 0x5a3c00 }); M.matOff = mat(0x8c7a4a);
+M.wood = mat(0x7a5a3a); M.leaf = mat(0x3f8f3a); M.leaf2 = mat(0x5aa84a); M.pole = mat(0x2b2b33);
+M.skin = mat(0xf3c9a5); M.shirt = mat(0x2d7be0); M.pants = mat(0x2b2f45); M.shoe = mat(0x1a1a22); M.cap = mat(0xe8162a);
+M.box = mat(0xc99a5b); M.boxTape = mat(0x8a6a3a); M.fragile = mat(0xe0b06a);
+M.van = mat(0xf2f2f5); M.vanDark = mat(0x2a2a33); M.glass = mat(0x8fd4ff, { transparent: true, opacity: .7 }); M.tire = mat(0x151518);
+M.dog = mat(0xc48a4a); M.dogDark = mat(0x5a3a22); M.warehouse = mat(0x8f95a3); M.warehouseDark = mat(0x5c6170);
+M.rain = new THREE.LineBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: .55 });
+
+/* ── world data ── */
+const colliders = [];          // {min:{x,y,z}, max:{x,y,z}} static AABBs the player, van and boxes hit
+const stepables = [];          // low colliders the player may step onto
+const houses = [];             // {i, x, z, doormat:{min,max}, num, label}
+function addBox(x, y, z, w, h, d, material, opts = {}) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const m = new THREE.Mesh(g, material);
+  m.position.set(x, y + h / 2, z);
+  m.castShadow = opts.shadow !== false; m.receiveShadow = true;
+  scene.add(m);
+  if (opts.solid !== false) {
+    const c = { min: { x: x - w / 2, y, z: z - d / 2 }, max: { x: x + w / 2, y: y + h, z: z + d / 2 } };
+    colliders.push(c); if (opts.step) stepables.push(c);
+  }
+  return m;
+}
+function buildWorld() {
+  // ground
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), M.grass);
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  // main road along z, side road along x
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(9, 160), M.road); road.rotation.x = -Math.PI / 2; road.position.set(0, 0.01, 0); road.receiveShadow = true; scene.add(road);
+  const road2 = new THREE.Mesh(new THREE.PlaneGeometry(120, 9), M.road); road2.rotation.x = -Math.PI / 2; road2.position.set(0, 0.011, -40); road2.receiveShadow = true; scene.add(road2);
+  for (let i = -8; i <= 8; i++) { const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 3), mat(0xe9e2c8)); dash.rotation.x = -Math.PI / 2; dash.position.set(0, 0.02, i * 8); scene.add(dash); }
+  // sidewalks
+  for (const sx of [-6.5, 6.5]) { const sw = new THREE.Mesh(new THREE.PlaneGeometry(4, 160), M.walk); sw.rotation.x = -Math.PI / 2; sw.position.set(sx, 0.012, 0); sw.receiveShadow = true; scene.add(sw); }
+  // warehouse at the south end
+  const WZ = 34;
+  addBox(-14, 0, WZ, 22, 7, 14, M.warehouse);
+  addBox(-14, 7, WZ, 23, 0.6, 15, M.warehouseDark);
+  addBox(-2.6, 0, WZ, 1.2, 0.45, 10, M.warehouseDark, { step: true });         // loading dock ledge (step-up height)
+  const sign = makeLabel('OVERWORK LOGISTICS', 0xffb020, 512, 96); sign.position.set(-3.1, 5.2, WZ); sign.rotation.y = Math.PI / 2; sign.scale.set(6, 1.1, 1); scene.add(sign);
+  // houses on both sides of the road
+  const streetNames = ['Maple St', 'Cedar Ave', 'Birch Rd', 'Oak Ln', 'Pine Ct', 'Elm Way', 'Ash Blvd', 'Willow Dr'];
+  const spots = [[-14, 14], [14, 14], [-14, -4], [14, -4], [-14, -22], [14, -22], [-30, -50], [30, -50]];
+  spots.forEach(([x, z], i) => {
+    const facing = x < 0 ? 1 : -1;                     // faces the road
+    const w = 9, d = 8, h = 4.2 + (i % 3) * 0.4;
+    addBox(x, 0, z, w, h, d, M.wall[i % M.wall.length]);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.78, 2.6, 4), M.roof[i % M.roof.length]);
+    roof.position.set(x, h + 1.3, z); roof.rotation.y = Math.PI / 4; roof.castShadow = true; scene.add(roof);
+    const dx = x + facing * (w / 2 + 0.02);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.2, 1.2), M.door); door.position.set(dx, 1.1, z); scene.add(door);
+    // porch + steps (steps are stepables — the stairs are the enemy)
+    const steps = 1 + (i % 3);
+    for (let s = 0; s < steps; s++) addBox(x + facing * (w / 2 + 0.9 + s * 0.7), 0, z, 0.7, 0.32 * (steps - s), 3.2, M.curb, { step: true, shadow: false });
+    const porchX = x + facing * (w / 2 + 0.45);
+    if (steps > 0) addBox(porchX, 0, z, 0.9, 0.32 * steps, 3.2, M.walk, { step: true, shadow: false });
+    const matX = x + facing * (w / 2 + 1.6 + steps * 0.7);
+    const doormat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 1.2), M.matOff); doormat.position.set(matX, 0.03, z); doormat.receiveShadow = true; scene.add(doormat);
+    const num = 3 + i * 4;
+    const label = makeLabel(String(num), 0xffffff, 128, 128); label.position.set(dx + facing * 0.15, 2.9, z + 1.1); label.rotation.y = facing > 0 ? Math.PI / 2 : -Math.PI / 2; label.scale.set(0.7, 0.7, 1); scene.add(label);
+    houses.push({ i, x, z, num, street: streetNames[i], label: `${num} ${streetNames[i]}`, matMesh: doormat, facing,
+      doormat: { min: { x: matX - 1.2, y: -1, z: z - 1.0 }, max: { x: matX + 1.2, y: 3, z: z + 1.0 } },
+      doorPos: new THREE.Vector3(dx + facing * 0.6, 0, z) });
+    // fence bits and a tree per lot
+    addBox(x - facing * 2, 0, z + d / 2 + 2.2, 6, 0.9, 0.2, M.wood, { shadow: false });
+    tree(x - facing * 1.5, z - d / 2 - 3.2, 1 + (i % 2) * 0.4);
+  });
+  // street lights + extra trees along the road
+  for (let z = -60; z <= 40; z += 20) for (const sx of [-5.2, 5.2]) {
+    addBox(sx, 0, z, 0.22, 5, 0.22, M.pole, { solid: false });
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), mat(0xfff2c0, { emissive: 0x6a5a20 })); lamp.position.set(sx, 5.1, z); scene.add(lamp);
+  }
+  for (let k = 0; k < 14; k++) { const tx = (Math.random() < .5 ? -1 : 1) * rnd(24, 60); let tz = rnd(-70, 40); if (Math.abs(tx) < 38 && tz > -58 && tz < -42) tz -= 20; tree(tx, tz, rnd(0.9, 1.6)); }
+  // the van, parked in front of the dock
+  van.group.position.set(3.2, 0, WZ - 2); van.yaw = 0;
+}
+function tree(x, z, s) {
+  addBox(x, 0, z, 0.5 * s, 1.6 * s, 0.5 * s, M.wood);
+  const c1 = new THREE.Mesh(new THREE.ConeGeometry(1.6 * s, 2.6 * s, 6), M.leaf); c1.position.set(x, 2.6 * s, z); c1.castShadow = true; scene.add(c1);
+  const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.1 * s, 2.0 * s, 6), M.leaf2); c2.position.set(x, 3.8 * s, z); c2.castShadow = true; scene.add(c2);
+}
+function makeLabel(text, color, w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.fillStyle = '#1c1a22'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#' + color.toString(16).padStart(6, '0'); g.font = `800 ${Math.floor(h * 0.6)}px Syne, DM Sans, sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex }));
+}
+
+/* ── springs: the whole animation system is this one struct ── */
+function spring(k, d) { return { x: 0, v: 0, k, d }; }
+function springTo(s, target, dt) { const a = (target - s.x) * s.k - s.v * s.d; s.v += a * dt; s.x += s.v * dt; return s.x; }
+
+/* ── the courier: a body on two noodles ── */
+function makeNoodleMesh(material, radius) {
+  const m = new THREE.Mesh(new THREE.BufferGeometry(), material); m.castShadow = true; m.frustumCulled = false; scene.add(m); return m;
+}
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
+function updateNoodle(mesh, from, ctrl, to, radius, segs = 9) {
+  const curve = new THREE.QuadraticBezierCurve3(from, ctrl, to);
+  const g = new THREE.TubeGeometry(curve, segs, radius, 6, false);
+  mesh.geometry.dispose(); mesh.geometry = g;
+}
+class Courier {
+  constructor() {
+    this.pos = new THREE.Vector3(1.5, 0, 26); this.vel = new THREE.Vector3(); this.yaw = Math.PI;
+    this.onGround = true; this.radius = 0.36; this.height = 1.75;
+    this.group = new THREE.Group(); scene.add(this.group);
+    this.torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 0.55, 4, 10), M.shirt); this.torso.castShadow = true; this.group.add(this.torso);
+    this.hips = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.3, 0.42), M.pants); this.hips.castShadow = true; this.group.add(this.hips);
+    this.head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 12), M.skin); this.head.castShadow = true; this.group.add(this.head);
+    this.cap = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.16, 12), M.cap); this.head.add(this.cap); this.cap.position.y = 0.26;
+    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.28), M.cap); brim.position.set(0, 0.2, 0.38); this.head.add(brim);
+    for (const sx of [-0.12, 0.12]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), M.shoe); eye.position.set(sx, 0.05, 0.3); this.head.add(eye); }
+    // legs & arms are noodles; feet & hands are little blocks
+    this.legL = makeNoodleMesh(M.pants, 0.11); this.legR = makeNoodleMesh(M.pants, 0.11);
+    this.armL = makeNoodleMesh(M.shirt, 0.085); this.armR = makeNoodleMesh(M.shirt, 0.085);
+    this.footL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 0.46), M.shoe); this.footR = this.footL.clone();
+    this.handL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), M.skin); this.handR = this.handL.clone();
+    for (const m of [this.footL, this.footR, this.handL, this.handR]) { m.castShadow = true; scene.add(m); }
+    // foot state: where each foot is planted, where it is going, and its step progress
+    this.feet = [
+      { pos: new THREE.Vector3(-0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(60, 7), kneeSide: -1 },
+      { pos: new THREE.Vector3(0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(60, 7), kneeSide: 1 }];
+    this.feet[0].pos.add(this.pos); this.feet[1].pos.add(this.pos);
+    // body springs: lean (pitch/roll), bob, squash — all excited by motion, never keyframed
+    this.lean = { x: spring(40, 6), z: spring(40, 6) }; this.bob = spring(90, 8); this.squash = spring(120, 9); this.hipTwist = spring(30, 6);
+    this.hands = [{ p: new THREE.Vector3(), v: new THREE.Vector3() }, { p: new THREE.Vector3(), v: new THREE.Vector3() }];
+    this.carry = null; this.stun = 0; this.visible = true; this.stepCooldown = 0;
+  }
+  setVisible(v) { this.visible = v; this.group.visible = v; for (const m of [this.legL, this.legR, this.armL, this.armR, this.footL, this.footR, this.handL, this.handR]) m.visible = v; }
+  update(dt, input, camYaw) {
+    // ── movement (input is camera-relative) ──
+    const slick = world.rain ? 0.55 : 1;
+    const weight = this.carry ? this.carry.mass : 0;
+    const maxSpeed = (6.2 - weight * 1.1) * (this.stun > 0 ? 0.2 : 1);
+    const accel = 26 * slick / (1 + weight * 0.35);
+    let mx = 0, mz = 0;
+    if (input.f) mz -= 1; if (input.b) mz += 1; if (input.l) mx -= 1; if (input.r) mx += 1;
+    const len = Math.hypot(mx, mz);
+    if (len > 0) { mx /= len; mz /= len; }
+    const s = Math.sin(camYaw), c = Math.cos(camYaw);
+    const wx = mx * c + mz * s, wz = -mx * s + mz * c;
+    const targetVx = wx * maxSpeed, targetVz = wz * maxSpeed;
+    const fr = this.onGround ? (world.rain ? 4.5 : 11) : 1.5;
+    this.vel.x += (targetVx - this.vel.x) * Math.min(1, (len > 0 ? accel / maxSpeed : fr) * dt);
+    this.vel.z += (targetVz - this.vel.z) * Math.min(1, (len > 0 ? accel / maxSpeed : fr) * dt);
+    if (input.jump && this.onGround && this.stun <= 0) { this.vel.y = 6.5 - weight * 0.8; this.onGround = false; this.squash.v -= 6; input.jump = false; }
+    this.vel.y -= 18 * dt;
+    // integrate + collide
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    collideCylinder(this, dt);
+    this.pos.y += this.vel.y * dt;
+    const floor = floorHeight(this.pos.x, this.pos.z, this.pos.y + 0.5, this.radius);
+    if (this.pos.y <= floor) {
+      if (!this.onGround && this.vel.y < -4) { this.squash.v -= Math.min(10, -this.vel.y * 0.9); if (this.carry && this.vel.y < -9) dropCarried(this, true); }
+      this.pos.y = floor; this.vel.y = 0; this.onGround = true;
+    } else if (this.pos.y > floor + 0.05) this.onGround = false;
+    if (this.stun > 0) this.stun -= dt;
+    // facing: where you go (or where the camera looks while idle and carrying)
+    const speed = Math.hypot(this.vel.x, this.vel.z);
+    if (speed > 0.6) { const ty = Math.atan2(this.vel.x, this.vel.z); this.yaw += angleDelta(this.yaw, ty) * Math.min(1, 10 * dt); }
+    // ── feet: step when the planted foot is too far behind the hip ──
+    this.stepCooldown -= dt;
+    const dirX = speed > 0.3 ? this.vel.x / speed : Math.sin(this.yaw), dirZ = speed > 0.3 ? this.vel.z / speed : Math.cos(this.yaw);
+    const sideX = Math.cos(this.yaw), sideZ = -Math.sin(this.yaw);
+    const stride = clamp(0.35 + speed * 0.13, 0.35, 1.15);
+    const stepDur = clamp(0.32 - speed * 0.022, 0.14, 0.32);
+    for (let i = 0; i < 2; i++) {
+      const f = this.feet[i], other = this.feet[1 - i], side = i === 0 ? -1 : 1;
+      const hipX = this.pos.x + sideX * side * 0.19, hipZ = this.pos.z + sideZ * side * 0.19;
+      if (f.t < 1) {                                    // mid-step: fly along an arc
+        f.t = Math.min(1, f.t + dt / stepDur);
+        const e = f.t < .5 ? 2 * f.t * f.t : 1 - Math.pow(-2 * f.t + 2, 2) / 2;
+        f.pos.lerpVectors(f.from, f.to, e);
+        f.pos.y = f.to.y + Math.sin(f.t * Math.PI) * clamp(0.12 + speed * 0.05, 0.12, 0.42);
+        if (f.t >= 1) { f.knee.v += 9 + speed * 2; this.bob.v -= 1.2 + speed * 0.5; }   // landing kick: the jelly reacts
+      } else if (this.onGround) {
+        const aheadX = hipX + dirX * stride * (speed > 0.3 ? 1 : 0), aheadZ = hipZ + dirZ * stride * (speed > 0.3 ? 1 : 0);
+        const dx = f.pos.x - hipX, dz = f.pos.z - hipZ;
+        const behind = dx * dirX + dz * dirZ;                        // negative = foot is behind the hip
+        const dist = Math.hypot(dx, dz);
+        const needs = speed > 0.3 ? (behind < -stride * 0.55 || dist > stride * 1.5) : dist > 0.32;
+        if (needs && other.t >= 1 && this.stepCooldown <= 0) {
+          f.from.copy(f.pos); f.to.set(aheadX + rnd(-0.06, 0.06), floorHeight(aheadX, aheadZ, this.pos.y + 0.5, 0.15), aheadZ + rnd(-0.06, 0.06));
+          f.t = 0; this.stepCooldown = stepDur * 0.35;
+          this.lean.z.v += side * 1.6; this.hipTwist.v += side * 3;
+        }
+      } else { f.pos.set(hipX, this.pos.y - 0.2, hipZ); f.t = 1; }   // airborne: legs dangle under
+      springTo(f.knee, 0, dt);
+    }
+    // ── body springs ──
+    const ax = (targetVx - this.vel.x), az = (targetVz - this.vel.z);
+    const fwdLean = (this.vel.x * dirX + this.vel.z * dirZ) * 0.055 + (ax * dirX + az * dirZ) * 0.02;
+    const sideLean = (this.vel.x * sideX + this.vel.z * sideZ) * 0.05;
+    springTo(this.lean.x, fwdLean, dt); springTo(this.lean.z, -sideLean, dt);
+    springTo(this.bob, 0, dt); springTo(this.squash, 0, dt); springTo(this.hipTwist, 0, dt);
+    // ── pose the rigid bits ──
+    const hipY = this.pos.y + 0.98 + this.bob.x * 0.05 + this.squash.x * 0.03 + (this.onGround ? 0 : 0.1);
+    this.group.position.set(this.pos.x, hipY, this.pos.z);
+    this.group.rotation.set(this.lean.x.x, this.yaw + this.hipTwist.x * 0.04, this.lean.z.x, 'YXZ');
+    const sq = 1 + this.squash.x * 0.06;
+    this.group.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+    this.hips.position.set(0, 0, 0); this.torso.position.set(0, 0.62, 0); this.head.position.set(0, 1.3, 0);
+    this.head.rotation.set(-this.lean.x.x * 0.6, 0, -this.lean.z.x * 0.6);
+    // ── legs: hip → knee (a lagging control point) → foot ──
+    const hipWorld = new THREE.Vector3();
+    for (let i = 0; i < 2; i++) {
+      const f = this.feet[i], side = i === 0 ? -1 : 1;
+      hipWorld.set(side * 0.19, -0.1, 0); this.group.localToWorld(hipWorld);
+      const mid = _a.copy(hipWorld).add(f.pos).multiplyScalar(0.5);
+      // the knee bows backwards and outwards with the step kick, and lags the body: that is the jelly
+      const bend = 0.18 + f.knee.x * 0.06;
+      mid.x += -dirX * bend + sideX * side * (0.08 + f.knee.x * 0.02);
+      mid.z += -dirZ * bend + sideZ * side * (0.08 + f.knee.x * 0.02);
+      mid.y -= 0.05 + Math.max(0, f.knee.x) * 0.02;
+      updateNoodle(i === 0 ? this.legL : this.legR, hipWorld.clone(), mid.clone(), f.pos.clone(), 0.11);
+      const foot = i === 0 ? this.footL : this.footR;
+      foot.position.set(f.pos.x, f.pos.y + 0.08, f.pos.z); foot.rotation.y = this.yaw;
+    }
+    // ── arms: hang, swing with the body, or hold the box overhead ──
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? -1 : 1, h = this.hands[i];
+      const shoulder = _b.set(side * 0.42, 0.92, 0); this.group.localToWorld(shoulder);
+      let target;
+      if (this.carry) { target = _c.set(side * this.carry.size.x * 0.42, 1.55 + this.carry.size.y * 0.1, 0.05); this.group.localToWorld(target); }
+      else { target = _c.set(side * 0.46, 0.15, -0.05 + fwdLean * 0.6); this.group.localToWorld(target); }
+      // hands are heavy and lazy: a velocity spring towards the target
+      const k = this.carry ? 90 : 26, d = this.carry ? 12 : 5;
+      h.v.x += ((target.x - h.p.x) * k - h.v.x * d) * dt; h.v.y += ((target.y - h.p.y) * k - h.v.y * d) * dt; h.v.z += ((target.z - h.p.z) * k - h.v.z * d) * dt;
+      h.p.addScaledVector(h.v, dt);
+      const elbow = _a.copy(shoulder).add(h.p).multiplyScalar(0.5); elbow.x += sideX * side * 0.16; elbow.z += sideZ * side * 0.16; elbow.y -= this.carry ? -0.05 : 0.12;
+      updateNoodle(i === 0 ? this.armL : this.armR, shoulder.clone(), elbow.clone(), h.p.clone(), 0.085);
+      (i === 0 ? this.handL : this.handR).position.copy(h.p);
+    }
+    // ── the carried box rides above the head, wobbling with the body ──
+    if (this.carry) {
+      const b = this.carry;
+      const top = _a.set(0, 1.75 + b.size.y / 2, 0.05); this.group.localToWorld(top);
+      b.pos.lerp(top, Math.min(1, 14 * dt)); b.vel.set(0, 0, 0);
+      b.rot = this.yaw + this.hipTwist.x * 0.06 + this.lean.z.x * 0.4; b.tilt = this.lean.x.x * 1.4;
+    }
+  }
+}
+function angleDelta(a, b) { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; }
+
+/* ── collision helpers (AABB world) ── */
+function floorHeight(x, z, yRef, r) {
+  let best = 0;
+  for (const c of colliders) {
+    if (x + r > c.min.x && x - r < c.max.x && z + r > c.min.z && z - r < c.max.z && c.max.y <= yRef + 0.01 && c.max.y > best) best = c.max.y;
+  }
+  return best;
+}
+function collideCylinder(body, dt) {
+  const r = body.radius, feetY = body.pos.y, headY = body.pos.y + body.height;
+  for (const c of colliders) {
+    if (headY <= c.min.y || feetY >= c.max.y - 0.01) continue;
+    // low ledges you can step onto
+    if (c.max.y - feetY <= 0.5 && stepables.includes(c)) continue;
+    const cx = clamp(body.pos.x, c.min.x, c.max.x), cz = clamp(body.pos.z, c.min.z, c.max.z);
+    const dx = body.pos.x - cx, dz = body.pos.z - cz, d = Math.hypot(dx, dz);
+    if (d < r) {
+      if (d > 1e-4) { body.pos.x += dx / d * (r - d); body.pos.z += dz / d * (r - d); }
+      else { body.pos.x = body.pos.x < (c.min.x + c.max.x) / 2 ? c.min.x - r : c.max.x + r; }
+      const n = d > 1e-4 ? [dx / d, dz / d] : [1, 0];
+      const vn = body.vel.x * n[0] + body.vel.z * n[1];
+      if (vn < 0) { body.vel.x -= vn * n[0]; body.vel.z -= vn * n[1]; if (body.onHit) body.onHit(-vn); }
+    }
+  }
+}
+
+/* ── packages ── */
+const boxes = [];
+class Package {
+  constructor(house, opts = {}) {
+    this.house = house; this.fragile = !!opts.fragile; this.oversized = !!opts.oversized;
+    const s = this.oversized ? 1.9 : rnd(0.75, 1.1);
+    this.size = new THREE.Vector3(0.7 * s, 0.55 * s, 0.6 * s); this.mass = this.oversized ? 3.2 : (this.fragile ? 0.9 : 1 + (s - 0.75) * 1.5);
+    this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3(); this.rot = 0; this.tilt = 0; this.damage = 0; this.state = 'ground'; this.delivered = false;
+    this.group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(this.size.x, this.size.y, this.size.z), this.fragile ? M.fragile : M.box); body.castShadow = true; body.receiveShadow = true; this.group.add(body);
+    const tape = new THREE.Mesh(new THREE.BoxGeometry(this.size.x * 0.22, this.size.y + 0.01, this.size.z + 0.01), M.boxTape); this.group.add(tape);
+    const lab = makeLabel(this.fragile ? 'FRAGILE' : 'TO: ' + house.num, this.fragile ? 0xe8162a : 0x222222, 256, 64); lab.position.set(0, 0, this.size.z / 2 + 0.005); lab.scale.set(this.size.x * 0.8, this.size.y * 0.3, 1); this.group.add(lab);
+    this.mesh = body; scene.add(this.group);
+  }
+  hit(impulse) {
+    if (this.delivered) return;
+    const before = this.damage;
+    this.damage = clamp(this.damage + impulse * 0.022 * (this.fragile ? 3.2 : 1), 0, 1);
+    if (this.damage - before > 0.04) { sfx('thud', impulse); if (this.fragile && this.damage - before > 0.15) toast('Something inside broke.', 'bad'); }
+  }
+  step(dt) {
+    if (this.state !== 'ground') return;
+    this.vel.y -= 18 * dt;
+    this.pos.addScaledVector(this.vel, dt);
+    const hx = this.size.x / 2, hz = this.size.z / 2;
+    // floor: ground, static colliders, other resting boxes
+    let floor = floorHeight(this.pos.x, this.pos.z, this.pos.y + this.size.y, Math.min(hx, hz) * 0.8);
+    for (const o of boxes) if (o !== this && o.state === 'ground' && Math.abs(o.pos.x - this.pos.x) < (hx + o.size.x / 2) * 0.9 && Math.abs(o.pos.z - this.pos.z) < (hz + o.size.z / 2) * 0.9) {
+      const top = o.pos.y + o.size.y / 2; if (top <= this.pos.y - this.size.y / 2 + 0.25 && top > floor) floor = top;
+    }
+    const bottom = this.pos.y - this.size.y / 2;
+    if (bottom <= floor) {
+      if (this.vel.y < -2.5) { this.hit(-this.vel.y); this.vel.y = -this.vel.y * 0.28; this.vel.x *= 0.6; this.vel.z *= 0.6; this.rot += rnd(-0.4, 0.4); }
+      else { this.vel.y = 0; }
+      this.pos.y = floor + this.size.y / 2;
+      const fr = world.rain ? 0.985 : 0.9; this.vel.x *= fr; this.vel.z *= fr;
+      if (Math.abs(this.vel.x) < 0.05) this.vel.x = 0; if (Math.abs(this.vel.z) < 0.05) this.vel.z = 0;
+    }
+    // walls
+    const fake = { pos: this.pos, vel: this.vel, radius: Math.max(hx, hz) * 0.9, height: this.size.y, onHit: v => { if (v > 3) this.hit(v * 0.7); this.vel.x *= 0.5; this.vel.z *= 0.5; } };
+    fake.pos = new THREE.Vector3(this.pos.x, this.pos.y - this.size.y / 2, this.pos.z);
+    collideCylinder(fake, dt); this.pos.x = fake.pos.x; this.pos.z = fake.pos.z;
+    this.tilt *= 0.9;
+  }
+  render() {
+    this.group.position.copy(this.pos); this.group.rotation.set(this.tilt, this.rot, 0, 'YXZ');
+    if (this.state === 'van' || this.delivered) this.group.visible = false; else this.group.visible = true;
+    this.mesh.material = this.damage > 0.6 ? M.boxTape : (this.fragile ? M.fragile : M.box);
+  }
+}
+function dropCarried(who, violent) {
+  const b = who.carry; if (!b) return;
+  who.carry = null; b.state = 'ground';
+  const fwd = new THREE.Vector3(Math.sin(who.yaw), 0, Math.cos(who.yaw));
+  b.vel.copy(who.vel).addScaledVector(fwd, violent ? 2.5 : 0.8); b.vel.y = violent ? 1.5 : 0.5;
+  b.pos.y = Math.max(b.pos.y, who.pos.y + 1.2);
+  if (violent) toast('You dropped it!', 'bad');
+  updateCarryHud();
+}
+function throwCarried(who, camDir) {
+  const b = who.carry; if (!b) return;
+  who.carry = null; b.state = 'ground';
+  b.vel.set(camDir.x * 9, 5.5, camDir.z * 9).add(who.vel); b.rot += rnd(-1, 1);
+  who.lean.x.v -= 4; who.squash.v -= 3; sfx('whoosh');
+  updateCarryHud();
+}
+
+/* ── the van (arcade, kinematic against the AABB world) ── */
+const van = { group: new THREE.Group(), yaw: 0, speed: 0, steer: 0, cargo: [], driver: null, bob: spring(60, 7), roll: spring(50, 6), pitch: spring(50, 6) };
+{
+  const g = van.group; scene.add(g);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.9, 4.6), M.van); body.position.set(0, 1.35, -0.3); body.castShadow = true; g.add(body);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.9, 1.3), M.van); cab.position.set(0, 0.85, 2.3); cab.castShadow = true; g.add(cab);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.8, 0.12), M.glass); glass.position.set(0, 1.75, 1.95); g.add(glass);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.24, 0.25, 4.62), M.cap); stripe.position.set(0, 1.0, -0.3); g.add(stripe);
+  const logo = makeLabel('OVERWORK', 0xffb020, 512, 96); logo.position.set(1.12, 1.6, -0.4); logo.rotation.y = Math.PI / 2; logo.scale.set(3.2, 0.6, 1); g.add(logo);
+  const logo2 = logo.clone(); logo2.position.x = -1.12; logo2.rotation.y = -Math.PI / 2; g.add(logo2);
+  van.wheels = [];
+  for (const [x, z] of [[-1.05, 1.6], [1.05, 1.6], [-1.05, -1.5], [1.05, -1.5]]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 12), M.tire); w.rotation.z = Math.PI / 2; w.position.set(x, 0.42, z); w.castShadow = true; g.add(w); van.wheels.push(w);
+  }
+  van.doorPos = () => new THREE.Vector3(1.6, 0, 2.2).applyAxisAngle(new THREE.Vector3(0, 1, 0), van.yaw).add(van.group.position);
+  van.rearPos = () => new THREE.Vector3(0, 0, -3.3).applyAxisAngle(new THREE.Vector3(0, 1, 0), van.yaw).add(van.group.position);
+  van.radius = 2.3; van.height = 2.4; van.pos = van.group.position; van.vel = new THREE.Vector3();
+  van.onHit = v => { if (v > 3) { van.pitch.v -= v * 1.5; sfx('crash', v); for (const b of van.cargo) b.hit(v * 0.9); if (v > 6) toast('Cargo shifted…', 'bad'); } };
+}
+function updateVan(dt, input) {
+  const drive = van.driver != null;
+  const maxS = 14, acc = drive && input.f ? 9 : drive && input.b ? -6 : 0;
+  van.speed += acc * dt;
+  van.speed -= van.speed * (drive && (input.f || input.b) ? 0.35 : 1.6) * dt;
+  van.speed = clamp(van.speed, -5, maxS);
+  const steerIn = drive ? ((input.l ? 1 : 0) - (input.r ? 1 : 0)) : 0;
+  van.steer = lerp(van.steer, steerIn, Math.min(1, 6 * dt));
+  const turn = van.steer * clamp(Math.abs(van.speed) / 4, 0, 1) * 1.6 * (van.speed < 0 ? -1 : 1) * (world.rain ? 1.25 : 1);
+  van.yaw += turn * dt;
+  const fwd = new THREE.Vector3(Math.sin(van.yaw), 0, Math.cos(van.yaw));
+  van.vel.copy(fwd).multiplyScalar(van.speed);
+  van.pos.x += van.vel.x * dt; van.pos.z += van.vel.z * dt;
+  const before = van.speed;
+  collideCylinder(van, dt);
+  const vn = van.vel.x * fwd.x + van.vel.z * fwd.z; if (Math.abs(vn) < Math.abs(before) - 0.5) van.speed = vn * 0.4;
+  // stay on the lot
+  van.pos.x = clamp(van.pos.x, -70, 70); van.pos.z = clamp(van.pos.z, -80, 44);
+  // body springs
+  springTo(van.roll, -van.steer * clamp(Math.abs(van.speed) / 8, 0, 1) * 0.12, dt); springTo(van.pitch, -acc * 0.012, dt); springTo(van.bob, 0, dt);
+  van.group.rotation.set(van.pitch.x, van.yaw, van.roll.x, 'YXZ');
+  for (const w of van.wheels) w.rotation.x -= van.speed * dt * 2.2;
+  van.wheels[0].rotation.y = van.wheels[1].rotation.y = van.steer * 0.5;
+  if (drive) { courier.pos.copy(van.pos); courier.pos.y = 0; courier.vel.set(0, 0, 0); }
+}
+
+/* ── the dog (an event) ── */
+let dog = null;
+function spawnDog() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.36, 0.8), M.dog); body.position.y = 0.42; body.castShadow = true; g.add(body);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.3, 0.34), M.dog); head.position.set(0, 0.62, 0.5); g.add(head);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.14), M.dogDark); nose.position.set(0, 0.56, 0.72); g.add(nose);
+  for (const sx of [-0.14, 0.14]) { const ear = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, 0.06), M.dogDark); ear.position.set(sx, 0.8, 0.42); g.add(ear); }
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.4), M.dogDark); tail.position.set(0, 0.55, -0.55); g.add(tail);
+  const legs = []; for (const [x, z] of [[-0.14, 0.28], [0.14, 0.28], [-0.14, -0.28], [0.14, -0.28]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.26, 0.1), M.dogDark); l.position.set(x, 0.13, z); g.add(l); legs.push(l); }
+  scene.add(g);
+  dog = { group: g, pos: new THREE.Vector3(rnd(-8, 8), 0, -30), vel: new THREE.Vector3(), yaw: 0, legs, tail, t: 0, mood: 'wander', target: new THREE.Vector3(), timer: 0, radius: 0.35, height: 0.8, cooldown: 0 };
+}
+function updateDog(dt) {
+  const d = dog; d.t += dt; d.cooldown -= dt;
+  const toPlayer = courier.pos.distanceTo(d.pos);
+  if (courier.carry && toPlayer < 11 && !van.driver) d.mood = 'chase'; else if (d.mood === 'chase' && (toPlayer > 16 || !courier.carry)) d.mood = 'wander';
+  if (d.mood === 'wander') { d.timer -= dt; if (d.timer <= 0) { d.timer = rnd(2, 5); d.target.set(clamp(d.pos.x + rnd(-10, 10), -30, 30), 0, clamp(d.pos.z + rnd(-10, 10), -60, 30)); } }
+  else d.target.copy(courier.pos);
+  const dx = d.target.x - d.pos.x, dz = d.target.z - d.pos.z, dist = Math.hypot(dx, dz);
+  const sp = d.mood === 'chase' ? 6.8 : 2.2;
+  if (dist > 0.4) { d.vel.x = lerp(d.vel.x, dx / dist * sp, 4 * dt); d.vel.z = lerp(d.vel.z, dz / dist * sp, 4 * dt); } else { d.vel.multiplyScalar(0.8); }
+  d.pos.x += d.vel.x * dt; d.pos.z += d.vel.z * dt; collideCylinder(d, dt);
+  if (Math.hypot(d.vel.x, d.vel.z) > 0.3) d.yaw += angleDelta(d.yaw, Math.atan2(d.vel.x, d.vel.z)) * Math.min(1, 8 * dt);
+  const sp2 = Math.hypot(d.vel.x, d.vel.z);
+  d.group.position.set(d.pos.x, Math.abs(Math.sin(d.t * 14)) * sp2 * 0.03, d.pos.z); d.group.rotation.y = d.yaw;
+  d.legs.forEach((l, i) => { l.rotation.x = Math.sin(d.t * 16 + (i % 2) * Math.PI) * sp2 * 0.09; });
+  d.tail.rotation.y = Math.sin(d.t * 12) * 0.6;
+  if (d.mood === 'chase' && toPlayer < 0.9 && d.cooldown <= 0 && courier.carry) {
+    d.cooldown = 2.5; courier.stun = 0.7; courier.lean.x.v -= 6; courier.hipTwist.v += 10; dropCarried(courier, true); toast('The dog got you.', 'bad'); sfx('bark');
+    d.mood = 'wander'; d.timer = 3; d.target.set(d.pos.x + rnd(-8, 8), 0, d.pos.z + rnd(-8, 8));
+  }
+}
+
+/* ── rain (an event) ── */
+let rain = null;
+function spawnRain() {
+  const N = 900, pos = new Float32Array(N * 6);
+  for (let i = 0; i < N; i++) { const x = rnd(-40, 40), y = rnd(0, 30), z = rnd(-40, 40); pos.set([x, y, z, x, y - 0.9, z], i * 6); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  rain = new THREE.LineSegments(g, M.rain); rain.frustumCulled = false; scene.add(rain);
+}
+function updateRain(dt) {
+  const a = rain.geometry.attributes.position.array;
+  for (let i = 0; i < a.length; i += 6) { a[i + 1] -= 22 * dt; a[i + 4] -= 22 * dt; if (a[i + 1] < 0) { const y = 28 + rnd(0, 4); a[i + 1] = y; a[i + 4] = y - 0.9; a[i] = courier.pos.x + rnd(-40, 40); a[i + 3] = a[i]; a[i + 2] = courier.pos.z + rnd(-40, 40); a[i + 5] = a[i + 2]; } }
+  rain.geometry.attributes.position.needsUpdate = true;
+}
+
+/* ── tiny synth sfx ── */
+let ac = null;
+function sfx(kind, v = 5) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain(); o.connect(g); g.connect(ac.destination);
+    const t = ac.currentTime, vol = clamp(v / 12, 0.08, 0.5);
+    if (kind === 'thud') { o.type = 'triangle'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.18); }
+    else if (kind === 'crash') { o.type = 'sawtooth'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.35); }
+    else if (kind === 'ding') { o.type = 'sine'; o.frequency.setValueAtTime(880, t); o.frequency.setValueAtTime(1320, t + 0.09); }
+    else if (kind === 'bark') { o.type = 'square'; o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(180, t + 0.12); }
+    else { o.type = 'sine'; o.frequency.setValueAtTime(300, t); o.frequency.exponentialRampToValueAtTime(900, t + 0.2); }
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.start(t); o.stop(t + 0.4);
+  } catch (e) {}
+}
+
+/* ── HUD helpers ── */
+function toast(text, kind) {
+  const el = document.createElement('div'); el.className = 'toast' + (kind ? ' ' + kind : ''); el.textContent = text; $('toasts').appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, 2400);
+}
+function showEvent(text) { const e = $('event'); e.textContent = text; e.classList.add('on'); setTimeout(() => e.classList.remove('on'), 4200); }
+function updateCarryHud() {
+  const c = $('carry'), b = courier.carry;
+  if (!b) { c.classList.remove('on'); return; }
+  c.classList.add('on');
+  $('c-to').innerHTML = (b.fragile ? '<span class="fragile">FRAGILE · </span>' : '') + 'To: ' + b.house.label + (b.oversized ? ' · OVERSIZED' : '');
+  $('c-dmg').textContent = 'Condition: ' + Math.round((1 - b.damage) * 100) + '%';
+}
+function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
+/* ── the shift ── */
+const world = { rain: false, running: false, time: 0, limit: 240, pay: 0, delivered: 0, events: [], swapped: false, results: [] };
+const courier = new Courier();
+buildWorld();
+const camState = { yaw: Math.PI, pitch: 0.42, dist: 7.5 };
+const input = { f: 0, b: 0, l: 0, r: 0, jump: 0, act: 0, throw: 0 };
+
+function startShift() {
+  // reset
+  for (const b of boxes) scene.remove(b.group); boxes.length = 0;
+  if (dog) { scene.remove(dog.group); dog = null; } if (rain) { scene.remove(rain); rain = null; }
+  world.rain = false; world.time = world.limit; world.pay = 0; world.delivered = 0; world.events = []; world.swapped = false; world.results = [];
+  scene.background.copy(SKY_DAY); scene.fog.color.copy(SKY_DAY); sun.intensity = 2.2; hemi.intensity = 0.9;
+  courier.carry = null; courier.pos.set(1.5, 0, 26); courier.vel.set(0, 0, 0); courier.yaw = Math.PI; courier.setVisible(true);
+  courier.feet[0].pos.set(1.3, 0, 26); courier.feet[1].pos.set(1.7, 0, 26);
+  van.driver = null; van.speed = 0; van.cargo = []; van.group.position.set(3.2, 0, 32); van.yaw = 0;
+  camState.yaw = Math.PI; camState.pitch = 0.42;
+  // events: one or two per shift
+  const pool = ['rain', 'dog', 'fragile', 'oversized', 'swap'];
+  const n = Math.random() < 0.6 ? 1 : 2;
+  while (world.events.length < n) { const e = pick(pool); if (!world.events.includes(e)) world.events.push(e); }
+  if (world.events.includes('rain')) { world.rain = true; spawnRain(); scene.background.copy(SKY_RAIN); scene.fog.color.copy(SKY_RAIN); sun.intensity = 1.1; hemi.intensity = 0.6; }
+  if (world.events.includes('dog')) spawnDog();
+  // six packages on the dock, each addressed to a different house
+  const order = houses.slice().sort(() => Math.random() - 0.5).slice(0, 6);
+  order.forEach((h, i) => {
+    const b = new Package(h, { fragile: world.events.includes('fragile') && i === 2, oversized: world.events.includes('oversized') && i === 4 });
+    b.pos.set(-2.6, 0.45 + b.size.y / 2 + 0.01, 30 + i * 1.5);
+    boxes.push(b);
+  });
+  for (const h of houses) h.matMesh.material = order.includes(h) ? M.mat : M.matOff;
+  const names = { rain: 'Rain: everything is slippery', dog: 'A dog is loose on the block', fragile: 'One package is FRAGILE', oversized: 'One package is OVERSIZED', swap: 'Dispatch is having a day' };
+  setTimeout(() => showEvent(world.events.map(e => names[e]).join(' · ')), 600);
+  $('s-menu').classList.remove('on'); $('s-sum').classList.remove('on'); $('hud').classList.add('on');
+  world.running = true; updateCarryHud(); updateHud();
+  toast('Load the van, then hit the road.', 'good');
+}
+function endShift(reason) {
+  world.running = false;
+  const onTime = world.delivered === 6 && world.time > 0;
+  const bonus = onTime ? Math.round(20 + world.time * 0.25) : 0;
+  const total = world.pay + bonus;
+  save.cash += total; save.shifts++; if (total > save.best) save.best = total; persist();
+  if (window.yczScore) { try { yczScore('overwork', total); yczTally('overwork'); } catch (e) {} }
+  $('sum-title').textContent = reason === 'time' ? 'Shift over — time is up' : 'Shift complete';
+  $('sum-pay').textContent = '$' + total;
+  $('sum-note').textContent = (onTime ? `On-time bonus $${bonus} · ` : '') + `Delivered ${world.delivered}/6 · Savings now $${save.cash}`;
+  $('sum-list').innerHTML = boxes.map(b => `<div class="stat"><span>${b.house.label}${b.fragile ? ' · fragile' : ''}${b.oversized ? ' · oversized' : ''}</span>` +
+    (b.delivered ? `<b>$${b.paid} <span class="small">(${Math.round((1 - b.damage) * 100)}%)</span></b>` : `<b class="bad">not delivered</b>`) + `</div>`).join('');
+  $('hud').classList.remove('on'); $('s-sum').classList.add('on');
+  if (courier.carry) { courier.carry.state = 'ground'; courier.carry = null; }
+  van.driver = null; courier.setVisible(true);
+}
+function updateHud() {
+  $('h-time').textContent = fmtTime(world.time); $('p-time').classList.toggle('warn', world.time < 30);
+  $('h-done').textContent = world.delivered + '/6'; $('h-pay').textContent = '$' + world.pay;
+}
+function deliver(b, house) {
+  b.delivered = true; b.state = 'delivered';
+  const base = b.oversized ? 45 : b.fragile ? 40 : 25;
+  b.paid = Math.max(2, Math.round(base * (1 - b.damage)));
+  world.pay += b.paid; world.delivered++;
+  house.matMesh.material = M.matOff;
+  toast(`Delivered to ${house.label} · $${b.paid}` + (b.damage > 0.5 ? ' · they noticed' : ''), 'good'); sfx('ding');
+  updateHud();
+  if (world.delivered >= 6) setTimeout(() => endShift('done'), 900);
+}
+
+/* ── interaction (E) ── */
+function nearest(list, from, maxD) { let best = null, bd = maxD; for (const x of list) { const d = from.distanceTo(x.pos); if (d < bd) { bd = d; best = x; } } return best; }
+function interact() {
+  if (!world.running) return;
+  if (van.driver) {                                   // leave the van
+    van.driver = null; van.speed *= 0.5; courier.setVisible(true);
+    const p = van.doorPos(); courier.pos.set(p.x, 0, p.z); courier.vel.set(0, 0, 0);
+    courier.feet[0].pos.set(p.x - 0.2, 0, p.z); courier.feet[1].pos.set(p.x + 0.2, 0, p.z);
+    return;
+  }
+  const rear = van.rearPos(), door = van.doorPos();
+  if (courier.carry) {
+    // drop on a doormat / load into the van / just drop it
+    const b = courier.carry;
+    if (courier.pos.distanceTo(rear) < 2.4 && Math.abs(van.speed) < 0.5) { courier.carry = null; b.state = 'van'; van.cargo.push(b); toast('Loaded into the van (' + van.cargo.length + ')'); updateCarryHud(); return; }
+    dropCarried(courier, false);
+    return;
+  }
+  if (courier.pos.distanceTo(door) < 2.2 && Math.abs(van.speed) < 0.5) { van.driver = courier; courier.setVisible(false); toast('Driving. W/S gas & brake, A/D steer, E to hop out.'); return; }
+  if (courier.pos.distanceTo(rear) < 2.4 && van.cargo.length) {
+    const b = van.cargo.pop(); b.state = 'ground'; b.pos.copy(rear); b.pos.y = 1.2; b.vel.set(0, 0, 0); pickUp(b); return;
+  }
+  const b = nearest(boxes.filter(x => x.state === 'ground' && !x.delivered), courier.pos, 1.9);
+  if (b) pickUp(b);
+}
+function pickUp(b) {
+  courier.carry = b; b.state = 'carried'; b.vel.set(0, 0, 0);
+  courier.squash.v -= 3 + b.mass; courier.lean.x.v -= 1.5; courier.bob.v += 2;
+  if (b.oversized) toast("That's… a big one.");
+  updateCarryHud();
+}
+function checkDeliveries() {
+  for (const b of boxes) {
+    if (b.state !== 'ground' || b.delivered) continue;
+    for (const h of houses) {
+      const z = h.doormat;
+      if (b.pos.x > z.min.x && b.pos.x < z.max.x && b.pos.z > z.min.z && b.pos.z < z.max.z && b.pos.y < 1.2 && b.vel.lengthSq() < 0.05) {
+        if (h === b.house) deliver(b, h);
+        else if (!b.wrongToast || performance.now() - b.wrongToast > 4000) { b.wrongToast = performance.now(); toast(`Wrong address — this one goes to ${b.house.label}`, 'bad'); }
+      }
+    }
+  }
+}
+function maybeSwap() {
+  if (!world.events.includes('swap') || world.swapped || world.time > world.limit * 0.5) return;
+  const candidates = boxes.filter(b => !b.delivered && b.state !== 'delivered');
+  const b = pick(candidates); if (!b) return;
+  const others = houses.filter(h => h !== b.house && !boxes.some(x => x.house === h && !x.delivered));
+  const nh = pick(others); if (!nh) return;
+  b.house.matMesh.material = M.matOff; b.house = nh; nh.matMesh.material = M.mat; world.swapped = true;
+  showEvent('Dispatch: an address was updated'); toast(`Package for ${b.house.label} — check the label`, 'bad'); updateCarryHud();
+  // relabel
+  b.group.children[2].material.map.dispose(); const lab = makeLabel(b.fragile ? 'FRAGILE' : 'TO: ' + nh.num, b.fragile ? 0xe8162a : 0x222222, 256, 64); b.group.children[2].material = lab.material;
+}
+function hintText() {
+  if (!world.running) return '';
+  if (van.driver) return '<kbd>W</kbd><kbd>S</kbd> gas / brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>E</kbd> hop out';
+  const rear = van.rearPos(), door = van.doorPos();
+  if (courier.carry) {
+    if (courier.pos.distanceTo(rear) < 2.4) return '<kbd>E</kbd> load into the van';
+    return '<kbd>E</kbd> drop · <kbd>Click</kbd> throw · carry it to the glowing doormat';
+  }
+  if (courier.pos.distanceTo(door) < 2.2) return '<kbd>E</kbd> drive the van';
+  if (courier.pos.distanceTo(rear) < 2.4 && van.cargo.length) return `<kbd>E</kbd> take a package out (${van.cargo.length} inside)`;
+  if (nearest(boxes.filter(x => x.state === 'ground' && !x.delivered), courier.pos, 1.9)) return '<kbd>E</kbd> pick up';
+  if (van.cargo.length) return 'Drive to the glowing doormats';
+  return 'Grab a package from the dock';
+}
+
+/* ── input ── */
+const KEY = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
+addEventListener('keydown', e => {
+  if (KEY[e.code]) { input[KEY[e.code]] = 1; e.preventDefault(); }
+  if (e.code === 'Space') { if (courier.carry && !van.driver) throwCarried(courier, camForward()); else input.jump = 1; e.preventDefault(); }
+  if (e.code === 'KeyE') interact();
+  if (e.code === 'Escape' && world.running) endShift('quit');
+});
+addEventListener('keyup', e => { if (KEY[e.code]) input[KEY[e.code]] = 0; if (e.code === 'Space') input.jump = 0; });
+let dragging = false, lastX = 0, lastY = 0, dragMoved = 0;
+canvas.addEventListener('pointerdown', e => { dragging = true; lastX = e.clientX; lastY = e.clientY; dragMoved = 0; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => { if (!dragging) return; const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; dragMoved += Math.abs(dx) + Math.abs(dy); camState.yaw -= dx * 0.005; camState.pitch = clamp(camState.pitch + dy * 0.004, 0.08, 1.2); });
+canvas.addEventListener('pointerup', e => { dragging = false; if (dragMoved < 6 && world.running && courier.carry && !van.driver) throwCarried(courier, camForward()); });
+canvas.addEventListener('wheel', e => { camState.dist = clamp(camState.dist + e.deltaY * 0.01, 4, 14); }, { passive: true });
+function camForward() { return new THREE.Vector3(-Math.sin(camState.yaw), 0, -Math.cos(camState.yaw)); }
+
+/* ── camera ── */
+const camPos = new THREE.Vector3(0, 6, 34), camLook = new THREE.Vector3();
+function updateCamera(dt) {
+  const focus = van.driver ? van.pos : courier.pos;
+  const target = _a.set(focus.x, focus.y + (van.driver ? 1.8 : 1.4), focus.z);
+  const dist = camState.dist * (van.driver ? 1.7 : 1);
+  const off = _b.set(Math.sin(camState.yaw) * Math.cos(camState.pitch), Math.sin(camState.pitch), Math.cos(camState.yaw) * Math.cos(camState.pitch)).multiplyScalar(dist);
+  const want = _c.copy(target).add(off);
+  if (want.y < 0.6) want.y = 0.6;
+  camPos.lerp(want, Math.min(1, 9 * dt)); camLook.lerp(target, Math.min(1, 12 * dt));
+  camera.position.copy(camPos); camera.lookAt(camLook);
+  sun.position.set(focus.x + 30, 50, focus.z + 20); sun.target.position.set(focus.x, 0, focus.z);
+}
+
+/* ── main loop ── */
+let last = performance.now(), acc = 0; const STEP = 1 / 60;
+function frame(now) {
+  requestAnimationFrame(frame);
+  let dt = Math.min(0.1, (now - last) / 1000); last = now; acc += dt;
+  while (acc >= STEP) {
+    acc -= STEP;
+    if (world.running) {
+      world.time -= STEP;
+      if (world.time <= 0) { world.time = 0; endShift('time'); break; }
+      updateVan(STEP, input);
+      if (!van.driver) courier.update(STEP, input, camState.yaw); else courier.update(STEP, { f: 0, b: 0, l: 0, r: 0 }, camState.yaw);
+      for (const b of boxes) b.step(STEP);
+      if (dog) updateDog(STEP);
+      checkDeliveries(); maybeSwap();
+    } else {
+      courier.update(STEP, { f: 0, b: 0, l: 0, r: 0 }, camState.yaw);
+      updateVan(STEP, { f: 0, b: 0, l: 0, r: 0 });
+    }
+  }
+  if (rain) updateRain(dt);
+  for (const b of boxes) b.render();
+  updateCamera(dt);
+  if (world.running) { updateHud(); $('hint').innerHTML = hintText(); }
+  renderer.render(scene, camera);
+}
+$('btn-start').onclick = startShift; $('btn-again').onclick = startShift;
+$('btn-menu').onclick = () => { $('s-sum').classList.remove('on'); $('s-menu').classList.add('on'); paintMenu(); };
+function paintMenu() { $('m-best').textContent = '$' + save.best; $('m-cash').textContent = '$' + save.cash; }
+paintMenu();
+$('loading').remove();
+/* debug handle (also what the Playwright harness drives) */
+window.__ow = { courier, boxes, van, world, houses, startShift, interact, camState, input };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

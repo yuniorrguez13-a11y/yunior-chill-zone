@@ -63,6 +63,8 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `wrangler.jsonc` · `_headers` · `.assetsignore` | Cloudflare hosting config, cache rules, and what stays unpublished. |
 | `ycz-denarii.js` | Shared Denarii client: `YCZDenarii.plural(n)`, the live **coin pill** (`mount(sb,{into,onOpen})`, `setUser(user)`), a realtime subscription to the user's own `denarii_ledger` rows that bumps the pill, floats a `+N` and toasts the reason, `on('award'|'wallet')`, `reasonLabel()`, and `NAME_COLORS` (the id → hex whitelist for bought name colours). Loaded by `index.html`, `fight.html`, `video.html`, `qmages.html`; injects its own CSS. |
 | `denarii.html` | The public guide to **Denarii**, the site currency: where it lives, the plural rule, how you earn, streaks, the leaderboard, the catalog, troubleshooting, FAQ. Static, no scripts (its CSP has `script-src 'none'`). Linked from the Treasury, the settings row and the landing card. |
+| `overwork.html` | **Overwork**, the delivery-shift prototype (Sep 2026): 3D, Three.js from `vendor/`, hand-rolled physics. See its own section below. |
+| `vendor/` | Third-party libraries served from our own origin (no CDN dependency, CSP `'self'`). Currently `three.module.min.js` (r169, MIT, licence alongside). `_headers` caches `/vendor/*` for a year as immutable, so **rename the file when upgrading**. |
 | `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
 
 ### Supabase Edge Functions
@@ -480,6 +482,45 @@ so the migration never fails on a missing table. Scores from the arcade games ar
   unaffected.
 - The i18n keys are `denarii*`, `fDenarii*` and `r*` reason labels in all four
   languages; the currency name itself is never translated. Icons added: `coin`, `flame`.
+
+## Overwork — the delivery game (`overwork.html`, Sep 2026 prototype)
+
+The owner's pitch: a goofy "friendslop" life-sim where you deliver packages on a shift to
+earn money for cosmetic skins in an in-game shooter called **Pitty Striker** (real-world
+inspired guns, skins are looks only, never stats), played on the PC in your apartment
+after clocking out. This first cut is **the delivery shift only**: warehouse dock, six
+packages, a van, eight houses with doormats, a 4-minute timer, pay per package scaled by
+its condition, an on-time bonus, and one or two random events per shift (rain = slippery
++ darker sky, a loose dog that knocks the box out of your hands, a FRAGILE package that
+takes ×3 damage, an OVERSIZED one that is slow and heavy, and Dispatch swapping an
+address mid-shift). Cash and best shift save to `localStorage` under `overwork-save`;
+the console shows the best pay via `yczScore('overwork', pay)`.
+
+**Design rules, from the owner, non-negotiable:**
+- **No keyframed animation anywhere.** The walk is *not* an animation: the feet decide
+  where to step (a planted foot that falls too far behind the hip flies to a spot ahead
+  along an arc, alternating with the other foot), and the legs are **noodles** — a
+  `TubeGeometry` through a quadratic curve hip → knee → foot whose knee control point is
+  a damped spring that gets kicked on every landing. Body lean, bob, squash and hip
+  twist are springs excited by velocity and acceleration ("Squidward legs" was the
+  reference). Arms are the same idea: lazy velocity springs towards a target (hanging,
+  or holding the box overhead). If you add a new motion, add a spring, not a clip.
+- **Physics is hand-rolled and simple on purpose** (no Rapier/cannon): a static AABB
+  world (`colliders`, with low `stepables` you can step onto), a cylinder-vs-AABB solver
+  shared by the courier, the van, the dog and the boxes, boxes that fall/bounce/stack and
+  take damage from impulses, an arcade kinematic van. Keep it that way until a real need
+  (networked ragdolls) forces a library.
+- **Three.js is vendored**, imported as an ES module from `./vendor/`. The page has its
+  own CSP (`script-src 'self'`), no CDN.
+- Art is primitives + canvas-texture labels, all original. Style: flat Lambert
+  materials, low-poly blocks, soft shadows.
+- Debug/test handle: `window.__ow = {courier, boxes, van, world, houses, startShift,
+  interact, camState, input}` — the Playwright harness (`scratchpad/test-overwork.js`,
+  Chromium with `--use-angle=swiftshader`) drives a whole shift through it.
+
+Not done yet: the apartment/PC hub, Pitty Striker, multiplayer (planned as host-
+authoritative over the existing WebRTC + Supabase lobby, since ragdoll physics can't be
+made deterministic across browsers), touch controls, more jobs.
 
 ## Known gaps / next up
 
