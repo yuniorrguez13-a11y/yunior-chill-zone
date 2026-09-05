@@ -590,6 +590,19 @@ covering part (the van's collar) rather than fighting the scale.
 - **Sky:** a sun with a bored half-lidded face that blinks (`makeSun`, hidden in rain),
   two flocks of birds circling (`class Flock`), the old clouds.
 - Sounds added to `sfx()`: `honk`, `squeak`, `door`.
+- **The locker** (`#s-locker`, "the locker" button on the work order): basic
+  customisation with a live preview — the screen has no blur (`.screen.clear`), the card
+  sits left and the courier stands to the right, turning slowly (`world.locker` adds yaw
+  each tick; the feet shuffle after it, no clip). Options: head (cap / cap backwards /
+  beanie / no hat = hair), hat colour, hair, vest, skin, shoes, glasses, name tag (≤8,
+  drawn on the chest tag and used in the pay stub "shift's over, NAME."), van flag (≤4).
+  Saved as `save.look` inside `overwork-save`. The courier has its own materials (`C.*`)
+  so recolouring never touches customers/gnomes; `applyLook()` sets colours, toggles the
+  headwear groups (`capG/beanie/hair/glasses`) and re-renders the label textures
+  (`retex`). Stored values are whitelisted against `PALETTE`/`CAP_STYLES` on load and
+  the swatch markup only ever uses palette strings — the name/flag reach the DOM via
+  `.value` and canvas text only. Test: `scratchpad/ow-locker.js` (also feeds hostile
+  localStorage).
 
 Not done yet: the apartment/PC hub, Pitty Striker, multiplayer (planned as host-
 authoritative over the existing WebRTC + Supabase lobby, since ragdoll physics can't be

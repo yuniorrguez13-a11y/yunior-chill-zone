@@ -81,7 +81,23 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
 .backlink{position:fixed;left:14px;bottom:12px;font-size:17px;color:rgba(243,236,220,.7);text-decoration:none;z-index:5;}
 .backlink:hover{color:var(--paper);}
 #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--paper);font-family:'CF Sketch',cursive;font-size:28px;z-index:9;}
+/* ── the locker ── */
+.screen.clear{background:transparent;backdrop-filter:none;justify-content:flex-start;padding-left:4vw;}
+.card.lk{width:min(430px,100%);padding:22px 24px 18px;}
+.lk-row{display:flex;align-items:center;gap:10px;margin:7px 0;flex-wrap:wrap;}
+.lk-l{width:84px;color:var(--pen2);font-size:17px;flex:none;}
+.sw{display:flex;gap:8px;flex-wrap:wrap;}
+.sw button{width:28px;height:28px;border:2.5px solid var(--pen);border-radius:50% 45% 55% 50% / 55% 50% 50% 45%;box-shadow:2px 2px 0 var(--pen);transition:transform .08s;}
+.sw button:hover{transform:translate(-1px,-1px);}
+.sw button.on{outline:3px solid var(--hi);outline-offset:2px;}
+.opts{display:flex;gap:6px;flex-wrap:wrap;}
+.opts button{padding:3px 10px 1px;font-size:17px;line-height:1.1;background:var(--paper2);border:2px solid var(--pen);border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;box-shadow:2px 2px 0 var(--pen);}
+.opts button.on{background:var(--hi);}
+.lk input{font:inherit;font-size:19px;padding:3px 10px 1px;border:2px solid var(--pen);background:#fff;width:150px;border-radius:6px 14px 6px 14px / 14px 6px 14px 6px;color:var(--pen);}
+.lk input:focus{outline:3px solid var(--hi);outline-offset:1px;}
+#lk-quip{min-height:1.4em;}
 @media(max-width:760px){
+  .screen.clear{justify-content:center;align-items:flex-end;padding:10px;} .card.lk{max-height:62vh;overflow:auto;}
   .hud-top{flex-wrap:wrap;}
   .pill{font-size:16px;padding:5px 10px 3px;} .pill b{font-size:24px;}
   #hint{font-size:15px;} .card{padding:22px 18px 18px;} .logo{font-size:56px;}
@@ -120,10 +136,32 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
     </div>
     <div class="row">
       <button class="btn primary" id="btn-start">clock in</button>
+      <button class="btn" id="btn-locker">the locker</button>
       <span class="note">best shift <b class="sk" id="m-best">$0</b></span>
       <span class="note" style="transform:rotate(1.2deg)">sock drawer <b class="sk" id="m-cash">$0</b></span>
     </div>
     <p class="small" style="margin-top:14px;">keyboard only for now, phone people, i'm sorry. the money goes in the sock drawer for pitty striker skins later. skins. not stats. don't ask.</p>
+  </div></div>
+</div>
+
+<!-- LOCKER: the uniform is the uniform. the rest is you. -->
+<div class="screen clear" id="s-locker">
+  <div class="card paper tape lk"><div class="inner">
+    <div class="sub" style="margin-bottom:8px">the locker. <span class="small">the job stays. the rest is you.</span></div>
+    <div class="lk-row"><span class="lk-l">head</span><div class="opts" id="lk-capStyle"></div></div>
+    <div class="lk-row"><span class="lk-l">hat color</span><div class="sw" id="lk-cap"></div></div>
+    <div class="lk-row"><span class="lk-l">hair</span><div class="sw" id="lk-hair"></div></div>
+    <div class="lk-row"><span class="lk-l">vest</span><div class="sw" id="lk-vest"></div></div>
+    <div class="lk-row"><span class="lk-l">skin</span><div class="sw" id="lk-skin"></div></div>
+    <div class="lk-row"><span class="lk-l">shoes</span><div class="sw" id="lk-shoe"></div></div>
+    <div class="lk-row"><span class="lk-l">face</span><div class="opts" id="lk-glasses"></div></div>
+    <div class="lk-row"><span class="lk-l">name tag</span><input id="lk-name" maxlength="8" placeholder="new guy" autocomplete="off" spellcheck="false"></div>
+    <div class="lk-row"><span class="lk-l">van flag</span><input id="lk-flag" maxlength="4" placeholder="hi" autocomplete="off" spellcheck="false"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary" id="btn-lk-done">that'll do</button>
+      <button class="btn" id="btn-lk-rnd">surprise me</button>
+    </div>
+    <p class="small" id="lk-quip" style="margin:10px 0 0">nobody will notice. you'll notice.</p>
   </div></div>
 </div>
 
@@ -218,6 +256,8 @@ const M = {
   skins: [toon(0xf6c9a6), toon(0xd9a577), toon(0x8d5a3b), toon(0xffe0c4), toon(0x5c3a26)],
   mystery: toon(0x6a4c8a), pine: toon(0x2f7a45), plate: toon(0xf4f4f7),
 };
+/* the courier's own materials — the locker recolours these, nothing else shares them */
+const C = { skin: toon(0xf6c9a6), vest: toon(0xffb020), cap: toon(0xe8162a), shoe: toon(0x1f1f28), hair: toon(0x2a1a10), nose: toon(0xf0a882) };
 
 /* ── world data ── */
 const colliders = [];          // static AABBs the player, van and boxes hit
@@ -735,15 +775,14 @@ class Courier {
     this.onGround = true; this.radius = 0.36; this.height = 1.85;
     const g = this.group = new THREE.Group(); scene.add(g);
     // bean body with a company vest, shorts, a name tag
-    this.torso = outlined(mesh(new THREE.SphereGeometry(0.44, 18, 14), M.vest, 0, 0.55, 0, { parent: g }), 1.06); this.torso.scale.set(1, 1.18, 0.86);
+    this.torso = outlined(mesh(new THREE.SphereGeometry(0.44, 18, 14), C.vest, 0, 0.55, 0, { parent: g }), 1.06); this.torso.scale.set(1, 1.18, 0.86);
     const collar = outlined(mesh(new THREE.SphereGeometry(0.3, 14, 10), M.shirt, 0, 0.98, 0, { parent: g }), 1.08); collar.scale.set(1.2, 0.5, 1);
     this.hips = outlined(mesh(new THREE.SphereGeometry(0.4, 16, 12), M.shorts, 0, 0.08, 0, { parent: g }), 1.06); this.hips.scale.set(1.05, 0.6, 0.9);
-    mesh(new THREE.BoxGeometry(0.22, 0.12, 0.03), M.label, -0.2, 0.75, 0.38, { parent: g, shadow: false });
-    mesh(new THREE.BoxGeometry(0.14, 0.02, 0.035), M.pupil, -0.2, 0.75, 0.39, { parent: g, shadow: false });
+    this.tag = makeLabel('new guy', '#23212b', 160, 64, '#faf6ec', 'Patrick Hand'); this.tag.position.set(-0.2, 0.75, 0.355); this.tag.rotation.y = -0.5; this.tag.scale.set(0.26, 0.11, 1); g.add(this.tag);   // name tag
     // bobblehead: the head hangs on a lazy spring off the neck
     const head = this.head = new THREE.Group(); g.add(head);
-    outlined(mesh(new THREE.SphereGeometry(0.42, 20, 16), M.skin, 0, 0, 0, { parent: head }), 1.06).scale.set(1.08, 1, 1);
-    outlined(mesh(new THREE.SphereGeometry(0.12, 12, 10), M.nose, 0, -0.05, 0.42, { parent: head }), 1.1);
+    outlined(mesh(new THREE.SphereGeometry(0.42, 20, 16), C.skin, 0, 0, 0, { parent: head }), 1.06).scale.set(1.08, 1, 1);
+    outlined(mesh(new THREE.SphereGeometry(0.12, 12, 10), C.nose, 0, -0.05, 0.42, { parent: head }), 1.1);
     for (const sx of [-0.19, 0.19]) {
       outlined(mesh(new THREE.SphereGeometry(0.11, 12, 10), M.eye, sx, 0.08, 0.34, { parent: head, shadow: false }), 1.1);
       mesh(new THREE.SphereGeometry(0.05, 8, 6), M.pupil, sx + (sx < 0 ? 0.02 : -0.02), 0.08, 0.44, { parent: head, shadow: false });
@@ -751,16 +790,29 @@ class Courier {
     this.browL = mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), M.pupil, -0.19, 0.24, 0.38, { parent: head, shadow: false });
     this.browR = mesh(new THREE.BoxGeometry(0.16, 0.035, 0.04), M.pupil, 0.19, 0.24, 0.38, { parent: head, shadow: false });
     this.mouth = mesh(new THREE.BoxGeometry(0.16, 0.05, 0.04), M.mouth, 0, -0.2, 0.4, { parent: head, shadow: false });
-    outlined(mesh(new THREE.SphereGeometry(0.44, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), M.cap, 0, 0.06, 0, { parent: head }), 1.05);
-    outlined(mesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), M.cap, 0, 0.26, 0.45, { parent: head, rot: [0.15, 0, 0] }), 1.06);
-    const capLogo = makeLabel('O', '#faf6ec', 64, 64, '#e8162a'); capLogo.position.set(0, 0.3, 0.41); capLogo.rotation.x = -0.3; capLogo.scale.set(0.16, 0.16, 1); head.add(capLogo);
+    // headwear, all built, the locker picks which one shows: cap (forward or backwards), beanie, or hair and nothing else
+    const capG = this.capG = new THREE.Group(); head.add(capG);
+    outlined(mesh(new THREE.SphereGeometry(0.44, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), C.cap, 0, 0.06, 0, { parent: capG }), 1.05);
+    outlined(mesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), C.cap, 0, 0.26, 0.45, { parent: capG, rot: [0.15, 0, 0] }), 1.06);
+    this.capLogo = makeLabel('O', '#faf6ec', 64, 64, '#e8162a'); this.capLogo.position.set(0, 0.3, 0.41); this.capLogo.rotation.x = -0.3; this.capLogo.scale.set(0.16, 0.16, 1); capG.add(this.capLogo);
+    const beanie = this.beanie = new THREE.Group(); head.add(beanie);
+    outlined(mesh(new THREE.SphereGeometry(0.45, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), C.cap, 0, 0.04, 0, { parent: beanie }), 1.05).scale.set(1, 1.3, 1);
+    outlined(mesh(new THREE.TorusGeometry(0.43, 0.07, 8, 20), C.cap, 0, 0.1, 0, { parent: beanie, rot: [Math.PI / 2, 0, 0] }), 1.06);
+    outlined(mesh(new THREE.SphereGeometry(0.11, 10, 8), M.frame, 0, 0.66, 0, { parent: beanie }), 1.1);
+    const hair = this.hair = new THREE.Group(); head.add(hair);
+    outlined(mesh(new THREE.SphereGeometry(0.44, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.42), C.hair, 0, 0.05, 0, { parent: hair }), 1.05);
+    outlined(mesh(new THREE.BoxGeometry(0.34, 0.12, 0.14), C.hair, 0.08, 0.3, 0.36, { parent: hair, rot: [0.3, 0, -0.2] }), 1.08);      // the fringe. it does what it wants.
+    const glasses = this.glasses = new THREE.Group(); head.add(glasses);
+    for (const sx of [-0.19, 0.19]) mesh(new THREE.TorusGeometry(0.13, 0.018, 6, 14), M.pupil, sx, 0.08, 0.44, { parent: glasses, shadow: false });
+    mesh(new THREE.BoxGeometry(0.12, 0.02, 0.02), M.pupil, 0, 0.08, 0.45, { parent: glasses, shadow: false });
+    beanie.visible = hair.visible = glasses.visible = false;
     this.headSpring = { x: spring(60, 6), z: spring(60, 6), y: spring(80, 8) };
     // limbs
     this.legL = new Limb(M.sock, 0.12, 0.95); this.legR = new Limb(M.sock, 0.12, 0.95);
-    this.armL = new Limb(M.skin, 0.085, 0.8); this.armR = new Limb(M.skin, 0.085, 0.8);
+    this.armL = new Limb(C.skin, 0.085, 0.8); this.armR = new Limb(C.skin, 0.085, 0.8);
     // sausage shoes and mitt hands
-    this.footL = outlined(mesh(new THREE.CapsuleGeometry(0.15, 0.28, 4, 10), M.shoe, 0, 0, 0), 1.08); this.footR = outlined(mesh(new THREE.CapsuleGeometry(0.15, 0.28, 4, 10), M.shoe, 0, 0, 0), 1.08);
-    this.handL = outlined(mesh(new THREE.SphereGeometry(0.13, 10, 8), M.skin, 0, 0, 0), 1.1); this.handR = outlined(mesh(new THREE.SphereGeometry(0.13, 10, 8), M.skin, 0, 0, 0), 1.1);
+    this.footL = outlined(mesh(new THREE.CapsuleGeometry(0.15, 0.28, 4, 10), C.shoe, 0, 0, 0), 1.08); this.footR = outlined(mesh(new THREE.CapsuleGeometry(0.15, 0.28, 4, 10), C.shoe, 0, 0, 0), 1.08);
+    this.handL = outlined(mesh(new THREE.SphereGeometry(0.13, 10, 8), C.skin, 0, 0, 0), 1.1); this.handR = outlined(mesh(new THREE.SphereGeometry(0.13, 10, 8), C.skin, 0, 0, 0), 1.1);
     this.feet = [
       { pos: new THREE.Vector3(-0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(55, 6), roll: spring(80, 8) },
       { pos: new THREE.Vector3(0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(55, 6), roll: spring(80, 8) }];
@@ -1287,7 +1339,7 @@ function updateCarryHud() {
 function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
 /* ── the shift ── */
-const world = { rain: false, running: false, time: 0, limit: 240, pay: 0, delivered: 0, events: [], swapped: false };
+const world = { rain: false, running: false, locker: false, time: 0, limit: 240, pay: 0, delivered: 0, events: [], swapped: false, wetToast: false };
 const courier = new Courier();
 buildWorld();
 const camState = { yaw: Math.PI, pitch: 0.4, dist: 7.5 };
@@ -1337,7 +1389,8 @@ function endShift(reason) {
   save.cash += total; save.shifts++; if (total > save.best) save.best = total; persist();
   if (window.yczScore) { try { yczScore('overwork', total); yczTally('overwork'); } catch (e) {} }
   const left = 6 - world.delivered;
-  $('sum-title').textContent = reason === 'time' ? "time's up. they're locking the gate." : reason === 'quit' ? 'you walked off mid-shift. bold.' : "shift's over.";
+  const who = save.look && save.look.name.trim();
+  $('sum-title').textContent = reason === 'time' ? "time's up. they're locking the gate." : reason === 'quit' ? 'you walked off mid-shift. bold.' : who ? `shift's over, ${who}.` : "shift's over.";
   $('sum-pay').textContent = '$' + total;
   $('sum-stamp').textContent = total === 0 ? 'NOPE' : total > 150 ? 'WOW OK' : 'PAID';
   let note;
@@ -1463,8 +1516,8 @@ function camForward() { return new THREE.Vector3(-Math.sin(camState.yaw), 0, -Ma
 /* ── camera ── */
 const camPos = new THREE.Vector3(0, 6, 34), camLook = new THREE.Vector3();
 function updateCamera(dt) {
-  const focus = van.driver ? van.pos : courier.pos;
-  const target = _a.set(focus.x, focus.y + (van.driver ? 1.8 : 1.5), focus.z);
+  const focus = van.driver ? van.pos : courier.pos, locker = world.locker && !world.running;
+  const target = _a.set(focus.x + (locker ? 1.3 : 0), focus.y + (van.driver ? 1.8 : locker ? 1.3 : 1.5), focus.z);   // in the locker the courier stands to the right of the card
   const dist = camState.dist * (van.driver ? 1.7 : 1);
   const off = _b.set(Math.sin(camState.yaw) * Math.cos(camState.pitch), Math.sin(camState.pitch), Math.cos(camState.yaw) * Math.cos(camState.pitch)).multiplyScalar(dist);
   const want = _c.copy(target).add(off); if (want.y < 0.6) want.y = 0.6;
@@ -1488,7 +1541,7 @@ function frame(now) {
       for (const b of boxes) b.step(STEP);
       if (dog) updateDog(STEP);
       checkDeliveries(); maybeSwap(); lawnPatrol(STEP);
-    } else { courier.update(STEP, { f: 0, b: 0, l: 0, r: 0 }, camState.yaw); updateVan(STEP, { f: 0, b: 0, l: 0, r: 0 }); }
+    } else { if (world.locker) courier.yaw += 0.35 * STEP; courier.update(STEP, { f: 0, b: 0, l: 0, r: 0 }, camState.yaw); updateVan(STEP, { f: 0, b: 0, l: 0, r: 0 }); }   // in the locker you turn slowly; the feet shuffle to keep up
     for (const p of props) p.step(STEP);
     for (const c of customers) c.update(STEP);
   }
@@ -1502,6 +1555,59 @@ function frame(now) {
 }
 $('btn-start').onclick = startShift; $('btn-again').onclick = startShift;
 $('btn-menu').onclick = () => { $('s-sum').classList.remove('on'); $('s-menu').classList.add('on'); paintMenu(); };
+
+/* ── the locker: basic customisation, saved with the rest of the sock drawer ── */
+const LOOK_DEFAULT = { capStyle: 'cap', cap: '#e8162a', vest: '#ffb020', skin: '#f6c9a6', hair: '#2a1a10', shoe: '#1f1f28', glasses: false, name: '', flag: 'hi' };
+const PALETTE = {
+  cap: ['#e8162a', '#2f3550', '#2f9e5b', '#ffd23f', '#b470d8', '#14121a', '#f4f4f7'],
+  vest: ['#ffb020', '#e8162a', '#3a9ad8', '#64b850', '#ff7fb0', '#f4f4f7', '#14121a'],
+  skin: ['#f6c9a6', '#ffe0c4', '#d9a577', '#8d5a3b', '#5c3a26', '#9fdc6a'],
+  hair: ['#2a1a10', '#c88a3a', '#8a8a90', '#e8162a', '#f4e7c0', '#3a78d8', '#ff7fb0'],
+  shoe: ['#1f1f28', '#8a6540', '#f4f4f7', '#e8162a', '#3a78d8', '#ffd23f'],
+};
+const CAP_STYLES = [['cap', 'cap'], ['back', 'cap, backwards'], ['beanie', 'beanie'], ['none', 'no hat. brave.']];
+const QUIPS = ['nobody will notice. you\'ll notice.', 'sure. that.', 'bold.', 'the mirror is over there. don\'t.', 'dispatch has no opinion. dispatch has an opinion.', 'it\'s a look.', 'the dog will still bite you.'];
+save.look = Object.assign({}, LOOK_DEFAULT, save.look && typeof save.look === 'object' ? save.look : {});
+for (const k of Object.keys(PALETTE)) if (!PALETTE[k].includes(save.look[k])) save.look[k] = LOOK_DEFAULT[k];      // whatever is in localStorage, only palette colours get in
+if (!CAP_STYLES.some(([v]) => v === save.look.capStyle)) save.look.capStyle = 'cap';
+save.look.name = String(save.look.name || '').slice(0, 8); save.look.flag = String(save.look.flag || 'hi').slice(0, 4); save.look.glasses = !!save.look.glasses;
+function retex(m, ...a) { const old = m.material.map; m.material.map = makeTex(...a); m.material.needsUpdate = true; if (old) old.dispose(); }
+function applyLook() {
+  const L = save.look;
+  C.cap.color.set(L.cap); C.vest.color.set(L.vest); C.skin.color.set(L.skin); C.hair.color.set(L.hair); C.shoe.color.set(L.shoe); C.nose.color.set(L.skin).multiplyScalar(0.9);
+  courier.capG.visible = L.capStyle === 'cap' || L.capStyle === 'back'; courier.capG.rotation.y = L.capStyle === 'back' ? Math.PI : 0;
+  courier.beanie.visible = L.capStyle === 'beanie'; courier.hair.visible = L.capStyle === 'none'; courier.glasses.visible = L.glasses;
+  retex(courier.capLogo, 'O', L.cap === '#f4f4f7' || L.cap === '#ffd23f' ? '#23212b' : '#faf6ec', 64, 64, L.cap);
+  retex(courier.tag, L.name.trim() || 'new guy', '#23212b', 160, 64, '#faf6ec', 'Patrick Hand');
+  retex(van.flag, L.flag.trim() || 'hi', '#23212b', 96, 64, '#ffd23f', 'Patrick Hand');
+}
+function paintLocker() {
+  const L = save.look;
+  for (const k of Object.keys(PALETTE)) $('lk-' + k).innerHTML = PALETTE[k].map(c => `<button data-k="${k}" data-v="${c}" class="${L[k] === c ? 'on' : ''}" style="background:${c}" aria-label="${c}"></button>`).join('');
+  $('lk-capStyle').innerHTML = CAP_STYLES.map(([v, t]) => `<button data-k="capStyle" data-v="${v}" class="${L.capStyle === v ? 'on' : ''}">${t}</button>`).join('');
+  $('lk-glasses').innerHTML = [['false', 'no glasses'], ['true', 'glasses']].map(([v, t]) => `<button data-k="glasses" data-v="${v}" class="${String(L.glasses) === v ? 'on' : ''}">${t}</button>`).join('');
+  $('lk-name').value = L.name; $('lk-flag').value = L.flag;
+}
+$('s-locker').addEventListener('click', e => {
+  const b = e.target.closest('button[data-k]'); if (!b) return;
+  const k = b.dataset.k, v = b.dataset.v;
+  if (k === 'glasses') save.look.glasses = v === 'true'; else if (k === 'capStyle') save.look.capStyle = v; else if (PALETTE[k] && PALETTE[k].includes(v)) save.look[k] = v;
+  persist(); applyLook(); paintLocker(); sfx('step', 6); courier.headSpring.z.v += 3; courier.bob.v -= 1.5;
+});
+$('lk-name').oninput = e => { save.look.name = e.target.value.slice(0, 8); persist(); applyLook(); };
+$('lk-flag').oninput = e => { save.look.flag = e.target.value.slice(0, 4); persist(); applyLook(); };
+$('btn-lk-rnd').onclick = () => {
+  for (const k of Object.keys(PALETTE)) save.look[k] = pick(PALETTE[k]);
+  save.look.capStyle = pick(CAP_STYLES)[0]; save.look.glasses = Math.random() < 0.4;
+  persist(); applyLook(); paintLocker(); $('lk-quip').textContent = pick(QUIPS.slice(1)); courier.squash.v -= 5; courier.legL.kick(8); courier.legR.kick(8);
+};
+function openLocker() {
+  $('s-menu').classList.remove('on'); $('s-locker').classList.add('on'); world.locker = true; paintLocker(); $('lk-quip').textContent = QUIPS[0];
+  courier.yaw = Math.PI; camState.yaw = Math.PI; camState.pitch = 0.1; camState.dist = 5.2;
+}
+function closeLocker() { $('s-locker').classList.remove('on'); $('s-menu').classList.add('on'); world.locker = false; courier.yaw = Math.PI; camState.yaw = Math.PI; camState.pitch = 0.4; camState.dist = 7.5; }
+$('btn-locker').onclick = openLocker; $('btn-lk-done').onclick = closeLocker;
+applyLook();
 function paintMenu() {
   $('m-best').textContent = '$' + save.best; $('m-cash').textContent = '$' + save.cash;
   const n = save.shifts + 1;
