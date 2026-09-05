@@ -356,6 +356,15 @@ DMs are correctly scoped by `ycz_in_dm`; `push_subs` is correctly pinned to `aut
   `join_server(code)` RPC plus an `index.html` change, in lockstep.
 - `channels.room_key` is client-chosen; without a unique index an attacker can create a
   shadow channel carrying someone else's room_key and defeat membership checks.
+- **Regression found Sep 2026 while testing Denarii on a local Postgres:** the
+  hardening version of `ycz_guard_message_identity` did `new.is_owner := (real_role =
+  'owner')`, and `ycz_true_site_role()` returns NULL for anyone without a `user_roles`
+  row — i.e. every normal member. NULL into the NOT NULL `messages.is_owner` column means
+  **non-staff users could not post at all** after `hardening.sql`. The Denarii migration
+  re-creates the function with `coalesce(real_role = 'owner', false)`. Lesson: a local
+  Postgres 16 exists in the sandbox (`pg_ctlcluster 16 main start`, then `su postgres`);
+  build a skeleton of the touched tables and **run every migration there** before
+  handing it over (`scratchpad/denarii/skeleton.sql` + `behaviour.sql` show the pattern).
 - **Lesson for future RLS work:** policies are OR'ed — dropping one loose policy does
   nothing if another still permits. Never reference a table inside a policy expression
   without a `security definer` helper, or the policy breaks the day that table is locked
