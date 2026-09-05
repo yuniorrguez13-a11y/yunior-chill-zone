@@ -443,7 +443,13 @@ so the migration never fails on a missing table. Scores from the arcade games ar
   `bad_kind`) with `ycz_equip_title(p_item)` kept as a v1 wrapper;
   `ycz_leaderboard(p_limit)` → `{top:[{user_id, username, pfp_url, title, color_id,
   lifetime}], me:{rank, lifetime}|null}`; `ycz_streak(uid)` (consecutive UTC days with a
-  `daily_active` row, anchored on today or, if you haven't posted yet, yesterday).
+  `daily_active` row, anchored on today or, if you haven't posted yet, yesterday —
+  **unless `user_wallets.streak_anchor` is set**, in which case the streak is simply days
+  since that date and never breaks. That column is the owner's perk, set by hand in SQL
+  to the site's birthday, 2026-08-08; nobody else has it and nothing in the client can
+  set it). The owner also holds the integer-max balance (2,147,483,647) by request —
+  `balance`/`delta` are `integer`, so "a trillion" would need a `bigint` migration plus
+  client formatting changes (`|0` truncation in `index.html` / `ycz-denarii.js`).
 - Guards: `ycz_guard_cosmetics` (BEFORE INSERT/UPDATE on `user_profiles`, replaces v1's
   `ycz_guard_title`) nulls both ids on insert and silently reverts any update to an item
   the user doesn't own *of that kind* (`ycz_owns_item`). The message identity guard
