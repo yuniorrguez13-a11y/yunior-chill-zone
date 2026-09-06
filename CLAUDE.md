@@ -63,8 +63,10 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `wrangler.jsonc` · `_headers` · `.assetsignore` | Cloudflare hosting config, cache rules, and what stays unpublished. |
 | `ycz-denarii.js` | Shared Denarii client: `YCZDenarii.plural(n)`, the live **coin pill** (`mount(sb,{into,onOpen})`, `setUser(user)`), a realtime subscription to the user's own `denarii_ledger` rows that bumps the pill, floats a `+N` and toasts the reason, `on('award'|'wallet')`, `reasonLabel()`, and `NAME_COLORS` (the id → hex whitelist for bought name colours). Loaded by `index.html`, `fight.html`, `video.html`, `qmages.html`; injects its own CSS. |
 | `denarii.html` | The public guide to **Denarii**, the site currency: where it lives, the plural rule, how you earn, streaks, the leaderboard, the catalog, troubleshooting, FAQ. Static, no scripts (its CSP has `script-src 'none'`). Linked from the Treasury, the settings row and the landing card. |
-| `overwork.html` | **Overwork**, the delivery-shift prototype (Sep 2026): 3D, Three.js from `vendor/`, hand-rolled physics. See its own section below. |
-| `vendor/` | Third-party libraries served from our own origin (no CDN dependency, CSP `'self'`). Currently `three.module.min.js` (r169, MIT, licence alongside). `_headers` caches `/vendor/*` for a year as immutable, so **rename the file when upgrading**. |
+| `overwork.html` | **Overwork**, the delivery game (Sep 2026): 3D, Three.js from `vendor/`, hand-rolled physics, clay characters, an apartment with a PC, a casino, host-authoritative multiplayer. See its own section below. |
+| `ow-net.js` | Overwork's wire: signalling over Supabase realtime broadcast (or a `BroadcastChannel` with `?signal=local` for two tabs on one machine) and one WebRTC connection per peer with two data channels (`rel` ordered for events, `fast` lossy for snapshots). Knows nothing about the game. |
+| `ow-os.js` | **MirrorOS**, the operating system on the PC in the courier's apartment: a 2009-glass-look desktop (own name, own icons, no trademarks) with draggable windows, taskbar, start orb, and the apps: Overwork Online (host/join/rooms/chat), Lucky Loaf Casino (slots + 21), notes, locker shortcut, a Pitty Striker shortcut that crashes on purpose, a recycle bin. Takes an `api` object from the game; touches only its own DOM. |
+| `vendor/` | Third-party libraries served from our own origin (no CDN dependency, CSP `'self'`). `three.module.min.js` (r169, MIT) and `supabase-2.115.0.min.js` (UMD, MIT), licences alongside. `_headers` caches `/vendor/*` for a year as immutable, so **rename the file when upgrading**. |
 | `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
 
 ### Supabase Edge Functions
@@ -604,9 +606,73 @@ covering part (the van's collar) rather than fighting the scale.
   `.value` and canvas text only. Test: `scratchpad/ow-locker.js` (also feeds hostile
   localStorage).
 
-Not done yet: the apartment/PC hub, Pitty Striker, multiplayer (planned as host-
-authoritative over the existing WebRTC + Supabase lobby, since ragdoll physics can't be
-made deterministic across browsers), touch controls, more jobs.
+**v4 — the big one (Sep 2026; owner: multiplayer, bugs, a casino, real hitboxes, a house with a PC
+"para que la gente pueda unirse", plasticine characters, la peace).**
+- **Characters are plasticine now** (reference: a TABG-style faceless figure). `clay(hex)` is a
+  `MeshStandardMaterial` (rough, a faint procedural bump, a touch of emissive so shade doesn't go muddy)
+  — the *only* non-toon material family; figures read as clay in a cardboard world on purpose. The
+  courier is an **egg head with no face** (worry became posture: the head droops), a capsule jumpsuit
+  (`suit`) with `sleeve`-coloured jelly arms, jumpsuit-coloured jelly legs, boots, a chest tag and a
+  **floating name sprite** (`nameTex`, white with an ink outline, always facing the camera). Every
+  `Courier` owns its materials (`c.mat`), so `applyLookTo(c, look)` dresses any courier — yours or a
+  remote player's. The class is split into `simulate()` (physics) and `animate()` (feet, springs,
+  limbs); remote players skip simulate and run `netStep()` + `animate()` from wire position/velocity.
+  Animation fixes: arms swing against the gait (`gait` phase), hands are clamped to 1.1× arm length
+  (jelly stretches, it never becomes a rope), idle breathing through the squash spring, `teleport()`
+  moves feet and hands too (no more limbs snapping across the map). Customers use the same clay and
+  are faceless too (verdict in the neck: sour tilts down, happy tilts up).
+- **Real hitboxes.** `circles` (round static colliders: trampoline, pool — `step` ones can be stood
+  on), `obbs` (oriented boxes that move: the van is `hw 1.2 × hd 3.4`, so it has a long side and a
+  short side), `collideVan()` probes five points (four corners and the middle) against walls, and
+  `pushOut()` uses *relative* velocity so the moving van flings props and boxes (`onHit(v, nx, nz)`).
+  A van at speed knocks a courier over (`onBodyHit`: stun, launch, dropped box, a toast for both).
+  Lamp posts have colliders. **The camera stops at walls, roofs and ceilings** (`solidAt` + a march
+  from the head towards the wanted spot) and **snaps after a teleport** (`world.camSnap`).
+- **Three modes.** `world.running` (a shift), `world.roam` (free roam: the world runs, the clock
+  doesn't — home, casino, waiting for friends), neither (menu/locker). `enterRoam()/leaveRoam()`.
+  "go home" on the work order drops you at the PC. Esc walks back one layer (PC → roam → menu).
+- **Your apartment** (`buildHome`, APT 3B at x 15 z 30, across the road from the dock): one room with
+  a door gap, a ceiling collider (so the camera stays inside), desk + PC (`world.pcSpot`, E = sit),
+  chair, bed, fridge ("buy milk"), rug, pizza boxes, a PITTY STRIKER poster, a lamp (`PointLight`).
+  Sitting opens **MirrorOS** (`openPC(app)` / `closePC()`, `world.pcOpen` silences game input).
+- **Lucky Loaf Casino** (`buildCasino`, purple + gold, marquee, neon bulbs, a die on the roof, "21+
+  (ish)", "the house is a van"): E at the door opens the casino app. Slots (three reels of box/van/
+  gnome/dog/$/loaf: 3 loaves 20×, three of a kind 6×, a pair 2×) and 21 (dealer stands on 17,
+  blackjack 3:2, double). All on `save.cash`, the sock drawer. Nothing is real money.
+- **Multiplayer** (`ow-net.js` + the ONLINE section in `overwork.html`). Host-authoritative: the host
+  runs boxes, van cargo, dog, props, deliveries, the clock, and broadcasts a snapshot at 15 Hz on the
+  lossy channel (numbers rounded to 2 decimals, box states as small ints, only kicked props). Every
+  player simulates **their own courier** and sends position/velocity/yaw at 20 Hz; the host relays.
+  E / throw / honk are **requests** (`netAct`) carrying the position you pressed them at; the host
+  runs `interact(who)` for that courier and the result comes back in the snapshot. **Whoever drives
+  simulates the van** and the host relays it; non-drivers `vanNetStep()`. Toasts for one person go
+  through `say(who, …)` (`netSay` to their peer); world-wide things are `netEvent({k})`: start (the
+  whole shift spec — events, boxes with deterministic sizes, spawns, lapis spot), end (the pay stub,
+  shared: everyone's sock drawer gets the same total), deliver, swap, react, lapis, emote, join/leave,
+  look, chat, kick. Boxes scale with players (`6 + 2·extra`, max 12, houses repeat). Room codes are
+  five letters; the lobby is a Supabase presence channel `ow:lobby` (hosts track `{code, n, name}`),
+  the room is `ow:<code>` broadcast for SDP/ICE; TURN comes from the same edge function as SFFG when
+  signed in, STUN otherwise, with a 3.5 s timeout so a hanging TURN request never blocks a join.
+  `overwork.html?join=ABCDE` joins straight away. Max 8 players. **Testing without Supabase:**
+  `?signal=local` swaps the signaller for a `BroadcastChannel` (two tabs in one browser);
+  `scratchpad/ow-mp.js` drives host + client end to end (join, walk, start, pick up through the host,
+  throw, la peace on both screens, leave). Gotcha: `RTCSessionDescription` is not structured-cloneable
+  — the local signaller JSON-round-trips messages like the real wire does.
+- **La peace.** The meme (Kai Cenat telling IShowSpeed "that's lapis" — sounds like "la peace" —
+  when Speed thought he found diamonds; edits turned Kai into a serene monk). A **blue rock that looks
+  like a diamond** spawns at a random `LAPIS_SPOTS` entry each shift; E on it shouts `<you> DIAMOND!`
+  four times into a block-game-style chat (`#mcchat`, `mcLine`, also used for join/leave), "the monk
+  joined the game", a **clay monk** (blue robe, orange sash, white beard, a book, one finger raised,
+  golden light) rises out of the ground and says "that's la peace." in a bubble, then 16 s of
+  **peace**: warm sky, boxes take no damage, nobody trips, +$5 ("lapis. $5. that's la peace.").
+  Press **L** for the emote (finger up, "la peace." bubble), networked. The chat also shows other
+  players' messages from the Online app.
+- Menu card scrolls if the viewport is short (`.card{max-height}`); right-drag steers the camera
+  (contextmenu suppressed), keys release on blur, game keys are ignored inside inputs.
+
+Not done yet: Pitty Striker itself, touch controls, more jobs, voice chat, spectating a full room.
+Performance: the world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
+swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason).
 
 ## Known gaps / next up
 
