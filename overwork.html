@@ -313,6 +313,7 @@ function addBox(x, y, z, w, h, d, material, opts = {}) {
   return m;
 }
 function outlined(m, scale = 1.06) { const o = new THREE.Mesh(m.geometry, OUTLINE); o.scale.setScalar(scale); m.add(o); return m; }
+function inkBox(m, t = 0.06) { const b = m.geometry.parameters, o = new THREE.Mesh(m.geometry, OUTLINE); o.scale.set(1 + t / b.width, 1 + t / b.height, 1 + t / b.depth); m.add(o); return m; }   // same line weight whatever the box size
 /* text on a canvas; shrinks the font until the line fits. `box` = [textCenterY, maxFontPx] to keep text inside a drawn shape */
 function makeTex(text, color, w, h, bg = '#faf6ec', font = 'CF Sketch', draw, box) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -349,7 +350,8 @@ function sideProfile(pts, width, mat, x, y, z, parent) {
   return outlined(mesh(g, mat, x + c.x, y + c.y, z + c.z, { parent }), 1.03);
 }
 /* a box with rounded edges: a rounded-rectangle profile extruded along z with a bevel; sizes are the *outer* sizes */
-function roundedBox(w, h, d, r, mat, x, y, z, parent) {
+const NOMAT = new THREE.MeshBasicMaterial({ visible: false });
+function roundedBox(w, h, d, r, mat, x, y, z, parent, noLids) {
   // the outline is an explicit polygon (no Path arcs): arc/line joints leave duplicate points that make the extrude bevel fold into slivers
   const bv = r * 0.5, iw = w - 2 * bv, ih = h - 2 * bv, hw = iw / 2 - r, hh = ih / 2 - r, pts = [];
   const cx = [hw, -hw, -hw, hw], cy = [hh, hh, -hh, -hh];
@@ -357,7 +359,8 @@ function roundedBox(w, h, d, r, mat, x, y, z, parent) {
   const s = new THREE.Shape(pts);
   const depth = d - 2 * bv;
   const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: bv, bevelSize: bv, bevelSegments: 3, curveSegments: 6 }); g.translate(0, 0, -depth / 2);
-  return outlined(mesh(g, mat, x, y, z, { parent }), 1.03);
+  if (!noLids) return outlined(mesh(g, mat, x, y, z, { parent }), 1.03);
+  const m = mesh(g, [NOMAT, mat], x, y, z, { parent }), o = new THREE.Mesh(g, [NOMAT, OUTLINE]); o.scale.setScalar(1.03); m.add(o); return m;   // extrude groups: 0 = the lids, 1 = the walls and bevel
 }
 /* a gable roof: triangular prism sitting on y. ridgeAlongX = the triangle shows on the ±x faces (the road side) */
 function gable(x, y, z, w, d, h, mat, ridgeAlongX) {
@@ -520,12 +523,32 @@ function dish(x, y, z, facing) {
 
 const MATS = ['WELCOME', 'GO AWAY', 'WIPE YOUR FEET', 'NO SOLICITING', 'BEWARE OF DOG', 'LEAVE IT', 'HI', 'NOT YOU AGAIN', "RING BELL. IT'S BROKEN.", "WE KNOW YOU'RE THERE", 'NOPE', 'HOME IS WHERE THE WIFI IS'];
 const STREETS = ['Maple St', 'Cedar Ave', 'Birch Rd', 'Oak Ln', 'Pine Ct', 'Elm Way', 'Ash Blvd', 'Willow Dr'];
+function interior(x, z, facing, fl, i, w, d) {
+  const cx = x - facing * 0.5, m = M.car[i % M.car.length];
+  plane(w - 3.2, d - 3, M.rug || M.cap, cx, fl + 0.012, z);
+  const cz = z + 1.6;                                                                                      // couch against the side wall, tv across the room
+  outlined(mesh(new THREE.BoxGeometry(2.2, 0.55, 0.9), m, cx, fl + 0.3, z + d / 2 - 0.85), 1.04); outlined(mesh(new THREE.BoxGeometry(2.2, 0.55, 0.3), m, cx, fl + 0.75, z + d / 2 - 0.45), 1.04);
+  for (const sx of [-1.15, 1.15]) outlined(mesh(new THREE.BoxGeometry(0.3, 0.75, 0.9), m, cx + sx, fl + 0.4, z + d / 2 - 0.85), 1.04);
+  outlined(mesh(new THREE.BoxGeometry(1.6, 0.5, 0.45), M.desk, cx, fl + 0.25, z - d / 2 + 0.7), 1.04); mesh(new THREE.BoxGeometry(1.5, 0.9, 0.08), M.vanDark, cx, fl + 1.0, z - d / 2 + 0.7); mesh(new THREE.BoxGeometry(1.36, 0.76, 0.02), M.screen, cx, fl + 1.0, z - d / 2 + 0.75, { shadow: false });
+  outlined(mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 14), M.desk, cx, fl + 0.45, cz), 1.05); mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.42, 8), M.desk, cx, fl + 0.21, cz);
+  outlined(mesh(new THREE.BoxGeometry(0.34, 0.14, 0.28), M.box, cx + 0.15, fl + 0.55, cz), 1.06);                                                  // pizza, again
+  const lx = x - facing * (w / 2 - 1.0); mesh(new THREE.CylinderGeometry(0.03, 0.05, 1.4, 6), M.metal, lx, fl + 0.7, z - d / 2 + 1.0, { shadow: false }); outlined(mesh(new THREE.ConeGeometry(0.32, 0.4, 10, 1, true), M.lamp, lx, fl + 1.55, z - d / 2 + 1.0, { shadow: false }), 1.05);
+  const light = new THREE.PointLight(0xffe0b0, 14, 9, 1.4); light.position.set(x, fl + 2.6, z); scene.add(light);
+  for (const sx of [-0.7, 0.7]) mesh(new THREE.BoxGeometry(0.5, 0.36, 0.14), [M.roof[i % 3], M.wall[(i + 1) % 3], M.frame][(i + Math.round(sx)) % 3], x - facing * 1.5 + sx, fl + 2.3, z - d / 2 + 0.23, { shadow: false });   // things on the wall
+}
 function house(i, x, z) {
   const facing = x < 0 ? 1 : -1, style = i % 4;
   const w = 9, d = 8, h = style === 1 ? 6.6 : style === 3 ? 5.0 : 4.2;
   const wall = M.wall[i % M.wall.length], roof = M.roof[i % M.roof.length], trim = M.roof[(i + 2) % M.roof.length];
-  addBox(x, 0, z, w, h, d, wall);
   const fx = x + facing * (w / 2 + 0.02), back = x - facing * (w / 2);
+  const steps = 1 + (i % 3), fl = 0.32 * steps;                                          // the floor sits at porch-landing height, so the door is level with the landing
+  // walls (you can go in now: a 1.6 door gap in the front), a ceiling the camera respects, a raised floor
+  inkBox(addBox(back + facing * 0.15, 0, z, 0.3, h, d, wall));
+  for (const sz of [-1, 1]) inkBox(addBox(x, 0, z + sz * (d / 2 - 0.15), w, h, 0.3, wall));
+  for (const sz of [-1, 1]) inkBox(addBox(fx - facing * 0.17, 0, z + sz * (d / 4 + 0.4), 0.3, h, d / 2 - 0.8, wall));
+  addBox(x, h - 0.3, z, w, 0.3, d, wall);
+  addBox(x, 0, z, w - 0.6, fl, d - 0.6, M.floor, { step: true });
+  interior(x, z, facing, fl, i, w, d);
   // roofs: front gable / tall hip with a dormer / side gable + garage / flat with a parapet and too many antennas
   if (style === 0) { gable(x, h, z, w, d, 2.6, roof, true); for (const k of [-0.3, 0, 0.3]) mesh(new THREE.BoxGeometry(0.05, 0.05, 1.2 - Math.abs(k) * 2), M.metal, back + 1.5, h + 3.0 + k * 0.8, z, { shadow: false }); mesh(new THREE.BoxGeometry(0.05, 1.3, 0.05), M.metal, back + 1.5, h + 2.6, z, { shadow: false }); }
   else if (style === 1) {
@@ -538,10 +561,12 @@ function house(i, x, z) {
   else { addBox(x, h, z, w + 0.4, 0.5, d + 0.4, roof, { solid: false }); addBox(x - facing * 2.5, h + 0.5, z + 1.8, 1.4, 0.9, 1.2, M.metal, { solid: false }); dish(x + facing * 2.2, h + 0.5, z - 2.5, facing); dish(x - facing * 1.0, h + 0.5, z + 2.8, -facing); }
   if (style !== 3) mesh(new THREE.BoxGeometry(0.9, 1.8, 0.9), trim, x - facing * 2.2, h + 1.7, z + 1.8);                                              // chimney
   // door with a knob, a porch light, the house number, a doorbell nobody fixed
-  const door = mesh(new THREE.BoxGeometry(0.14, 2.3, 1.25), M.door, fx, 1.15, z); outlined(door, 1.08);
-  mesh(new THREE.SphereGeometry(0.07, 8, 6), M.hub, fx + facing * 0.1, 1.1, z + 0.45);
-  mesh(new THREE.SphereGeometry(0.14, 8, 6), M.lamp, fx + facing * 0.15, 2.7, z, { shadow: false });
-  mesh(new THREE.BoxGeometry(0.06, 0.12, 0.08), M.frame, fx + facing * 0.08, 1.35, z + 0.8, { shadow: false }); mesh(new THREE.SphereGeometry(0.025, 6, 6), M.cap, fx + facing * 0.12, 1.35, z + 0.8, { shadow: false });
+  const hinge = new THREE.Group(); hinge.position.set(fx - facing * 0.1, fl, z + 0.8); hinge.rotation.y = facing * 1.5; scene.add(hinge);        // the door, swung inwards on the +z post
+  outlined(mesh(new THREE.BoxGeometry(0.14, 2.3, 1.5), M.door, 0, 1.15, -0.75, { parent: hinge }), 1.06);
+  mesh(new THREE.SphereGeometry(0.07, 8, 6), M.hub, facing * 0.1, 1.1, -1.3, { parent: hinge });
+  for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.18, 2.4, 0.12), M.frame, fx - facing * 0.02, fl + 1.2, z + sz * 0.86); mesh(new THREE.BoxGeometry(0.18, 0.12, 1.84), M.frame, fx - facing * 0.02, fl + 2.42, z);   // frame
+  mesh(new THREE.SphereGeometry(0.14, 8, 6), M.lamp, fx + facing * 0.15, fl + 2.9, z, { shadow: false });
+  mesh(new THREE.BoxGeometry(0.06, 0.12, 0.08), M.frame, fx + facing * 0.08, fl + 1.2, z + 1.05, { shadow: false }); mesh(new THREE.SphereGeometry(0.025, 6, 6), M.cap, fx + facing * 0.12, fl + 1.2, z + 1.05, { shadow: false });
   for (const wz of [z - 2.6, z + 2.6]) {
     mesh(new THREE.BoxGeometry(0.1, 1.3, 1.3), M.frame, fx, 2.2, wz); mesh(new THREE.BoxGeometry(0.12, 1.1, 1.1), M.glass, fx + facing * 0.02, 2.2, wz, { shadow: false });
     mesh(new THREE.BoxGeometry(0.08, 0.06, 1.1), M.pupil, fx + facing * 0.04, 2.2, wz, { shadow: false }); mesh(new THREE.BoxGeometry(0.08, 1.1, 0.06), M.pupil, fx + facing * 0.04, 2.2, wz, { shadow: false });
@@ -550,7 +575,6 @@ function house(i, x, z) {
   }
   for (const sz of [-1, 1]) { const wz = z + sz * (d / 2 + 0.02); mesh(new THREE.BoxGeometry(1.3, 1.3, 0.1), M.frame, x - facing * 1.5, 2.2, wz); mesh(new THREE.BoxGeometry(1.1, 1.1, 0.12), M.glass, x - facing * 1.5, 2.2, wz + sz * 0.02, { shadow: false }); }
   // porch steps, landing, doormat
-  const steps = 1 + (i % 3);
   for (let s = 0; s < steps; s++) addBox(x + facing * (w / 2 + 0.9 + s * 0.7), 0, z, 0.7, 0.32 * (steps - s), 3.2, M.curb, { step: true, shadow: false });
   addBox(x + facing * (w / 2 + 0.45), 0, z, 0.9, 0.32 * steps, 3.2, M.walk, { step: true, shadow: false });
   for (const sz of [-1.55, 1.55]) { mesh(new THREE.BoxGeometry(0.08, 0.9, 0.08), M.metal, x + facing * (w / 2 + 0.9 + (steps - 1) * 0.35), 0.32 * steps + 0.45, z + sz, { shadow: false }); mesh(new THREE.BoxGeometry(steps * 0.7 + 0.8, 0.06, 0.06), M.metal, x + facing * (w / 2 + 0.9 + (steps - 1) * 0.35), 0.32 * steps + 0.9, z + sz, { shadow: false }); }
@@ -574,7 +598,7 @@ function house(i, x, z) {
   if (style === 0) { gnome(fx + facing * 2.3, z + 2.9); gnome(fx + facing * 3.1, z + 3.3); }
   if (style === 1) { flamingo(fx + facing * 2.2, z + 2.8); flamingo(fx + facing * 3.0, z + 3.4); ball(fx + facing * 1.6, z - 3.2); }
   if (style === 2) {
-    const gz = z - d / 2 - 2.6; addBox(fx - facing * 2.5, 0, gz, 5, 3, 5, wall); addBox(fx - facing * 2.5, 3, gz, 5.4, 0.4, 5.4, roof, { solid: false });
+    const gz = z - d / 2 - 2.6; inkBox(addBox(fx - facing * 2.5, 0, gz, 5, 3, 5, wall)); addBox(fx - facing * 2.5, 3, gz, 5.4, 0.4, 5.4, roof, { solid: false });
     const gd = outlined(mesh(new THREE.BoxGeometry(0.12, 2.4, 3.6), M.garage, fx, 1.2, gz), 1.04); for (let k = 1; k < 4; k++) mesh(new THREE.BoxGeometry(0.14, 0.04, 3.5), M.curb, fx + facing * 0.02, k * 0.6, gz, { shadow: false });
     plane(4.2, 4.2, M.drive, fx + facing * 2.1, 0.013, gz);
     carAt(fx + facing * 2.1, gz, Math.PI / 2, M.car[i % M.car.length], i % 2 ? 'my other car is also this' : "honk if you're also tired");
@@ -585,7 +609,7 @@ function house(i, x, z) {
   if (i === 5) sprinkler(fx + facing * 2.4, z + 3.0);
   if (i === 6) bike(fx + facing * 2.4, z + 3.0, facing);
   if (i === 7) { mesh(new THREE.BoxGeometry(0.08, 1.4, 0.08), M.wood, fx + facing * 2.6, 0.7, z + 3.0); const fs = makeLabel('FOR SALE. seriously. please.', '#e8162a', 384, 100, '#faf6ec', 'Patrick Hand'); fs.position.set(fx + facing * 2.6, 1.55, z + 3.0); fs.rotation.y = facing > 0 ? Math.PI / 2 : -Math.PI / 2; fs.scale.set(1.5, 0.4, 1); scene.add(fs); }
-  const hs = { i, x, z, num, street: STREETS[i], label: `${num} ${STREETS[i]}`, matMesh: doormat, facing, doorX: fx + facing * 0.3, lawnT: 0, lawnDone: false,
+  const hs = { i, x, z, num, fl, street: STREETS[i], label: `${num} ${STREETS[i]}`, matMesh: doormat, facing, doorX: fx + facing * 0.3, lawnT: 0, lawnDone: false,
     doormat: { min: { x: matX - 1.2, y: -1, z: z - 1.0 }, max: { x: matX + 1.2, y: 3, z: z + 1.0 } },
     yard: { minX: Math.min(fx, fx + facing * 3.9), maxX: Math.max(fx, fx + facing * 3.9), minZ: z - d / 2 - 0.4, maxZ: z + d / 2 + 0.4 } };
   hs.customer = new Customer(hs, i); customers.push(hs.customer);
@@ -598,34 +622,35 @@ function buildWorld() {
   plane(9, 160, M.road, 0, 0.01, 0); plane(120, 9, M.road, 0, 0.011, -40);
   for (let i = -8; i <= 8; i++) if (i !== -5) plane(0.28, 3, M.stripe, 0, 0.02, i * 8);
   for (let i = -7; i <= 7; i++) if (i) plane(3, 0.28, M.stripe, i * 8, 0.02, -40);
-  for (const sx of [-6.5, 6.5]) { plane(4, 160, M.walk, sx, 0.012, 0); addBox(sx - (sx > 0 ? 2.1 : -2.1), 0, 0, 0.3, 0.14, 160, M.curb, { solid: false, shadow: false }); }
-  for (const sz of [-46.5, -33.5]) plane(120, 4, M.walk, 0, 0.0115, sz);
+  // sidewalks and curbs stop at the cross street (they used to run straight across the road at the intersection)
+  for (const sx of [-6.5, 6.5]) for (const [z0, z1] of [[-80, -48.5], [-31.5, 80]]) { plane(4, z1 - z0, M.walk, sx, 0.012, (z0 + z1) / 2); addBox(sx - (sx > 0 ? 2.1 : -2.1), 0, (z0 + z1) / 2, 0.3, 0.14, z1 - z0, M.curb, { solid: false, shadow: false }); }
+  for (const sz of [-46.5, -33.5]) for (const [x0, x1] of [[-60, -4.5], [4.5, 60]]) { plane(x1 - x0, 4, M.walk, (x0 + x1) / 2, 0.012, sz); addBox((x0 + x1) / 2, 0, sz + (sz > -40 ? -2.1 : 2.1), x1 - x0, 0.14, 0.3, M.curb, { solid: false, shadow: false }); }
   for (let k = -3; k <= 3; k++) plane(0.8, 3.2, M.stripe, k * 1.25, 0.021, -33);
   for (const [x, z] of [[1.2, 6], [-1.5, -18], [-16, -39.2]]) disc(0.55, flat(0x3a3a44), x, 0.03, z);
   for (const [x, z] of [[1.4, 13], [-1.7, -14], [2.1, -27], [-20, -40.8], [16, -39.2]]) { disc(0.7, M.pothole, x, 0.03, z); potholes.push({ x, z, r: 0.7, cd: 0 }); }
   // ── hills on the horizon, so the world doesn't end in fog on a flat line ──
   for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + 0.3; const hx = Math.cos(a) * rnd(105, 125), hz = Math.sin(a) * rnd(105, 125) - 20; const hm = mesh(new THREE.SphereGeometry(rnd(26, 44), 12, 8), M.hill, hx, -10, hz, { shadow: false }); hm.scale.y = rnd(0.3, 0.45); }
   // ── warehouse ──
-  const WZ = 34;
-  addBox(-14, 0, WZ, 22, 7, 14, M.warehouse);
-  addBox(-14, 7, WZ, 23, 0.7, 15, M.warehouseDark);
-  for (let k = 0; k < 4; k++) mesh(new THREE.BoxGeometry(1.2, 0.6, 1.2), M.warehouseDark, -22 + k * 5, 8.0, WZ - 3 + (k % 2) * 5);                  // roof vents
-  mesh(new THREE.BoxGeometry(0.2, 5, 6), M.vanDark, -2.95, 2.6, WZ + 0.5);                                                                  // rolling door (down)
-  for (let k = 0; k < 6; k++) mesh(new THREE.BoxGeometry(0.06, 0.08, 6), M.warehouse, -2.84, 0.6 + k * 0.8, WZ + 0.5, { shadow: false });
-  mesh(new THREE.BoxGeometry(0.2, 1.2, 4), M.vanDark, -2.95, 6.3, WZ - 5);                                                                    // second door, mostly up
-  for (let k = 0; k < 2; k++) mesh(new THREE.BoxGeometry(0.06, 0.08, 4), M.warehouse, -2.84, 5.9 + k * 0.5, WZ - 5, { shadow: false });
-  addBox(-2.6, 0, WZ, 1.2, 0.45, 10, M.warehouseDark, { step: true });                                                                          // the dock
-  mesh(new THREE.BoxGeometry(0.06, 0.45, 10), M.hazard, -1.98, 0.225, WZ, { shadow: false });                                                  // dock edge stripe
-  const sign = makeLabel('OVERWORK LOGISTICS', '#ffb020', 640, 110, '#2a2a33'); sign.position.set(-3.1, 5.6, WZ - 3); sign.rotation.y = Math.PI / 2; sign.scale.set(6.4, 1.1, 1); scene.add(sign);
-  const sign2 = makeLabel('we deliver. mostly.', '#f4f4f7', 640, 90, '#2a2a33', 'Patrick Hand'); sign2.position.set(-3.1, 4.7, WZ - 3); sign2.rotation.y = Math.PI / 2; sign2.scale.set(5, 0.7, 1); scene.add(sign2);
-  const sign3 = makeLabel('DAYS WITHOUT INCIDENT: 0', '#e8162a', 640, 90, '#faf6ec'); sign3.position.set(-3.1, 3.3, WZ - 1.5); sign3.rotation.y = Math.PI / 2; sign3.scale.set(3.6, 0.5, 1); scene.add(sign3);
-  const sign4 = makeLabel('EMPLOYEE OF THE MONTH: the van', '#23212b', 640, 80, '#faf6ec', 'Patrick Hand'); sign4.position.set(-3.1, 2.4, WZ - 1.5); sign4.rotation.y = Math.PI / 2; sign4.scale.set(3.0, 0.38, 1); scene.add(sign4);
-  addBox(-3.5, 0.45, WZ + 3.6, 0.9, 1.9, 0.9, M.cap, { solid: false });                                                                          // vending machine, on the dock
-  const vend = makeLabel('SNACKS · out of order', '#faf6ec', 384, 120, '#8a0f1c', 'Patrick Hand'); vend.position.set(-3.03, 1.6, WZ + 3.6); vend.rotation.y = Math.PI / 2; vend.scale.set(0.7, 0.9, 1); scene.add(vend);
-  for (const [x, z] of [[-1.2, 40], [1.0, 41.5], [-0.4, 27]]) coneProp(x, z);
-  for (let k = 0; k < 3; k++) addBox(-6 + k * 1.4, 0, 41.5, 1.2, 0.16, 1.0, M.wood, { solid: false });                                            // pallets
-  for (let k = 0; k < 3; k++) outlined(mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.0, 12), [M.gnomeBody, M.cap, M.hazard][k], -1.0 + k * 0.9, 0.5, 44.5), 1.04);   // drums
-  colliders.push({ min: { x: -1.5, y: 0, z: 44 }, max: { x: 1.3, y: 1, z: 45 } });
+  const WZ = 34, WX = -6;                                                                  // WX: the whole warehouse sits 6 further west than it used to — the dock was in the road
+  inkBox(addBox(-14 + WX, 0, WZ, 22, 7, 14, M.warehouse), 0.08);
+  addBox(-14 + WX, 7, WZ, 23, 0.7, 15, M.warehouseDark);
+  for (let k = 0; k < 4; k++) mesh(new THREE.BoxGeometry(1.2, 0.6, 1.2), M.warehouseDark, -22 + WX + k * 5, 8.0, WZ - 3 + (k % 2) * 5);                  // roof vents
+  mesh(new THREE.BoxGeometry(0.2, 5, 6), M.vanDark, -2.95 + WX, 2.6, WZ + 0.5);                                                             // rolling door (down)
+  for (let k = 0; k < 6; k++) mesh(new THREE.BoxGeometry(0.06, 0.08, 6), M.warehouse, -2.84 + WX, 0.6 + k * 0.8, WZ + 0.5, { shadow: false });
+  mesh(new THREE.BoxGeometry(0.2, 1.2, 4), M.vanDark, -2.95 + WX, 6.3, WZ - 5);                                                               // second door, mostly up
+  for (let k = 0; k < 2; k++) mesh(new THREE.BoxGeometry(0.06, 0.08, 4), M.warehouse, -2.84 + WX, 5.9 + k * 0.5, WZ - 5, { shadow: false });
+  addBox(-2.6 + WX, 0, WZ, 1.2, 0.45, 10, M.warehouseDark, { step: true });                                                                     // the dock, on the sidewalk
+  mesh(new THREE.BoxGeometry(0.06, 0.45, 10), M.hazard, -1.98 + WX, 0.225, WZ, { shadow: false });                                             // dock edge stripe
+  const sign = makeLabel('OVERWORK LOGISTICS', '#ffb020', 640, 110, '#2a2a33'); sign.position.set(-3.1 + WX, 5.6, WZ - 3); sign.rotation.y = Math.PI / 2; sign.scale.set(6.4, 1.1, 1); scene.add(sign);
+  const sign2 = makeLabel('we deliver. mostly.', '#f4f4f7', 640, 90, '#2a2a33', 'Patrick Hand'); sign2.position.set(-3.1 + WX, 4.7, WZ - 3); sign2.rotation.y = Math.PI / 2; sign2.scale.set(5, 0.7, 1); scene.add(sign2);
+  const sign3 = makeLabel('DAYS WITHOUT INCIDENT: 0', '#e8162a', 640, 90, '#faf6ec'); sign3.position.set(-3.1 + WX, 3.3, WZ - 1.5); sign3.rotation.y = Math.PI / 2; sign3.scale.set(3.6, 0.5, 1); scene.add(sign3);
+  const sign4 = makeLabel('EMPLOYEE OF THE MONTH: the van', '#23212b', 640, 80, '#faf6ec', 'Patrick Hand'); sign4.position.set(-3.1 + WX, 2.4, WZ - 1.5); sign4.rotation.y = Math.PI / 2; sign4.scale.set(3.0, 0.38, 1); scene.add(sign4);
+  addBox(-3.5 + WX, 0.45, WZ + 3.6, 0.9, 1.9, 0.9, M.cap, { solid: false });                                                                     // vending machine, on the dock
+  const vend = makeLabel('SNACKS · out of order', '#faf6ec', 384, 120, '#8a0f1c', 'Patrick Hand'); vend.position.set(-3.03 + WX, 1.6, WZ + 3.6); vend.rotation.y = Math.PI / 2; vend.scale.set(0.7, 0.9, 1); scene.add(vend);
+  for (const [x, z] of [[-1.2 + WX, 40], [1.0 + WX, 41.5], [-0.4 + WX, 27]]) coneProp(x, z);
+  for (let k = 0; k < 3; k++) addBox(-8.2 + k * 1.4, 0, 41.5, 1.2, 0.16, 1.0, M.wood, { solid: false });                                          // pallets
+  for (let k = 0; k < 3; k++) outlined(mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.0, 12), [M.gnomeBody, M.cap, M.hazard][k], -1.0 + WX + k * 0.9, 0.5, 44.5), 1.04);   // drums
+  colliders.push({ min: { x: -1.5 + WX, y: 0, z: 44 }, max: { x: 1.3 + WX, y: 1, z: 45 } });
   { const fk = new THREE.Group(); fk.position.set(-6.3, 0, 23.8); fk.rotation.y = 0.5; scene.add(fk);                                             // a forklift, parked on the sidewalk. it has not moved in weeks.
     roundedBox(1.3, 0.9, 1.9, 0.12, M.hazard, 0, 0.75, -0.2, fk); outlined(mesh(new THREE.BoxGeometry(1.1, 0.1, 0.9), M.vanDark, 0, 1.25, -0.4, { parent: fk }), 1.04);
     for (const sx of [-0.5, 0.5]) mesh(new THREE.BoxGeometry(0.08, 1.9, 0.08), M.vanDark, sx, 2.1, -0.85, { parent: fk }); mesh(new THREE.BoxGeometry(1.1, 0.08, 0.08), M.vanDark, 0, 3.0, -0.85, { parent: fk });
@@ -661,21 +686,21 @@ function buildWorld() {
     mesh(new THREE.BoxGeometry(0.1, 0.1, 1.0), M.pole, sx * 0.92, 5.0, z, { shadow: false });
     mesh(new THREE.SphereGeometry(0.34, 10, 8), M.lamp, sx * 0.85, 4.95, z, { shadow: false });
   }
-  for (let k = 0; k < 16; k++) { const tx = (Math.random() < .5 ? -1 : 1) * rnd(26, 64); let tz = rnd(-72, 40); if (Math.abs(tx) < 42 && tz > -60 && tz < -44) tz -= 20; if (tx < -22 && tx > -43 && tz > -25 && tz < -6) continue; (Math.random() < 0.4 ? pine : tree)(tx, tz, rnd(0.9, 1.6)); }   // the casino lot stays clear
+  for (let k = 0; k < 16; k++) { const tx = (Math.random() < .5 ? -1 : 1) * rnd(26, 64); let tz = rnd(-72, 40); if (Math.abs(tx) < 42 && tz > -60 && tz < -44) tz -= 20; if (tx < -22 && tx > -43 && tz > -25 && tz < -6) continue; if (tz > -49.5 && tz < -30.5) continue; (Math.random() < 0.4 ? pine : tree)(tx, tz, rnd(0.9, 1.6)); }   // the casino lot and the cross street stay clear
   deadTree(-24, 6);
   for (let k = 0; k < 9; k++) cloud(rnd(-90, 90), rnd(26, 40), rnd(-110, 60), rnd(1.2, 2.4));
   birds.push(new Flock(-20, -10, 22, 14, 5), new Flock(30, 20, 26, 18, 4));
   sunFace = makeSun();
   buildHome(); buildCasino(); buildLapis();
-  van.group.position.set(3.2, 0, WZ - 2); van.yaw = 0;
+  van.group.position.set(-2.4, 0, WZ - 2); van.yaw = 0;                                   // the west lane, beside the dock
 }
 /* ── your apartment: APT 3B, across the road from the dock. one room, one desk, one PC. the PC is the point ── */
 function buildHome() {
   const X = 15, Z = 30, W = 8, D = 8, H = 3.2;
   plane(W - 0.6, D - 0.6, M.floor, X, 0.02, Z);
-  addBox(X + W / 2 - 0.15, 0, Z, 0.3, H, D, M.wall[0]);                                                                    // back wall
-  for (const sz of [-1, 1]) addBox(X, 0, Z + sz * (D / 2 - 0.15), W, H, 0.3, M.wall[0]);                                    // side walls
-  addBox(X - W / 2 + 0.15, 0, Z - 2.45, 0.3, H, 3.1, M.wall[0]); addBox(X - W / 2 + 0.15, 0, Z + 2.45, 0.3, H, 3.1, M.wall[0]);   // front wall, with a door gap
+  inkBox(addBox(X + W / 2 - 0.15, 0, Z, 0.3, H, D, M.wall[0]));                                                            // back wall
+  for (const sz of [-1, 1]) inkBox(addBox(X, 0, Z + sz * (D / 2 - 0.15), W, H, 0.3, M.wall[0]));                            // side walls
+  inkBox(addBox(X - W / 2 + 0.15, 0, Z - 2.45, 0.3, H, 3.1, M.wall[0])); inkBox(addBox(X - W / 2 + 0.15, 0, Z + 2.45, 0.3, H, 3.1, M.wall[0]));   // front wall, with a door gap
   addBox(X, H, Z, W + 0.4, 0.3, D + 0.4, M.roof[1]);                                                                       // ceiling (the camera respects it)
   addBox(X, H + 0.3, Z, W, 2.8, D, M.wall[3], { solid: false }); addBox(X, H + 3.1, Z, W + 0.4, 0.4, D + 0.4, M.roof[1], { solid: false });   // the neighbours upstairs
   for (const wz of [Z - 2.4, Z + 2.4]) { mesh(new THREE.BoxGeometry(0.1, 1.2, 1.2), M.frame, X - W / 2 - 0.02, H + 1.7, wz); mesh(new THREE.BoxGeometry(0.12, 1.0, 1.0), M.glass, X - W / 2 - 0.04, H + 1.7, wz, { shadow: false }); }
@@ -683,7 +708,7 @@ function buildHome() {
   dish(X - 2, H + 3.5, Z + 2.5, -1);
   // door: frame, a door swung open inwards, a mat, a sign, an awning
   for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.36, 2.5, 0.12), M.door, X - W / 2, 1.25, Z + sz * 0.96); mesh(new THREE.BoxGeometry(0.36, 0.12, 2.04), M.door, X - W / 2, 2.56, Z);
-  outlined(mesh(new THREE.BoxGeometry(0.12, 2.3, 1.7), M.door, X - W / 2 - 0.55, 1.15, Z - 1.6, { rot: [0, 1.15, 0] }), 1.04); colliders.push({ min: { x: X - W / 2 - 1.2, y: 0, z: Z - 2.4 }, max: { x: X - W / 2 - 0.1, y: 2.3, z: Z - 1.0 } });   // the door, open, hinged on the frame
+  outlined(mesh(new THREE.BoxGeometry(0.12, 2.3, 1.7), M.door, X - W / 2 - 0.78, 1.15, Z - 1.31, { rot: [0, 1.15, 0] }), 1.04); colliders.push({ min: { x: X - W / 2 - 1.3, y: 0, z: Z - 2.0 }, max: { x: X - W / 2 - 0.2, y: 2.3, z: Z - 0.9 } });   // the door, open 66°, hinged on the −z post of the frame (centre = post + R·(0,0,−0.85))
   mesh(new THREE.SphereGeometry(0.06, 8, 6), M.hub, X - W / 2 - 1.05, 1.1, Z - 2.15);
   const mat = mesh(new THREE.BoxGeometry(0.9, 0.06, 1.4), M.matOff, X - W / 2 - 0.7, 0.03, Z); const ml = makeLabel('you again.', '#3a2a10', 256, 96, '#00000000', 'Patrick Hand'); ml.material.transparent = true; ml.rotation.set(-Math.PI / 2, 0, -Math.PI / 2); ml.position.set(X - W / 2 - 0.7, 0.07, Z); ml.scale.set(1.2, 0.5, 1); scene.add(ml);
   const sg = makeLabel('APT 3B', '#faf6ec', 256, 96, '#2a2a33'); sg.position.set(X - W / 2 - 0.03, 4.15, Z); sg.rotation.y = -Math.PI / 2; sg.scale.set(1.3, 0.5, 1); scene.add(sg);                       // on the upstairs wall, clear of the floor slab that used to cut it
@@ -1120,11 +1145,12 @@ function nameTex(text) {
    owns its materials so the locker (and other players' looks) recolour one figure, never the neighbours.
    simulate() is the physics, animate() is everything you see. Remote players skip simulate: their
    position arrives over the wire and animate() does the rest from position and velocity alone. */
+const CS = 0.72;                                                                              // courier scale: the figure was 3 units tall against 2.3 doors. everything on the body scales with this, the world doesn't
 class Courier {
   constructor(opts = {}) {
     this.remote = !!opts.remote; this.peer = opts.peer || null; this.name = ''; this.net = null;
     this.pos = new THREE.Vector3(1.5, 0, 26); this.vel = new THREE.Vector3(); this.yaw = Math.PI;
-    this.onGround = true; this.radius = 0.36; this.height = 1.9;
+    this.onGround = true; this.radius = 0.36 * CS; this.height = 2.0;
     this.targetVx = 0; this.targetVz = 0; this.gait = 0; this.breath = rnd(0, 6);
     const m = this.mat = { skin: clay(0xf6c9a6), suit: clay(0xff7a1a), sleeve: clay(0x4a5568), cap: clay(0xe8162a), shoe: clay(0x1f1f28), hair: clay(0x2a1a10), collar: clay(0xf4f4f7) };
     const g = this.group = new THREE.Group(); scene.add(g);
@@ -1157,21 +1183,21 @@ class Courier {
     this.look = null; if (ACC.ready) this.attachAccessories();
     this.headSpring = { x: spring(60, 6), z: spring(60, 6), y: spring(80, 8) };
     // limbs: jelly legs in the jumpsuit colour, jelly arms in the sleeve colour
-    this.legL = new Limb(m.suit, 0.125, 1.0); this.legR = new Limb(m.suit, 0.125, 1.0);
-    this.armL = new Limb(m.sleeve, 0.085, 0.85); this.armR = new Limb(m.sleeve, 0.085, 0.85);
+    this.legL = new Limb(m.suit, 0.125 * CS, 1.0 * CS); this.legR = new Limb(m.suit, 0.125 * CS, 1.0 * CS);
+    this.armL = new Limb(m.sleeve, 0.085 * CS, 0.85 * CS); this.armR = new Limb(m.sleeve, 0.085 * CS, 0.85 * CS);
     // boots and mitt hands
-    this.footL = outlined(mesh(new THREE.CapsuleGeometry(0.16, 0.3, 4, 10), m.shoe, 0, 0, 0), 1.08); this.footR = outlined(mesh(new THREE.CapsuleGeometry(0.16, 0.3, 4, 10), m.shoe, 0, 0, 0), 1.08);
-    this.handL = outlined(mesh(new THREE.SphereGeometry(0.12, 10, 8), m.skin, 0, 0, 0), 1.1); this.handR = outlined(mesh(new THREE.SphereGeometry(0.12, 10, 8), m.skin, 0, 0, 0), 1.1);
+    this.footL = outlined(mesh(new THREE.CapsuleGeometry(0.16, 0.3, 4, 10), m.shoe, 0, 0, 0), 1.08); this.footR = outlined(mesh(new THREE.CapsuleGeometry(0.16, 0.3, 4, 10), m.shoe, 0, 0, 0), 1.08); this.footL.scale.setScalar(CS); this.footR.scale.setScalar(CS);
+    this.handL = outlined(mesh(new THREE.SphereGeometry(0.12, 10, 8), m.skin, 0, 0, 0), 1.1); this.handR = outlined(mesh(new THREE.SphereGeometry(0.12, 10, 8), m.skin, 0, 0, 0), 1.1); this.handL.scale.setScalar(CS); this.handR.scale.setScalar(CS);
     this.feet = [
-      { pos: new THREE.Vector3(-0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(55, 6), roll: spring(80, 8) },
-      { pos: new THREE.Vector3(0.2, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(55, 6), roll: spring(80, 8) }];
+      { pos: new THREE.Vector3(-0.2 * CS, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(55, 6), roll: spring(80, 8) },
+      { pos: new THREE.Vector3(0.2 * CS, 0, 0), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 1, knee: spring(55, 6), roll: spring(80, 8) }];
     this.feet[0].pos.add(this.pos); this.feet[1].pos.add(this.pos);
     this.lean = { x: spring(40, 6), z: spring(40, 6) }; this.bob = spring(90, 8); this.squash = spring(120, 9); this.hipTwist = spring(30, 6);
     this.hands = [{ p: new THREE.Vector3(), v: new THREE.Vector3() }, { p: new THREE.Vector3(), v: new THREE.Vector3() }];
     this.carry = null; this.stun = 0; this.stepCooldown = 0; this.worry = 0; this.trampCd = 0; this.hitCd = 0; this.sitting = null; this.emote = 0; this.bubble = null; this.wetToast = false;
     // the floating name, like a badge at a very sad convention
     this.nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex('new guy'), transparent: true, depthTest: false, fog: false }));
-    this.nameSprite.scale.set(1.6, 0.4, 1); this.nameSprite.renderOrder = 4; scene.add(this.nameSprite);
+    this.nameSprite.scale.set(1.3, 0.33, 1); this.nameSprite.renderOrder = 4; scene.add(this.nameSprite);
   }
   attachAccessories() {                                                                  // (re)build the model-based wearables; visibility is applyLookTo's job
     for (const g of [this.capG, this.frogG, this.glasses, this.phonesG]) while (g.children.length) g.remove(g.children[0]);
@@ -1180,7 +1206,7 @@ class Courier {
   setName(n) { this.name = n; const old = this.nameSprite.material.map; this.nameSprite.material.map = nameTex(n || 'new guy'); if (old) old.dispose(); }
   setVisible(v) { this.group.visible = v; this.nameSprite.visible = v; for (const m of [this.legL, this.legR, this.armL, this.armR]) m.setVisible(v); for (const m of [this.footL, this.footR, this.handL, this.handR]) m.visible = v; }
   dispose() { scene.remove(this.group, this.nameSprite); for (const m of [this.legL, this.legR, this.armL, this.armR]) { scene.remove(m.mesh, m.outline); } for (const m of [this.footL, this.footR, this.handL, this.handR]) scene.remove(m); }
-  teleport(x, z, yaw) { this.pos.set(x, 0, z); this.vel.set(0, 0, 0); if (yaw !== undefined) this.yaw = yaw; for (let i = 0; i < 2; i++) { const f = this.feet[i]; f.pos.set(x + (i ? 0.2 : -0.2), 0, z); f.from.copy(f.pos); f.to.copy(f.pos); f.t = 1; } for (const h of this.hands) { h.p.set(x, 1, z); h.v.set(0, 0, 0); } if (!this.remote) world.camSnap = true; }
+  teleport(x, z, yaw) { this.pos.set(x, 0, z); this.vel.set(0, 0, 0); if (yaw !== undefined) this.yaw = yaw; for (let i = 0; i < 2; i++) { const f = this.feet[i]; f.pos.set(x + (i ? 0.2 : -0.2) * CS, 0, z); f.from.copy(f.pos); f.to.copy(f.pos); f.t = 1; } for (const h of this.hands) { h.p.set(x, 1, z); h.v.set(0, 0, 0); } if (!this.remote) world.camSnap = true; }
   update(dt, input, camYaw) { this.simulate(dt, input, camYaw); this.animate(dt); }
   /* ── physics: acceleration, jump, gravity, the world, hazards ── */
   simulate(dt, input, camYaw) {
@@ -1202,7 +1228,7 @@ class Courier {
     if (input.jump && this.onGround && this.stun <= 0) { this.vel.y = 6.5 - weight * 0.8; this.onGround = false; this.squash.v -= 6; this.legL.kick(6); this.legR.kick(6); input.jump = false; }
     this.vel.y -= 18 * dt;
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
-    collideCylinder(this, dt);
+    this.ride = null; collideCylinder(this, dt);
     this.pos.y += this.vel.y * dt;
     const floor = floorHeight(this.pos.x, this.pos.z, this.pos.y + 0.5, this.radius);
     if (this.pos.y <= floor) {
@@ -1238,11 +1264,11 @@ class Courier {
     this.stepCooldown -= dt; this.breath += dt; this.gait += dt * clamp(speed, 0, 8) * 2.4;
     const dirX = speed > 0.3 ? this.vel.x / speed : Math.sin(this.yaw), dirZ = speed > 0.3 ? this.vel.z / speed : Math.cos(this.yaw);
     const sideX = Math.cos(this.yaw), sideZ = -Math.sin(this.yaw);
-    const stride = clamp(0.35 + speed * 0.14, 0.35, 1.2);
+    const stride = clamp(0.35 + speed * 0.14, 0.35, 1.2) * CS;
     const stepDur = clamp(0.32 - speed * 0.022, 0.14, 0.32);
     for (let i = 0; i < 2; i++) {
       const f = this.feet[i], other = this.feet[1 - i], side = i === 0 ? -1 : 1;
-      const hipX = this.pos.x + sideX * side * 0.2, hipZ = this.pos.z + sideZ * side * 0.2;
+      const hipX = this.pos.x + sideX * side * 0.2 * CS, hipZ = this.pos.z + sideZ * side * 0.2 * CS;
       if (f.t < 1) {
         f.t = Math.min(1, f.t + dt / stepDur);
         const e = f.t < .5 ? 2 * f.t * f.t : 1 - Math.pow(-2 * f.t + 2, 2) / 2;
@@ -1259,14 +1285,14 @@ class Courier {
         const aheadX = hipX + dirX * stride * (speed > 0.3 ? 1 : 0), aheadZ = hipZ + dirZ * stride * (speed > 0.3 ? 1 : 0);
         const dx = f.pos.x - hipX, dz = f.pos.z - hipZ;
         const behind = dx * dirX + dz * dirZ, dist = Math.hypot(dx, dz);
-        const needs = speed > 0.3 ? (behind < -stride * 0.55 || dist > stride * 1.5) : dist > 0.32;
+        const needs = speed > 0.3 ? (behind < -stride * 0.55 || dist > stride * 1.5) : dist > 0.32 * CS;
         if (needs && other.t >= 1 && this.stepCooldown <= 0) {
           f.from.copy(f.pos); f.to.set(aheadX + rnd(-0.07, 0.07), floorHeight(aheadX, aheadZ, this.pos.y + 0.5, 0.15), aheadZ + rnd(-0.07, 0.07));
           f.t = 0; this.stepCooldown = stepDur * 0.35;
           this.lean.z.v += side * 1.6; this.hipTwist.v += side * 3;
         }
         springTo(f.roll, 0, dt);
-      } else { f.pos.set(hipX, this.pos.y - 0.25, hipZ); f.t = 1; springTo(f.roll, -0.6, dt); }
+      } else { f.pos.set(hipX, this.pos.y - 0.25 * CS, hipZ); f.t = 1; springTo(f.roll, -0.6, dt); }
       springTo(f.knee, 0, dt);
     }
     // ── body springs (idle: a slow breath through the squash spring) ──
@@ -1277,11 +1303,11 @@ class Courier {
     springTo(this.lean.x, fwdLean, dt); springTo(this.lean.z, -sideLean, dt);
     springTo(this.bob, 0, dt); springTo(this.squash, idle ? Math.sin(this.breath * 2.1) * 0.45 : 0, dt); springTo(this.hipTwist, 0, dt);
     springTo(this.headSpring.x, -this.lean.x.x * 0.35 + (ax * dirX + az * dirZ) * -0.02, dt); springTo(this.headSpring.z, this.lean.z.x * 0.35, dt); springTo(this.headSpring.y, 0, dt);
-    const hipY = this.pos.y + 1.05 + this.bob.x * 0.05 + this.squash.x * 0.03 + (this.onGround ? 0 : 0.1);
+    const hipY = this.pos.y + (1.05 + this.bob.x * 0.05 + this.squash.x * 0.03 + (this.onGround ? 0 : 0.1)) * CS;
     this.group.position.set(this.pos.x, hipY, this.pos.z);
     this.group.rotation.set(this.lean.x.x, this.yaw + this.hipTwist.x * 0.04, this.lean.z.x, 'YXZ');
     const sq = 1 + this.squash.x * 0.07;
-    this.group.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+    this.group.scale.set(CS / Math.sqrt(sq), CS * sq, CS / Math.sqrt(sq));
     // no face, so worry is posture: the head droops when the box is heavy or you've just been tripped
     this.worry = lerp(this.worry, this.stun > 0 ? 1 : this.carry ? clamp(this.carry.mass * 0.35, 0.2, 1) : 0, Math.min(1, 6 * dt));
     this.head.position.set(this.headSpring.z.x * 0.25, 1.55 + this.headSpring.y.x * 0.06 - this.worry * 0.06, this.headSpring.x.x * 0.25);
@@ -1290,12 +1316,13 @@ class Courier {
     for (let i = 0; i < 2; i++) {
       const f = this.feet[i], side = i === 0 ? -1 : 1, limb = i === 0 ? this.legL : this.legR;
       const hipW = _d.set(side * 0.2, -0.05, 0); this.group.localToWorld(hipW);
-      const kneeBend = 0.22 + f.knee.x * 0.05 + (1 - f.t) * 0.25;
+      const kneeBend = (0.22 + f.knee.x * 0.05 + (1 - f.t) * 0.25) * CS;
       const c1 = _a.copy(hipW).lerp(f.pos, 0.38); c1.x += dirX * kneeBend + sideX * side * 0.05; c1.z += dirZ * kneeBend + sideZ * side * 0.05;
       const c2 = _b.copy(hipW).lerp(f.pos, 0.72); c2.x -= dirX * kneeBend * 0.6; c2.z -= dirZ * kneeBend * 0.6;
       limb.update(dt, hipW, c1, c2, f.pos, _c.set(sideX, 0, sideZ), LEG_PROFILE);
       const foot = i === 0 ? this.footL : this.footR;
-      foot.position.set(f.pos.x + dirX * 0.1, f.pos.y + 0.13, f.pos.z + dirZ * 0.1); foot.rotation.set(Math.PI / 2 - f.roll.x, this.yaw, 0, 'YXZ');
+      const ax = (-0.13 + Math.cos(f.roll.x) * 0.23) * CS, ay = Math.sin(f.roll.x) * 0.23 * CS;                                          // the shoe pivots at its heel, where the leg ends: toes down in the air, and the leg still meets the heel
+      foot.position.set(f.pos.x + dirX * ax, f.pos.y + 0.13 * CS + ay, f.pos.z + dirZ * ax); foot.rotation.set(Math.PI / 2 - f.roll.x, this.yaw, 0, 'YXZ');
     }
     // ── arms: hang and swing against the legs, or hold the box overhead. never longer than an arm ──
     const swing = clamp(speed * 0.09, 0, 0.5);
@@ -1304,36 +1331,42 @@ class Courier {
       const shoulder = _d.set(side * 0.42, 0.95, 0); this.group.localToWorld(shoulder);
       const target = _e;
       if (this.emote > 0 && i === 1) { target.set(0.2, 2.35, 0.15); this.group.localToWorld(target); }
-      else if (this.carry) { target.set(side * this.carry.size.x * 0.42, 1.85 + this.carry.size.y * 0.1, 0.05); this.group.localToWorld(target); }
+      else if (this.carry) { const low = this.ride === van; target.set(side * this.carry.size.x * 0.42, low ? 0.15 : 1.85 + this.carry.size.y * 0.1, low ? 0.5 : 0.05); this.group.localToWorld(target); }   // in the bay the box rides at the chest: the roof is right there
       else { target.set(side * 0.48, 0.08, -0.05 + fwdLean * 0.7 + Math.sin(this.gait + (i === 0 ? 0 : Math.PI)) * swing); this.group.localToWorld(target); }
       const k = this.carry || this.emote > 0 ? 90 : 24, d = this.carry || this.emote > 0 ? 12 : 4.5;
       h.v.x += ((target.x - h.p.x) * k - h.v.x * d) * dt; h.v.y += ((target.y - h.p.y) * k - h.v.y * d) * dt; h.v.z += ((target.z - h.p.z) * k - h.v.z * d) * dt;
       h.p.addScaledVector(h.v, dt);
       const reach = h.p.distanceTo(shoulder), maxReach = limb.restLen * 1.1;
       if (reach > maxReach) { h.p.sub(shoulder).multiplyScalar(maxReach / reach).add(shoulder); h.v.multiplyScalar(0.4); }   // jelly stretches; it does not become a rope
-      const c1 = _a.copy(shoulder).lerp(h.p, 0.4); c1.x += sideX * side * 0.22; c1.z += sideZ * side * 0.22; c1.y += this.carry ? 0.1 : -0.05;
-      const c2 = _b.copy(shoulder).lerp(h.p, 0.7); c2.x += sideX * side * 0.1; c2.z += sideZ * side * 0.1; c2.y -= this.carry ? -0.05 : 0.08;
+      const c1 = _a.copy(shoulder).lerp(h.p, 0.4); c1.x += sideX * side * 0.22 * CS; c1.z += sideZ * side * 0.22 * CS; c1.y += (this.carry ? 0.1 : -0.05) * CS;
+      const c2 = _b.copy(shoulder).lerp(h.p, 0.7); c2.x += sideX * side * 0.1 * CS; c2.z += sideZ * side * 0.1 * CS; c2.y -= (this.carry ? -0.05 : 0.08) * CS;
       limb.update(dt, shoulder, c1, c2, h.p, _c.set(-dirZ, 0, dirX), ARM_PROFILE);
       (i === 0 ? this.handL : this.handR).position.copy(h.p);
     }
     if (this.carry) {
       const b = this.carry;
-      const top = _a.set(0, 2.1 + b.size.y / 2, 0.05); this.group.localToWorld(top);
+      const top = this.ride === van ? _a.set(0, 0.25 + b.size.y / 2, 0.55) : _a.set(0, 2.1 + b.size.y / 2, 0.05); this.group.localToWorld(top);
       b.pos.lerp(top, Math.min(1, 14 * dt)); b.vel.set(0, 0, 0);
       b.rot = this.yaw + this.hipTwist.x * 0.06 + this.lean.z.x * 0.4 + (b.mystery ? Math.sin(b.tremble * 41) * 0.05 : 0); b.tilt = this.lean.x.x * 1.4;
       if (b.mystery && Math.random() < 0.02) { this.hipTwist.v += rnd(-5, 5); this.headSpring.z.v += rnd(-2, 2); }    // it moved. you felt it move.
     }
     if (this.emote > 0) { this.emote -= dt; if (this.emote <= 0 && this.bubble) { this.head.remove(this.bubble); this.bubble.material.map.dispose(); this.bubble = null; } }
-    const hw = _a.set(0, 0, 0); this.head.localToWorld(hw); this.nameSprite.position.set(hw.x, hw.y + 0.8, hw.z);
+    const hw = _a.set(0, 0, 0); this.head.localToWorld(hw); this.nameSprite.position.set(hw.x, hw.y + 0.8 * CS, hw.z);
   }
 }
 function angleDelta(a, b) { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; }
 
 /* ── collision helpers: a static AABB world, round things (circles), and oriented boxes for what moves (the van) ── */
+let vanRef = null;                                                                            // set once the van exists (floorHeight is called before that, by the world builders)
 function floorHeight(x, z, yRef, r) {
   let best = 0;
   for (const c of colliders) if (x + r > c.min.x && x - r < c.max.x && z + r > c.min.z && z - r < c.max.z && c.max.y <= yRef + 0.01 && c.max.y > best) best = c.max.y;
   for (const c of circles) if (c.step && Math.hypot(x - c.x, z - c.z) < c.r + r * 0.5 && c.h <= yRef + 0.01 && c.h > best) best = c.h;
+  if (vanRef) {                                                                                 // the van is a floor too: the bay (a step up) and the roof
+    const v = vanRef, sn = Math.sin(v.yaw), cs = Math.cos(v.yaw), dx = x - v.pos.x, dz = z - v.pos.z, lx = dx * cs - dz * sn, lz = dx * sn + dz * cs;
+    if (Math.abs(lx) < 1.0 && lz > -3.4 && lz < 0.85 && best < 0.45 && 0.45 <= yRef + 0.01) best = 0.45;
+    if (Math.abs(lx) < 1.2 && Math.abs(lz) < 3.4 && best < 3.0 && 3.0 <= yRef + 0.01) best = 3.0;
+  }
   return best;
 }
 function pushOut(body, nx, nz, depth, ovx = 0, ovz = 0) {
@@ -1361,10 +1394,12 @@ function collideCylinder(body, dt) {
   }
   for (const o of obbs) {                                                                       // oriented boxes: the van has a long side and a short side, like a van
     if (o.body === body || (o.skip && o.skip(body))) continue;
-    const oy = o.body.pos.y; if (headY <= oy || feetY >= oy + o.h - 0.01) continue;
-    const yaw = o.body.yaw, s = Math.sin(yaw), cs = Math.cos(yaw);
+    const oy = o.body.pos.y, yaw = o.body.yaw, s = Math.sin(yaw), cs = Math.cos(yaw);
     const dx = body.pos.x - o.body.pos.x, dz = body.pos.z - o.body.pos.z;
     const lx = dx * cs - dz * s, lz = dx * s + dz * cs;                                         // into the box's frame: x right, z forward
+    if (feetY >= oy + o.h - 0.01) { if (o.top && Math.abs(lx) < o.hw && Math.abs(lz) < o.hd && feetY < oy + o.h + 0.3) body.ride = o.body; continue; }   // on the roof: you ride
+    if (headY <= oy) continue;
+    if (o.bay && o.bay(body, lx, lz, feetY, r, s, cs)) continue;
     const px = clamp(lx, -o.hw, o.hw), pz = clamp(lz, -o.hd, o.hd);
     let nx = lx - px, nz = lz - pz, d = Math.hypot(nx, nz);
     if (d >= r) continue;
@@ -1397,7 +1432,7 @@ function collideVan(dt) {
 }
 /* is this point inside a wall, a roof, a house? (the camera asks) */
 function solidAt(p) {
-  for (const c of colliders) if (c.max.y - c.min.y > 0.8 && p.x > c.min.x && p.x < c.max.x && p.z > c.min.z && p.z < c.max.z && p.y > c.min.y && p.y < c.max.y) return true;
+  for (const c of colliders) if ((c.max.y - c.min.y > 0.8 || c.min.y > 2) && p.x > c.min.x && p.x < c.max.x && p.z > c.min.z && p.z < c.max.z && p.y > c.min.y && p.y < c.max.y) return true;
   return false;
 }
 
@@ -1436,6 +1471,7 @@ class Package {
       this.tremble += dt; if (this.state === 'ground') this.rot += Math.sin(this.tremble * 41) * 0.012;
       if (this.tremble > this.nextSqueak) { this.nextSqueak = this.tremble + rnd(3, 7); if (courier.pos.distanceTo(this.pos) < 14) { sfx('squeak'); this.squish = 0.5; } }
     }
+    if (this.state === 'van') { if (this.local) { _a.copy(this.local); van.group.localToWorld(_a); this.pos.copy(_a); this.rot = this.rotLocal + van.yaw; } return; }
     if (this.state !== 'ground') return;
     this.vel.y -= 18 * dt;
     this.pos.addScaledVector(this.vel, dt);
@@ -1457,8 +1493,11 @@ class Package {
     const fake = { pos: new THREE.Vector3(this.pos.x, this.pos.y - this.size.y / 2, this.pos.z), vel: this.vel, radius: Math.max(hx, hz) * 0.9, height: this.size.y, onHit: v => { if (v > 3) this.hit(v * 0.7); this.vel.x *= 0.5; this.vel.z *= 0.5; } };
     collideCylinder(fake, dt); this.pos.x = fake.pos.x; this.pos.z = fake.pos.z;
     this.tilt *= 0.9; this.squish *= 0.85;
+    if (fake.ride === van) { const ceil = van.pos.y + 2.85; if (this.pos.y + this.size.y / 2 > ceil) { this.pos.y = ceil - this.size.y / 2; if (this.vel.y > 0) this.vel.y = 0; } }   // the bay has a ceiling
+    if (fake.ride === van && this.vel.y === 0 && !this.delivered) bayLoad(this);                                                          // landed in the bay: it's cargo now, and it moves with the van
   }
   netStep(dt) {                                                                          // clients: ease towards where the host says the box is (carried boxes follow their carrier instead)
+    if (this.state === 'van') { if (this.local) { _a.copy(this.local); van.group.localToWorld(_a); this.pos.copy(_a); this.rot = this.rotLocal + van.yaw; } return; }
     if (!this.net || (this.state === 'carried' && this.carrier)) return;
     if (this.pos.distanceTo(this.net.pos) > 4) this.pos.copy(this.net.pos); else this.pos.lerp(this.net.pos, Math.min(1, 12 * dt));
     this.rot += angleDelta(this.rot, this.net.rot) * Math.min(1, 12 * dt); this.tilt = lerp(this.tilt, this.net.tilt, Math.min(1, 12 * dt)); this.squish *= 0.85;
@@ -1467,16 +1506,22 @@ class Package {
   render() {
     this.group.position.copy(this.pos); this.group.rotation.set(this.tilt, this.rot, 0, 'YXZ');
     const sq = 1 - this.squish * 0.25; this.group.scale.set(1 + (1 - sq) * 0.6, sq, 1 + (1 - sq) * 0.6);
-    this.group.visible = !(this.state === 'van' || this.hidden);
+    this.group.visible = !this.hidden;
     this.body.material = this.damage > 0.6 ? M.boxDark : this.base;
   }
+}
+function bayLoad(b, slot) {                                                                   // into the van: either where it landed, or (the E shortcut) the next free spot on the load lines
+  b.state = 'van'; b.carrier = null; b.vel.set(0, 0, 0); if (!van.cargo.includes(b)) van.cargo.push(b);
+  if (slot) { const i = van.cargo.indexOf(b), col = i % 2, row = Math.floor(i / 2) % 4, layer = Math.floor(i / 8); b.local = new THREE.Vector3(b.oversized ? 0 : col ? 0.5 : -0.5, 0.45 + b.size.y / 2 + layer * 0.62, -2.6 + row * 0.85); b.rotLocal = rnd(-0.1, 0.1); }
+  else { b.local = van.group.worldToLocal(b.pos.clone()); b.rotLocal = b.rot - van.yaw; }
+  updateCarryHud();
 }
 function dropCarried(who, violent) {
   const b = who.carry; if (!b) return;
   who.carry = null; b.state = 'ground'; b.carrier = null;
   const fwd = new THREE.Vector3(Math.sin(who.yaw), 0, Math.cos(who.yaw));
   b.vel.copy(who.vel).addScaledVector(fwd, violent ? 2.5 : 0.8); b.vel.y = violent ? 1.5 : 0.5;
-  b.pos.y = Math.max(b.pos.y, who.pos.y + 1.2);
+  b.pos.y = who.ride === van ? who.pos.y + 0.9 : Math.max(b.pos.y, who.pos.y + 1.2);
   if (violent) say(who, pick(['dropped it. classic.', 'and there it goes.', 'the box has left the chat.']), 'bad');
   updateCarryHud();
 }
@@ -1484,7 +1529,7 @@ function throwCarried(who, camDir) {
   const b = who.carry; if (!b) return;
   if (who === courier && net.on && !net.host) { netAct('throw', [camDir.x, camDir.z]); return; }
   who.carry = null; b.state = 'ground'; b.carrier = null;
-  b.vel.set(camDir.x * 9, 5.5, camDir.z * 9).add(who.vel); b.rot += rnd(-1, 1);
+  if (who.ride === van) b.vel.set(camDir.x * 3, 1.2, camDir.z * 3).add(who.vel); else b.vel.set(camDir.x * 9, 5.5, camDir.z * 9).add(who.vel); b.rot += rnd(-1, 1);   // no room to throw in the bay
   who.lean.x.v -= 4; who.squash.v -= 3; who.armL.kick(8); who.armR.kick(8); sfx('whoosh');
   if (Math.random() < 0.4) say(who, pick(['why.', 'that is not how this works.', 'the customer saw that.', 'nice arm. bad idea.']));
   updateCarryHud();
@@ -1494,9 +1539,14 @@ function throwCarried(who, camDir) {
 const van = { group: new THREE.Group(), yaw: 0, speed: 0, steer: 0, cargo: [], driver: null, bob: spring(60, 7), roll: spring(50, 6), pitch: spring(50, 6), puffT: 0, honkCd: 0 };
 {
   const g = van.group; scene.add(g);
-  roundedBox(2.24, 2.1, 4.1, 0.3, M.van, 0, 1.5, -1.05, g);                                                                                   // cargo box, z −3.1 … 0.95
+  roundedBox(2.24, 2.5, 4.1, 0.3, M.van, 0, 1.7, -1.05, g, true);                                                                             // cargo box, y 0.45 … 2.95 (high roof: a courier stands in it), z −3.1 … 0.95, open at the back
+  mesh(new THREE.BoxGeometry(2.04, 0.04, 3.95), M.vanDark, 0, 0.43, -1.07, { parent: g, shadow: false });                                      // the bay: floor, walls, ceiling — a room on wheels
+  for (const sx of [-1.02, 1.02]) mesh(new THREE.BoxGeometry(0.04, 2.4, 3.95), M.warehouse, sx, 1.67, -1.07, { parent: g, shadow: false });
+  mesh(new THREE.BoxGeometry(2.04, 2.4, 0.04), M.warehouse, 0, 1.67, 0.86, { parent: g, shadow: false }); mesh(new THREE.BoxGeometry(2.04, 0.04, 3.95), M.warehouse, 0, 2.88, -1.07, { parent: g, shadow: false });
+  for (const sz of [-2.6, -1.8, -1.0, -0.2]) mesh(new THREE.BoxGeometry(2.0, 0.02, 0.06), M.hazard, 0, 0.455, sz + 0.42, { parent: g, shadow: false });   // load lines. nobody uses them
+  const bayLamp = mesh(new THREE.BoxGeometry(0.5, 0.04, 0.14), M.lamp, 0, 2.85, -1.2, { parent: g, shadow: false }); bayLamp.material = bayLamp.material.clone(); bayLamp.material.emissive.setHex(0x8a7a40);
   sideProfile([[0.85, 0.42], [3.35, 0.42], [3.52, 0.8], [3.42, 1.22], [2.55, 1.34], [1.8, 2.36], [0.85, 2.5]], 2.14, M.van, 0, 0, 0, g);       // cab + hood, one sloped silhouette
-  outlined(mesh(new THREE.BoxGeometry(2.36, 2.22, 0.34), M.van, 0, 1.5, 0.9, { parent: g }), 1.03);                                             // collar at the cab/box seam: hides the box's front bevel (and its outline hull) where it dips under the cab roof
+  outlined(mesh(new THREE.BoxGeometry(2.36, 2.62, 0.34), M.van, 0, 1.7, 0.9, { parent: g }), 1.03);                                             // collar at the cab/box seam: hides the box's front bevel (and its outline hull) where it dips under the cab roof
   mesh(new THREE.BoxGeometry(1.9, 1.24, 0.1), M.glass, 0, 1.87, 2.2, { parent: g, rot: [-0.63, 0, 0], shadow: false });                        // windshield
   mesh(new THREE.BoxGeometry(0.06, 1.1, 0.04), M.vanDark, 0, 1.87, 2.22, { parent: g, rot: [-0.63, 0, 0], shadow: false });                     // the bit in the middle of the windshield
   for (const sx of [-1.08, 1.08]) {
@@ -1505,30 +1555,36 @@ const van = { group: new THREE.Group(), yaw: 0, speed: 0, steer: 0, cargo: [], d
     mesh(new THREE.BoxGeometry(0.05, 0.05, 0.3), M.hub, sx * 1.03, 1.25, 1.5, { parent: g, shadow: false });                                    // handle
     mesh(new THREE.BoxGeometry(0.05, 0.05, 0.3), M.vanDark, sx * 0.94, 1.98, 1.95, { parent: g, shadow: false }); outlined(mesh(new THREE.BoxGeometry(0.14, 0.3, 0.38), M.vanDark, sx * 1.16, 1.98, 1.95, { parent: g }), 1.06);   // mirrors
   }
-  mesh(new THREE.BoxGeometry(2.27, 0.26, 4.12), M.cap, 0, 1.12, -1.05, { parent: g, shadow: false });                                            // the stripe
+  for (const sx of [-1.125, 1.125]) mesh(new THREE.BoxGeometry(0.03, 0.26, 4.12), M.cap, sx, 1.12, -1.05, { parent: g, shadow: false });          // the stripe, one per side (a slab through the bay before)
   mesh(new THREE.BoxGeometry(1.3, 0.34, 0.08), M.vanDark, 0, 0.98, 3.5, { parent: g, shadow: false });                                          // grille
   for (let k = 0; k < 4; k++) mesh(new THREE.BoxGeometry(1.2, 0.03, 0.09), M.hub, 0, 0.86 + k * 0.08, 3.51, { parent: g, shadow: false });
   for (const sx of [-0.8, 0.8]) outlined(mesh(new THREE.SphereGeometry(0.2, 10, 8), M.lamp, sx, 1.0, 3.46, { parent: g, shadow: false }), 1.08);   // round headlights. it looks surprised. it should be.
   outlined(mesh(new THREE.BoxGeometry(2.36, 0.3, 0.4), M.vanDark, 0, 0.5, 3.4, { parent: g }), 1.04); outlined(mesh(new THREE.BoxGeometry(2.36, 0.3, 0.36), M.vanDark, 0, 0.5, -3.1, { parent: g }), 1.04);   // bumpers
-  for (const sx of [-0.85, 0.85]) mesh(new THREE.BoxGeometry(0.34, 0.5, 0.06), M.cap, sx, 1.5, -3.14, { parent: g, shadow: false });            // tail lights
-  mesh(new THREE.BoxGeometry(0.04, 1.6, 0.06), M.vanDark, 0, 1.5, -3.14, { parent: g, shadow: false });                                         // rear door seam
-  for (const sx of [-0.25, 0.25]) mesh(new THREE.BoxGeometry(0.06, 0.3, 0.06), M.hub, sx, 1.35, -3.16, { parent: g, shadow: false });
+  // rear doors: two leaves on hinges at the corners. they open when the van stops, and the bay behind them is a room you can walk into
+  van.doors = [-1, 1].map(sd => {
+    const hg = new THREE.Group(); hg.position.set(sd * 1.1, 1.7, -3.08); g.add(hg);
+    outlined(mesh(new THREE.BoxGeometry(1.08, 2.38, 0.08), M.van, -sd * 0.54, 0, 0, { parent: hg }), 1.03);
+    mesh(new THREE.BoxGeometry(0.34, 0.5, 0.06), M.cap, -sd * 0.25, 0, -0.05, { parent: hg, shadow: false });                                   // tail light
+    mesh(new THREE.BoxGeometry(0.06, 0.3, 0.06), M.hub, -sd * 0.85, -0.15, -0.07, { parent: hg, shadow: false });                                // handle
+    return hg;
+  });
+  van.doorsOpen = true;
   for (const [w, h, d, y, z] of [[0.04, 1.76, 0.04, 1.4, 0.1], [0.04, 1.76, 0.04, 1.4, -1.4], [0.04, 0.04, 1.5, 0.52, -0.65], [0.04, 0.04, 1.5, 2.28, -0.65]]) mesh(new THREE.BoxGeometry(w, h, d), M.vanDark, 1.135, y, z, { parent: g, shadow: false });   // sliding door seams
   mesh(new THREE.BoxGeometry(0.05, 0.06, 0.3), M.hub, 1.15, 1.3, -0.1, { parent: g, shadow: false });
   // roof: a ladder (for what), rack feet, a hazard light and a small antenna flag that says hi
-  for (const sx of [-0.4, 0.4]) mesh(new THREE.BoxGeometry(0.06, 0.06, 3.0), M.metal, sx, 2.68, -1.2, { parent: g, shadow: false });
-  for (let k = 0; k < 7; k++) mesh(new THREE.BoxGeometry(0.86, 0.05, 0.05), M.metal, 0, 2.68, -2.5 + k * 0.45, { parent: g, shadow: false });
-  for (const [sx, sz] of [[-0.95, -2.6], [0.95, -2.6], [-0.95, 0.4], [0.95, 0.4]]) mesh(new THREE.BoxGeometry(0.08, 0.14, 0.08), M.metal, sx, 2.62, sz, { parent: g, shadow: false });
-  van.hazard = mesh(new THREE.SphereGeometry(0.16, 10, 8), M.hazard, 0, 2.7, 0.6, { parent: g, shadow: false });
-  van.antenna = new THREE.Group(); van.antenna.position.set(-0.95, 2.55, -2.9); g.add(van.antenna);
+  for (const sx of [-0.4, 0.4]) mesh(new THREE.BoxGeometry(0.06, 0.06, 3.0), M.metal, sx, 3.08, -1.2, { parent: g, shadow: false });
+  for (let k = 0; k < 7; k++) mesh(new THREE.BoxGeometry(0.86, 0.05, 0.05), M.metal, 0, 3.08, -2.5 + k * 0.45, { parent: g, shadow: false });
+  for (const [sx, sz] of [[-0.95, -2.6], [0.95, -2.6], [-0.95, 0.4], [0.95, 0.4]]) mesh(new THREE.BoxGeometry(0.08, 0.14, 0.08), M.metal, sx, 3.02, sz, { parent: g, shadow: false });
+  van.hazard = mesh(new THREE.SphereGeometry(0.16, 10, 8), M.hazard, 0, 3.1, 0.6, { parent: g, shadow: false }); van.hazard.material = M.hazard.clone();   // its own material: blinking the shared one blinked every yellow thing in town
+  van.antenna = new THREE.Group(); van.antenna.position.set(-0.95, 2.95, -2.9); g.add(van.antenna);
   mesh(new THREE.CylinderGeometry(0.015, 0.02, 1.2, 5), M.metal, 0, 0.6, 0, { parent: van.antenna, shadow: false });
   van.flag = makeLabel('hi', '#23212b', 96, 64, '#ffd23f', 'Patrick Hand'); van.flag.position.set(0.22, 1.1, 0); van.flag.scale.set(0.42, 0.28, 1); van.antenna.add(van.flag);
   mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.5, 8), M.vanDark, -0.85, 0.32, -3.1, { parent: g, rot: [Math.PI / 2, 0, 0], shadow: false });   // exhaust
   // branding, in order of how much anyone reads it
-  const logo = makeLabel('OVERWORK', '#ffb020', 512, 96, '#2a2a33'); logo.position.set(1.14, 1.75, -1.05); logo.rotation.y = Math.PI / 2; logo.scale.set(3.2, 0.6, 1); g.add(logo);
+  const logo = makeLabel('OVERWORK', '#ffb020', 512, 96, '#2a2a33'); logo.position.set(1.14, 1.9, -1.05); logo.rotation.y = Math.PI / 2; logo.scale.set(3.2, 0.6, 1); g.add(logo);
   const logo2 = logo.clone(); logo2.position.x = -1.14; logo2.rotation.y = -Math.PI / 2; g.add(logo2);
-  const slogan = makeLabel("it's probably in there", '#f4f4f7', 512, 70, '#2a2a33', 'Patrick Hand'); slogan.position.set(0, 2.2, -3.17); slogan.rotation.y = Math.PI; slogan.scale.set(1.9, 0.26, 1); g.add(slogan);
-  const sticker = makeLabel("HOW'S MY DRIVING? don't.", '#23212b', 512, 70, '#faf6ec', 'Patrick Hand'); sticker.position.set(0.6, 0.85, -3.17); sticker.rotation.set(0, Math.PI, 0.06); sticker.scale.set(1.0, 0.14, 1); g.add(sticker);
+  const slogan = makeLabel("it's probably in there", '#f4f4f7', 512, 70, '#2a2a33', 'Patrick Hand'); slogan.position.set(0.54, 0.72, -0.06); slogan.rotation.y = Math.PI; slogan.scale.set(0.98, 0.2, 1); van.doors[0].add(slogan);
+  const sticker = makeLabel("HOW'S MY DRIVING? don't.", '#23212b', 512, 70, '#faf6ec', 'Patrick Hand'); sticker.position.set(-0.5, -0.62, -0.06); sticker.rotation.set(0, Math.PI, 0.06); sticker.scale.set(0.9, 0.13, 1); van.doors[1].add(sticker);
   for (const [px, pz, ry] of [[-0.55, -3.3, Math.PI], [0, 3.62, 0]]) { const plate = makeLabel('0V3RW0RK', '#14121a', 256, 64, '#f4f4f7'); plate.position.set(px, 0.64, pz); plate.rotation.y = ry; plate.scale.set(0.6, 0.15, 1); g.add(plate); }
   van.wheels = [];
   for (const [x, z] of [[-1.1, 2.5], [1.1, 2.5], [-1.1, -2.1], [1.1, -2.1]]) {
@@ -1538,10 +1594,28 @@ const van = { group: new THREE.Group(), yaw: 0, speed: 0, steer: 0, cargo: [], d
     van.wheels.push(w);
   }
   for (let i = 0; i < 14; i++) { const m = mesh(new THREE.SphereGeometry(0.18, 8, 6), M.puff.clone(), 0, 0, 0, { shadow: false }); m.visible = false; puffs.push({ m, vel: new THREE.Vector3(), life: 0 }); }
+  van.body = new THREE.Group(); g.add(van.body); for (const c of g.children.slice()) if (c !== van.body && !van.wheels.includes(c)) { g.remove(c); van.body.add(c); }   // pitch/roll/bob go on the body only; the wheels stay on the ground
+  vanRef = van;
   van.doorPos = () => new THREE.Vector3(1.6, 0, 1.4).applyAxisAngle(new THREE.Vector3(0, 1, 0), van.yaw).add(van.group.position).setY(0);
   van.rearPos = () => new THREE.Vector3(0, 0, -3.6).applyAxisAngle(new THREE.Vector3(0, 1, 0), van.yaw).add(van.group.position).setY(0);
-  van.radius = 1.3; van.height = 2.6; van.pos = van.group.position; van.vel = new THREE.Vector3();
-  obbs.push({ body: van, hw: 1.2, hd: 3.4, h: 2.6, skip: b => b === van.driver, onBodyHit: (b, nx, nz) => {
+  van.radius = 1.3; van.height = 3.0; van.pos = van.group.position; van.vel = new THREE.Vector3();
+  obbs.push({ body: van, hw: 1.2, hd: 3.4, h: 3.0, top: true, skip: b => b === van.driver,
+    // the cargo bay: a lane 2 wide through the back. inside it you collide with the bay walls, not the van's outside, and you ride along
+    bay: (body, lx, lz, feetY, r, s, cs) => {
+      if (Math.abs(lx) > 1.0 || lz > 0.85 || feetY < -0.1) return false;
+      if (!van.doorsOpen && lz < -3.05) return false;                                                 // doors shut: the back is a wall
+      const wall = 1.0 - r; let nlx = lz > -3.6 ? clamp(lx, -wall, wall) : lx, nlz = Math.min(lz, 0.85 - r);
+      if (!van.doorsOpen) nlz = Math.max(nlz, -3.05 + r);
+      const ddx = nlx - lx, ddz = nlz - lz;
+      if (ddx || ddz) {
+        body.pos.x += ddx * cs + ddz * s; body.pos.z += -ddx * s + ddz * cs;
+        const vlx = body.vel.x * cs - body.vel.z * s, vlz = body.vel.x * s + body.vel.z * cs, wlx = van.vel.x * cs - van.vel.z * s, wlz = van.vel.x * s + van.vel.z * cs;
+        const nvx = ddx ? wlx : vlx, nvz = ddz ? wlz : vlz; body.vel.x = nvx * cs + nvz * s; body.vel.z = -nvx * s + nvz * cs;
+      }
+      if (lz > -3.5) body.ride = van;
+      return true;
+    },
+    onBodyHit: (b, nx, nz) => {
     if (!(b instanceof Courier) || Math.abs(van.speed) < 3 || b.hitCd > 0) return;
     b.hitCd = 1.5; b.stun = 0.8; b.vel.x += nx * Math.abs(van.speed) * 0.8; b.vel.z += nz * Math.abs(van.speed) * 0.8; b.vel.y = 4.5; b.onGround = false;
     b.lean.x.v -= 8; b.hipTwist.v += 12; b.legL.kick(16); b.legR.kick(16); b.headSpring.y.v -= 6; if (b.carry) dropCarried(b, true); sfx('crash', 6);
@@ -1557,14 +1631,25 @@ function vanNetStep(dt) {                                                       
   van.yaw += angleDelta(van.yaw, n.yaw) * Math.min(1, 12 * dt); van.speed = lerp(van.speed, n.speed, Math.min(1, 8 * dt));
   const fwd = new THREE.Vector3(Math.sin(van.yaw), 0, Math.cos(van.yaw)); van.vel.copy(fwd).multiplyScalar(van.speed);
   springTo(van.roll, 0, dt); springTo(van.pitch, 0, dt); springTo(van.bob, 0, dt);
-  van.group.rotation.set(van.pitch.x, van.yaw, van.roll.x, 'YXZ');
   for (const w of van.wheels) w.rotation.x -= van.speed * dt * 2.2;
   van.hazard.material.emissive.setHex(van.driver && Math.floor(performance.now() / 350) % 2 ? 0x9a6a00 : 0x201400);
   van.flag.rotation.y = Math.sin(performance.now() / 90) * clamp(Math.abs(van.speed) / 14, 0, 1) * 0.5;
   if (van.driver && van.driver !== courier) { van.driver.pos.copy(van.pos); van.driver.pos.y = 0; van.driver.vel.set(0, 0, 0); }
 }
+function vanPose(dt) {                                                                       // the body bounces on its springs; the wheels stay on the road. doors open when the van stops
+  van.pos.y = 0; van.group.rotation.set(0, van.yaw, 0); van.body.rotation.set(van.pitch.x, 0, van.roll.x); van.body.position.y = clamp(van.bob.x * 0.03, -0.12, 0.4);
+  van.doorsOpen = Math.abs(van.speed) < 0.4;
+  for (let i = 0; i < 2; i++) van.doors[i].rotation.y = lerp(van.doors[i].rotation.y, van.doorsOpen ? (i ? -2.3 : 2.3) : 0, Math.min(1, 4 * dt));
+}
+function carryRiders(px, pz, pyaw) {                                                          // whoever stood in the bay or on the roof last frame moves with the van (feet and camera too)
+  if (courier.ride !== van || van.driver === courier) return;
+  const dyaw = van.yaw - pyaw, s = Math.sin(dyaw), c = Math.cos(dyaw), mv = v => { const rx = v.x - px, rz = v.z - pz; v.x = van.pos.x + rx * c + rz * s; v.z = van.pos.z - rx * s + rz * c; };
+  mv(courier.pos); for (const f of courier.feet) { mv(f.pos); mv(f.from); mv(f.to); } for (const h of courier.hands) mv(h.p);
+  courier.yaw += dyaw; camState.yaw += dyaw;
+}
 function updateVan(dt, input) {
-  if (net.on && van.driver !== courier && (!net.host || (van.driver && van.driver.remote))) { vanNetStep(dt); return; }   // someone else is driving (or we're a client): follow the wire
+  const px = van.pos.x, pz = van.pos.z, pyaw = van.yaw;
+  if (net.on && van.driver !== courier && (!net.host || (van.driver && van.driver.remote))) { vanNetStep(dt); vanPose(dt); carryRiders(px, pz, pyaw); return; }   // someone else is driving (or we're a client): follow the wire
   const drive = van.driver != null;
   const maxS = 14, acc = drive && input.f ? 9 : drive && input.b ? -6 : 0;
   van.speed += acc * dt;
@@ -1582,8 +1667,7 @@ function updateVan(dt, input) {
   // potholes: the whole van jumps, the cargo remembers
   if (drive && Math.abs(van.speed) > 3) { const p = potholeAt(van.pos.x, van.pos.z, 0.9); if (p) { p.cd = 1.6; van.bob.v -= Math.abs(van.speed) * 0.7; van.pitch.v += rnd(-1, 1) * 0.6; van.roll.v += rnd(-1, 1) * 0.8; for (const b of van.cargo) b.hit(Math.abs(van.speed) * 0.28); sfx('thud', 7); if (Math.random() < 0.5) toast(pick(POTHOLE_LINES)); } }
   springTo(van.roll, -van.steer * clamp(Math.abs(van.speed) / 8, 0, 1) * 0.12, dt); springTo(van.pitch, -acc * 0.012, dt); springTo(van.bob, 0, dt);
-  van.pos.y = Math.max(-0.1, van.bob.x * 0.03);
-  van.group.rotation.set(van.pitch.x, van.yaw, van.roll.x, 'YXZ');
+  vanPose(dt); carryRiders(px, pz, pyaw);
   for (const w of van.wheels) w.rotation.x -= van.speed * dt * 2.2;
   van.wheels[0].rotation.y = van.wheels[1].rotation.y = van.steer * 0.5;
   van.hazard.material.emissive.setHex(drive && Math.floor(performance.now() / 350) % 2 ? 0x9a6a00 : 0x201400);
@@ -1685,13 +1769,14 @@ class Customer {
     if (style % 3 === 1) { for (const sx of [-0.15, 0.15]) mesh(new THREE.TorusGeometry(0.11, 0.018, 6, 12), M.pupil, sx, 0.08, 0.35, { parent: head, shadow: false }); mesh(new THREE.BoxGeometry(0.08, 0.02, 0.02), M.pupil, 0, 0.08, 0.36, { parent: head, shadow: false }); }
     this.bubble = null; this.state = 'in'; this.t = 0; this.kind = 'fine'; this.box = null; this.armPose = 'down';
     this.bob = spring(60, 6); this.tilt = spring(40, 5); this.nod = spring(50, 6);
-    this.home = new THREE.Vector3(house.doorX - house.facing * 0.6, 0, house.z); this.out = new THREE.Vector3(house.doorX + house.facing * 1.4, 0, house.z);
+    this.home = new THREE.Vector3(house.doorX - house.facing * 1.2, 0, house.z); this.out = new THREE.Vector3(house.doorX + house.facing * 1.4, 0, house.z);
+    this.spot = new THREE.Vector3(house.x - house.facing * 0.5 + 0.4, 0, house.z + 1.9); this.y = house.fl || 0;   // the spot on the couch. they were watching something
     this.pos = this.home.clone(); this.yaw = house.facing > 0 ? Math.PI / 2 : -Math.PI / 2;
   }
   attachAccessories() { while (this.capG.children.length) this.capG.remove(this.capG.children[0]); this.capG.add(fitAcc('cap', () => CLAY.cap)); }
   react(kind, box) {
     if (this.state !== 'in') return;
-    this.kind = kind; this.box = box; this.state = 'coming'; this.t = 0; this.group.visible = true; this.pos.copy(this.home); this.armPose = 'down'; this.say(null); sfx('door');
+    this.kind = kind; this.box = box; this.state = 'coming'; this.t = 0; this.group.visible = true; this.pos.copy(this.home); this.y = this.house.fl || 0; this.armPose = 'down'; this.say(null); sfx('door');
     if (net.host) netEvent({ k: 'react', h: this.house.i, kind, box: box ? boxes.indexOf(box) : -1 });
   }
   say(text) {
@@ -1699,7 +1784,12 @@ class Customer {
     if (text) { this.bubble = makeBubble(text); this.bubble.position.set(0, 1.0, 0); this.head.add(this.bubble); }
   }
   update(dt) {
-    if (this.state === 'in') return;
+    if (this.state === 'in') {                                                                   // at home: on the couch, facing the tv, visible to anyone who walks in
+      this.group.visible = true; this.pos.copy(this.spot); this.y = this.house.fl || 0; this.group.position.set(this.spot.x, this.y, this.spot.z);
+      this.yaw += angleDelta(this.yaw, Math.PI) * Math.min(1, 6 * dt); this.group.rotation.set(0, this.yaw, 0); this.head.rotation.set(0.05, Math.sin(performance.now() / 900) * 0.1, 0);
+      for (let i = 0; i < 2; i++) { const a = this.arms[i]; a.rotation.x = lerp(a.rotation.x, -0.6, Math.min(1, 7 * dt)); a.rotation.z = lerp(a.rotation.z, (i ? 1 : -1) * 0.45, Math.min(1, 7 * dt)); }
+      return;
+    }
     this.t += dt;
     const target = this.state === 'going' ? this.home : this.out;
     const dx = target.x - this.pos.x, dz = target.z - this.pos.z, d = Math.hypot(dx, dz);
@@ -1707,7 +1797,7 @@ class Customer {
     if (this.state === 'coming' || this.state === 'going') {
       if (d > 0.05) { const s = Math.min(d, 2.0 * dt); this.pos.x += dx / d * s; this.pos.z += dz / d * s; moving = true; }
       else if (this.state === 'coming') { this.state = 'looking'; this.t = 0; this.tilt.v += 5; }
-      else { this.state = 'in'; this.group.visible = false; if (this.box) { this.box.hidden = true; this.box = null; } this.say(null); sfx('door'); return; }
+      else { this.state = 'in'; if (this.box) { this.box.hidden = true; this.box = null; } this.say(null); this.armPose = 'down'; sfx('door'); return; }
     } else if (this.state === 'looking') {
       if (this.t > (this.kind === 'honk' ? 0.3 : 0.9)) {
         this.state = 'talking'; this.t = 0; this.say(pick(REACT[this.kind] || REACT.fine));
@@ -1723,7 +1813,8 @@ class Customer {
     else { lx = target.x - this.pos.x; lz = target.z - this.pos.z; }
     if (Math.hypot(lx, lz) > 0.05) this.yaw += angleDelta(this.yaw, Math.atan2(lx, lz)) * Math.min(1, 8 * dt);
     springTo(this.bob, 0, dt); springTo(this.tilt, 0, dt); springTo(this.nod, 0, dt);
-    this.group.position.set(this.pos.x, moving ? Math.abs(Math.sin(this.t * 13)) * 0.07 : 0, this.pos.z);
+    this.y = lerp(this.y, floorHeight(this.pos.x, this.pos.z, this.y + 0.5, 0.25), Math.min(1, 12 * dt));                // down the porch steps, not through them
+    this.group.position.set(this.pos.x, this.y + (moving ? Math.abs(Math.sin(this.t * 13)) * 0.07 : 0), this.pos.z);
     this.group.rotation.set(moving ? 0.06 : 0, this.yaw, 0);
     const m = SOUR.has(this.kind) ? -1 : this.kind === 'fine' || this.kind === 'big' ? 1 : 0;                 // no face: the verdict is in the neck
     this.head.rotation.set(this.nod.x * 0.06 + (m < 0 ? 0.22 : m > 0 ? -0.1 : 0), 0, this.tilt.x * 0.06 + (this.state === 'looking' ? 0.22 : 0));
@@ -1832,7 +1923,7 @@ function startShift() {                                                         
   for (let i = 0; i < count; i++) order.push(shuffled[i % shuffled.length]);
   const spec = {
     events, total: count, lapis: pick(LAPIS_SPOTS),
-    boxes: order.map((h, i) => ({ h: h.i, s: +rnd(0.75, 1.1).toFixed(3), fragile: events.includes('fragile') && i === 2, oversized: events.includes('oversized') && i === 4, mystery: events.includes('mystery') && i === 1, x: -2.6, z: 30 + i * 1.5 })),
+    boxes: order.map((h, i) => ({ h: h.i, s: +rnd(0.75, 1.1).toFixed(3), fragile: events.includes('fragile') && i === 2, oversized: events.includes('oversized') && i === 4, mystery: events.includes('mystery') && i === 1, x: -8.6, z: 30 + i * 1.5 })),
     spawns: [[0, 1.5, 26]].concat(remotes.map((r, k) => [r.pid, 1.5 + ((k + 1) % 3) * 1.3, 24.5 - Math.floor((k + 1) / 3) * 1.4])),
   };
   if (net.on) netEvent({ k: 'start', spec });
@@ -1846,9 +1937,9 @@ function applyShiftSpec(spec) {
   for (const c of [courier, ...remotes]) { c.carry = null; c.setVisible(true); c.wetToast = false; }
   const me = spec.spawns.find(sp => sp[0] === net.id) || spec.spawns[0]; courier.teleport(me[1], me[2], Math.PI);
   for (const r of remotes) { const sp = spec.spawns.find(x => x[0] === r.pid); if (sp) { r.teleport(sp[1], sp[2], Math.PI); if (r.net) { r.net.pos.set(sp[1], 0, sp[2]); r.net.vel.set(0, 0, 0); } } }
-  van.driver = null; van.speed = 0; van.cargo = []; van.group.position.set(3.2, 0, 32); van.yaw = 0; van.net = null;
+  van.driver = null; van.speed = 0; van.cargo = []; van.group.position.set(-2.4, 0, 32); van.yaw = 0; van.net = null;
   camState.yaw = Math.PI; camState.pitch = 0.4;
-  for (const c of customers) { c.state = 'in'; c.group.visible = false; c.say(null); c.box = null; }
+  for (const c of customers) { c.state = 'in'; c.say(null); c.box = null; }
   for (const h of houses) { h.lawnT = 0; h.lawnDone = false; }
   for (const p of props) p.reset(); for (const t of trampolines) { t.hint = false; t.boxHint = false; } world.wetToast = false;
   if (world.events.includes('rain')) { world.rain = true; spawnRain(); scene.background.copy(SKY_RAIN); scene.fog.color.copy(SKY_RAIN); sun.intensity = 1.1; hemi.intensity = 0.6; }
@@ -1934,7 +2025,7 @@ function interact(who = courier) {
   const rear = van.rearPos(), door = van.doorPos();
   if (who.carry) {
     const b = who.carry;
-    if (who.pos.distanceTo(rear) < 2.4 && Math.abs(van.speed) < 0.5) { who.carry = null; b.state = 'van'; b.carrier = null; van.cargo.push(b); say(who, `in the van. (${van.cargo.length} of ${boxes.filter(x => !x.delivered).length})`); updateCarryHud(); return; }
+    if (who.ride !== van && who.pos.distanceTo(rear) < 2.4 && Math.abs(van.speed) < 0.5) { who.carry = null; bayLoad(b, true); say(who, `in the van. (${van.cargo.length} of ${boxes.filter(x => !x.delivered).length})`); return; }
     dropCarried(who, false); return;
   }
   if (who === courier && !net.on || net.host) {                                       // things only the local player (or host, for itself) can walk into
@@ -1942,6 +2033,7 @@ function interact(who = courier) {
   }
   if (world.lapis && !world.lapis.taken && Math.hypot(who.pos.x - world.lapis.x, who.pos.z - world.lapis.z) < 1.8) { takeLapis(who); return; }
   if (!van.driver && who.pos.distanceTo(door) < 2.2 && Math.abs(van.speed) < 0.5) { van.driver = who; who.setVisible(false); say(who, "you're driving. W gas, S brake, A D wobble, H honk, E to bail."); return; }
+  if (who.ride === van) { const b = nearest(boxes.filter(x => (x.state === 'van' || x.state === 'ground') && !x.delivered), who.pos, 1.9); if (b) pickUp(who, b); return; }   // in the bay: take the one next to you
   if (who.pos.distanceTo(rear) < 2.4 && van.cargo.length) {
     const b = van.cargo.pop(); b.state = 'ground'; b.pos.copy(rear); b.pos.y = 1.2; b.vel.set(0, 0, 0); pickUp(who, b); return;
   }
@@ -1949,6 +2041,7 @@ function interact(who = courier) {
   if (b) pickUp(who, b);
 }
 function pickUp(who, b) {
+  if (b.state === 'van') { const k = van.cargo.indexOf(b); if (k >= 0) van.cargo.splice(k, 1); }
   who.carry = b; b.state = 'carried'; b.carrier = who; b.vel.set(0, 0, 0);
   who.squash.v -= 3 + b.mass; who.lean.x.v -= 1.5; who.bob.v += 2; who.legL.kick(4 + b.mass * 2); who.legR.kick(4 + b.mass * 2);
   if (b.oversized) say(who, pick(["oh. oh no. it's a fridge or something.", 'this is not a box. this is furniture.']));
@@ -2001,10 +2094,12 @@ function hintText() {
   if (!world.running) return world.roam && net.on ? (net.host ? 'lobby · <kbd>E</kbd> at the pc to start the shift · <kbd>Esc</kbd> leave' : 'lobby · waiting for the host to clock in · <kbd>Esc</kbd> leave') : '<kbd>Esc</kbd> back to the work order · <kbd>L</kbd> la peace';
   const rear = van.rearPos(), door = van.doorPos();
   if (courier.carry) {
+    if (courier.ride === van) return '<kbd>E</kbd> set it down in here';
     if (courier.pos.distanceTo(rear) < 2.4) return '<kbd>E</kbd> shove it in the van';
     return "<kbd>E</kbd> put it down · <kbd>click</kbd> throw it (don't) · get it to the glowing doormat";
   }
   if (courier.pos.distanceTo(door) < 2.2) return '<kbd>E</kbd> drive';
+  if (courier.ride === van) return nearest(boxes.filter(x => x.state === 'van' && !x.delivered), courier.pos, 1.9) ? '<kbd>E</kbd> grab that one' : van.cargo.length ? 'the boxes are further in.' : 'the bay. empty. like the fridge.';
   if (courier.pos.distanceTo(rear) < 2.4 && van.cargo.length) return `<kbd>E</kbd> grab one out (${van.cargo.length} in there)`;
   if (nearest(boxes.filter(x => x.state === 'ground' && !x.delivered), courier.pos, 1.9)) return '<kbd>E</kbd> grab it';
   if (van.cargo.length) return 'drive to a glowing doormat. any glowing doormat. read the label first though.';
@@ -2040,7 +2135,7 @@ function camForward() { return new THREE.Vector3(-Math.sin(camState.yaw), 0, -Ma
 const camPos = new THREE.Vector3(0, 6, 34), camLook = new THREE.Vector3();
 function updateCamera(dt) {
   const driving = van.driver === courier, focus = driving ? van.pos : courier.pos, locker = world.locker;
-  const lyaw = locker ? camState.yaw : 0, target = _a.set(focus.x + (locker ? Math.cos(lyaw) * 1.3 : 0), focus.y + (driving ? 1.8 : locker ? 1.3 : 1.5), focus.z - (locker ? Math.sin(lyaw) * 1.3 : 0));   // in the locker the courier stands to the right of the card
+  const lyaw = locker ? camState.yaw : 0, target = _a.set(focus.x - (locker ? Math.cos(lyaw) * 1.7 : 0), focus.y + (driving ? 1.8 : locker ? 1.25 * CS : 1.5 * CS), focus.z + (locker ? Math.sin(lyaw) * 1.7 : 0));   // in the locker the courier stands to the right of the card
   const dist = camState.dist * (driving ? 1.7 : 1);
   const off = _b.set(Math.sin(camState.yaw) * Math.cos(camState.pitch), Math.sin(camState.pitch), Math.cos(camState.yaw) * Math.cos(camState.pitch)).multiplyScalar(dist);
   const want = _c.copy(target).add(off); if (want.y < 0.6) want.y = 0.6;
@@ -2235,7 +2330,7 @@ $('btn-lk-rnd').onclick = () => {
 };
 function openLocker() {
   $('s-menu').classList.remove('on'); $('s-locker').classList.add('on'); world.locker = true; paintLocker(); $('lk-quip').textContent = QUIPS[0]; clearInput();
-  courier.vel.set(0, 0, 0); camState.yaw = courier.yaw; camState.pitch = 0.1; camState.dist = 5.2;
+  courier.vel.set(0, 0, 0); camState.yaw = courier.yaw; camState.pitch = 0.1; camState.dist = 4.4;
 }
 function closeLocker() { $('s-locker').classList.remove('on'); world.locker = false; camState.pitch = 0.4; camState.dist = 7.5; if (world.roam) { camState.yaw = courier.yaw + Math.PI; } else { $('s-menu').classList.add('on'); courier.yaw = Math.PI; camState.yaw = Math.PI; } }
 $('btn-locker').onclick = openLocker; $('btn-lk-done').onclick = closeLocker;
@@ -2281,7 +2376,7 @@ function worldSpec() {                                                          
 function snapshot() {
   const pl = [[0, r2(courier.pos.x), r2(courier.pos.y), r2(courier.pos.z), r2(courier.vel.x), r2(courier.vel.y), r2(courier.vel.z), r2(courier.yaw), courier.onGround ? 1 : 0]];
   for (const r of remotes) pl.push([r.pid, r2(r.pos.x), r2(r.pos.y), r2(r.pos.z), r2(r.vel.x), r2(r.vel.y), r2(r.vel.z), r2(r.yaw), r.onGround ? 1 : 0]);
-  const bx = boxes.map(b => [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z), r2(b.rot), r2(b.tilt), STATE_ID[b.state] ?? 0, r2(b.damage), b.carrier ? b.carrier.pid : -1, b.hidden ? 1 : 0, b.delivered ? 1 : 0]);
+  const bx = boxes.map(b => b.state === 'van' && b.local ? [r2(b.local.x), r2(b.local.y), r2(b.local.z), r2(b.rotLocal), 0, 2, r2(b.damage), -1, b.hidden ? 1 : 0, b.delivered ? 1 : 0] : [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z), r2(b.rot), r2(b.tilt), STATE_ID[b.state] ?? 0, r2(b.damage), b.carrier ? b.carrier.pid : -1, b.hidden ? 1 : 0, b.delivered ? 1 : 0]);
   const pr = []; props.forEach((p, i) => { if (p.kicked) pr.push([i, r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.yaw), r2(p.tip)]); });
   return { t: 'snap', pl, bx, van: [r2(van.pos.x), r2(van.pos.z), r2(van.yaw), r2(van.speed), van.driver ? van.driver.pid : -1, van.cargo.map(b => boxes.indexOf(b))], dog: dog ? [r2(dog.pos.x), r2(dog.pos.z), r2(dog.yaw)] : 0, pr, w: [world.pay, world.delivered, r2(world.time), r2(world.peace), world.running ? 1 : 0] };
 }
@@ -2300,7 +2395,8 @@ function applySnapshot(m) {
     const st = ID_STATE[v[5]] || 'ground'; b.damage = v[6]; b.hidden = !!v[8]; b.delivered = !!v[9];
     const holder = v[7] >= 0 ? byPid(v[7]) : null;
     b.state = st; b.carrier = holder; if (holder && st === 'carried') holder.carry = b;
-    if (st !== 'carried' && st !== 'van') { if (b.pos.distanceTo(b.net.pos) > 4) b.pos.copy(b.net.pos); }
+    if (st === 'van') { if (!b.local) b.local = new THREE.Vector3(); b.local.set(v[0], v[1], v[2]); b.rotLocal = v[3]; }
+    else if (st !== 'carried') { if (b.pos.distanceTo(b.net.pos) > 4) b.pos.copy(b.net.pos); }
   });
   van.cargo = m.van[5].map(i => boxes[i]).filter(Boolean);
   const drv = m.van[4] >= 0 ? byPid(m.van[4]) : null;

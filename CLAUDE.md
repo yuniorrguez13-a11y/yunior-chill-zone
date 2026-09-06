@@ -540,7 +540,7 @@ the console shows the best pay via `yczScore('overwork', pay)`.
 - Art is primitives + canvas-texture labels, all original. Style: flat Lambert
   materials, low-poly blocks, soft shadows.
 - Debug/test handle: `window.__ow = {courier, boxes, van, world, houses, props,
-  customers, startShift, interact, honk, camState, input}` — the Playwright harness
+  customers, casino, solidAt, colliders, startShift, interact, honk, camState, input, …}` — the Playwright harness
   (`scratchpad/test-overwork.js`, Chromium with `--use-angle=swiftshader`) drives a whole
   shift through it; `ow-scenic.js` frames the neighbourhood and exercises the trampoline,
   a gnome kick, the honk and a customer reaction. Under swiftshader the sim runs slower
@@ -702,6 +702,41 @@ covering part (the van's collar) rather than fighting the scale.
   the hair fringe hides under hats.
 - MirrorOS gotcha: `wins` is a `Map` keyed by app name; "is this window still open" is
   `wins.get(W.key) === W`, not `wins.has(W)` (that bug left the casino window stale after a spin).
+
+**v5 — the "everything is the wrong size" pass (Sep 2026; owner's list: sidewalk through the road at the
+intersection, trees on the cross street, the warehouse dock in the road, a van light that "only yellow
+things react to", the apartment door off its hinges, wheels in the ground, the character too big to
+enter any house, a van that is more than "press E", friends riding along, feet inside the legs when
+jumping, houses with no outlines, porch steps the residents clipped through).**
+- **Scale.** The courier was 3 units tall against 2.3 doors and 2.2 customers. `CS = 0.72` scales the
+  figure (group scale, hip height, limb radii/rest lengths, foot and hand meshes, foot offsets,
+  stride, name sprite, camera target). World distances (speeds, interaction radii) stay in world units.
+- **Houses are rooms now** (`house()` + `interior()`): walls with a 1.6 door gap, a ceiling slab (the
+  camera respects thin overhead colliders: `solidAt` counts anything with `min.y > 2`), a **raised
+  floor at porch-landing height** (`fl = 0.32 · steps`, a stepable box) so the door is level with the
+  landing, a door leaf on a hinge swung 86° inward, a frame, rug, couch, TV, table, lamp + a warm
+  `PointLight`, pictures. Every wall is `inkBox`-outlined (`inkBox(m, t)`: an inverted hull with a
+  fixed world thickness, because a % scale is invisible on a 9-wide box and huge on a 0.3 one).
+  **Residents live in the room**: state `in` = visible on the couch spot, facing the TV; they walk out
+  along `floorHeight` (`this.y`), so they go *down the steps* instead of through them.
+- **The van is a place.** High-roof cargo box (`roundedBox(..., noLids)` — extrude group 0 is the lids,
+  1 the walls; the rear lid is gone and the bay is lined inside), **two rear doors on hinges** that open
+  when the van stops (`van.doorsOpen`), a walk-in **bay**: the van's obb carries `bay()` — a 2-wide lane
+  through the back where you collide with the bay walls instead of the van's outside, `floorHeight`
+  knows the bay floor (0.45, a step up) and the roof (3.0, `top: true`), and anyone standing in the bay
+  or on the roof gets `body.ride = van` and is moved by `carryRiders()` (position, feet, hands, yaw and
+  camera yaw all turn with it) — riders on the client side move with their own copy of the van.
+  Boxes that land in the bay become cargo at once (`bayLoad`: state `van` + `local` coords in the van's
+  frame; the wire sends locals for them), you pick them up from inside (E: nearest box), set them down
+  inside (E), and carry at chest height in there (the roof is right above). The old rear shortcuts
+  (shove it in / grab one out) still exist. The body (`van.body`) carries pitch/roll/bob; the wheels
+  stay in the yaw-only group, so they never sink. The hazard light has its own material — it used to
+  blink the shared `M.hazard`, i.e. every yellow thing in town.
+- **Map:** sidewalks and curbs stop at the cross street; trees skip the cross street band; the
+  warehouse sits 6 further west (`WX`) so the dock is on the sidewalk and the van parks in the west
+  lane; the apartment door leaf hangs on the frame post (centre = post + R·(0,0,−0.85)).
+- **Feet:** the shoe pivots at its heel (`ax/ay` from `f.roll`) so toes-down in the air keeps the leg
+  ending at the heel.
 
 Not done yet: Pitty Striker itself, touch controls, more jobs, voice chat, spectating a full room.
 Performance: the world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
