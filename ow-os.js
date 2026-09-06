@@ -92,6 +92,7 @@ const ICONS = {
   notes: ['#e0c04a', '<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7"/></svg>'],
   locker: ['#ff7a1a', '<svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M6 9h12M10 14h1"/></svg>'],
   bin: ['#7a8a99', '<svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></svg>'],
+  settings: ['#5a6b7d', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>'],
   shut: ['#c9302c', '<svg viewBox="0 0 24 24"><path d="M12 4v8"/><path d="M7 7a7 7 0 1 0 10 0"/></svg>'],
 };
 
@@ -115,6 +116,7 @@ export function createOS(api) {
     pitty: { title: 'Pitty Striker', icon: 'pitty' },
     notes: { title: 'notes.txt - Notepad', icon: 'notes' },
     locker: { title: 'My Locker', icon: 'locker' },
+    settings: { title: 'Settings', icon: 'settings' },
     bin: { title: 'Recycle Bin', icon: 'bin' },
   };
   const iconHtml = k => `<div class="g" style="background:linear-gradient(160deg,${ICONS[k][0]},${shade(ICONS[k][0])})">${ICONS[k][1]}</div>`;
@@ -160,6 +162,7 @@ export function createOS(api) {
 
   function openApp(k) {
     if (k === 'locker') { api.close(); api.openLocker(); return; }
+    if (k === 'settings') { api.close(); api.openSettings(); return; }
     const [x, y] = pos();
     if (k === 'online') return paintOnline(makeWin(k, APPS[k].title, 520, 460, x, y));
     if (k === 'casino') return paintCasino(makeWin(k, APPS[k].title, 520, 470, x, y));

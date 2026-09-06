@@ -778,7 +778,24 @@ arms going back while carrying, the body leaning too far ahead of the feet).**
   **Boxes ride in front at the chest** (hands at the box's sides, `0.3 + size.y/2` up, `0.5 + size.z/2`
   forward); only the oversized one goes overhead, and never in the bay.
 
-Not done yet: Pitty Striker itself, more jobs, spectating a full room.
+- **Settings** (`#s-settings`, from the work order's "settings" button and the MirrorOS Settings app;
+  Esc closes): `save.cfg` — quality `auto|low|medium|high` (`QUALITY` presets: pixel ratio cap, shadows
+  + shadow map size, ink outlines, fog distance; auto = low on coarse pointers, high elsewhere),
+  shadows/outlines `preset|on|off` overrides, sound volume + mute (every `sfx()` goes through one
+  `master` gain; voice is untouched), camera sensitivity 3–20 (÷10) + invert, block-chat shown/hidden.
+  `applyCfg()` applies live: toggling `renderer.shadowMap.enabled` needs `material.needsUpdate` on
+  everything, changing the map size needs `sun.shadow.map.dispose()`, and outlines switch off in one go
+  because every hull shares the `OUTLINE` material. An fps readout sits on the card while it is open.
+- **Cheats.** `window.__ow` (the harness handle) exists **only on localhost / 127.0.0.1 / [::1]** — on
+  the site there is nothing to grab from the console (the script is a module, nothing else leaks). The
+  save carries a signature (`saveSig`: FNV-1a over cash|best|shifts|salt, stored as `sig`); a save
+  whose money lines don't match is loaded with cash/best/shifts = 0 and a toast ("the sock drawer had
+  a hole in it"). This stops the localStorage edit, not a determined person — the salt is in the page
+  and always will be; the money is local and cosmetic, so that is the right amount of effort. Online,
+  money and boxes are decided by the host already; positions are self-reported (no speed check).
+
+Not done yet: Pitty Striker itself, more jobs, spectating a full room, a host-side speed check on
+self-reported positions.
 Performance: the world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
 swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason).
 

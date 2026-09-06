@@ -96,6 +96,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
 .lk input{font:inherit;font-size:19px;padding:3px 10px 1px;border:2px solid var(--pen);background:#fff;width:150px;border-radius:6px 14px 6px 14px / 14px 6px 14px 6px;color:var(--pen);}
 .lk input:focus{outline:3px solid var(--hi);outline-offset:1px;}
 #lk-quip{min-height:1.4em;}
+#s-settings input[type=range]{width:150px;accent-color:var(--marker);}
 /* ── the chat log: a certain block game's chat, because of a certain meme ── */
 #mcchat{position:absolute;left:14px;bottom:96px;display:flex;flex-direction:column;gap:2px;max-width:60vw;pointer-events:none;}
 .mc{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;font-size:17px;color:#fff;background:rgba(0,0,0,.55);padding:3px 8px;text-shadow:2px 2px 0 #3a3a3a;letter-spacing:.02em;animation:mcin .15s ease-out;}
@@ -199,10 +200,26 @@ body.has-touch.in-game .hud-top{right:84px;}
       <button class="btn primary" id="btn-start">clock in</button>
       <button class="btn" id="btn-locker">the locker</button>
       <button class="btn" id="btn-home">go home</button>
+      <button class="btn" id="btn-settings">settings</button>
       <span class="note">best shift <b class="sk" id="m-best">$0</b></span>
       <span class="note" style="transform:rotate(1.2deg)">sock drawer <b class="sk" id="m-cash">$0</b></span>
     </div>
     <p class="small" style="margin-top:14px;">on a phone: left thumb walks, right thumb looks, the paper buttons do the rest. the money goes in the sock drawer for pitty striker skins later. skins. not stats. don't ask.</p>
+  </div></div>
+</div>
+
+<!-- SETTINGS: quality, sound, camera. nobody reads these either. -->
+<div class="screen" id="s-settings">
+  <div class="card paper tape"><div class="inner">
+    <div class="sub"><span class="sk" style="font-size:30px;color:var(--pen)">settings.</span> nobody reads these either.</div>
+    <div class="lk-row"><span class="lk-l">quality</span><div class="opts" data-k="quality"><button data-v="auto">auto</button><button data-v="low">low</button><button data-v="medium">medium</button><button data-v="high">high</button></div></div>
+    <div class="lk-row"><span class="lk-l">shadows</span><div class="opts" data-k="shadows"><button data-v="preset">preset</button><button data-v="on">on</button><button data-v="off">off</button></div></div>
+    <div class="lk-row"><span class="lk-l">outlines</span><div class="opts" data-k="outlines"><button data-v="preset">preset</button><button data-v="on">on</button><button data-v="off">off</button></div></div>
+    <div class="lk-row"><span class="lk-l">sound</span><input type="range" id="cfg-volume" min="0" max="100" step="5"><div class="opts" data-k="mute"><button data-v="false">on</button><button data-v="true">muted</button></div></div>
+    <div class="lk-row"><span class="lk-l">camera</span><input type="range" id="cfg-sens" min="3" max="20"><div class="opts" data-k="invert"><button data-v="false">normal</button><button data-v="true">inverted</button></div></div>
+    <div class="lk-row"><span class="lk-l">chat</span><div class="opts" data-k="chat"><button data-v="true">shown</button><button data-v="false">hidden</button></div></div>
+    <p class="small" style="margin-top:8px">auto picks low on phones and high everywhere else. low = no shadows, no ink, shorter view. the voice chat has its own volume: yours.</p>
+    <div class="row"><button class="btn primary" id="btn-cfg-done">that'll do</button><span class="small" id="cfg-fps"></span></div>
   </div></div>
 </div>
 
@@ -272,8 +289,25 @@ const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 /* ── save ── */
 const SAVE_KEY = 'overwork-save';
 let save = { cash: 0, best: 0, shifts: 0 };
-try { save = Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
-const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} };
+// the money lines carry a signature. it is not a secret (this is a web page), but it means the drawer can't be filled by
+// typing a number into localStorage: a save that doesn't match is treated as a save with a hole in it
+const SAVE_SALT = 'ow-sock-drawer-v1';
+function saveSig(o) { let h = 2166136261; const str = `${o.cash | 0}|${o.best | 0}|${o.shifts | 0}|${SAVE_SALT}`; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); }
+let tampered = false;
+try {
+  const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+  if ((raw.cash || raw.best || raw.shifts) && raw.sig !== saveSig(raw)) { tampered = true; raw.cash = 0; raw.best = 0; raw.shifts = 0; }
+  save = Object.assign(save, raw);
+} catch (e) {}
+save.cash = Math.max(0, save.cash | 0); save.best = Math.max(0, save.best | 0); save.shifts = Math.max(0, save.shifts | 0);
+const persist = () => { try { save.sig = saveSig(save); localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} };
+// ── settings ──
+const CFG_DEFAULT = { quality: 'auto', shadows: 'preset', outlines: 'preset', volume: 70, mute: false, sens: 10, invert: false, chat: true };
+const CFG_OPTS = { quality: ['auto', 'low', 'medium', 'high'], shadows: ['preset', 'on', 'off'], outlines: ['preset', 'on', 'off'] };
+save.cfg = Object.assign({}, CFG_DEFAULT, save.cfg && typeof save.cfg === 'object' ? save.cfg : {});
+for (const k of Object.keys(CFG_OPTS)) if (!CFG_OPTS[k].includes(save.cfg[k])) save.cfg[k] = CFG_DEFAULT[k];
+save.cfg.volume = Math.min(100, Math.max(0, save.cfg.volume | 0)); save.cfg.sens = Math.min(20, Math.max(3, save.cfg.sens | 0)); save.cfg.mute = !!save.cfg.mute; save.cfg.invert = !!save.cfg.invert; save.cfg.chat = save.cfg.chat !== false;
+const cfg = save.cfg;
 
 /* ── renderer / scene ── */
 const canvas = $('cv');
@@ -292,6 +326,19 @@ sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -45; sun.shadow.camera.right = 45; sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
 sun.shadow.camera.near = 1; sun.shadow.camera.far = 140; sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05;   // normalBias kills the acne on rounded edges
 scene.add(sun); scene.add(sun.target);
+const QUALITY = { low: { pr: 1, shadows: false, map: 1024, outlines: false, fog: [45, 100] }, medium: { pr: 1.5, shadows: true, map: 1024, outlines: true, fog: [70, 150] }, high: { pr: 2, shadows: true, map: 2048, outlines: true, fog: [70, 150] } };
+function applyCfg() {                                                                          // everything in the settings card lands here
+  const q = QUALITY[cfg.quality === 'auto' ? (matchMedia('(pointer:coarse)').matches ? 'low' : 'high') : cfg.quality];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, q.pr));
+  const shadows = cfg.shadows === 'preset' ? q.shadows : cfg.shadows === 'on';
+  if (renderer.shadowMap.enabled !== shadows) { renderer.shadowMap.enabled = shadows; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+  sun.castShadow = shadows;
+  if (sun.shadow.mapSize.x !== q.map) { sun.shadow.mapSize.set(q.map, q.map); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  OUTLINE.visible = cfg.outlines === 'preset' ? q.outlines : cfg.outlines === 'on';
+  scene.fog.near = q.fog[0]; scene.fog.far = q.fog[1];
+  if (master) master.gain.value = cfg.mute ? 0 : cfg.volume / 100;
+  const mc = document.getElementById('mcchat'); if (mc) mc.style.display = cfg.chat ? '' : 'none';
+}
 const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x6a8a4a, 0.85);
 scene.add(hemi);
 function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
@@ -302,7 +349,7 @@ const ramp = new THREE.DataTexture(new Uint8Array([70, 70, 70, 255, 150, 150, 15
 ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
 const toon = (hex, extra) => new THREE.MeshToonMaterial(Object.assign({ color: hex, gradientMap: ramp }, extra || {}));
 const flat = (hex, extra) => new THREE.MeshLambertMaterial(Object.assign({ color: hex }, extra || {}));
-const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x14121a, side: THREE.BackSide });
+const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x14121a, side: THREE.BackSide });   // one material for every ink hull, so settings can switch them all off at once
 const M = {
   grass: flat(0x79b955), road: flat(0x45454f), walk: flat(0xc4bcab), curb: flat(0x9b948a),
   wall: [toon(0xf0dfc2), toon(0xdcc4a6), toon(0xc7d6e6), toon(0xead0d0), toon(0xdbe4c8), toon(0xf2d6a0)],
@@ -1882,12 +1929,13 @@ function updateRain(dt) {
 }
 
 /* ── tiny synth sfx ── */
-let ac = null, lastStep = 0;
+let ac = null, lastStep = 0, master = null;
+function masterGain() { if (!master) { master = ac.createGain(); master.gain.value = cfg.mute ? 0 : cfg.volume / 100; master.connect(ac.destination); } return master; }
 function sfx(kind, v = 5) {
   try {
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
     if (kind === 'step') { if (performance.now() - lastStep < 90) return; lastStep = performance.now(); }
-    const o = ac.createOscillator(), g = ac.createGain(); o.connect(g); g.connect(ac.destination);
+    const o = ac.createOscillator(), g = ac.createGain(); o.connect(g); g.connect(masterGain());
     const t = ac.currentTime, vol = clamp(v / 12, 0.05, 0.5);
     if (kind === 'thud') { o.type = 'triangle'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.18); }
     else if (kind === 'step') { o.type = 'sine'; o.frequency.setValueAtTime(90 + rnd(-10, 10), t); o.frequency.exponentialRampToValueAtTime(50, t + 0.07); g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.09); o.start(t); o.stop(t + 0.1); return; }
@@ -2164,7 +2212,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyV' && !e.repeat) voiceSet(true);
 });
 addEventListener('keyup', e => { if (e.code === 'KeyV') voiceSet(false); });
-function escapeKey() { if (world.pcOpen) closePC(); else if (world.seat) leaveSeat(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
+function escapeKey() { if ($('s-settings').classList.contains('on')) closeSettings(); else if (world.pcOpen) closePC(); else if (world.seat) leaveSeat(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
 function spaceKey() { if (courier.carry && van.driver !== courier) throwCarried(courier, camForward()); else input.jump = 1; }
 addEventListener('keyup', e => { if (KEY[e.code]) input[KEY[e.code]] = 0; if (e.code === 'Space') input.jump = 0; });
 // keys that were down when the window lost focus never send their keyup — the courier would walk into the sunset on his own
@@ -2185,7 +2233,7 @@ canvas.addEventListener('pointermove', e => {
   if (e.pointerId === stick.id) { stickSet(e.clientX - stick.x, e.clientY - stick.y); return; }
   if (!dragging || e.pointerId !== camPointer) return;
   const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; dragMoved += Math.abs(dx) + Math.abs(dy);
-  const k = e.pointerType === 'touch' ? 1.6 : 1; camState.yaw -= dx * 0.005 * k; camState.pitch = clamp(camState.pitch + dy * 0.004 * k, 0.08, 1.2);
+  const k = (e.pointerType === 'touch' ? 1.6 : 1) * cfg.sens / 10; camState.yaw -= dx * 0.005 * k; camState.pitch = clamp(camState.pitch + dy * 0.004 * k * (cfg.invert ? -1 : 1), 0.08, 1.2);
 });
 const stickEnd = e => { if (e.pointerId === stick.id) { stick.id = -1; $('stick').classList.remove('on'); input.f = input.b = input.l = input.r = 0; } };
 canvas.addEventListener('pointerup', e => { stickEnd(e); if (e.pointerId !== camPointer) return; dragging = false; camPointer = -1; if (dragBtn === 0 && dragMoved < 6 && e.pointerType !== 'touch' && (world.running || world.roam) && courier.carry && van.driver !== courier) throwCarried(courier, camForward()); });   // only a left click throws; a tap on a phone does not
@@ -2232,7 +2280,7 @@ function updateCamera(dt) {
 }
 
 /* ── main loop ── */
-let last = performance.now(), acc = 0; const STEP = 1 / 60;
+let last = performance.now(), acc = 0, fpsN = 0, fpsT = performance.now(); const STEP = 1 / 60;
 function frame(now) {
   requestAnimationFrame(frame);
   let dt = Math.min(0.1, (now - last) / 1000); last = now; acc += dt;
@@ -2262,6 +2310,7 @@ function frame(now) {
   updateCamera(dt);
   if (world.running || world.roam) { updateHud(); $('hint').innerHTML = hintText(); }
   updateTouch(); updateVoice();
+  if ($('s-settings').classList.contains('on')) { fpsN++; if (now - fpsT > 500) { $('cfg-fps').textContent = `${Math.round(fpsN * 1000 / (now - fpsT))} fps. it is what it is.`; fpsN = 0; fpsT = now; } }
   renderer.render(scene, camera);
 }
 $('btn-start').onclick = () => { if (net.on && !net.host) return toast('only the host clocks everyone in.'); if (net.on) netEvent({ k: 'start' }); startShift(); };
@@ -2414,6 +2463,22 @@ function openLocker() {
 }
 function closeLocker() { $('s-locker').classList.remove('on'); world.locker = false; camState.pitch = 0.4; camState.dist = 7.5; if (world.roam) { camState.yaw = courier.yaw + Math.PI; } else { $('s-menu').classList.add('on'); courier.yaw = Math.PI; camState.yaw = Math.PI; } }
 $('btn-locker').onclick = openLocker; $('btn-lk-done').onclick = closeLocker;
+/* ── settings card ── */
+let cfgFrom = null;                                                                           // where to go back to: the work order, or nowhere (the pc / roam)
+function paintCfg() {
+  document.querySelectorAll('#s-settings .opts').forEach(o => { const k = o.dataset.k; o.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(cfg[k]) === b.dataset.v)); });
+  $('cfg-volume').value = cfg.volume; $('cfg-sens').value = cfg.sens;
+}
+function openSettings(from) { cfgFrom = from || null; $('s-menu').classList.remove('on'); closePC(true); paintCfg(); $('s-settings').classList.add('on'); }
+function closeSettings() { $('s-settings').classList.remove('on'); if (cfgFrom === 'menu' || (!world.running && !world.roam)) { $('s-menu').classList.add('on'); paintMenu(); } cfgFrom = null; }
+document.querySelectorAll('#s-settings .opts').forEach(o => o.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; const k = o.dataset.k, v = b.dataset.v;
+  cfg[k] = v === 'true' ? true : v === 'false' ? false : v; applyCfg(); persist(); paintCfg();
+}));
+$('cfg-volume').addEventListener('input', () => { cfg.volume = +$('cfg-volume').value; applyCfg(); persist(); if (!cfg.mute) sfx('ding', 4); });
+$('cfg-sens').addEventListener('input', () => { cfg.sens = +$('cfg-sens').value; persist(); });
+$('btn-cfg-done').onclick = closeSettings; $('btn-settings').onclick = () => openSettings('menu');
+applyCfg();
 applyLook();
 function paintMenu() {
   $('m-best').textContent = '$' + save.best; $('m-cash').textContent = '$' + save.cash;
@@ -2649,6 +2714,7 @@ const os = createOS({
   startShift: () => { if (net.on && !net.host) return toast('only the host clocks everyone in.'); closePC(true); startShift(); },
   net: { state: netState, rooms: () => net.lobby ? net.lobby.list() : [], host: hostRoom, join: joinRoom, leave: () => netLeave(), chat: sendChat },
   voice: { state: voiceState, open: () => voice.open, toggle: voiceToggleOpen },
+  openSettings: () => openSettings(),
 });
 function openPC(app) {
   if (world.pcOpen) return; world.pcOpen = true; clearInput(); os.open(app); $('hint').innerHTML = '';
@@ -2658,8 +2724,9 @@ function openPC(app) {
 function closePC(silent) { if (!world.pcOpen) return; world.pcOpen = false; os.close(); if (!silent) sfx('door'); }
 if (!LOCAL_SIG && new URLSearchParams(location.search).get('join')) { const code = new URLSearchParams(location.search).get('join'); setTimeout(() => { enterRoam(); joinRoom(code); }, 800); }   // overwork.html?join=ABCDE
 $('loading').remove();
+if (tampered) { persist(); setTimeout(() => toast('the sock drawer had a hole in it. it is empty now.', 'bad'), 1500); }
 /* debug handle (also what the Playwright harness drives) */
-window.__ow = { courier, boxes, van, world, houses, props, customers, remotes, net, casino, voice, solidAt, colliders, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
+if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) window.__ow = { courier, boxes, van, world, houses, props, customers, remotes, net, casino, voice, solidAt, colliders, cfg, applyCfg, openSettings, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
 requestAnimationFrame(frame);
 </script>
 </body>
