@@ -167,6 +167,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
     <div class="lk-row"><span class="lk-l">skin</span><div class="sw" id="lk-skin"></div></div>
     <div class="lk-row"><span class="lk-l">shoes</span><div class="sw" id="lk-shoe"></div></div>
     <div class="lk-row"><span class="lk-l">face</span><div class="opts" id="lk-glasses"></div></div>
+    <div class="lk-row"><span class="lk-l">ears</span><div class="opts" id="lk-phones"></div></div>
     <div class="lk-row"><span class="lk-l">name tag</span><input id="lk-name" maxlength="8" placeholder="new guy" autocomplete="off" spellcheck="false"></div>
     <div class="lk-row"><span class="lk-l">van flag</span><input id="lk-flag" maxlength="4" placeholder="hi" autocomplete="off" spellcheck="false"></div>
     <div class="row" style="margin-top:12px">
@@ -199,6 +200,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
 import * as THREE from './vendor/three.module.min.js';
 import { createNet } from './ow-net.js';
 import { createOS } from './ow-os.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
 
 /* ═══════════════════════════════════════════════════════════════
    OVERWORK — the delivery shift
@@ -870,6 +872,41 @@ const CLAY = {                                                                  
   pants: [0x39405e, 0x6a4028, 0x2b2b33, 0x8a8a90].map(clay),
   shoe: clay(0x1f1f28), cap: clay(0x3a6fd8),
 };
+/* ── accessories: the owner's low-poly models in art/overwork/. Loaded once, baked to world space and centred per
+   mesh (so the ink hull scales about each piece), then cloned per courier. Fit values were measured, not guessed
+   (scratchpad/acc-probe.html prints bounds and centroids): the cap's crown sits off-centre in its file with the brim
+   along +z, the frog looks down -x, the glasses already face +z, the headphones are 100× too small. */
+const ACC = { ready: false, cap: null, frog: null, glasses: null, phones: null };
+const ACC_FIT = {
+  cap:     { scale: 0.5, rot: 0, pos: [0.217, 0.2, 0.378] },        // crown centroid in the file is (-0.434, ·, -0.755): the offset puts the crown on the head, brim forward (+z)
+  frog:    { scale: 1.15, rot: Math.PI / 2, pos: [0, 0.14, 0] },
+  glasses: { scale: 0.42, rot: 0, pos: [0, 0.13, 0.09] },
+  phones:  { scale: 7.2, rot: 0, pos: [0, -0.2, 0] },
+};
+const gltfLoader = new GLTFLoader();
+function loadAcc(name, url) {
+  return new Promise(res => gltfLoader.load(url, g => {
+    g.scene.updateMatrixWorld(true); const root = new THREE.Group();
+    g.scene.traverse(o => {
+      if (!o.isMesh) return;
+      const geo = o.geometry.clone(); geo.applyMatrix4(o.matrixWorld); if (!geo.attributes.normal) geo.computeVertexNormals();
+      geo.computeBoundingBox(); const c = geo.boundingBox.getCenter(new THREE.Vector3()); geo.translate(-c.x, -c.y, -c.z);
+      const m = new THREE.Mesh(geo, o.material); m.position.copy(c); m.userData.name = o.material.name || ''; root.add(m);
+    });
+    ACC[name] = root; res();
+  }, undefined, e => { console.warn('[overwork] accessory failed to load', name, e); res(); }));
+}
+Promise.all([loadAcc('cap', 'art/overwork/cap.glb'), loadAcc('frog', 'art/overwork/frog.glb'), loadAcc('glasses', 'art/overwork/glasses.glb'), loadAcc('phones', 'art/overwork/headphones.glb')])
+  .then(() => { ACC.ready = true; for (const c of [courier, ...remotes]) c.attachAccessories(); for (const cu of customers) cu.attachAccessories(); });
+/* a wearable copy of a loaded model: `mat(mesh)` may return a material to swap in (the cap takes the courier's cap colour) */
+function fitAcc(name, matFn) {
+  const src = ACC[name], f = ACC_FIT[name], g = new THREE.Group(); if (!src) return g;
+  for (const m of src.children) {
+    const mm = new THREE.Mesh(m.geometry, (matFn && matFn(m)) || m.material); mm.position.copy(m.position); mm.castShadow = true; outlined(mm, 1.04); g.add(mm);
+  }
+  g.scale.setScalar(f.scale); g.rotation.y = f.rot; g.position.set(f.pos[0], f.pos[1], f.pos[2]);
+  return g;
+}
 /* the floating name over a head: white hand-written text with an ink outline, always facing the camera */
 function nameTex(text) {
   const c = document.createElement('canvas'); c.width = 320; c.height = 80; const g = c.getContext('2d');
@@ -902,11 +939,9 @@ class Courier {
     // bobblehead: an egg on a lazy spring off the neck
     const head = this.head = new THREE.Group(); g.add(head);
     outlined(mesh(new THREE.SphereGeometry(0.4, 22, 16), m.skin, 0, 0.02, 0, { parent: head }), 1.05).scale.set(1, 1.16, 1);
-    // headwear, all built, the locker picks which one shows: cap (forward or backwards), beanie, or hair and nothing else
+    // headwear: the cap, frog hat, glasses and headphones are the owner's models (attachAccessories); the beanie and hair are built here
     const capG = this.capG = new THREE.Group(); head.add(capG);
-    outlined(mesh(new THREE.SphereGeometry(0.43, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), m.cap, 0, 0.14, 0, { parent: capG }), 1.05);
-    outlined(mesh(new THREE.BoxGeometry(0.5, 0.05, 0.3), m.cap, 0, 0.32, 0.44, { parent: capG, rot: [0.15, 0, 0] }), 1.06);
-    this.capLogo = makeLabel('O', '#faf6ec', 64, 64, '#e8162a'); this.capLogo.position.set(0, 0.36, 0.41); this.capLogo.rotation.x = -0.3; this.capLogo.scale.set(0.16, 0.16, 1); capG.add(this.capLogo);
+    this.frogG = new THREE.Group(); head.add(this.frogG); this.phonesG = new THREE.Group(); head.add(this.phonesG);
     const beanie = this.beanie = new THREE.Group(); head.add(beanie);
     outlined(mesh(new THREE.SphereGeometry(0.44, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), m.cap, 0, 0.12, 0, { parent: beanie }), 1.05).scale.set(1, 1.3, 1);
     outlined(mesh(new THREE.TorusGeometry(0.42, 0.07, 8, 20), m.cap, 0, 0.18, 0, { parent: beanie, rot: [Math.PI / 2, 0, 0] }), 1.06);
@@ -915,9 +950,8 @@ class Courier {
     outlined(mesh(new THREE.SphereGeometry(0.43, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.42), m.hair, 0, 0.13, 0, { parent: hair }), 1.05);
     outlined(mesh(new THREE.BoxGeometry(0.34, 0.12, 0.14), m.hair, 0.08, 0.36, 0.34, { parent: hair, rot: [0.3, 0, -0.2] }), 1.08);      // the fringe. it does what it wants.
     const glasses = this.glasses = new THREE.Group(); head.add(glasses);
-    for (const sx of [-0.17, 0.17]) mesh(new THREE.TorusGeometry(0.13, 0.02, 6, 14), M.pupil, sx, 0.12, 0.38, { parent: glasses, shadow: false });
-    mesh(new THREE.BoxGeometry(0.1, 0.025, 0.025), M.pupil, 0, 0.12, 0.39, { parent: glasses, shadow: false });
-    beanie.visible = hair.visible = glasses.visible = false;
+    beanie.visible = hair.visible = glasses.visible = this.frogG.visible = this.phonesG.visible = false;
+    this.look = null; if (ACC.ready) this.attachAccessories();
     this.headSpring = { x: spring(60, 6), z: spring(60, 6), y: spring(80, 8) };
     // limbs: jelly legs in the jumpsuit colour, jelly arms in the sleeve colour
     this.legL = new Limb(m.suit, 0.125, 1.0); this.legR = new Limb(m.suit, 0.125, 1.0);
@@ -935,6 +969,10 @@ class Courier {
     // the floating name, like a badge at a very sad convention
     this.nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex('new guy'), transparent: true, depthTest: false, fog: false }));
     this.nameSprite.scale.set(1.6, 0.4, 1); this.nameSprite.renderOrder = 4; scene.add(this.nameSprite);
+  }
+  attachAccessories() {                                                                  // (re)build the model-based wearables; visibility is applyLookTo's job
+    for (const g of [this.capG, this.frogG, this.glasses, this.phonesG]) while (g.children.length) g.remove(g.children[0]);
+    this.capG.add(fitAcc('cap', () => this.mat.cap)); this.frogG.add(fitAcc('frog')); this.glasses.add(fitAcc('glasses')); this.phonesG.add(fitAcc('phones', () => this.mat.cap));
   }
   setName(n) { this.name = n; const old = this.nameSprite.material.map; this.nameSprite.material.map = nameTex(n || 'new guy'); if (old) old.dispose(); }
   setVisible(v) { this.group.visible = v; this.nameSprite.visible = v; for (const m of [this.legL, this.legR, this.armL, this.armR]) m.setVisible(v); for (const m of [this.footL, this.footR, this.handL, this.handR]) m.visible = v; }
@@ -1437,7 +1475,8 @@ class Customer {
     const hs = style % 5;                                                                                         // hair: bowl / bun / bald / backwards cap / long
     if (hs === 0 || hs === 1 || hs === 4) outlined(mesh(new THREE.SphereGeometry(0.39, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.45), hair, 0, 0.1, 0, { parent: head }), 1.05);
     if (hs === 1) outlined(mesh(new THREE.SphereGeometry(0.15, 10, 8), hair, 0, 0.5, -0.08, { parent: head }), 1.08);
-    if (hs === 3) { outlined(mesh(new THREE.SphereGeometry(0.39, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), CLAY.cap, 0, 0.1, 0, { parent: head }), 1.05); outlined(mesh(new THREE.BoxGeometry(0.46, 0.05, 0.28), CLAY.cap, 0, 0.28, -0.4, { parent: head, rot: [-0.15, 0, 0] }), 1.06); }
+    this.capG = new THREE.Group(); this.capG.rotation.y = Math.PI; this.capG.scale.setScalar(0.92); head.add(this.capG); this.capG.visible = hs === 3;   // backwards, of course
+    if (ACC.ready) this.attachAccessories();
     if (hs === 4) for (const sx of [-0.28, 0.28]) outlined(mesh(new THREE.BoxGeometry(0.16, 0.55, 0.3), hair, sx, -0.1, -0.1, { parent: head }), 1.05);
     if (style % 3 === 1) { for (const sx of [-0.15, 0.15]) mesh(new THREE.TorusGeometry(0.11, 0.018, 6, 12), M.pupil, sx, 0.08, 0.35, { parent: head, shadow: false }); mesh(new THREE.BoxGeometry(0.08, 0.02, 0.02), M.pupil, 0, 0.08, 0.36, { parent: head, shadow: false }); }
     this.bubble = null; this.state = 'in'; this.t = 0; this.kind = 'fine'; this.box = null; this.armPose = 'down';
@@ -1445,6 +1484,7 @@ class Customer {
     this.home = new THREE.Vector3(house.doorX - house.facing * 0.6, 0, house.z); this.out = new THREE.Vector3(house.doorX + house.facing * 1.4, 0, house.z);
     this.pos = this.home.clone(); this.yaw = house.facing > 0 ? Math.PI / 2 : -Math.PI / 2;
   }
+  attachAccessories() { while (this.capG.children.length) this.capG.remove(this.capG.children[0]); this.capG.add(fitAcc('cap', () => CLAY.cap)); }
   react(kind, box) {
     if (this.state !== 'in') return;
     this.kind = kind; this.box = box; this.state = 'coming'; this.t = 0; this.group.visible = true; this.pos.copy(this.home); this.armPose = 'down'; this.say(null); sfx('door');
@@ -1927,7 +1967,7 @@ function emote(who, kind) {
 }
 
 /* ── the locker: basic customisation, saved with the rest of the sock drawer ── */
-const LOOK_DEFAULT = { capStyle: 'cap', cap: '#e8162a', suit: '#ff7a1a', sleeve: '#4a5568', skin: '#f6c9a6', hair: '#2a1a10', shoe: '#1f1f28', glasses: false, name: '', flag: 'hi' };
+const LOOK_DEFAULT = { capStyle: 'cap', cap: '#e8162a', suit: '#ff7a1a', sleeve: '#4a5568', skin: '#f6c9a6', hair: '#2a1a10', shoe: '#1f1f28', glasses: false, phones: false, name: '', flag: 'hi' };
 const PALETTE = {
   cap: ['#e8162a', '#2f3550', '#2f9e5b', '#ffd23f', '#b470d8', '#14121a', '#f4f4f7'],
   suit: ['#ff7a1a', '#ffb020', '#e8162a', '#3a9ad8', '#64b850', '#ff7fb0', '#f4f4f7', '#14121a'],
@@ -1937,12 +1977,12 @@ const PALETTE = {
   shoe: ['#1f1f28', '#8a6540', '#f4f4f7', '#e8162a', '#3a78d8', '#ffd23f'],
 };
 if (save.look && save.look.vest && !save.look.suit) save.look.suit = PALETTE.suit.includes(save.look.vest) ? save.look.vest : LOOK_DEFAULT.suit;   // v1 saves called it a vest
-const CAP_STYLES = [['cap', 'cap'], ['back', 'cap, backwards'], ['beanie', 'beanie'], ['none', 'no hat. brave.']];
+const CAP_STYLES = [['cap', 'cap'], ['back', 'cap, backwards'], ['beanie', 'beanie'], ['frog', 'frog hat'], ['none', 'no hat. brave.']];
 const QUIPS = ['nobody will notice. you\'ll notice.', 'sure. that.', 'bold.', 'the mirror is over there. don\'t.', 'dispatch has no opinion. dispatch has an opinion.', 'it\'s a look.', 'the dog will still bite you.'];
 save.look = Object.assign({}, LOOK_DEFAULT, save.look && typeof save.look === 'object' ? save.look : {});
 for (const k of Object.keys(PALETTE)) if (!PALETTE[k].includes(save.look[k])) save.look[k] = LOOK_DEFAULT[k];      // whatever is in localStorage, only palette colours get in
 if (!CAP_STYLES.some(([v]) => v === save.look.capStyle)) save.look.capStyle = 'cap';
-save.look.name = String(save.look.name || '').slice(0, 8); save.look.flag = String(save.look.flag || 'hi').slice(0, 4); save.look.glasses = !!save.look.glasses;
+save.look.name = String(save.look.name || '').slice(0, 8); save.look.flag = String(save.look.flag || 'hi').slice(0, 4); save.look.glasses = !!save.look.glasses; save.look.phones = !!save.look.phones;
 function retex(m, ...a) { const old = m.material.map; m.material.map = makeTex(...a); m.material.needsUpdate = true; if (old) old.dispose(); }
 /* dress any courier (yours, or a remote player's) in a look object; only palette colours are ever accepted */
 function applyLookTo(c, L) {
@@ -1951,8 +1991,8 @@ function applyLookTo(c, L) {
   if (!CAP_STYLES.some(([v]) => v === L.capStyle)) L.capStyle = 'cap';
   const m = c.mat; m.cap.color.set(L.cap); m.suit.color.set(L.suit); m.sleeve.color.set(L.sleeve); m.skin.color.set(L.skin); m.hair.color.set(L.hair); m.shoe.color.set(L.shoe);
   c.capG.visible = L.capStyle === 'cap' || L.capStyle === 'back'; c.capG.rotation.y = L.capStyle === 'back' ? Math.PI : 0;
-  c.beanie.visible = L.capStyle === 'beanie'; c.hair.visible = L.capStyle === 'none'; c.glasses.visible = !!L.glasses;
-  retex(c.capLogo, 'O', L.cap === '#f4f4f7' || L.cap === '#ffd23f' ? '#23212b' : '#faf6ec', 64, 64, L.cap);
+  c.beanie.visible = L.capStyle === 'beanie'; c.frogG.visible = L.capStyle === 'frog'; c.hair.visible = L.capStyle === 'none' || L.capStyle === 'frog';
+  c.glasses.visible = !!L.glasses; c.phonesG.visible = !!L.phones; c.look = L;
   const name = String(L.name || '').slice(0, 8).trim() || 'new guy';
   retex(c.tag, name, '#23212b', 160, 64, '#faf6ec', 'Patrick Hand'); c.setName(name);
 }
@@ -1965,20 +2005,21 @@ function paintLocker() {
   const L = save.look;
   for (const k of Object.keys(PALETTE)) $('lk-' + k).innerHTML = PALETTE[k].map(c => `<button data-k="${k}" data-v="${c}" class="${L[k] === c ? 'on' : ''}" style="background:${c}" aria-label="${c}"></button>`).join('');
   $('lk-capStyle').innerHTML = CAP_STYLES.map(([v, t]) => `<button data-k="capStyle" data-v="${v}" class="${L.capStyle === v ? 'on' : ''}">${t}</button>`).join('');
-  $('lk-glasses').innerHTML = [['false', 'no glasses'], ['true', 'glasses']].map(([v, t]) => `<button data-k="glasses" data-v="${v}" class="${String(L.glasses) === v ? 'on' : ''}">${t}</button>`).join('');
+  $('lk-glasses').innerHTML = [['false', 'no glasses'], ['true', 'pixel glasses']].map(([v, t]) => `<button data-k="glasses" data-v="${v}" class="${String(L.glasses) === v ? 'on' : ''}">${t}</button>`).join('');
+  $('lk-phones').innerHTML = [['false', 'nothing'], ['true', 'headphones']].map(([v, t]) => `<button data-k="phones" data-v="${v}" class="${String(L.phones) === v ? 'on' : ''}">${t}</button>`).join('');
   $('lk-name').value = L.name; $('lk-flag').value = L.flag;
 }
 $('s-locker').addEventListener('click', e => {
   const b = e.target.closest('button[data-k]'); if (!b) return;
   const k = b.dataset.k, v = b.dataset.v;
-  if (k === 'glasses') save.look.glasses = v === 'true'; else if (k === 'capStyle') save.look.capStyle = v; else if (PALETTE[k] && PALETTE[k].includes(v)) save.look[k] = v;
+  if (k === 'glasses') save.look.glasses = v === 'true'; else if (k === 'phones') save.look.phones = v === 'true'; else if (k === 'capStyle') save.look.capStyle = v; else if (PALETTE[k] && PALETTE[k].includes(v)) save.look[k] = v;
   persist(); applyLook(); paintLocker(); sfx('step', 6); courier.headSpring.z.v += 3; courier.bob.v -= 1.5;
 });
 $('lk-name').oninput = e => { save.look.name = e.target.value.slice(0, 8); persist(); applyLook(); };
 $('lk-flag').oninput = e => { save.look.flag = e.target.value.slice(0, 4); persist(); applyLook(); };
 $('btn-lk-rnd').onclick = () => {
   for (const k of Object.keys(PALETTE)) save.look[k] = pick(PALETTE[k]);
-  save.look.capStyle = pick(CAP_STYLES)[0]; save.look.glasses = Math.random() < 0.4;
+  save.look.capStyle = pick(CAP_STYLES)[0]; save.look.glasses = Math.random() < 0.4; save.look.phones = Math.random() < 0.35;
   persist(); applyLook(); paintLocker(); $('lk-quip').textContent = pick(QUIPS.slice(1)); courier.squash.v -= 5; courier.legL.kick(8); courier.legR.kick(8);
 };
 function openLocker() {
