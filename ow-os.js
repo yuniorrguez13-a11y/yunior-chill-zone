@@ -41,13 +41,13 @@ const css = `
 #pc-start .it:hover{background:rgba(60,120,200,.18);}
 #pc-start .it i{width:22px;height:22px;border-radius:5px;flex:none;}
 #pc-start .foot{padding:8px 14px;border-top:1px solid #a9c1de;display:flex;justify-content:flex-end;gap:6px;background:#dbe7f5;}
-.pc-btn{font:inherit;font-size:13px;padding:5px 14px;border-radius:4px;border:1px solid #6b7f99;background:linear-gradient(#fdfdfd,#dfe6ee 50%,#cfd8e3);color:#111;cursor:pointer;box-shadow:0 1px 1px rgba(0,0,0,.15);}
-.pc-btn:hover{background:linear-gradient(#f4fbff,#cfe7fb 50%,#b8dbf8);border-color:#3c7fb1;}
-.pc-btn:active{background:#c4d5e6;} .pc-btn:disabled{opacity:.5;cursor:default;}
-.pc-btn.go{background:linear-gradient(#a8e08a,#4fae3a 55%,#3a8f2a);color:#fff;border-color:#2f6f22;text-shadow:0 1px 1px rgba(0,0,0,.4);}
-.pc-btn.red{background:linear-gradient(#f3a8a8,#d34545 55%,#a92c2c);color:#fff;border-color:#7a1c1c;}
-.pc-in{font:inherit;font-size:14px;padding:5px 8px;border:1px solid #7f9db9;border-radius:3px;background:#fff;color:#111;}
-.pc-in:focus{outline:none;border-color:#3c7fb1;box-shadow:0 0 4px rgba(60,127,177,.6);}
+#s-pc .pc-btn{font:inherit;font-size:13px;padding:5px 14px;border-radius:4px;border:1px solid #6b7f99;background:linear-gradient(#fdfdfd,#dfe6ee 50%,#cfd8e3);color:#111;cursor:pointer;box-shadow:0 1px 1px rgba(0,0,0,.15);}
+#s-pc .pc-btn:hover{background:linear-gradient(#f4fbff,#cfe7fb 50%,#b8dbf8);border-color:#3c7fb1;}
+#s-pc .pc-btn:active{background:#c4d5e6;} #s-pc .pc-btn:disabled{opacity:.5;cursor:default;}
+#s-pc .pc-btn.go{background:linear-gradient(#a8e08a,#4fae3a 55%,#3a8f2a);color:#fff;border-color:#2f6f22;text-shadow:0 1px 1px rgba(0,0,0,.4);}
+#s-pc .pc-btn.red{background:linear-gradient(#f3a8a8,#d34545 55%,#a92c2c);color:#fff;border-color:#7a1c1c;}
+#s-pc .pc-in{font:inherit;font-size:14px;padding:5px 8px;border:1px solid #7f9db9;border-radius:3px;background:#fff;color:#111;}
+#s-pc .pc-in:focus{outline:none;border-color:#3c7fb1;box-shadow:0 0 4px rgba(60,127,177,.6);}
 /* windows: glass frame, title, three buttons, white content */
 .win{position:absolute;min-width:320px;border-radius:8px;padding:0 7px 7px;background:linear-gradient(rgba(190,215,240,.75),rgba(150,185,225,.75));backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.6);box-shadow:0 0 0 1px rgba(20,50,90,.6),0 12px 40px rgba(0,0,0,.45);display:flex;flex-direction:column;}
 .win.act{background:linear-gradient(rgba(200,225,250,.9),rgba(160,195,235,.9));}
@@ -70,16 +70,16 @@ const css = `
 .win .chat{height:110px;overflow:auto;background:#f6f9fd;border:1px solid #c5d3e3;border-radius:4px;padding:6px 8px;font-size:13px;margin-bottom:6px;} .win .chat div{margin:1px 0;} .win .chat .sys{color:#7a8a1e;}
 .win textarea{width:100%;height:100%;min-height:220px;border:0;resize:none;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;outline:none;color:#111;background:#fff;}
 /* casino */
-.cz-tabs{display:flex;gap:4px;border-bottom:1px solid #c5d3e3;margin-bottom:10px;} .cz-tabs button{font:inherit;font-size:13px;padding:6px 14px;border:1px solid #c5d3e3;border-bottom:0;border-radius:5px 5px 0 0;background:#e9eff6;cursor:pointer;} .cz-tabs button.on{background:#fff;font-weight:600;}
-.cz-cash{font-weight:700;font-size:18px;color:#1f7a2e;}
-.reels{display:flex;gap:10px;justify-content:center;margin:10px 0;}
-.reel{width:92px;height:92px;border:3px solid #7a5a10;border-radius:10px;background:linear-gradient(#fff,#e8e0c8);display:flex;align-items:center;justify-content:center;font-family:'CF Sketch','Patrick Hand',cursive;font-size:22px;color:#23212b;box-shadow:inset 0 6px 14px rgba(0,0,0,.15);text-align:center;line-height:1;}
-.reel.spin{color:#9a8a60;}
-.cz-msg{min-height:1.4em;font-family:'Patrick Hand',cursive;font-size:17px;margin:6px 0;}
-.cards{display:flex;gap:6px;min-height:70px;flex-wrap:wrap;}
-.card{width:46px;height:64px;border:1px solid #889;border-radius:5px;background:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:4px 5px;font-weight:700;font-size:15px;box-shadow:0 1px 3px rgba(0,0,0,.25);} .card.r{color:#c9302c;} .card.back{background:repeating-linear-gradient(45deg,#3a6fd8 0 6px,#2a4fa8 6px 12px);}
-.cz-hand{margin:8px 0;} .cz-hand b{display:block;margin-bottom:4px;color:#123;}
-.dlg{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);}
+#s-pc .cz-tabs{display:flex;gap:4px;border-bottom:1px solid #c5d3e3;margin-bottom:10px;} #s-pc .cz-tabs button{font:inherit;font-size:13px;padding:6px 14px;border:1px solid #c5d3e3;border-bottom:0;border-radius:5px 5px 0 0;background:#e9eff6;cursor:pointer;} #s-pc .cz-tabs button.on{background:#fff;font-weight:600;}
+#s-pc .cz-cash{font-weight:700;font-size:18px;color:#1f7a2e;}
+#s-pc .reels{display:flex;gap:10px;justify-content:center;margin:10px 0;}
+#s-pc .reel{width:92px;height:92px;border:3px solid #7a5a10;border-radius:10px;background:linear-gradient(#fff,#e8e0c8);display:flex;align-items:center;justify-content:center;font-family:'CF Sketch','Patrick Hand',cursive;font-size:22px;color:#23212b;box-shadow:inset 0 6px 14px rgba(0,0,0,.15);text-align:center;line-height:1;}
+#s-pc .reel.spin{color:#9a8a60;}
+#s-pc .cz-msg{min-height:1.4em;font-family:'Patrick Hand',cursive;font-size:17px;margin:6px 0;}
+#s-pc .pcards{display:flex;gap:6px;min-height:70px;flex-wrap:wrap;}
+#s-pc .pcard{width:46px;height:64px;border:1px solid #889;border-radius:5px;background:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:4px 5px;font-weight:700;font-size:15px;box-shadow:0 1px 3px rgba(0,0,0,.25);} #s-pc .pcard.r{color:#c9302c;} #s-pc .pcard.back{background:repeating-linear-gradient(45deg,#3a6fd8 0 6px,#2a4fa8 6px 12px);}
+#s-pc .cz-hand{margin:8px 0;} .cz-hand b{display:block;margin-bottom:4px;color:#123;}
+#s-pc .dlg{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);}
 @media(max-width:760px){#pc-frame{inset:2vh 1vw 1vh 1vw;} .win{min-width:0;width:min(96%,420px)!important;left:2%!important;} #pc-icons{grid-template-columns:repeat(3,76px);} .pc-ic{width:76px;}}
 `;
 
@@ -240,7 +240,7 @@ export function createOS(api) {
   /* blackjack, the 21 kind */
   const deck = () => { const d = []; for (const s of ['♠', '♥', '♦', '♣']) for (const r of ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']) d.push({ r, s }); for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } return d; };
   const val = h => { let t = 0, a = 0; for (const c of h) { if (c.r === 'A') { a++; t += 11; } else if ('JQK'.includes(c.r)) t += 10; else t += +c.r; } while (t > 21 && a > 0) { t -= 10; a--; } return t; };
-  const cardHtml = (c, hide) => hide ? '<div class="card back"></div>' : `<div class="card ${'♥♦'.includes(c.s) ? 'r' : ''}"><span>${c.r}</span><span style="text-align:right">${c.s}</span></div>`;
+  const cardHtml = (c, hide) => hide ? '<div class="pcard back"></div>' : `<div class="pcard ${'♥♦'.includes(c.s) ? 'r' : ''}"><span>${c.r}</span><span style="text-align:right">${c.s}</span></div>`;
   function paintBJ(W) {
     const b = W.body.querySelector('#cz-body');
     if (!bj) {
@@ -250,8 +250,8 @@ export function createOS(api) {
       return;
     }
     const pv = val(bj.p), hv = val(bj.h);
-    b.innerHTML = `<div class="cz-hand"><b>dealer ${bj.done ? '· ' + hv : ''}</b><div class="cards">${bj.h.map((c, i) => cardHtml(c, i === 1 && !bj.done)).join('')}</div></div>
-      <div class="cz-hand"><b>you · ${pv}</b><div class="cards">${bj.p.map(c => cardHtml(c)).join('')}</div></div>
+    b.innerHTML = `<div class="cz-hand"><b>dealer ${bj.done ? '· ' + hv : ''}</b><div class="pcards">${bj.h.map((c, i) => cardHtml(c, i === 1 && !bj.done)).join('')}</div></div>
+      <div class="cz-hand"><b>you · ${pv}</b><div class="pcards">${bj.p.map(c => cardHtml(c)).join('')}</div></div>
       <div class="row">${bj.done ? '<button class="pc-btn go" id="bj-again">again</button>' : `<button class="pc-btn" id="bj-hit">hit</button><button class="pc-btn" id="bj-stand">stand</button><button class="pc-btn" id="bj-double" ${bj.p.length === 2 && api.cash() >= bj.bet ? '' : 'disabled'}>double</button>`}</div>
       <div class="cz-msg">${bj.msg}</div>`;
     const q = s => b.querySelector(s);
