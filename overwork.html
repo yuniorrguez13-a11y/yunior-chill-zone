@@ -216,9 +216,10 @@ body.has-touch.in-game .hud-top{right:84px;}
     <div class="lk-row"><span class="lk-l">shadows</span><div class="opts" data-k="shadows"><button data-v="preset">preset</button><button data-v="on">on</button><button data-v="off">off</button></div></div>
     <div class="lk-row"><span class="lk-l">outlines</span><div class="opts" data-k="outlines"><button data-v="preset">preset</button><button data-v="on">on</button><button data-v="off">off</button></div></div>
     <div class="lk-row"><span class="lk-l">sound</span><input type="range" id="cfg-volume" min="0" max="100" step="5"><div class="opts" data-k="mute"><button data-v="false">on</button><button data-v="true">muted</button></div></div>
+    <div class="lk-row"><span class="lk-l">music</span><input type="range" id="cfg-music" min="0" max="100" step="5"><span class="small">a piano. an actual one.</span></div>
     <div class="lk-row"><span class="lk-l">camera</span><input type="range" id="cfg-sens" min="3" max="20"><div class="opts" data-k="invert"><button data-v="false">normal</button><button data-v="true">inverted</button></div></div>
     <div class="lk-row"><span class="lk-l">chat</span><div class="opts" data-k="chat"><button data-v="true">shown</button><button data-v="false">hidden</button></div></div>
-    <p class="small" style="margin-top:8px">auto picks low on phones and high everywhere else. low = no shadows, no ink, shorter view. the voice chat has its own volume: yours.</p>
+    <p class="small" style="margin-top:8px">auto picks low on phones and high everywhere else. low = no shadows, no ink, shorter view. the music is a recorded piano playing whatever it feels like; the effects are recordings too. nothing beeps. the voice chat has its own volume: yours.</p>
     <div class="row"><button class="btn primary" id="btn-cfg-done">that'll do</button><span class="small" id="cfg-fps"></span></div>
   </div></div>
 </div>
@@ -269,8 +270,9 @@ import * as THREE from './vendor/three.module.min.js';
 import { createNet } from './ow-net.js';
 import { createOS } from './ow-os.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
-import { mergeVertices } from './vendor/BufferGeometryUtils.js';
+import { mergeVertices, mergeGeometries } from './vendor/BufferGeometryUtils.js';
 import { createSlots, createBlackjack, createRoulette, SLOT_SYMBOLS, BETS, WHEEL, colorOf, handValue, isRed } from './ow-casino.js';
+import { createPiano } from './ow-piano.js';
 
 /* ═══════════════════════════════════════════════════════════════
    OVERWORK — the delivery shift
@@ -302,11 +304,11 @@ try {
 save.cash = Math.max(0, save.cash | 0); save.best = Math.max(0, save.best | 0); save.shifts = Math.max(0, save.shifts | 0);
 const persist = () => { try { save.sig = saveSig(save); localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} };
 // ── settings ──
-const CFG_DEFAULT = { quality: 'auto', shadows: 'preset', outlines: 'preset', volume: 70, mute: false, sens: 10, invert: false, chat: true };
+const CFG_DEFAULT = { quality: 'auto', shadows: 'preset', outlines: 'preset', volume: 70, music: 55, mute: false, sens: 10, invert: false, chat: true };
 const CFG_OPTS = { quality: ['auto', 'low', 'medium', 'high'], shadows: ['preset', 'on', 'off'], outlines: ['preset', 'on', 'off'] };
 save.cfg = Object.assign({}, CFG_DEFAULT, save.cfg && typeof save.cfg === 'object' ? save.cfg : {});
 for (const k of Object.keys(CFG_OPTS)) if (!CFG_OPTS[k].includes(save.cfg[k])) save.cfg[k] = CFG_DEFAULT[k];
-save.cfg.volume = Math.min(100, Math.max(0, save.cfg.volume | 0)); save.cfg.sens = Math.min(20, Math.max(3, save.cfg.sens | 0)); save.cfg.mute = !!save.cfg.mute; save.cfg.invert = !!save.cfg.invert; save.cfg.chat = save.cfg.chat !== false;
+save.cfg.volume = Math.min(100, Math.max(0, save.cfg.volume | 0)); save.cfg.music = Math.min(100, Math.max(0, save.cfg.music | 0)); save.cfg.sens = Math.min(20, Math.max(3, save.cfg.sens | 0)); save.cfg.mute = !!save.cfg.mute; save.cfg.invert = !!save.cfg.invert; save.cfg.chat = save.cfg.chat !== false;
 const cfg = save.cfg;
 
 /* ── renderer / scene ── */
@@ -337,6 +339,7 @@ function applyCfg() {                                                           
   OUTLINE.visible = cfg.outlines === 'preset' ? q.outlines : cfg.outlines === 'on';
   scene.fog.near = q.fog[0]; scene.fog.far = q.fog[1];
   if (master) master.gain.value = cfg.mute ? 0 : cfg.volume / 100;
+  if (piano) { piano.setVolume(cfg.music / 100); const want = cfg.music > 0 && !cfg.mute && musicArmed; if (want && piano.ready && !piano.music.playing) piano.music.start(); else if (!want && piano.music.playing) piano.music.stop(); }
   const mc = document.getElementById('mcchat'); if (mc) mc.style.display = cfg.chat ? '' : 'none';
 }
 const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x6a8a4a, 0.85);
@@ -377,6 +380,9 @@ const M = {
   lapis: toon(0x2a5bd8, { emissive: 0x1a3a9a, emissiveIntensity: 0.6 }),
   carpet: flat(0x6e1c26), felt: toon(0x1f7a3e), wheelWood: toon(0x6a3a1a), slotBody: toon(0x8a1f3a), bottle: [toon(0x2e8b3a), toon(0xc9302c), toon(0xe8c04a), toon(0x3a78d8)],
   chip: { red: toon(0xc9302c), blue: toon(0x2a4fa8), black: toon(0x1a1a1f), green: toon(0x2e8b3a), gold: toon(0xe8c04a), white: toon(0xf4f4f7) },
+  // the horizon: the mast's beacon has its own material so nothing else in town blinks with it (the van's hazard light taught us that)
+  beacon: toon(0xff3030, { emissive: 0xff3030, emissiveIntensity: 1 }), iron: toon(0x2e2f3a), sail: toon(0xf4ead0), hay: toon(0xd8b860), soil: flat(0x8a6a48), crop: toon(0x5aa040),
+  barn: toon(0xa83a2a), silo: toon(0xb8bcc8), tank: toon(0xc9ccd6), highway: flat(0x5a5a64), pillar: flat(0x8f8a80), smoke: new THREE.MeshLambertMaterial({ color: 0xb8bcc4, transparent: true, opacity: 0.4, fog: true }),
 };
 
 
@@ -768,17 +774,22 @@ function buildWorld() {
   // ── houses ──
   const spots = [[-17, 14], [17, 14], [-17, -4], [17, -4], [-17, -22], [17, -22], [-33, -52], [33, -52]];
   spots.forEach(([x, z], i) => house(i, x, z));
-  for (let z = -60; z <= 40; z += 20) for (const sx of [-5.2, 5.2]) {
-    mesh(new THREE.CylinderGeometry(0.09, 0.12, 5, 8), M.pole, sx, 2.5, z, { shadow: false }); colliders.push({ min: { x: sx - .13, y: 0, z: z - .13 }, max: { x: sx + .13, y: 5, z: z + .13 } });
-    mesh(new THREE.BoxGeometry(0.1, 0.1, 1.0), M.pole, sx * 0.92, 5.0, z, { shadow: false });
-    mesh(new THREE.SphereGeometry(0.34, 10, 8), M.lamp, sx * 0.85, 4.95, z, { shadow: false });
+  // street lamps: down the main street on both sidewalks, and along the cross street's sidewalks. the old loop put a pair right in the
+  // middle of the intersection (z −40 is the cross street) — that pair is gone, and none of these stand in a road
+  let bn = 0; for (const z of [-60, -26, -8, 10, 28]) for (const sx of [-5.2, 5.2]) lampPost(sx, z, -Math.sign(sx), 0, (z === -26 || z === 10) && sx > 0 || z === -8 && sx < 0 ? BANNERS[bn++ % BANNERS.length] : null);
+  for (const x of [-24, 24, -44, 44]) { lampPost(x, -34.8, 0, -1, x === 24 ? BANNERS[3] : null); lampPost(x, -45.2, 0, 1, null); }
+  // trees: anywhere off the roads and out of the way of the casino lot, the farm, the power line and the cross street
+  let planted = 0, tries = 0;
+  while (planted < 16 && tries++ < 200) {
+    const tx = (Math.random() < .5 ? -1 : 1) * rnd(26, 64), tz = rnd(-72, 40);
+    if (tx < -22 && tx > -43 && tz > -25 && tz < -6) continue; if (tz > -49.5 && tz < -30.5) continue; if (tx > 24 && tz < -54) continue; if (Math.abs(tx - 27) < 1.8) continue; if (Math.hypot(tx - 60, tz + 60) < 8) continue;
+    (Math.random() < 0.4 ? pine : tree)(tx, tz, rnd(0.9, 1.6)); planted++;
   }
-  for (let k = 0; k < 16; k++) { const tx = (Math.random() < .5 ? -1 : 1) * rnd(26, 64); let tz = rnd(-72, 40); if (Math.abs(tx) < 42 && tz > -60 && tz < -44) tz -= 20; if (tx < -22 && tx > -43 && tz > -25 && tz < -6) continue; if (tz > -49.5 && tz < -30.5) continue; (Math.random() < 0.4 ? pine : tree)(tx, tz, rnd(0.9, 1.6)); }   // the casino lot and the cross street stay clear
   deadTree(-24, 6);
   for (let k = 0; k < 9; k++) cloud(rnd(-90, 90), rnd(26, 40), rnd(-110, 60), rnd(1.2, 2.4));
   birds.push(new Flock(-20, -10, 22, 14, 5), new Flock(30, 20, 26, 18, 4));
   sunFace = makeSun();
-  buildHome(); buildCasino(); buildLapis();
+  buildHome(); buildCasino(); buildLapis(); buildScenery();
   van.group.position.set(-2.4, 0, WZ - 2); van.yaw = 0;                                   // the west lane, beside the dock
 }
 /* ── your apartment: APT 3B, across the road from the dock. one room, one desk, one PC. the PC is the point ── */
@@ -958,10 +969,10 @@ $('cz').addEventListener('click', e => {
   if (a === 'deal') { if (g.deal()) { v.dealer.deal.v -= 8; } }
   else if (a === 'hit') { g.hit(); v.dealer.deal.v -= 8; } else if (a === 'stand') { g.stand(); v.dealer.nod.v += 6; } else if (a === 'double') { g.double(); v.dealer.deal.v -= 10; } else if (a === 'again') g.reset();
   else if (a === 'clear') g.clear();
-  else if (a === 'spin' && world.seat.kind === 'slot') { const r = g.spin(); if (r) { v.spin = { t: 0, final: r.final, stops: [0.9, 1.35, 1.8], done: false }; v.leverK.v += 14; sfx('crash', 3); } }
+  else if (a === 'spin' && world.seat.kind === 'slot') { const r = g.spin(); if (r) { v.spin = { t: 0, final: r.final, stops: [0.9, 1.35, 1.8], done: false }; v.leverK.v += 14; sfx('thud', 6); } }
   // the cylinder cap maps canvas angle = −world angle, so pocket idx sits under the marker (−z) at idx*step + π
   else if (a === 'spin' && world.seat.kind === 'rl') { const r = g.spin(); if (r) { const step = Math.PI * 2 / WHEEL.length, idx = WHEEL.indexOf(r.n); let end = idx * step + Math.PI; while (end < v.ang + 4 * Math.PI * 2) end += Math.PI * 2; v.spin = { t: 0, dur: 4.2, start: v.ang, end, n: r.n }; v.dealer.deal.v -= 8; sfx('whoosh'); } }
-  sfx('step', 6); czPaint();
+  sfx('card', 6); czPaint();
 });
 function updateCasino(dt) {
   const inside = Math.abs(courier.pos.x - CZ.X) < CZ.W / 2 && Math.abs(courier.pos.z - CZ.Z) < CZ.D / 2;
@@ -977,7 +988,7 @@ function updateCasino(dt) {
       const rows = [['h', s.h, v.z - 0.42], ['p', s.p, v.z + 0.5]];
       for (const [row, hand, rz] of rows) hand.forEach((card, i) => {
         const key = row + i; let cm = v.cards.find(k => k.key === key);
-        if (!cm) { cm = { key, mesh: makeCardMesh(card), t: 0 }; cm.mesh.position.set(v.x + 1.15, 1.1, v.z - 0.35); v.cards.push(cm); v.dealer.deal.v -= 9; sfx('step', 5); }
+        if (!cm) { cm = { key, mesh: makeCardMesh(card), t: 0 }; cm.mesh.position.set(v.x + 1.15, 1.1, v.z - 0.35); v.cards.push(cm); v.dealer.deal.v -= 9; sfx('card', 7); }
         const n = hand.length, tx = v.x - 0.32 * (n - 1) / 2 + i * 0.32, hidden = row === 'h' && i === 1 && s.phase === 'play';
         cm.t = Math.min(1, cm.t + dt * 4); const tgt = _a.set(tx, 0.93 + i * 0.004, rz);
         cm.mesh.position.lerp(tgt, Math.min(1, 9 * dt)); cm.mesh.position.y += (1 - cm.t) * 0.25;
@@ -993,7 +1004,7 @@ function updateCasino(dt) {
         v.ang = sp.start + (sp.end - sp.start) * e; v.ballAng = -(1 - e) * 30; v.ballR = 0.8 - Math.min(1, t / 0.85) * 0.14;
         if (t >= 0.85) { v.ballAng = 0; }
         if (t >= 1) { v.spin = null; v.game.settle(); czPaint(); v.dealer.nod.v += s.win ? -5 : 6; v.dealer.say(s.win ? (s.result.color === 'green' ? 'zero. i have never seen that. i have seen that.' : pick(['fine. fine.', 'the wheel likes you. the wheel is wrong.'])) : pick([`${s.result.n}. ${s.result.color}. no.`, 'house.', 'the wheel is also a van.'])); sfx(s.win ? 'ding' : 'thud', 5); }
-        else if (Math.floor(sp.t * 14) !== Math.floor((sp.t - dt) * 14) && t < 0.85) sfx('step', 3);
+        else if (Math.floor(sp.t * 14) !== Math.floor((sp.t - dt) * 14) && t < 0.85) sfx('card', 3);
       }
       v.wheel.rotation.y = v.ang; v.ball.position.set(v.x - 1.15 + Math.sin(v.ballAng) * v.ballR, 1.12, v.z - Math.cos(v.ballAng) * v.ballR);
       const bk = `${s.bets.red}|${s.bets.black}|${s.bets.green}`;
@@ -1036,6 +1047,222 @@ function deadTree(x, z) {                      // it's fine. it's been like that
   const nest = outlined(mesh(new THREE.TorusGeometry(0.22, 0.09, 6, 10), M.wood, x + 0.55, 3.75, z + 0.1, { rot: [Math.PI / 2, 0, 0] }), 1.06); nest.scale.y = 0.7;
 }
 function bush(x, z, s) { outlined(mesh(new THREE.DodecahedronGeometry(s, 0), M.leaf3, x, s * 0.7, z, { rot: [0.3, rnd(0, 2), 0] }), 1.06); colliders.push({ min: { x: x - s * .6, y: 0, z: z - s * .6 }, max: { x: x + s * .6, y: s, z: z + s * .6 } }); }
+/* an ink hull for merged geometry: every vertex pushed out along a smooth normal by a fixed thickness. A % scale would work for a
+   box but not for a lamp post — the hull scales about the mesh origin, so the top of a 6-high pole would drift sideways */
+function inkHull(geo, t) {
+  const h = mergeVertices(geo.clone()); h.computeVertexNormals();
+  const P = h.attributes.position, N = h.attributes.normal;
+  for (let i = 0; i < P.count; i++) P.setXYZ(i, P.getX(i) + N.getX(i) * t, P.getY(i) + N.getY(i) * t, P.getZ(i) + N.getZ(i) * t);
+  return h;
+}
+function inked(m, t = 0.04) { const o = new THREE.Mesh(inkHull(m.geometry, t), OUTLINE); m.add(o); return m; }
+/* build a list of [geometry, x, y, z, rx, ry, rz] parts into one geometry (one draw call, one hull) */
+function merged(parts) {
+  return mergeGeometries(parts.map(([g, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0]) => { if (rx) g.rotateX(rx); if (ry) g.rotateY(ry); if (rz) g.rotateZ(rz); g.translate(x, y, z); return g; }));
+}
+const cyl = (rt, rb, h, n = 8) => new THREE.CylinderGeometry(rt, rb, h, n);
+const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+
+/* ── street lamps. a plinth, a tapered pole with a collar, a swan-neck arm curving out over the road, a lantern with a pointed cap
+   and a finial. the ironwork is one merged geometry shared by every post (three draw calls each, hull included), because the old
+   ones — a stick, a stub and a ball — were the ugliest thing on the street and there are more of them now ── */
+const LAMP = { iron: null, hull: null, glass: null, glassHull: null, R: 0.9 };
+function lampPost(x, z, dx, dz, banner) {
+  if (!LAMP.iron) {
+    const R = LAMP.R, top = 5.0, ax = R, ay = top + R;                                                          // the arm ends horizontal at (ax, ay), pointing +x
+    LAMP.iron = merged([
+      [cyl(0.24, 0.32, 0.5, 8), 0, 0.25, 0], [cyl(0.15, 0.24, 0.14, 8), 0, 0.57, 0],                                  // plinth, then it narrows
+      [cyl(0.055, 0.1, top - 0.64, 8), 0, 0.64 + (top - 0.64) / 2, 0], [new THREE.TorusGeometry(0.1, 0.03, 6, 12), 0, 3.3, 0, Math.PI / 2],   // the pole and a ring, because someone owned a lathe
+      [new THREE.TorusGeometry(R, 0.05, 6, 16, Math.PI / 2), R, top, 0, 0, 0, Math.PI / 2],                          // the swan neck: quarter circle from the pole top up and out
+      [cyl(0.045, 0.045, 0.6, 6), ax + 0.3, ay, 0, 0, 0, Math.PI / 2], [new THREE.SphereGeometry(0.07, 8, 6), ax + 0.6, ay, 0],   // a short horizontal stub with a knob
+      [cyl(0.03, 0.03, 0.2, 6), ax + 0.5, ay - 0.1, 0],                                                                // the hook the lantern hangs from
+      [new THREE.ConeGeometry(0.3, 0.26, 6), ax + 0.5, ay - 0.3, 0], [cyl(0.2, 0.22, 0.05, 6), ax + 0.5, ay - 0.45, 0],   // pointed cap, its rim
+      [new THREE.ConeGeometry(0.16, 0.16, 6), ax + 0.5, ay - 0.86, 0, Math.PI],                                        // the bottom finial
+      [cyl(0.08, 0.1, 0.2, 6), ax + 0.5, ay - 1.3, 0],                                                                 // a little hanger for the banner
+    ]);
+    LAMP.hull = inkHull(LAMP.iron, 0.035);
+    LAMP.glass = new THREE.CylinderGeometry(0.19, 0.16, 0.36, 6); LAMP.glass.translate(ax + 0.5, ay - 0.65, 0);   // the lantern: a hexagonal glass, lit-looking even at noon
+    LAMP.glassHull = inkHull(LAMP.glass, 0.03);
+  }
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = Math.atan2(-dz, dx); scene.add(g);            // the arm points at [dx, dz] — towards the road
+  const iron = mesh(LAMP.iron, M.iron, 0, 0, 0, { parent: g }); iron.add(new THREE.Mesh(LAMP.hull, OUTLINE));
+  const glass = mesh(LAMP.glass, M.lamp, 0, 0, 0, { parent: g, shadow: false }); glass.add(new THREE.Mesh(LAMP.glassHull, OUTLINE));
+  if (banner) {                                                                                                     // a banner off the road side, between two rods, saying something nobody asked
+    const [lines, bg, fg] = banner, tex = texCanvas(256, 384, (c, w, h) => {
+      c.fillStyle = bg; c.fillRect(0, 0, w, h); c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
+      lines.forEach((ln, i) => { let px = 40; c.font = `${px}px "Patrick Hand", cursive`; while (px > 14 && c.measureText(ln).width > w * 0.9) { px -= 2; c.font = `${px}px "Patrick Hand", cursive`; } c.fillText(ln, w / 2, h / 2 + (i - (lines.length - 1) / 2) * 52); });
+      c.strokeStyle = fg; c.lineWidth = 6; c.strokeRect(10, 10, w - 20, h - 20);
+    });
+    const bm = new THREE.MeshBasicMaterial({ map: tex }); for (const side of [1, -1]) { const b = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.05), bm); b.position.set(0.45, 4.0, side * 0.004); b.rotation.y = side > 0 ? 0 : Math.PI; g.add(b); }   // printed on both faces, so it reads from either side of the street
+    mesh(box(0.85, 0.05, 0.05), M.iron, 0.45, 4.55, 0, { parent: g, shadow: false }); mesh(box(0.85, 0.05, 0.05), M.iron, 0.45, 3.45, 0, { parent: g, shadow: false });
+  }
+  colliders.push({ min: { x: x - 0.3, y: 0, z: z - 0.3 }, max: { x: x + 0.3, y: 5.2, z: z + 0.3 } });
+  return g;
+}
+const BANNERS = [[['OVERWORK', 'LOGISTICS', 'hiring.', 'always.'], '#2a2a33', '#ffb020'], [['FALL', 'FESTIVAL', '(cancelled)'], '#8a0f1c', '#faf6ec'], [['ADOPT', 'A', 'POTHOLE'], '#2a67c8', '#faf6ec'], [['lost cat.', 'answers to', 'nothing.'], '#faf6ec', '#23212b']];
+
+/* ── the horizon. a town needs a somewhere around it: a windmill on a hill with a farm, a water tower behind the warehouse, a radio
+   mast that blinks, power lines that sag, a highway that hums, a factory that smokes, a city that stays far away, and one balloon.
+   nothing here is solid and nothing here does anything. it is scenery. it is what makes the street a place ── */
+const scenery = { sails: null, beacons: [], cars: [], puffs: [], balloon: null, chimneyTop: null, t: 0 };
+function buildScenery() {
+  // ── the windmill, on a mound south-east of the cross street, sails towards town ──
+  { const X = 52, Z = -74, base = 1.7;
+    mesh(new THREE.SphereGeometry(9, 16, 10), M.hill, X, -2.5, Z, { shadow: false }).scale.y = 0.5;                       // the mound: top at y 2
+    outlined(mesh(cyl(2.5, 2.7, 1.3, 8), M.brick, X, base + 0.65, Z), 1.03);                                                // brick footing
+    outlined(mesh(cyl(1.55, 2.45, 8.4, 8), M.wall[0], X, base + 1.3 + 4.2, Z), 1.025);                                     // the tower, octagonal, tapering
+    mesh(cyl(2.7, 2.7, 0.14, 8), M.wood, X, base + 4.3, Z); mesh(new THREE.TorusGeometry(2.62, 0.05, 6, 16), M.wood, X, base + 5.1, Z, { rot: [Math.PI / 2, 0, 0] });   // the gallery and its rail
+    const rails = []; for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + Math.PI / 8; rails.push([cyl(0.04, 0.04, 0.8, 5), X + Math.cos(a) * 2.62, base + 4.7, Z + Math.sin(a) * 2.62]); } mesh(merged(rails), M.wood, 0, 0, 0);
+    outlined(mesh(box(0.9, 1.6, 0.16), M.door, X - 2.45, base + 2.1, Z, { rot: [0, Math.PI / 2, 0] }), 1.05);            // door, facing town
+    for (const [a, y] of [[0.8, 5.4], [-0.9, 6.6], [2.4, 6.0]]) mesh(box(0.5, 0.7, 0.12), M.glass, X + Math.cos(a) * 2.0, base + y, Z + Math.sin(a) * 2.0, { rot: [0, -a + Math.PI / 2, 0], shadow: false });
+    const capY = base + 9.7; outlined(mesh(new THREE.ConeGeometry(2.1, 2.4, 8), M.roof[0], X, capY + 1.2, Z), 1.03); mesh(new THREE.SphereGeometry(0.22, 8, 6), M.iron, X, capY + 2.45, Z);   // the cap
+    outlined(mesh(box(0.22, 0.22, 5.5), M.wood, X + 0.6, capY - 0.2, Z + 3.4, { rot: [-0.55, 0, 0] }), 1.06);                 // the tail pole, how you turn a cap you cannot turn
+    const front = new THREE.Group(); front.position.set(X - 2.35, capY, Z); front.rotation.y = -Math.PI / 2; scene.add(front);   // +z of this group points at town
+    mesh(cyl(0.3, 0.34, 1.0, 10), M.iron, 0, 0, 0.5, { parent: front, rot: [Math.PI / 2, 0, 0] });                         // the windshaft
+    const hub = new THREE.Group(); hub.position.z = 1.0; front.add(hub); scenery.sails = hub;
+    const wood = [], cloth = [];
+    for (let s = 0; s < 4; s++) {
+      const a = s * Math.PI / 2, c = Math.cos(a), sn = Math.sin(a), R = (u, v) => [u * c - v * sn, u * sn + v * c];    // rotate a point of sail 0 (pointing +y) into sail s
+      const [sx, sy] = R(0, 3.6); wood.push([box(0.18, 7.0, 0.18), sx, sy, 0, 0, 0, a]);                                    // the stock
+      for (let k = 0; k < 6; k++) { const [bx, by] = R(0.55, 1.6 + k * 1.0); wood.push([box(1.25, 0.08, 0.1), bx, by, 0.02, 0, 0, a]); }   // lattice bars, one side of the stock
+      const [px, py] = R(0.6, 4.1); cloth.push([box(1.05, 5.4, 0.04), px, py, 0.06, 0, 0, a]);                             // the canvas
+    }
+    inked(mesh(merged(wood), M.wood, 0, 0, 0, { parent: hub }), 0.03); mesh(merged(cloth), M.sail, 0, 0, 0, { parent: hub });
+    outlined(mesh(new THREE.SphereGeometry(0.42, 10, 8), M.iron, 0, 0, 0.1, { parent: hub }), 1.06);
+    hub.rotation.z = 0.4;
+  }
+  // ── the farm beside it: a field in rows, hay, a fence, three cows, a barn and a silo ──
+  { const FX = 36, FZ = -76;
+    plane(20, 14, M.soil, FX, 0.015, FZ);
+    const rows = []; for (let k = 0; k < 7; k++) rows.push([box(18, 0.5, 0.7), FX, 0.25, FZ - 6 + k * 2]); outlined(mesh(merged(rows), M.crop, 0, 0, 0), 1.01);
+    const fence = []; for (let k = 0; k <= 10; k++) { fence.push([box(0.14, 1.0, 0.14), FX - 10 + k * 2, 0.5, FZ - 7.4]); fence.push([box(0.14, 1.0, 0.14), FX - 10 + k * 2, 0.5, FZ + 7.4]); }
+    for (let k = 0; k <= 7; k++) { fence.push([box(0.14, 1.0, 0.14), FX - 10, 0.5, FZ - 7.4 + k * 2.114]); fence.push([box(0.14, 1.0, 0.14), FX + 10, 0.5, FZ - 7.4 + k * 2.114]); }
+    for (const y of [0.45, 0.8]) { fence.push([box(20.2, 0.08, 0.06), FX, y, FZ - 7.4], [box(20.2, 0.08, 0.06), FX, y, FZ + 7.4], [box(0.06, 0.08, 15), FX - 10, y, FZ], [box(0.06, 0.08, 15), FX + 10, y, FZ]); }
+    mesh(merged(fence), M.fence, 0, 0, 0);
+    for (const [hx, hz] of [[FX - 6, FZ + 9.6], [FX - 4.3, FZ + 9.9], [FX + 7, FZ + 9.4]]) outlined(mesh(cyl(0.75, 0.75, 1.1, 12), M.hay, hx, 0.75, hz, { rot: [0, 0, Math.PI / 2] }), 1.04);
+    const cowW = clay(0xf4f4f7), cowK = clay(0x2a2a33), cowM = clay(0xf0a882);
+    for (const [cx, cz, yaw, spot] of [[FX + 2, FZ + 10.5, 0.4, true], [FX + 4.5, FZ + 11.8, -1.9, false], [FX - 1.5, FZ + 12.2, 2.6, true]]) {
+      const g = new THREE.Group(); g.position.set(cx, 0, cz); g.rotation.y = yaw; scene.add(g);
+      outlined(mesh(box(1.3, 0.75, 0.7), cowW, 0, 1.0, 0, { parent: g }), 1.05);
+      outlined(mesh(box(0.42, 0.42, 0.46), spot ? cowK : cowW, 0.85, 1.05, 0, { parent: g }), 1.06); mesh(box(0.26, 0.2, 0.34), cowM, 1.1, 0.95, 0, { parent: g, shadow: false });
+      if (spot) mesh(box(0.5, 0.5, 0.74), cowK, -0.25, 1.05, 0, { parent: g, shadow: false });                          // a patch. holstein-ish
+      mesh(merged([[box(0.16, 0.65, 0.16), 0.45, 0.32, 0.22], [box(0.16, 0.65, 0.16), 0.45, 0.32, -0.22], [box(0.16, 0.65, 0.16), -0.45, 0.32, 0.22], [box(0.16, 0.65, 0.16), -0.45, 0.32, -0.22]]), cowK, 0, 0, 0, { parent: g });
+      mesh(box(0.06, 0.5, 0.06), cowK, -0.7, 0.95, 0, { parent: g, shadow: false, rot: [0, 0, 0.3] });                   // the tail
+    }
+    inkBox(addBox(60, 0, -60, 7, 4.6, 9, M.barn, { solid: false }), 0.07); gable(60, 4.6, -60, 7, 9, 2.6, M.roof[2], true);   // the barn, gable towards the field
+    for (const sz of [-1, 1]) mesh(box(0.1, 3.0, 2.2), M.door, 56.44, 1.5, -60 + sz * 1.15, { shadow: false }); mesh(box(0.12, 0.2, 4.6), M.frame, 56.44, 3.1, -60, { shadow: false });   // the doors, painted white trim
+    outlined(mesh(cyl(1.6, 1.6, 7.5, 12), M.silo, 66, 3.75, -66), 1.03); outlined(mesh(new THREE.SphereGeometry(1.6, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), M.silo, 66, 7.5, -66), 1.03);
+    mesh(merged([[cyl(0.06, 0.06, 7, 5), 67.7, 3.5, -66], [cyl(0.06, 0.06, 7, 5), 67.3, 3.5, -66.6]]), M.iron, 0, 0, 0);
+  }
+  // ── the water tower, behind the warehouse. it says water. probably ──
+  { const X = -46, Z = 56, H = 10;
+    const legs = []; for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      legs.push([cyl(0.13, 0.18, H, 6), sx * 1.9, H / 2, sz * 1.9, Math.atan(0.6 / H) * -sz, 0, Math.atan(0.6 / H) * sx]);   // legs lean in a little, like they mean it
+      legs.push([box(0.1, 0.1, 3.4), sx * 1.75, H * 0.35, 0], [box(3.4, 0.1, 0.1), 0, H * 0.35, sz * 1.75], [box(0.1, 0.1, 3.4), sx * 1.62, H * 0.7, 0], [box(3.4, 0.1, 0.1), 0, H * 0.7, sz * 1.62]);
+    }
+    for (const k of [-1, 1]) { legs.push([box(0.08, 4.6, 0.08), 0, H * 0.35, -1.75, 0, 0, k * 0.65], [box(0.08, 4.6, 0.08), 0, H * 0.35, 1.75, 0, 0, k * 0.65], [box(0.08, 4.6, 0.08), -1.75, H * 0.35, 0, k * 0.65, 0, 0], [box(0.08, 4.6, 0.08), 1.75, H * 0.35, 0, k * 0.65, 0, 0]); }   // x braces
+    legs.push([cyl(0.14, 0.14, H, 6), 0, H / 2, 0]);                                                                       // the riser
+    for (let k = 0; k < 9; k++) legs.push([box(0.5, 0.05, 0.05), 2.1, 1 + k * 1.05, 0]); legs.push([box(0.05, H - 0.5, 0.05), 1.85, H / 2, 0], [box(0.05, H - 0.5, 0.05), 2.35, H / 2, 0]);   // ladder
+    const frame = mesh(merged(legs), M.iron, X, 0, Z); frame.add(new THREE.Mesh(inkHull(frame.geometry, 0.035), OUTLINE));
+    mesh(cyl(2.9, 2.9, 0.4, 14), M.iron, X, H + 0.2, Z);                                                                  // the platform
+    outlined(mesh(cyl(2.75, 2.75, 3.4, 14), M.tank, X, H + 2.1, Z), 1.025);                                                // the tank
+    for (const y of [H + 0.8, H + 2.1, H + 3.4]) mesh(new THREE.TorusGeometry(2.77, 0.06, 6, 20), M.iron, X, y, Z, { rot: [Math.PI / 2, 0, 0], shadow: false });   // hoops
+    outlined(mesh(new THREE.ConeGeometry(3.0, 1.7, 14), M.roof[1], X, H + 4.65, Z), 1.03); mesh(new THREE.SphereGeometry(0.2, 8, 6), M.iron, X, H + 5.6, Z);
+    const dirX = 0 - X, dirZ = -10 - Z, dl = Math.hypot(dirX, dirZ), ux = dirX / dl, uz = dirZ / dl;                    // the label faces the middle of town
+    const wl = makeLabel('WATER · probably', '#2a2a33', 512, 128, '#00000000'); wl.material.transparent = true; wl.position.set(X + ux * 2.78, H + 2.2, Z + uz * 2.78); wl.rotation.y = Math.atan2(ux, uz); wl.scale.set(3.4, 0.85, 1); scene.add(wl);
+  }
+  // ── the radio mast. red and white, guy wires, one red light that blinks on its own material ──
+  { const X = 48, Z = 60, H = 24, lv = 9;
+    const red = [], white = [];
+    for (let k = 0; k < lv; k++) {                                                                                        // a triangular lattice: three legs per level, tapering, alternating colours
+      const y0 = k * (H / lv), y1 = (k + 1) * (H / lv), r0 = 1.1 - k * 0.09, r1 = 1.1 - (k + 1) * 0.09, into = k % 2 ? white : red;
+      for (let s = 0; s < 3; s++) {
+        const a = s / 3 * Math.PI * 2, x0 = Math.cos(a) * r0, z0 = Math.sin(a) * r0, x1 = Math.cos(a) * r1, z1 = Math.sin(a) * r1;
+        const tilt = Math.atan2(r0 - r1, y1 - y0); into.push([cyl(0.05, 0.06, (y1 - y0) / Math.cos(tilt) + 0.05, 5), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, tilt * Math.sin(a), 0, -tilt * Math.cos(a)]);
+        const b = (s + 1) / 3 * Math.PI * 2, bx = Math.cos(b) * r1, bz = Math.sin(b) * r1, L = Math.hypot(bx - x1, bz - z1);   // the horizontal at the top of the level
+        into.push([box(L, 0.05, 0.05), (x1 + bx) / 2, y1, (z1 + bz) / 2, 0, -Math.atan2(bz - z1, bx - x1), 0]);
+      }
+    }
+    for (const [list, mat] of [[red, M.hydrant], [white, M.frame]]) { const m = mesh(merged(list), mat, X, 0, Z); m.add(new THREE.Mesh(inkHull(m.geometry, 0.025), OUTLINE)); }
+    mesh(cyl(0.06, 0.06, 2.4, 5), M.iron, X, H + 1.2, Z); scenery.beacons.push(mesh(new THREE.SphereGeometry(0.3, 10, 8), M.beacon, X, H + 2.5, Z, { shadow: false }));
+    for (const y of [8, 16]) for (let s = 0; s < 3; s++) { const a = s / 3 * Math.PI * 2 + 0.5; mesh(new THREE.SphereGeometry(0.12, 6, 5), M.iron, X + Math.cos(a) * (1.1 - y * 0.09 / (H / lv)), y, Z + Math.sin(a) * (1.1 - y * 0.09 / (H / lv)), { shadow: false }); }
+    const guys = []; for (let s = 0; s < 3; s++) { const a = s / 3 * Math.PI * 2 + 0.5; for (const y of [8, 16]) guys.push(X + Math.cos(a) * 0.5, y, Z + Math.sin(a) * 0.5, X + Math.cos(a) * 10, 0.2, Z + Math.sin(a) * 10); }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(guys, 3)); scene.add(new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0x2e2f3a })));
+    for (let s = 0; s < 3; s++) { const a = s / 3 * Math.PI * 2 + 0.5; mesh(box(0.5, 0.4, 0.5), M.curb, X + Math.cos(a) * 10, 0.2, Z + Math.sin(a) * 10); }
+    inkBox(addBox(X + 3.5, 0, Z - 1, 2.6, 2.2, 2.4, M.warehouse, { solid: false }), 0.06); addBox(X + 3.5, 2.2, Z - 1, 2.9, 0.2, 2.7, M.warehouseDark, { solid: false }); dish(X + 4.2, 2.5, Z - 1.2, -1);
+    const hl = makeLabel('KOWR 88.1 · static, mostly', '#faf6ec', 512, 80, '#2a2a33', 'Patrick Hand'); hl.position.set(X + 3.5, 1.5, Z + 0.22); hl.rotation.y = 0; hl.scale.set(2.2, 0.35, 1); scene.add(hl);
+  }
+  // ── power lines down the east side, behind the houses. they sag like everyone else ──
+  { const PX = 27, zs = [-70, -62, -28, -12, 4, 20, 36], tops = [];
+    for (const pz of zs) {
+      mesh(cyl(0.13, 0.19, 9, 7), M.wood, PX, 4.5, pz); mesh(box(2.2, 0.16, 0.16), M.wood, PX, 8.4, pz); mesh(box(0.16, 0.5, 0.16), M.wood, PX, 8.0, pz + 0.2, { shadow: false });
+      for (const ox of [-0.85, 0, 0.85]) mesh(cyl(0.07, 0.09, 0.24, 6), M.frame, PX + ox, 8.6, pz, { shadow: false });
+      tops.push(pz); colliders.push({ min: { x: PX - 0.25, y: 0, z: pz - 0.25 }, max: { x: PX + 0.25, y: 9, z: pz + 0.25 } });
+    }
+    outlined(mesh(cyl(0.4, 0.4, 1.0, 10), M.can, PX + 0.6, 7.3, 4), 1.05);                                              // a transformer on one pole. it hums. it is fine
+    const w = []; for (let i = 0; i < tops.length - 1; i++) for (const ox of [-0.85, 0, 0.85]) {
+      const z0 = tops[i], z1 = tops[i + 1], L = z1 - z0, sag = 0.35 + L * L / 900, N = 10;
+      for (let k = 0; k < N; k++) { const t0 = k / N, t1 = (k + 1) / N; w.push(PX + ox, 8.72 - sag * 4 * t0 * (1 - t0), z0 + L * t0, PX + ox, 8.72 - sag * 4 * t1 * (1 - t1), z0 + L * t1); }
+    }
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(w, 3)); scene.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x1e1e26 })));
+  }
+  // ── the highway, elevated, far south. cars go by. none of them stop here ──
+  { const HZ = -118, HY = 7, L = 360;
+    mesh(box(L, 0.6, 11), M.highway, 0, HY, HZ, { shadow: false }); for (const sz of [-5.3, 5.3]) mesh(box(L, 0.4, 0.14), M.curb, 0, HY + 0.55, HZ + sz, { shadow: false });
+    mesh(box(L, 0.02, 0.2), M.stripe, 0, HY + 0.36, HZ, { shadow: false }); for (const sz of [-4.6, 4.6]) mesh(box(L, 0.02, 0.14), M.stripe, 0, HY + 0.36, HZ + sz, { shadow: false });
+    const pillars = []; for (let x = -170; x <= 170; x += 20) pillars.push([cyl(0.8, 1.0, HY, 8), x, HY / 2, HZ]); mesh(merged(pillars), M.pillar, 0, 0, 0, { shadow: false });
+    const carGeo = (len, hi, cab) => merged([[box(len, hi, 1.4), 0, hi / 2 + 0.35, 0], [box(cab, hi * 0.8, 1.3), (len - cab) / 4 - 0.2, hi + hi * 0.4 + 0.3, 0], [box(len * 0.8, 0.35, 1.5), 0, 0.35, 0]]);
+    for (let k = 0; k < 10; k++) {
+      const truck = k % 4 === 3, dir = k % 2 ? 1 : -1, geo = truck ? carGeo(6.5, 1.6, 2.2) : carGeo(2.8, 0.7, 1.5);
+      const m = mesh(geo, truck ? M.van : M.car[k % 4], rnd(-170, 170), HY + 0.35, HZ + dir * 2.5, { shadow: false }); m.rotation.y = dir > 0 ? 0 : Math.PI;
+      scenery.cars.push({ m, v: dir * (truck ? rnd(11, 14) : rnd(16, 24)) });
+    }
+    const sg = makeLabel('EXIT 3 · OVERWORK · no services', '#faf6ec', 768, 100, '#1d6b3a'); sg.position.set(-8, HY + 4.2, HZ + 5.6); sg.scale.set(9, 1.2, 1); scene.add(sg);
+    for (const sx of [-12.2, -3.8]) mesh(cyl(0.1, 0.1, 4, 6), M.iron, sx, HY + 2.4, HZ + 5.6, { shadow: false });
+  }
+  // ── the factory. it makes the boxes. someone has to ──
+  { const X = -84, Z = -74;
+    inkBox(addBox(X, 0, Z, 20, 9, 14, M.warehouseDark, { solid: false }), 0.08);
+    for (let k = 0; k < 4; k++) { mesh(box(4.4, 2.2, 13), M.warehouse, X - 7.5 + k * 5, 10.1, Z, { shadow: false }); mesh(box(4.4, 1.6, 12.6), M.glass, X - 7.5 + k * 5 + 0.15, 10.4, Z, { shadow: false }); }   // sawtooth roof, glazed
+    inkBox(addBox(X + 14, 0, Z + 2, 8, 5, 9, M.warehouse, { solid: false }), 0.07);
+    outlined(mesh(cyl(1.0, 1.4, 24, 10), M.brick, X - 6, 12, Z + 9), 1.03); for (const y of [17, 21]) mesh(new THREE.TorusGeometry(1.15, 0.12, 6, 14), M.frame, X - 6, y, Z + 9, { rot: [Math.PI / 2, 0, 0], shadow: false });
+    mesh(cyl(1.25, 1.1, 0.5, 10), M.iron, X - 6, 24.2, Z + 9); scenery.chimneyTop = new THREE.Vector3(X - 6, 24.6, Z + 9);
+    for (let k = 0; k < 7; k++) { const p = mesh(new THREE.SphereGeometry(1, 8, 6), M.smoke, 0, 0, 0, { shadow: false }); p.material = M.smoke.clone(); scenery.puffs.push({ m: p, t: k / 7, drift: rnd(0.6, 1.4) }); }
+    const fl = makeLabel('BOX CO. — we make the boxes.', '#faf6ec', 768, 110, '#2a2a33'); fl.position.set(X + 10.02, 6.6, Z); fl.rotation.y = Math.PI / 2; fl.scale.set(10, 1.4, 1); scene.add(fl);
+    const fl2 = makeLabel('now hiring. also not hiring.', '#ffb020', 768, 80, '#2a2a33', 'Patrick Hand'); fl2.position.set(X + 10.02, 5.3, Z); fl2.rotation.y = Math.PI / 2; fl2.scale.set(8, 0.8, 1); scene.add(fl2);
+    for (let k = 0; k < 6; k++) mesh(box(1.1, 1.1, 1.1), k % 2 ? M.box : M.boxDark, X + 12 + (k % 3) * 1.3, 0.55 + Math.floor(k / 3) * 1.1, Z - 8 + rnd(-0.3, 0.3), { rot: [0, rnd(-0.2, 0.2), 0] });   // stock. boxes. of course
+  }
+  // ── the city, far east. lit windows in a fog. nobody from here goes there ──
+  { const win = texCanvas(64, 128, (g, w, h) => { g.fillStyle = '#4a5068'; g.fillRect(0, 0, w, h); for (let y = 6; y < h - 8; y += 12) for (let x = 6; x < w - 6; x += 12) { g.fillStyle = Math.random() < 0.55 ? '#ffe7a8' : '#2a3048'; g.fillRect(x, y, 7, 8); } });
+    const cityMat = new THREE.MeshLambertMaterial({ map: win }), roofMat = flat(0x3a3f52);
+    const x = 172; for (const [w, h, d, dz] of [[10, 22, 11, -52], [12, 36, 12, -36], [9, 18, 10, -20], [14, 30, 13, -4], [11, 46, 11, 12], [10, 26, 10, 28], [13, 20, 12, 44], [9, 33, 9, -68], [12, 40, 12, 60]]) {
+      const bx = x + rnd(-4, 8), bz = dz + rnd(-2, 2); mesh(box(w, h, d), cityMat, bx, h / 2, bz, { shadow: false }); mesh(box(w + 0.3, 0.6, d + 0.3), roofMat, bx, h + 0.3, bz, { shadow: false });
+      if (h > 34) { mesh(cyl(0.1, 0.16, 6, 5), M.iron, bx, h + 3.5, bz, { shadow: false }); scenery.beacons.push(mesh(new THREE.SphereGeometry(0.4, 8, 6), M.beacon, bx, h + 6.7, bz, { shadow: false })); }
+    }
+  }
+  // ── one hot-air balloon. an ad. nobody asked ──
+  { const g = new THREE.Group(); scene.add(g); scenery.balloon = { g, a: rnd(0, 6) };
+    const env = outlined(mesh(new THREE.SphereGeometry(3.2, 14, 12), M.cap, 0, 0, 0, { parent: g, shadow: false }), 1.03); env.scale.y = 1.15;
+    mesh(new THREE.TorusGeometry(3.05, 0.5, 8, 20), M.label, 0, 0.3, 0, { parent: g, rot: [Math.PI / 2, 0, 0], shadow: false });
+    mesh(new THREE.ConeGeometry(1.5, 2.0, 12, 1, true), M.cap, 0, -3.9, 0, { parent: g, rot: [Math.PI, 0, 0], shadow: false });
+    outlined(mesh(box(1.3, 1.0, 1.3), M.wood, 0, -6.4, 0, { parent: g, shadow: false }), 1.05);
+    const rp = []; for (const [sx, sz] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) rp.push(sx, -5.9, sz, sx * 1.6, -4.6, sz * 1.6);
+    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(rp, 3)); g.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({ color: 0x2e2f3a })));
+    const bl = makeLabel('we deliver. mostly.', '#faf6ec', 512, 128, '#00000000'); bl.material.transparent = true; bl.material.side = THREE.DoubleSide; bl.position.set(0, 0.1, 3.15); bl.scale.set(4.2, 1.05, 1); g.add(bl); scenery.balloonLabel = bl;
+  }
+}
+function updateScenery(dt) {
+  const s = scenery; s.t += dt;
+  if (s.sails) s.sails.rotation.z += dt * 0.42;                                                                          // a light breeze. the mill has seen worse
+  const on = Math.floor(performance.now() / 900) % 2 === 0; if (on !== s.beaconOn) { s.beaconOn = on; M.beacon.emissiveIntensity = on ? 1.0 : 0.08; M.beacon.color.setHex(on ? 0xff3030 : 0x5a1a1a); }
+  for (const c of s.cars) { c.m.position.x += c.v * dt; if (c.m.position.x > 180) c.m.position.x = -180; else if (c.m.position.x < -180) c.m.position.x = 180; }
+  if (s.chimneyTop) for (const p of s.puffs) {                                                                             // smoke: rises, drifts with the wind, grows, thins, comes back
+    p.t += dt * 0.09 * p.drift; if (p.t >= 1) { p.t -= 1; p.drift = rnd(0.6, 1.4); }
+    const t = p.t; p.m.position.set(s.chimneyTop.x + t * 14 + Math.sin(t * 9 + p.drift) * 0.8, s.chimneyTop.y + t * 9, s.chimneyTop.z - t * 6 + Math.cos(t * 7) * 0.6);
+    p.m.scale.setScalar(0.8 + t * 4.2); p.m.material.opacity = 0.42 * (t < 0.1 ? t / 0.1 : 1 - (t - 0.1) / 0.9);
+  }
+  if (s.balloon) { const b = s.balloon; b.a += dt * (Math.PI * 2 / 320); b.g.position.set(10 + Math.cos(b.a) * 62, 46 + Math.sin(s.t * 0.23) * 1.5, -34 + Math.sin(b.a) * 62); b.g.rotation.y = -b.a + Math.PI / 2; }
+}
 function cloud(x, y, z, s) {
   const g = new THREE.Group(); g.position.set(x, y, z);
   for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(s * rnd(0.7, 1.2), 10, 8), M.cloud); m.position.set((i - 1.5) * s * 1.1, rnd(-0.2, 0.4) * s, rnd(-0.4, 0.4) * s); m.scale.y = 0.65; g.add(m); }
@@ -1928,36 +2155,57 @@ function updateRain(dt) {
   rain.geometry.attributes.position.needsUpdate = true;
 }
 
-/* ── tiny synth sfx ── */
-let ac = null, lastStep = 0, master = null;
-function masterGain() { if (!master) { master = ac.createGain(); master.gain.value = cfg.mute ? 0 : cfg.volume / 100; master.connect(ac.destination); } return master; }
+/* ── sound. two rules from the owner, both absolute: no bleeps, no synths. so:
+   - impacts are recordings (Chequered Ink's 400 Sounds Pack, already in art/sfx/), pitched and filtered per use
+   - everything musical — the delivery, la peace, the box, the dog, the horn — is a real piano (ow-piano.js), the same one that
+     plays in the background. a silent-film accompanist, basically. there is no oscillator anywhere in this file ── */
+let ac = null, lastStep = 0, master = null, piano = null;
+const audio = { buffers: {}, plays: 0, failed: 0 };
+function audioCtx() {
+  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (!master) { master = ac.createGain(); master.gain.value = cfg.mute ? 0 : cfg.volume / 100; master.connect(ac.destination); }
+  if (!piano) { piano = createPiano(ac, 'art/overwork/piano/'); piano.out.connect(master); piano.setVolume(cfg.music / 100); }
+  return ac;
+}
+function masterGain() { audioCtx(); return master; }
+const FOLEY = {                                                                                  // file, playback-rate range, level, lowpass, where to start, hard stop
+  thud:   { f: 'art/sfx/hit1.wav',   rate: [0.5, 0.64],  lvl: 0.9,  lp: 2600 },                // a box meets the ground: the hit, pitched down to cardboard
+  crash:  { f: 'art/sfx/ko.wav',     rate: [0.6, 0.75],  lvl: 1.0,  lp: 3400, from: 0.28 },    // the van meets something. ko.wav swells for 0.4 s; start past that
+  whoosh: { f: 'art/sfx/whoosh.wav', rate: [0.85, 1.1],  lvl: 0.55 },
+  door:   { f: 'art/sfx/block.wav',  rate: [0.42, 0.52], lvl: 0.6,  lp: 1600, dur: 0.32 },      // a door: a short low knock
+  step:   { f: 'art/sfx/hit2.wav',   rate: [0.3, 0.4],   lvl: 0.18, lp: 900,  dur: 0.13 },      // a footfall: the impact, pitched way down, muffled, cut short
+  card:   { f: 'art/sfx/block.wav',  rate: [1.4, 1.7],   lvl: 0.25, lp: 4000, dur: 0.1 },       // a card on the felt, a chip, a tick of the wheel
+};
+function foleyBuffer(k) {
+  const F = FOLEY[k]; if (audio.buffers[F.f]) return audio.buffers[F.f];
+  return audio.buffers[F.f] = fetch(F.f).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(() => { audio.failed++; return null; });
+}
 function sfx(kind, v = 5) {
   try {
-    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx();
     if (kind === 'step') { if (performance.now() - lastStep < 90) return; lastStep = performance.now(); }
-    const o = ac.createOscillator(), g = ac.createGain(); o.connect(g); g.connect(masterGain());
-    const t = ac.currentTime, vol = clamp(v / 12, 0.05, 0.5);
-    if (kind === 'thud') { o.type = 'triangle'; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.18); }
-    else if (kind === 'step') { o.type = 'sine'; o.frequency.setValueAtTime(90 + rnd(-10, 10), t); o.frequency.exponentialRampToValueAtTime(50, t + 0.07); g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.09); o.start(t); o.stop(t + 0.1); return; }
-    else if (kind === 'crash') { o.type = 'sawtooth'; o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.35); }
-    else if (kind === 'ding') { o.type = 'sine'; o.frequency.setValueAtTime(880, t); o.frequency.setValueAtTime(1320, t + 0.09); }
-    else if (kind === 'bark') { o.type = 'square'; o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(180, t + 0.12); }
-    else if (kind === 'honk') {                                                                     // two sawtooths a fifth apart, then they sag. like everyone here.
-      o.type = 'sawtooth'; o.frequency.setValueAtTime(233, t); o.frequency.setValueAtTime(218, t + 0.3);
-      const o2 = ac.createOscillator(); o2.type = 'sawtooth'; o2.frequency.setValueAtTime(311, t); o2.frequency.setValueAtTime(290, t + 0.3); o2.connect(g); o2.start(t); o2.stop(t + 0.45);
-      g.gain.setValueAtTime(0.16, t); g.gain.setValueAtTime(0.16, t + 0.3); g.gain.exponentialRampToValueAtTime(0.001, t + 0.45); o.start(t); o.stop(t + 0.45); return;
-    }
-    else if (kind === 'squeak') { o.type = 'square'; o.frequency.setValueAtTime(900, t); o.frequency.exponentialRampToValueAtTime(1500, t + 0.08); o.frequency.exponentialRampToValueAtTime(700, t + 0.16); g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18); o.start(t); o.stop(t + 0.2); return; }
-    else if (kind === 'peace') {                                                                    // a soft major chord that fades. serenity, synthesised
-      for (const f of [261.6, 329.6, 392.0, 523.3]) { const o2 = ac.createOscillator(); o2.type = 'sine'; o2.frequency.value = f; o2.connect(g); o2.start(t); o2.stop(t + 2.6); }
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6); o.frequency.value = 130.8; o.type = 'sine'; o.start(t); o.stop(t + 2.6); return;
-    }
-    else if (kind === 'door') { o.type = 'triangle'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(110, t + 0.12); g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15); o.start(t); o.stop(t + 0.16); return; }
-    else { o.type = 'sine'; o.frequency.setValueAtTime(300, t); o.frequency.exponentialRampToValueAtTime(900, t + 0.2); }
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    o.start(t); o.stop(t + 0.4);
+    if (!FOLEY[kind]) { piano.cue(kind); return; }                                               // the musical cues go to the pianist
+    const F = FOLEY[kind], vol = clamp(v / 12, 0.05, 0.5) * 2 * F.lvl;
+    foleyBuffer(kind).then(buf => {
+      if (!buf) return;
+      const t = ac.currentTime, src = ac.createBufferSource(), g = ac.createGain(); src.buffer = buf; src.playbackRate.value = rnd(F.rate[0], F.rate[1]);
+      let last = src; if (F.lp) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = F.lp; src.connect(f); last = f; }
+      last.connect(g); g.connect(master);
+      const dur = F.dur || (buf.duration - (F.from || 0)) / src.playbackRate.value;
+      g.gain.setValueAtTime(vol, t); g.gain.setValueAtTime(vol, t + Math.max(0.01, dur - 0.03)); g.gain.linearRampToValueAtTime(0, t + dur);
+      src.start(t, F.from || 0); src.stop(t + dur + 0.02); audio.plays++;
+    });
   } catch (e) {}
 }
+/* the music starts on the first thing you press: browsers will not play a note before a gesture, and the samples weigh about 1 MB */
+let musicArmed = false;
+function armMusic() {
+  if (musicArmed) return; musicArmed = true;
+  audioCtx(); if (ac.state === 'suspended') ac.resume();
+  piano.load().then(() => { if (cfg.music > 0 && !cfg.mute) piano.music.start(); }).catch(() => {});
+}
+addEventListener('pointerdown', armMusic, { once: true }); addEventListener('keydown', armMusic, { once: true });
+document.addEventListener('visibilitychange', () => { if (piano) piano.music.pause(document.hidden); });   // the tab goes quiet when you leave it; the voice chat does not
 
 /* ── HUD helpers ── */
 /* a toast for one particular person: yours shows here, a remote player's travels to their screen */
@@ -2033,6 +2281,7 @@ function applyShiftSpec(spec) {
   for (const h of houses) { h.lawnT = 0; h.lawnDone = false; }
   for (const p of props) p.reset(); for (const t of trampolines) { t.hint = false; t.boxHint = false; } world.wetToast = false;
   if (world.events.includes('rain')) { world.rain = true; spawnRain(); scene.background.copy(SKY_RAIN); scene.fog.color.copy(SKY_RAIN); sun.intensity = 1.1; hemi.intensity = 0.6; }
+  if (piano) piano.setMuffled(world.rain);                                                  // rain on the window: the piano in the next room goes softer
   if (world.events.includes('dog')) spawnDog();
   for (const sp of spec.boxes) {
     const b = new Package(houses[sp.h], sp);
@@ -2305,7 +2554,7 @@ function frame(now) {
   }
   if (rain) updateRain(dt);
   for (const c of clouds) { c.g.position.x += c.v * dt; if (c.g.position.x > 110) c.g.position.x = -110; }
-  updateYard(dt); updateSun(dt); updatePeace(dt); updateCasino(dt); for (const f of birds) f.update(dt);
+  updateYard(dt); updateSun(dt); updatePeace(dt); updateCasino(dt); updateScenery(dt); for (const f of birds) f.update(dt);
   for (const b of boxes) b.render();
   updateCamera(dt);
   if (world.running || world.roam) { updateHud(); $('hint').innerHTML = hintText(); }
@@ -2467,7 +2716,7 @@ $('btn-locker').onclick = openLocker; $('btn-lk-done').onclick = closeLocker;
 let cfgFrom = null;                                                                           // where to go back to: the work order, or nowhere (the pc / roam)
 function paintCfg() {
   document.querySelectorAll('#s-settings .opts').forEach(o => { const k = o.dataset.k; o.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(cfg[k]) === b.dataset.v)); });
-  $('cfg-volume').value = cfg.volume; $('cfg-sens').value = cfg.sens;
+  $('cfg-volume').value = cfg.volume; $('cfg-music').value = cfg.music; $('cfg-sens').value = cfg.sens;
 }
 function openSettings(from) { cfgFrom = from || null; $('s-menu').classList.remove('on'); closePC(true); paintCfg(); $('s-settings').classList.add('on'); }
 function closeSettings() { $('s-settings').classList.remove('on'); if (cfgFrom === 'menu' || (!world.running && !world.roam)) { $('s-menu').classList.add('on'); paintMenu(); } cfgFrom = null; }
@@ -2476,6 +2725,7 @@ document.querySelectorAll('#s-settings .opts').forEach(o => o.addEventListener('
   cfg[k] = v === 'true' ? true : v === 'false' ? false : v; applyCfg(); persist(); paintCfg();
 }));
 $('cfg-volume').addEventListener('input', () => { cfg.volume = +$('cfg-volume').value; applyCfg(); persist(); if (!cfg.mute) sfx('ding', 4); });
+$('cfg-music').addEventListener('input', () => { cfg.music = +$('cfg-music').value; armMusic(); applyCfg(); persist(); });
 $('cfg-sens').addEventListener('input', () => { cfg.sens = +$('cfg-sens').value; persist(); });
 $('btn-cfg-done').onclick = closeSettings; $('btn-settings').onclick = () => openSettings('menu');
 applyCfg();
@@ -2726,7 +2976,7 @@ if (!LOCAL_SIG && new URLSearchParams(location.search).get('join')) { const code
 $('loading').remove();
 if (tampered) { persist(); setTimeout(() => toast('the sock drawer had a hole in it. it is empty now.', 'bad'), 1500); }
 /* debug handle (also what the Playwright harness drives) */
-if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) window.__ow = { courier, boxes, van, world, houses, props, customers, remotes, net, casino, voice, solidAt, colliders, cfg, applyCfg, openSettings, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
+if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) window.__ow = { courier, boxes, van, world, renderer, scenery, audio, armMusic, sfx, get piano() { return piano; }, get ac() { return ac; }, houses, props, customers, remotes, net, casino, voice, solidAt, colliders, cfg, applyCfg, openSettings, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
 requestAnimationFrame(frame);
 </script>
 </body>

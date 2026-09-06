@@ -66,6 +66,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `overwork.html` | **Overwork**, the delivery game (Sep 2026): 3D, Three.js from `vendor/`, hand-rolled physics, clay characters, an apartment with a PC, a casino, host-authoritative multiplayer. See its own section below. |
 | `ow-net.js` | Overwork's wire: signalling over Supabase realtime broadcast (or a `BroadcastChannel` with `?signal=local` for two tabs on one machine) and one WebRTC connection per peer with two data channels (`rel` ordered for events, `fast` lossy for snapshots). Knows nothing about the game. |
 | `ow-os.js` | **MirrorOS**, the operating system on the PC in the courier's apartment: a 2009-glass-look desktop (own name, own icons, no trademarks) with draggable windows, taskbar, start orb, and the apps: Overwork Online (host/join/rooms/chat), Lucky Loaf Casino (slots + 21 + roulette, the flat edition of the real tables — same state objects, handed over in `api.games`), notes, locker shortcut, a Pitty Striker shortcut that crashes on purpose, a recycle bin. Takes an `api` object from the game; touches only its own DOM. **All of its CSS is scoped under `#s-pc`** — a bare `.card` rule in here once shrank the game's work-order card to a playing card. Desktop icons open on a single click. |
+| `ow-piano.js` | **The piano** (Sep 2026). Every musical sound in Overwork: a sampled grand piano (18 notes every third semitone A1–C6, `art/overwork/piano/`, CC BY 3.0 via tonejs-instruments, ~1 MB), a generative lo-fi background tune that is never the same twice, and the *cues* the game used to synthesise (delivery, la peace, mystery box, dog, horn) played like a silent-film accompanist. Felt lowpass + small-room convolution + limiter. `createPiano(ac, base)` → `load()`, `cue(name)`, `music.start/stop/pause`, `setVolume`, `setMuffled`, `until(t)` (also drives an `OfflineAudioContext` render in the harness). **No oscillators anywhere in Overwork** — owner's rule, see the sound section below. |
 | `ow-casino.js` | The rules of the Lucky Loaf Casino with no pixels attached: `createSlots/createBlackjack/createRoulette(bank)` are small state machines over a `{cash(), add(n)}` bank. The 3D tables in `overwork.html` and the MirrorOS window both render the *same* instances, so what the felt shows is what the window shows. Spins/deals decide the result up front (`spin()` returns the pending outcome, the renderer animates and calls `settle()`). |
 | `vendor/` | Third-party libraries served from our own origin (no CDN dependency, CSP `'self'`). `three.module.min.js` (r169, MIT) and `supabase-2.115.0.min.js` (UMD, MIT), licences alongside. `_headers` caches `/vendor/*` for a year as immutable, so **rename the file when upgrading**. |
 | `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
@@ -793,6 +794,44 @@ arms going back while carrying, the body leaning too far ahead of the feet).**
   a hole in it"). This stops the localStorage edit, not a determined person — the salt is in the page
   and always will be; the money is local and cosmetic, so that is the right amount of effort. Online,
   money and boxes are decided by the host already; positions are self-reported (no speed check).
+
+**v7 — the horizon and the piano (Sep 2026; owner: "en la intersección hay 2 streetlights, las streetlights mismas se
+ven terribles, añade cosas en el background como un molino … y si vas a poner música o sound effects ni SE TE OCURRA
+poner esos estúpidos pixel sound effects y tus estúpidos synths … tiene que sonar como piano").**
+- **Street lamps** are `lampPost(x, z, dx, dz, banner)`: plinth, tapered pole, a swan-neck quarter-torus arm over the road,
+  a hexagonal lantern with a pointed cap. The ironwork is **one merged geometry shared by every post** (`merged()` +
+  `mergeGeometries`) with a fixed-thickness hull (`inkHull(geo, t)`: vertices pushed along smooth normals — a % scale
+  hull shifts the top of a 6-high pole sideways, because it scales about the origin). Three draw calls per post. The
+  old `z = -60..40 step 20` loop put a pair in the middle of the cross street; posts now stand at z ∈ {−60, −26, −8, 10,
+  28} on both sidewalks plus four pairs along the cross-street sidewalks (z −34.8 / −45.2), none in a road. Four carry
+  two-sided paper **banners** (`BANNERS`: "hiring. always.", "FALL FESTIVAL (cancelled)", "ADOPT A POTHOLE", "lost cat").
+- **The horizon** (`buildScenery()` / `updateScenery(dt)`, the `scenery` object): a **windmill** on a mound at (52, −74)
+  whose sails turn (`scenery.sails`, 0.42 rad/s, four lattice sails in one merged geometry), a **farm** beside it (crop rows,
+  fence, hay, three clay cows, a barn, a silo), a **water tower** behind the warehouse ("WATER · probably"), a red-and-white
+  **radio mast** with guy wires and a hut ("KOWR 88.1 · static, mostly"), **power lines** down the east side (poles at x 27,
+  catenary wires as one `LineSegments`), an elevated **highway** at z −118 with ten looping cars and an exit sign, a
+  **factory** with a smoking chimney ("BOX CO. — we make the boxes."; seven recycled puffs), a **city** skyline in the fog
+  at x ≈ 172 (one shared lit-window texture), and a **hot-air balloon** ("we deliver. mostly.") circling at y 46. Blinking
+  lights use `M.beacon`, their own material (nothing else blinks with them). Trees now retry placement and skip the farm,
+  the power line and the cross street. Scenery is not solid (except lamp posts and power poles). ~+150 draw calls.
+- **Sound, the owner's rule (absolute): no pixel/8-bit effects, no synths; music must sound like a piano.** So there is no
+  `createOscillator` left in Overwork. Impacts are recordings from the Chequered Ink pack already in `art/sfx/`, table-driven
+  in `FOLEY` (file, playback-rate range, level, lowpass, start offset, hard stop): thud = hit1 pitched to cardboard, crash =
+  ko.wav past its swell, door = block.wav low and short, step = hit2 pitched way down and cut at 130 ms, card = block.wav
+  high and short (the casino: cards, chips, the wheel's ticks). Everything musical is the piano (`ow-piano.js`): `ding`
+  (fifth + octave), `peace` (rolled maj7add9), `squeak` (a trill at the top), `bark` (two low clusters), `honk` (a sour
+  chord that sags a semitone), plus `start`/`win`/`lose` for later. `sfx(kind)` routes: `FOLEY[kind]` → sample, else →
+  `piano.cue(kind)`. Adding a real recording later is one `FOLEY` line.
+- **Music**: starts on the first pointerdown/keydown (`armMusic`: resumes the context, loads the samples, starts if
+  `cfg.music > 0` and not muted). Generative: a key (A2–E3), a tempo (56–66), one of eight seventh-chord progressions
+  (diatonic plus ♭VI/♭VII/IVm colours), a style per song (`arp` broken chords in eighths, or `block` chords with air), a
+  four-note motif transposed to what fits each chord (chord tones weighted, avoid notes skipped), rolled voicings, humanised
+  timing and velocity, a heat curve over the song, a 5–9 s breath between songs. Rain muffles it (`setMuffled`). The tab
+  going hidden pauses the music bus, never the voice chat (they share `ac`). Settings row **music** (`cfg.music`, default
+  55) beside sound/mute; `mute` stops the music too. `scratchpad/ow-audio.js` checks the whole chain in headless Chromium
+  (real click → samples decoded → notes scheduled → RMS on the piano bus > 0 → foley buffers decode → settings interplay)
+  and **renders 30 s of music plus the cues offline to WAV** so a human can listen before shipping — do that when touching
+  the generator; the sandbox has no ears.
 
 Not done yet: Pitty Striker itself, more jobs, spectating a full room, a host-side speed check on
 self-reported positions.
