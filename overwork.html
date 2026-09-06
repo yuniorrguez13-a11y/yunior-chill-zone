@@ -212,6 +212,7 @@ import * as THREE from './vendor/three.module.min.js';
 import { createNet } from './ow-net.js';
 import { createOS } from './ow-os.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { mergeVertices } from './vendor/BufferGeometryUtils.js';
 import { createSlots, createBlackjack, createRoulette, SLOT_SYMBOLS, BETS, WHEEL, colorOf, handValue, isRed } from './ow-casino.js';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1083,7 +1084,12 @@ function loadAcc(name, url) {
       if (!o.isMesh) return;
       const geo = o.geometry.clone(); geo.applyMatrix4(o.matrixWorld); if (!geo.attributes.normal) geo.computeVertexNormals();
       geo.computeBoundingBox(); const c = geo.boundingBox.getCenter(new THREE.Vector3()); geo.translate(-c.x, -c.y, -c.z);
-      const m = new THREE.Mesh(geo, o.material); m.position.copy(c); m.userData.name = o.material.name || ''; root.add(m);
+      // the ink outline: NOT a scaled copy. these models are thin shells with inner faces, and scaling a shell about its centre
+      // pushes the inner faces out through the outer ones — black patches all over the crown. the hull is the surface pushed
+      // along smoothed vertex normals by a fixed thickness instead, which works on any shape
+      const hull = mergeVertices(geo.clone()); hull.computeVertexNormals(); const P = hull.attributes.position, N = hull.attributes.normal, d = 0.02 / ACC_FIT[name].scale;
+      for (let i = 0; i < P.count; i++) P.setXYZ(i, P.getX(i) + N.getX(i) * d, P.getY(i) + N.getY(i) * d, P.getZ(i) + N.getZ(i) * d);
+      const m = new THREE.Mesh(geo, o.material); m.position.copy(c); m.userData.name = o.material.name || ''; m.userData.hull = hull; root.add(m);
     });
     ACC[name] = root; res();
   }, undefined, e => { console.warn('[overwork] accessory failed to load', name, e); res(); }));
@@ -1094,7 +1100,8 @@ Promise.all([loadAcc('cap', 'art/overwork/cap.glb'), loadAcc('frog', 'art/overwo
 function fitAcc(name, matFn) {
   const src = ACC[name], f = ACC_FIT[name], g = new THREE.Group(); if (!src) return g;
   for (const m of src.children) {
-    const mm = new THREE.Mesh(m.geometry, (matFn && matFn(m)) || m.material); mm.position.copy(m.position); mm.castShadow = true; outlined(mm, 1.04); g.add(mm);
+    const mm = new THREE.Mesh(m.geometry, (matFn && matFn(m)) || m.material); mm.position.copy(m.position); mm.castShadow = true; g.add(mm);
+    const o = new THREE.Mesh(m.userData.hull, OUTLINE); o.position.copy(m.position); g.add(o);
   }
   g.scale.setScalar(f.scale); g.rotation.y = f.rot; g.position.set(f.pos[0], f.pos[1], f.pos[2]);
   return g;
@@ -1130,7 +1137,11 @@ class Courier {
     this.tag = makeLabel('new guy', '#23212b', 160, 64, '#faf6ec', 'Patrick Hand'); this.tag.position.set(-0.19, 0.8, 0.295); this.tag.rotation.y = -0.3; this.tag.scale.set(0.22, 0.09, 1); g.add(this.tag);
     // bobblehead: an egg on a lazy spring off the neck
     const head = this.head = new THREE.Group(); g.add(head);
-    outlined(mesh(new THREE.SphereGeometry(0.4, 22, 16), m.skin, 0, 0.02, 0, { parent: head }), 1.05).scale.set(1, 1.16, 1);
+    const headMesh = outlined(mesh(new THREE.SphereGeometry(0.4, 22, 16), m.skin, 0, 0.02, 0, { parent: head }), 1.05); headMesh.scale.set(1, 1.16, 1);
+    // the head's ink outline is an inverted hull, and a hull is bigger than the head: under a hat its top poked through the crown as black
+    // patches. so there are two hulls — the full egg for bare heads, and a bowl (top cut off) whenever anything is worn
+    this.headHull = headMesh.children[0]; this.headHullLow = new THREE.Mesh(new THREE.SphereGeometry(0.4, 22, 16, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.58), OUTLINE);
+    this.headHullLow.scale.setScalar(1.05); this.headHullLow.visible = false; headMesh.add(this.headHullLow);
     // headwear: the cap, frog hat, glasses and headphones are the owner's models (attachAccessories); the beanie and hair are built here
     const capG = this.capG = new THREE.Group(); head.add(capG);
     this.frogG = new THREE.Group(); head.add(this.frogG); this.phonesG = new THREE.Group(); head.add(this.phonesG);
@@ -1140,7 +1151,7 @@ class Courier {
     outlined(mesh(new THREE.SphereGeometry(0.11, 10, 8), m.collar, 0, 0.74, 0, { parent: beanie }), 1.1);
     const hair = this.hair = new THREE.Group(); head.add(hair);
     outlined(mesh(new THREE.SphereGeometry(0.43, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.42), m.hair, 0, 0.13, 0, { parent: hair }), 1.05);
-    outlined(mesh(new THREE.BoxGeometry(0.34, 0.12, 0.14), m.hair, 0.08, 0.36, 0.34, { parent: hair, rot: [0.3, 0, -0.2] }), 1.08);      // the fringe. it does what it wants.
+    this.fringe = outlined(mesh(new THREE.BoxGeometry(0.34, 0.12, 0.14), m.hair, 0.08, 0.36, 0.34, { parent: hair, rot: [0.3, 0, -0.2] }), 1.08);      // the fringe. it does what it wants. except under a hat.
     const glasses = this.glasses = new THREE.Group(); head.add(glasses);
     beanie.visible = hair.visible = glasses.visible = this.frogG.visible = this.phonesG.visible = false;
     this.look = null; if (ACC.ready) this.attachAccessories();
@@ -1663,8 +1674,9 @@ class Customer {
     for (const sx of [-0.16, 0.16]) { outlined(mesh(new THREE.CapsuleGeometry(0.1, 0.3, 4, 8), pants, sx, 0.28, 0, { parent: g }), 1.08); outlined(mesh(new THREE.CapsuleGeometry(0.12, 0.22, 4, 8), CLAY.shoe, sx, 0.12, 0.08, { parent: g, rot: [Math.PI / 2, 0, 0] }), 1.08); }
     this.arms = [-1, 1].map(s => { const piv = new THREE.Group(); piv.position.set(s * 0.4, 1.25, 0); g.add(piv); outlined(mesh(new THREE.CapsuleGeometry(0.09, 0.42, 4, 8), shirt, 0, -0.3, 0, { parent: piv }), 1.08); outlined(mesh(new THREE.SphereGeometry(0.11, 8, 6), skin, 0, -0.56, 0, { parent: piv }), 1.1); piv.rotation.z = s * 0.12; return piv; });
     const head = this.head = new THREE.Group(); head.position.y = 1.78; g.add(head);
-    outlined(mesh(new THREE.SphereGeometry(0.36, 18, 14), skin, 0, 0, 0, { parent: head }), 1.05).scale.set(1, 1.14, 1);
-    const hs = style % 5;                                                                                         // hair: bowl / bun / bald / backwards cap / long
+    const chead = outlined(mesh(new THREE.SphereGeometry(0.36, 18, 14), skin, 0, 0, 0, { parent: head }), 1.05); chead.scale.set(1, 1.14, 1);
+    const hs = style % 5;
+    if (hs !== 2) { chead.children[0].geometry = new THREE.SphereGeometry(0.36, 18, 14, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.58); }   // hair or a cap on top: bowl hull, so the outline doesn't poke through (see Courier)                                                                                         // hair: bowl / bun / bald / backwards cap / long
     if (hs === 0 || hs === 1 || hs === 4) outlined(mesh(new THREE.SphereGeometry(0.39, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.45), hair, 0, 0.1, 0, { parent: head }), 1.05);
     if (hs === 1) outlined(mesh(new THREE.SphereGeometry(0.15, 10, 8), hair, 0, 0.5, -0.08, { parent: head }), 1.08);
     this.capG = new THREE.Group(); this.capG.rotation.y = Math.PI; this.capG.scale.setScalar(0.92); head.add(this.capG); this.capG.visible = hs === 3;   // backwards, of course
@@ -2190,7 +2202,7 @@ function applyLookTo(c, L) {
   if (!CAP_STYLES.some(([v]) => v === L.capStyle)) L.capStyle = 'cap';
   const m = c.mat; m.cap.color.set(L.cap); m.suit.color.set(L.suit); m.sleeve.color.set(L.sleeve); m.skin.color.set(L.skin); m.hair.color.set(L.hair); m.shoe.color.set(L.shoe);
   c.capG.visible = L.capStyle === 'cap' || L.capStyle === 'back'; c.capG.rotation.y = L.capStyle === 'back' ? Math.PI : 0;
-  c.beanie.visible = L.capStyle === 'beanie'; c.frogG.visible = L.capStyle === 'frog'; c.hair.visible = L.capStyle === 'none' || L.capStyle === 'frog';
+  c.beanie.visible = L.capStyle === 'beanie'; c.frogG.visible = L.capStyle === 'frog'; c.hair.visible = L.capStyle === 'none' || L.capStyle === 'frog'; c.fringe.visible = L.capStyle === 'none'; c.headHull.visible = L.capStyle === 'none'; c.headHullLow.visible = L.capStyle !== 'none';
   c.glasses.visible = !!L.glasses; c.phonesG.visible = !!L.phones; c.look = L;
   const name = String(L.name || '').slice(0, 8).trim() || 'new guy';
   retex(c.tag, name, '#23212b', 160, 64, '#faf6ec', 'Patrick Hand'); c.setName(name);

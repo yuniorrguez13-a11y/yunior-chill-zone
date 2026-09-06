@@ -693,7 +693,13 @@ covering part (the van's collar) rather than fighting the scale.
   once by the vendored `GLTFLoader`, baked to world space, centred per mesh, cloned per courier via
   `fitAcc(name)` with the measured `ACC_FIT` offsets — the cap's crown centroid and brim direction were
   measured with a probe page, don't eyeball them). Licence for the models: owner-supplied, asked to
-  confirm.
+  confirm. **Outline gotcha for imported models:** `outlined()` (a scaled inverted hull) breaks on
+  them — they are thin shells with inner faces, and scaling about the centre pushes the inner faces
+  out through the crown as black polygon patches ("una cosa rara arriba de la cabeza"). Their hull is
+  built in `loadAcc` instead: `mergeVertices` → smooth normals → vertices pushed along the normal by a
+  fixed thickness. Same idea for the head under a hat: the egg's full hull poked through the crown, so
+  the courier swaps to a bowl-shaped hull (`headHullLow`, top cut off) whenever anything is worn, and
+  the hair fringe hides under hats.
 - MirrorOS gotcha: `wins` is a `Map` keyed by app name; "is this window still open" is
   `wins.get(W.key) === W`, not `wins.has(W)` (that bug left the casino window stale after a spin).
 
