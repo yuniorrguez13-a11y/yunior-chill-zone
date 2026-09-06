@@ -65,7 +65,8 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `denarii.html` | The public guide to **Denarii**, the site currency: where it lives, the plural rule, how you earn, streaks, the leaderboard, the catalog, troubleshooting, FAQ. Static, no scripts (its CSP has `script-src 'none'`). Linked from the Treasury, the settings row and the landing card. |
 | `overwork.html` | **Overwork**, the delivery game (Sep 2026): 3D, Three.js from `vendor/`, hand-rolled physics, clay characters, an apartment with a PC, a casino, host-authoritative multiplayer. See its own section below. |
 | `ow-net.js` | Overwork's wire: signalling over Supabase realtime broadcast (or a `BroadcastChannel` with `?signal=local` for two tabs on one machine) and one WebRTC connection per peer with two data channels (`rel` ordered for events, `fast` lossy for snapshots). Knows nothing about the game. |
-| `ow-os.js` | **MirrorOS**, the operating system on the PC in the courier's apartment: a 2009-glass-look desktop (own name, own icons, no trademarks) with draggable windows, taskbar, start orb, and the apps: Overwork Online (host/join/rooms/chat), Lucky Loaf Casino (slots + 21), notes, locker shortcut, a Pitty Striker shortcut that crashes on purpose, a recycle bin. Takes an `api` object from the game; touches only its own DOM. |
+| `ow-os.js` | **MirrorOS**, the operating system on the PC in the courier's apartment: a 2009-glass-look desktop (own name, own icons, no trademarks) with draggable windows, taskbar, start orb, and the apps: Overwork Online (host/join/rooms/chat), Lucky Loaf Casino (slots + 21 + roulette, the flat edition of the real tables — same state objects, handed over in `api.games`), notes, locker shortcut, a Pitty Striker shortcut that crashes on purpose, a recycle bin. Takes an `api` object from the game; touches only its own DOM. **All of its CSS is scoped under `#s-pc`** — a bare `.card` rule in here once shrank the game's work-order card to a playing card. Desktop icons open on a single click. |
+| `ow-casino.js` | The rules of the Lucky Loaf Casino with no pixels attached: `createSlots/createBlackjack/createRoulette(bank)` are small state machines over a `{cash(), add(n)}` bank. The 3D tables in `overwork.html` and the MirrorOS window both render the *same* instances, so what the felt shows is what the window shows. Spins/deals decide the result up front (`spin()` returns the pending outcome, the renderer animates and calls `settle()`). |
 | `vendor/` | Third-party libraries served from our own origin (no CDN dependency, CSP `'self'`). `three.module.min.js` (r169, MIT) and `supabase-2.115.0.min.js` (UMD, MIT), licences alongside. `_headers` caches `/vendor/*` for a year as immutable, so **rename the file when upgrading**. |
 | `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
 
@@ -619,7 +620,8 @@ covering part (the van's collar) rather than fighting the scale.
   limbs); remote players skip simulate and run `netStep()` + `animate()` from wire position/velocity.
   Animation fixes: arms swing against the gait (`gait` phase), hands are clamped to 1.1× arm length
   (jelly stretches, it never becomes a rope), idle breathing through the squash spring, `teleport()`
-  moves feet and hands too (no more limbs snapping across the map). Customers use the same clay and
+  moves feet and hands too — including a foot's in-flight `from/to/t`, otherwise a mid-step foot kept
+  lerping to its old target and one leg stretched across the street. Customers use the same clay and
   are faceless too (verdict in the neck: sour tilts down, happy tilts up).
 - **Real hitboxes.** `circles` (round static colliders: trampoline, pool — `step` ones can be stood
   on), `obbs` (oriented boxes that move: the van is `hw 1.2 × hd 3.4`, so it has a long side and a
@@ -635,10 +637,28 @@ covering part (the van's collar) rather than fighting the scale.
   a door gap, a ceiling collider (so the camera stays inside), desk + PC (`world.pcSpot`, E = sit),
   chair, bed, fridge ("buy milk"), rug, pizza boxes, a PITTY STRIKER poster, a lamp (`PointLight`).
   Sitting opens **MirrorOS** (`openPC(app)` / `closePC()`, `world.pcOpen` silences game input).
-- **Lucky Loaf Casino** (`buildCasino`, purple + gold, marquee, neon bulbs, a die on the roof, "21+
-  (ish)", "the house is a van"): E at the door opens the casino app. Slots (three reels of box/van/
-  gnome/dog/$/loaf: 3 loaves 20×, three of a kind 6×, a pair 2×) and 21 (dealer stands on 17,
-  blackjack 3:2, double). All on `save.cash`, the sock drawer. Nothing is real money.
+- **Lucky Loaf Casino** (`buildCasino`, `CZ = {X:-32, Z:-15.4, W:16, D:12}` — a walk-in room between
+  house #3's garage and house #5's fence, purple + gold, marquee, neon bulbs, a die on the roof, a bar
+  nobody buys water at, chandeliers as `PointLight`s, a red carpet to the sidewalk). Owner's second
+  brief: "un mapa de verdad con juegos de casino de verdad adentro … literalmente te sientas en una
+  mesa con un dealer". Inside: a **blackjack** half-moon table, a **roulette** table (wheel on a
+  cylinder whose top cap carries the pocket texture, a marker cone on your side, a ball that orbits
+  and drops) and three **LOAF-O-MATIC** slot cabinets, each with a **seat** (`casino.seats`, E within
+  1.7 → `sitAt`, E/Esc → `leaveSeat`; `world.seat` silences movement). Seated, the camera goes
+  **over your right shoulder** (the `world.seat` branch in `updateCamera`: target on the felt, camera
+  1.3 back / 1.8 right / 3.5 up so the courier sits bottom-left and the felt is clear) and the
+  `#cz` paper panel bottom-right carries the buttons (bet chips, deal/hit/stand/double, red/black/zero,
+  spin, pull). Progress is on the table in real time (`updateCasino`): cards fly from the shoe
+  (`makeCardMesh`, canvas faces, the dealer's hole card face-down), chip stacks for your bet, your
+  bets per zone and your whole drawer (`chipStack`, 1 chip = $5 / $10), the wheel spins to the
+  winning pocket, the reels flicker and stop one by one, a sprite label over the table says the
+  score, and the **dealer** (`makeDealer`: clay, vest, bow tie, one arm deals, head nods, speech
+  bubbles) comments. Rules live in `ow-casino.js`; the MirrorOS window is the 2D view of the same
+  state. **Wheel gotcha:** `CylinderGeometry`'s cap UVs map canvas angle = −world angle, so pocket
+  `idx` sits under the −z marker when `wheel.rotation.y = idx·step + π` (verified by screenshot).
+  Sprites (`depthTest:false`) show through walls — table labels and dealer bubbles are hidden unless
+  the courier is inside the room, and only the nearest table's label shows. All on `save.cash`, the
+  sock drawer. Nothing is real money.
 - **Multiplayer** (`ow-net.js` + the ONLINE section in `overwork.html`). Host-authoritative: the host
   runs boxes, van cargo, dog, props, deliveries, the clock, and broadcasts a snapshot at 15 Hz on the
   lossy channel (numbers rounded to 2 decimals, box states as small ints, only kicked props). Every
@@ -669,6 +689,13 @@ covering part (the van's collar) rather than fighting the scale.
   players' messages from the Online app.
 - Menu card scrolls if the viewport is short (`.card{max-height}`); right-drag steers the camera
   (contextmenu suppressed), keys release on blur, game keys are ignored inside inputs.
+- **Wearables are the owner's GLB models** (`art/overwork/{cap,frog,glasses,headphones}.glb`, loaded
+  once by the vendored `GLTFLoader`, baked to world space, centred per mesh, cloned per courier via
+  `fitAcc(name)` with the measured `ACC_FIT` offsets — the cap's crown centroid and brim direction were
+  measured with a probe page, don't eyeball them). Licence for the models: owner-supplied, asked to
+  confirm.
+- MirrorOS gotcha: `wins` is a `Map` keyed by app name; "is this window still open" is
+  `wins.get(W.key) === W`, not `wins.has(W)` (that bug left the casino window stale after a spin).
 
 Not done yet: Pitty Striker itself, touch controls, more jobs, voice chat, spectating a full room.
 Performance: the world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under

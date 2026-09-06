@@ -5,6 +5,8 @@
    a Pitty Striker shortcut that does not work yet, and a recycle bin full of feelings.
    The game hands in an api object; this file only touches its own DOM (#s-pc). */
 
+import { createSlots, createBlackjack, createRoulette, SLOT_SYMBOLS, BETS, WHEEL, colorOf, handValue, isRed } from './ow-casino.js';
+
 const css = `
 #s-pc{position:fixed;inset:0;display:none;z-index:6;font-family:'Segoe UI',Tahoma,'Trebuchet MS',Arial,sans-serif;font-size:14px;color:#111;user-select:none;}
 #s-pc.on{display:block;}
@@ -78,7 +80,7 @@ const css = `
 #s-pc .cz-msg{min-height:1.4em;font-family:'Patrick Hand',cursive;font-size:17px;margin:6px 0;}
 #s-pc .pcards{display:flex;gap:6px;min-height:70px;flex-wrap:wrap;}
 #s-pc .pcard{width:46px;height:64px;border:1px solid #889;border-radius:5px;background:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:4px 5px;font-weight:700;font-size:15px;box-shadow:0 1px 3px rgba(0,0,0,.25);} #s-pc .pcard.r{color:#c9302c;} #s-pc .pcard.back{background:repeating-linear-gradient(45deg,#3a6fd8 0 6px,#2a4fa8 6px 12px);}
-#s-pc .cz-hand{margin:8px 0;} .cz-hand b{display:block;margin-bottom:4px;color:#123;}
+#s-pc .cz-hand{margin:8px 0;} #s-pc .cz-hand b{display:block;margin-bottom:4px;color:#123;}
 #s-pc .dlg{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);}
 @media(max-width:760px){#pc-frame{inset:2vh 1vw 1vh 1vw;} .win{min-width:0;width:min(96%,420px)!important;left:2%!important;} #pc-icons{grid-template-columns:repeat(3,76px);} .pc-ic{width:76px;}}
 `;
@@ -119,7 +121,7 @@ export function createOS(api) {
   function shade(hex) { const n = parseInt(hex.slice(1), 16); const r = Math.max(0, (n >> 16) - 60), g = Math.max(0, ((n >> 8) & 255) - 60), b = Math.max(0, (n & 255) - 60); return `rgb(${r},${g},${b})`; }
   for (const k of Object.keys(APPS)) {
     const el = document.createElement('div'); el.className = 'pc-ic'; el.innerHTML = iconHtml(k) + `<span>${APPS[k].title.replace(' - Notepad', '')}</span>`;
-    el.ondblclick = () => openApp(k); el.onclick = e => { if (e.detail === 1 && matchMedia('(pointer:coarse)').matches) openApp(k); };
+    el.onclick = () => openApp(k);                                                                  // one click. it's not 2009. it just looks like it
     iconsEl.appendChild(el);
   }
   startEl.innerHTML = `<div class="u"><div class="av"></div><div><b id="pc-user">new guy</b><small>courier · level 1 · tired</small></div></div>` +
@@ -200,80 +202,92 @@ export function createOS(api) {
   }
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-  /* ── Lucky Loaf Casino: slots and 21, paid from the sock drawer ── */
-  const SYM = [['box', 6], ['van', 6], ['gnome', 6], ['dog', 6], ['$', 12], ['loaf', 20]];
-  let czTab = 'slots', bet = 10, spinning = false, bj = null;
+  /* ── Lucky Loaf Casino, flat edition: the same three games as the tables inside the casino, drawn as UI ── */
+  const bank = { cash: () => api.cash(), add: n => api.addCash(n) };
+  const games = api.games || { slots: createSlots(bank), bj: createBlackjack(bank), rl: createRoulette(bank) };   // the game hands over its tables so the window shows the same hand the felt does
+  let czTab = 'slots', wheel = { ang: 0, ball: 0, anim: null };
+  const pick = a => a[Math.floor(Math.random() * a.length)];
   function paintCasino(W) {
-    const cash = api.cash();
-    W.body.innerHTML = `<div class="row" style="justify-content:space-between"><h3 style="margin:0">Lucky Loaf Casino</h3><span>sock drawer: <span class="cz-cash">$${cash}</span></span></div>
-      <div class="cz-tabs"><button class="${czTab === 'slots' ? 'on' : ''}" data-t="slots">slots</button><button class="${czTab === 'bj' ? 'on' : ''}" data-t="bj">21</button></div><div id="cz-body"></div>
-      <p class="mut" style="margin-top:8px">the house always wins. the house is a van. nothing here is real money and the sock drawer is not a bank.</p>`;
+    W.body.innerHTML = `<div class="row" style="justify-content:space-between"><h3 style="margin:0">Lucky Loaf Casino</h3><span>sock drawer: <span class="cz-cash">$${api.cash()}</span></span></div>
+      <div class="cz-tabs"><button class="${czTab === 'slots' ? 'on' : ''}" data-t="slots">slots</button><button class="${czTab === 'bj' ? 'on' : ''}" data-t="bj">21</button><button class="${czTab === 'rl' ? 'on' : ''}" data-t="rl">roulette</button></div><div id="pcz-body"></div>
+      <p class="mut" style="margin-top:8px">the real tables are inside the casino on the street, with a dealer and everything. same odds. same van. nothing here is real money.</p>`;
     W.body.querySelectorAll('.cz-tabs button').forEach(b => b.onclick = () => { czTab = b.dataset.t; paintCasino(W); });
-    if (czTab === 'slots') paintSlots(W); else paintBJ(W);
+    if (czTab === 'slots') paintSlots(W); else if (czTab === 'bj') paintBJ(W); else paintRoulette(W);
   }
+  const cashUp = W => { const c = W.body.querySelector('.cz-cash'); if (c) c.textContent = '$' + api.cash(); };
+  const betRow = (cur, attr) => BETS.map(v => `<button class="pc-btn ${cur === v ? 'go' : ''}" data-${attr}="${v}">$${v}</button>`).join('');
   function paintSlots(W) {
-    const b = W.body.querySelector('#cz-body');
-    b.innerHTML = `<div class="reels"><div class="reel" id="r0">loaf</div><div class="reel" id="r1">$</div><div class="reel" id="r2">gnome</div></div>
-      <div class="row" style="justify-content:center">bet ${[5, 10, 25, 50].map(v => `<button class="pc-btn ${bet === v ? 'go' : ''}" data-bet="${v}">$${v}</button>`).join('')}</div>
-      <div class="row" style="justify-content:center"><button class="pc-btn go" id="cz-spin" style="font-size:16px;padding:8px 26px">spin</button></div>
-      <div class="cz-msg" id="cz-msg">three loaves pays 20×. three of anything pays 6×. two pays back double. the rest pays nothing, like the job.</div>`;
-    b.querySelectorAll('[data-bet]').forEach(x => x.onclick = () => { bet = +x.dataset.bet; paintSlots(W); });
-    b.querySelector('#cz-spin').onclick = () => spin(W);
+    const g = games.slots, s = g.state, b = W.body.querySelector('#pcz-body');
+    b.innerHTML = `<div class="reels">${s.reels.map((r, i) => `<div class="reel" id="r${i}">${r}</div>`).join('')}</div>
+      <div class="row" style="justify-content:center">bet ${betRow(s.bet, 'bet')}</div>
+      <div class="row" style="justify-content:center"><button class="pc-btn go" id="cz-spin" style="font-size:16px;padding:8px 26px" ${s.spinning ? 'disabled' : ''}>spin</button></div>
+      <div class="cz-msg" id="cz-msg">${s.msg}</div>`;
+    b.querySelectorAll('[data-bet]').forEach(x => x.onclick = () => { g.setBet(+x.dataset.bet); paintSlots(W); });
+    b.querySelector('#cz-spin').onclick = () => {
+      const r = g.spin(); if (!r) { b.querySelector('#cz-msg').textContent = s.msg; return; }
+      cashUp(W); b.querySelector('#cz-spin').disabled = true;
+      const reels = [0, 1, 2].map(i => b.querySelector('#r' + i)); reels.forEach(x => x.classList.add('spin'));
+      let t = 0; const iv = setInterval(() => { t++; reels.forEach((x, i) => { if (t < 8 + i * 5) x.textContent = pick(SLOT_SYMBOLS)[0]; else { x.textContent = r.final[i]; x.classList.remove('spin'); } }); if (t >= 18) { clearInterval(iv); g.settle(); cashUp(W); if (wins.get(W.key) === W) paintSlots(W); } }, 90);
+    };
   }
-  function spin(W) {
-    if (spinning) return;
-    const msg = W.body.querySelector('#cz-msg');
-    if (api.cash() < bet) { msg.textContent = pick(["you can't afford that. the van can't either.", 'not enough in the drawer. deliver something.', 'the sock drawer says no.']); return; }
-    api.addCash(-bet); spinning = true; W.body.querySelector('.cz-cash').textContent = '$' + api.cash();
-    const reels = [0, 1, 2].map(i => W.body.querySelector('#r' + i)); reels.forEach(r => r.classList.add('spin'));
-    const final = [0, 1, 2].map(() => SYM[Math.floor(Math.random() * SYM.length)][0]);
-    let t = 0; const iv = setInterval(() => { t++; reels.forEach((r, i) => { if (t < 8 + i * 5) r.textContent = SYM[Math.floor(Math.random() * SYM.length)][0]; else { r.textContent = final[i]; r.classList.remove('spin'); } }); if (t >= 18) { clearInterval(iv); settle(); } }, 90);
-    function settle() {
-      spinning = false; let win = 0;
-      if (final[0] === final[1] && final[1] === final[2]) win = bet * SYM.find(s => s[0] === final[0])[1];
-      else if (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]) win = bet * 2;
-      if (win) { api.addCash(win); msg.textContent = win >= bet * 6 ? pick([`$${win}. don't tell dispatch.`, `$${win}. the loaf provides.`, `$${win}. la peace.`]) : pick([`$${win}. that's lunch.`, `two of a kind. $${win}.`]); }
-      else msg.textContent = pick(['nothing. the van watched.', 'the house thanks you. the house is a van.', 'that was a whole box of pay.', "gone. it's fine. it's not fine."]);
-      W.body.querySelector('.cz-cash').textContent = '$' + api.cash();
-    }
-  }
-  /* blackjack, the 21 kind */
-  const deck = () => { const d = []; for (const s of ['♠', '♥', '♦', '♣']) for (const r of ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']) d.push({ r, s }); for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } return d; };
-  const val = h => { let t = 0, a = 0; for (const c of h) { if (c.r === 'A') { a++; t += 11; } else if ('JQK'.includes(c.r)) t += 10; else t += +c.r; } while (t > 21 && a > 0) { t -= 10; a--; } return t; };
-  const cardHtml = (c, hide) => hide ? '<div class="pcard back"></div>' : `<div class="pcard ${'♥♦'.includes(c.s) ? 'r' : ''}"><span>${c.r}</span><span style="text-align:right">${c.s}</span></div>`;
+  const cardHtml = (c, hide) => hide ? '<div class="pcard back"></div>' : `<div class="pcard ${isRed(c) ? 'r' : ''}"><span>${c.r}</span><span style="text-align:right">${c.s}</span></div>`;
   function paintBJ(W) {
-    const b = W.body.querySelector('#cz-body');
-    if (!bj) {
-      b.innerHTML = `<div class="row" style="justify-content:center">bet ${[5, 10, 25, 50].map(v => `<button class="pc-btn ${bet === v ? 'go' : ''}" data-bet="${v}">$${v}</button>`).join('')}</div><div class="row" style="justify-content:center"><button class="pc-btn go" id="bj-deal" style="font-size:16px;padding:8px 26px">deal</button></div><div class="cz-msg">dealer stands on 17. blackjack pays 3 to 2. the dealer is also a van.</div>`;
-      b.querySelectorAll('[data-bet]').forEach(x => x.onclick = () => { bet = +x.dataset.bet; paintBJ(W); });
-      b.querySelector('#bj-deal').onclick = () => { if (api.cash() < bet) { b.querySelector('.cz-msg').textContent = 'the sock drawer says no.'; return; } api.addCash(-bet); bj = { d: deck(), p: [], h: [], done: false, bet, msg: '' }; bj.p.push(bj.d.pop(), bj.d.pop()); bj.h.push(bj.d.pop(), bj.d.pop()); if (val(bj.p) === 21) finishBJ(W); else paintBJ(W); };
+    const g = games.bj, s = g.state, b = W.body.querySelector('#pcz-body');
+    if (s.phase === 'bet') {
+      b.innerHTML = `<div class="row" style="justify-content:center">bet ${betRow(s.bet, 'bet')}</div><div class="row" style="justify-content:center"><button class="pc-btn go" id="bj-deal" style="font-size:16px;padding:8px 26px">deal</button></div><div class="cz-msg">${s.msg}</div>`;
+      b.querySelectorAll('[data-bet]').forEach(x => x.onclick = () => { g.setBet(+x.dataset.bet); paintBJ(W); });
+      b.querySelector('#bj-deal').onclick = () => { g.deal(); cashUp(W); paintBJ(W); };
       return;
     }
-    const pv = val(bj.p), hv = val(bj.h);
-    b.innerHTML = `<div class="cz-hand"><b>dealer ${bj.done ? '· ' + hv : ''}</b><div class="pcards">${bj.h.map((c, i) => cardHtml(c, i === 1 && !bj.done)).join('')}</div></div>
-      <div class="cz-hand"><b>you · ${pv}</b><div class="pcards">${bj.p.map(c => cardHtml(c)).join('')}</div></div>
-      <div class="row">${bj.done ? '<button class="pc-btn go" id="bj-again">again</button>' : `<button class="pc-btn" id="bj-hit">hit</button><button class="pc-btn" id="bj-stand">stand</button><button class="pc-btn" id="bj-double" ${bj.p.length === 2 && api.cash() >= bj.bet ? '' : 'disabled'}>double</button>`}</div>
-      <div class="cz-msg">${bj.msg}</div>`;
-    const q = s => b.querySelector(s);
-    if (q('#bj-hit')) q('#bj-hit').onclick = () => { bj.p.push(bj.d.pop()); if (val(bj.p) > 21) finishBJ(W); else paintBJ(W); };
-    if (q('#bj-stand')) q('#bj-stand').onclick = () => finishBJ(W);
-    if (q('#bj-double')) q('#bj-double').onclick = () => { api.addCash(-bj.bet); bj.bet *= 2; bj.p.push(bj.d.pop()); finishBJ(W); };
-    if (q('#bj-again')) q('#bj-again').onclick = () => { bj = null; paintBJ(W); };
+    const done = s.phase === 'done';
+    b.innerHTML = `<div class="cz-hand"><b>dealer ${done ? '· ' + handValue(s.h) : ''}</b><div class="pcards">${s.h.map((c, i) => cardHtml(c, i === 1 && !done)).join('')}</div></div>
+      <div class="cz-hand"><b>you · ${handValue(s.p)}</b><div class="pcards">${s.p.map(c => cardHtml(c)).join('')}</div></div>
+      <div class="row">${done ? '<button class="pc-btn go" id="bj-again">again</button>' : `<button class="pc-btn" id="bj-hit">hit</button><button class="pc-btn" id="bj-stand">stand</button><button class="pc-btn" id="bj-double" ${g.canDouble() ? '' : 'disabled'}>double</button>`}</div>
+      <div class="cz-msg">${s.msg}</div>`;
+    const q = sel => b.querySelector(sel);
+    if (q('#bj-hit')) q('#bj-hit').onclick = () => { g.hit(); cashUp(W); paintBJ(W); };
+    if (q('#bj-stand')) q('#bj-stand').onclick = () => { g.stand(); cashUp(W); paintBJ(W); };
+    if (q('#bj-double')) q('#bj-double').onclick = () => { g.double(); cashUp(W); paintBJ(W); };
+    if (q('#bj-again')) q('#bj-again').onclick = () => { g.reset(); paintBJ(W); };
   }
-  function finishBJ(W) {
-    const pv = val(bj.p);
-    if (pv <= 21) while (val(bj.h) < 17) bj.h.push(bj.d.pop());
-    const hv = val(bj.h); bj.done = true; let win = 0;
-    if (pv > 21) bj.msg = pick(['bust. the dealer did nothing. it just sat there.', 'over. like the shift.']);
-    else if (pv === 21 && bj.p.length === 2 && !(hv === 21 && bj.h.length === 2)) { win = Math.round(bj.bet * 2.5); bj.msg = `blackjack. $${win}. suspicious.`; }
-    else if (hv > 21 || pv > hv) { win = bj.bet * 2; bj.msg = pick([`you win $${win}. don't get used to it.`, `$${win}. the van looks away.`]); }
-    else if (pv === hv) { win = bj.bet; bj.msg = 'push. nobody wins. familiar.'; }
-    else bj.msg = pick(['dealer wins. the dealer is a van.', 'house. always the house.']);
-    if (win) api.addCash(win);
-    W.body.querySelector('.cz-cash').textContent = '$' + api.cash();
-    paintBJ(W);
+  /* roulette: a wheel drawn on a canvas, spun by hand */
+  function drawWheel(cv, ang, ballAng, ballR) {
+    const g = cv.getContext('2d'), c = cv.width / 2, R = c - 4, step = Math.PI * 2 / WHEEL.length;
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fillStyle = '#6a3a1a'; g.fill();
+    WHEEL.forEach((n, i) => { const a0 = ang + i * step - step / 2; g.beginPath(); g.moveTo(c, c); g.arc(c, c, R - 8, a0, a0 + step); g.closePath(); g.fillStyle = colorOf(n) === 'red' ? '#c9302c' : colorOf(n) === 'black' ? '#1a1a1f' : '#2e8b3a'; g.fill(); g.strokeStyle = '#e8c04a'; g.lineWidth = 1; g.stroke();
+      g.save(); g.translate(c + Math.cos(a0 + step / 2) * (R - 22), c + Math.sin(a0 + step / 2) * (R - 22)); g.rotate(a0 + step / 2 + Math.PI / 2); g.fillStyle = '#fff'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.fillText(n, 0, 3); g.restore(); });
+    g.beginPath(); g.arc(c, c, R * 0.45, 0, Math.PI * 2); g.fillStyle = '#e8c04a'; g.fill(); g.beginPath(); g.arc(c, c, R * 0.3, 0, Math.PI * 2); g.fillStyle = '#6a3a1a'; g.fill();
+    g.beginPath(); g.arc(c + Math.cos(ballAng) * ballR * R, c + Math.sin(ballAng) * ballR * R, 6, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); g.strokeStyle = '#333'; g.stroke();
+    g.beginPath(); g.moveTo(c - 8, 2); g.lineTo(c + 8, 2); g.lineTo(c, 16); g.closePath(); g.fillStyle = '#ffd23f'; g.fill();               // the marker, top
   }
-  const pick = a => a[Math.floor(Math.random() * a.length)];
+  function paintRoulette(W) {
+    const g = games.rl, s = g.state, b = W.body.querySelector('#pcz-body');
+    b.innerHTML = `<div class="row" style="align-items:flex-start;flex-wrap:nowrap"><canvas id="rl-cv" width="220" height="220" style="flex:none"></canvas>
+      <div style="flex:1">
+        <div class="row">chip ${betRow(s.chip, 'chip')}</div>
+        <div class="row"><button class="pc-btn" data-z="red" style="background:#c9302c;color:#fff;border-color:#7a1c1c">red $${s.bets.red}</button><button class="pc-btn" data-z="black" style="background:#1a1a1f;color:#fff;border-color:#000">black $${s.bets.black}</button><button class="pc-btn" data-z="green" style="background:#2e8b3a;color:#fff;border-color:#1a5a24">0 $${s.bets.green}</button></div>
+        <div class="row"><button class="pc-btn go" id="rl-spin" ${s.spinning ? 'disabled' : ''}>spin</button><button class="pc-btn" id="rl-clear" ${s.spinning ? 'disabled' : ''}>take chips back</button></div>
+        <div class="mut">last: ${s.last.length ? s.last.map(n => `<span style="color:${colorOf(n) === 'red' ? '#c9302c' : colorOf(n) === 'green' ? '#2e8b3a' : '#111'};font-weight:700">${n}</span>`).join(' ') : '—'}</div>
+      </div></div><div class="cz-msg" id="rl-msg">${s.msg}</div>`;
+    const cv = b.querySelector('#rl-cv'); drawWheel(cv, wheel.ang, wheel.ball, 0.82);
+    b.querySelectorAll('[data-chip]').forEach(x => x.onclick = () => { g.setChip(+x.dataset.chip); paintRoulette(W); });
+    b.querySelectorAll('[data-z]').forEach(x => x.onclick = () => { g.place(x.dataset.z); cashUp(W); paintRoulette(W); });
+    b.querySelector('#rl-clear').onclick = () => { g.clear(); cashUp(W); paintRoulette(W); };
+    b.querySelector('#rl-spin').onclick = () => {
+      const r = g.spin(); if (!r) { b.querySelector('#rl-msg').textContent = s.msg; return; }
+      b.querySelector('#rl-spin').disabled = true; b.querySelector('#rl-clear').disabled = true;
+      const step = Math.PI * 2 / WHEEL.length, idx = WHEEL.indexOf(r.n), dur = 3800, t0 = performance.now();
+      // the pocket must end under the marker at the top (-π/2): final = -π/2 - idx*step, plus whole turns
+      const start = wheel.ang, base = -Math.PI / 2 - idx * step, turns = 4; let end = base; while (end < start + turns * Math.PI * 2) end += Math.PI * 2;
+      const frame = now => {
+        const t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 3);
+        wheel.ang = start + (end - start) * e; wheel.ball = -Math.PI / 2 - (1 - e) * 26; const cvn = W.body.querySelector('#rl-cv'); if (cvn) drawWheel(cvn, wheel.ang, t < 0.85 ? wheel.ball : -Math.PI / 2, 0.82 - Math.min(1, t / 0.85) * 0.12);
+        if (t < 1 && wins.get(W.key) === W) requestAnimationFrame(frame); else { g.settle(); cashUp(W); if (wins.get(W.key) === W && czTab === 'rl') paintRoulette(W); }
+      };
+      requestAnimationFrame(frame);
+    };
+  }
 
   /* ── public surface ── */
   return {

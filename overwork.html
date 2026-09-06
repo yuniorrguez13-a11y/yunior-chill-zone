@@ -102,6 +102,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
 .mc.y{color:#ffff55;} .mc.out{opacity:0;transition:opacity .8s;}
 @keyframes mcin{from{transform:translateX(-10px);opacity:0}to{opacity:1}}
 #hud.roam .hud-top{display:none;}
+/* the table panel: what you can do at the seat you're in. the felt shows what happened */
+#cz{position:absolute;right:18px;bottom:76px;transform:rotate(.5deg);padding:10px 16px 8px;min-width:340px;max-width:94vw;display:none;pointer-events:auto;text-align:center;}
+@media(max-width:760px){#cz{right:50%;transform:translateX(50%) rotate(.5deg);bottom:66px;min-width:0;width:94vw;}}
+#cz.on{display:block;}
+#cz-title{font-size:24px;margin-bottom:4px;}
+#cz .r{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:5px 0;align-items:center;}
+#cz button{font:inherit;font-size:17px;padding:4px 12px 2px;background:var(--paper2);border:2px solid var(--pen);border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;box-shadow:2px 2px 0 var(--pen);cursor:pointer;color:var(--pen);}
+#cz button.on,#cz button.go{background:var(--hi);} #cz button:disabled{opacity:.45;cursor:default;}
+#cz button.red{background:#e05555;color:#fff;} #cz button.blk{background:#2a2a33;color:#fff;} #cz button.grn{background:#3a9e58;color:#fff;}
+#cz .m{font-size:17px;color:var(--pen2);min-height:1.3em;} #cz kbd{display:inline-block;padding:0 7px;border-radius:5px;background:#fff;border:1.5px solid var(--pen);font:inherit;font-size:14px;}
 #peace{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 30%,rgba(255,214,120,.28),rgba(255,180,60,0) 70%);opacity:0;transition:opacity 1.2s;}
 #peace.on{opacity:1;}
 @media(max-width:760px){
@@ -128,6 +138,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
   <div id="hint"></div>
   <div id="toasts"></div>
   <div id="mcchat"></div>
+  <div id="cz" class="paper"><div id="cz-title" class="sk"></div><div id="cz-body"></div><div class="small" style="margin-top:6px"><kbd>E</kbd> stand up</div></div>
 </div>
 
 <!-- MENU: the work order -->
@@ -201,6 +212,7 @@ import * as THREE from './vendor/three.module.min.js';
 import { createNet } from './ow-net.js';
 import { createOS } from './ow-os.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { createSlots, createBlackjack, createRoulette, SLOT_SYMBOLS, BETS, WHEEL, colorOf, handValue, isRed } from './ow-casino.js';
 
 /* ═══════════════════════════════════════════════════════════════
    OVERWORK — the delivery shift
@@ -275,6 +287,8 @@ const M = {
   brick: toon(0xb5664a), floor: flat(0xc9a878), desk: toon(0x8a6540), screen: toon(0x3a78d8, { emissive: 0x1d3f8a }), fridge: toon(0xf4f4f7), bedsheet: toon(0x6fa8dc), pillow: toon(0xfaf6ec),
   casino: toon(0x4a2a6a), gold: toon(0xe8c04a, { emissive: 0x5a4210 }), neon: toon(0xff3fb0, { emissive: 0xff3fb0, emissiveIntensity: 0.9 }), neonOff: toon(0x7a2058), darkglass: toon(0x1d2233, { transparent: true, opacity: .85 }),
   lapis: toon(0x2a5bd8, { emissive: 0x1a3a9a, emissiveIntensity: 0.6 }),
+  carpet: flat(0x6e1c26), felt: toon(0x1f7a3e), wheelWood: toon(0x6a3a1a), slotBody: toon(0x8a1f3a), bottle: [toon(0x2e8b3a), toon(0xc9302c), toon(0xe8c04a), toon(0x3a78d8)],
+  chip: { red: toon(0xc9302c), blue: toon(0x2a4fa8), black: toon(0x1a1a1f), green: toon(0x2e8b3a), gold: toon(0xe8c04a), white: toon(0xf4f4f7) },
 };
 
 
@@ -646,7 +660,7 @@ function buildWorld() {
     mesh(new THREE.BoxGeometry(0.1, 0.1, 1.0), M.pole, sx * 0.92, 5.0, z, { shadow: false });
     mesh(new THREE.SphereGeometry(0.34, 10, 8), M.lamp, sx * 0.85, 4.95, z, { shadow: false });
   }
-  for (let k = 0; k < 16; k++) { const tx = (Math.random() < .5 ? -1 : 1) * rnd(26, 64); let tz = rnd(-72, 40); if (Math.abs(tx) < 42 && tz > -60 && tz < -44) tz -= 20; (Math.random() < 0.4 ? pine : tree)(tx, tz, rnd(0.9, 1.6)); }
+  for (let k = 0; k < 16; k++) { const tx = (Math.random() < .5 ? -1 : 1) * rnd(26, 64); let tz = rnd(-72, 40); if (Math.abs(tx) < 42 && tz > -60 && tz < -44) tz -= 20; if (tx < -22 && tx > -43 && tz > -25 && tz < -6) continue; (Math.random() < 0.4 ? pine : tree)(tx, tz, rnd(0.9, 1.6)); }   // the casino lot stays clear
   deadTree(-24, 6);
   for (let k = 0; k < 9; k++) cloud(rnd(-90, 90), rnd(26, 40), rnd(-110, 60), rnd(1.2, 2.4));
   birds.push(new Flock(-20, -10, 22, 14, 5), new Flock(30, 20, 26, 18, 4));
@@ -668,11 +682,12 @@ function buildHome() {
   dish(X - 2, H + 3.5, Z + 2.5, -1);
   // door: frame, a door swung open inwards, a mat, a sign, an awning
   for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.36, 2.5, 0.12), M.door, X - W / 2, 1.25, Z + sz * 0.96); mesh(new THREE.BoxGeometry(0.36, 0.12, 2.04), M.door, X - W / 2, 2.56, Z);
-  outlined(mesh(new THREE.BoxGeometry(1.7, 2.3, 0.12), M.door, X - W / 2 + 1.0, 1.15, Z - 0.85, { rot: [0, Math.PI / 2, 0] }), 1.04); colliders.push({ min: { x: X - W / 2 + 0.2, y: 0, z: Z - 1.0 }, max: { x: X - W / 2 + 1.9, y: 2.3, z: Z - 0.75 } });
+  outlined(mesh(new THREE.BoxGeometry(0.12, 2.3, 1.7), M.door, X - W / 2 - 0.55, 1.15, Z - 1.6, { rot: [0, 1.15, 0] }), 1.04); colliders.push({ min: { x: X - W / 2 - 1.2, y: 0, z: Z - 2.4 }, max: { x: X - W / 2 - 0.1, y: 2.3, z: Z - 1.0 } });   // the door, open, hinged on the frame
+  mesh(new THREE.SphereGeometry(0.06, 8, 6), M.hub, X - W / 2 - 1.05, 1.1, Z - 2.15);
   const mat = mesh(new THREE.BoxGeometry(0.9, 0.06, 1.4), M.matOff, X - W / 2 - 0.7, 0.03, Z); const ml = makeLabel('you again.', '#3a2a10', 256, 96, '#00000000', 'Patrick Hand'); ml.material.transparent = true; ml.rotation.set(-Math.PI / 2, 0, -Math.PI / 2); ml.position.set(X - W / 2 - 0.7, 0.07, Z); ml.scale.set(1.2, 0.5, 1); scene.add(ml);
-  const sg = makeLabel('APT 3B', '#faf6ec', 256, 96, '#2a2a33'); sg.position.set(X - W / 2 - 0.02, 2.95, Z); sg.rotation.y = -Math.PI / 2; sg.scale.set(1.2, 0.45, 1); scene.add(sg);
-  const sg2 = makeLabel('you live here. allegedly.', '#ffb020', 384, 70, '#2a2a33', 'Patrick Hand'); sg2.position.set(X - W / 2 - 0.02, 2.62, Z); sg2.rotation.y = -Math.PI / 2; sg2.scale.set(1.6, 0.3, 1); scene.add(sg2);
-  mesh(new THREE.BoxGeometry(1.4, 0.08, 3.0), M.cap, X - W / 2 - 0.8, 3.15, Z, { rot: [0, 0, 0.35] });
+  const sg = makeLabel('APT 3B', '#faf6ec', 256, 96, '#2a2a33'); sg.position.set(X - W / 2 - 0.03, 4.15, Z); sg.rotation.y = -Math.PI / 2; sg.scale.set(1.3, 0.5, 1); scene.add(sg);                       // on the upstairs wall, clear of the floor slab that used to cut it
+  const sg2 = makeLabel('you live here. allegedly.', '#ffb020', 384, 70, '#2a2a33', 'Patrick Hand'); sg2.position.set(X - W / 2 - 0.03, 2.05, Z + 1.85); sg2.rotation.y = -Math.PI / 2; sg2.scale.set(1.5, 0.25, 1); scene.add(sg2);   // beside the door, the side the door does not swing to
+  mesh(new THREE.BoxGeometry(1.2, 0.08, 2.6), M.cap, X - W / 2 - 0.62, 2.86, Z, { rot: [0, 0, 0.25] });                                            // awning over the door frame, under the slab
   // inside: desk, PC, chair, bed, fridge, a rug, pizza boxes, a poster, a lamp
   addBox(X + 2.6, 0, Z, 1.6, 0.78, 0.9, M.desk); mesh(new THREE.BoxGeometry(1.7, 0.06, 1.0), M.desk, X + 2.6, 0.8, Z);
   outlined(mesh(new THREE.BoxGeometry(0.08, 0.6, 1.0), M.vanDark, X + 2.85, 1.25, Z), 1.04); mesh(new THREE.BoxGeometry(0.06, 0.14, 0.4), M.vanDark, X + 2.85, 0.9, Z, { shadow: false });
@@ -690,26 +705,202 @@ function buildHome() {
   world.pcSpot = { x: X + 1.4, z: Z }; world.homeDoor = { x: X - W / 2 - 1.2, z: Z };
   tree(X + 5.5, Z - 6, 1.1); bush(X - 4.8, Z + 3.4, 0.6);
 }
-/* ── the casino, because the sock drawer needed somewhere to go ── */
+/* ── the casino: a room this time. purple outside, red carpet inside, a dealer who has seen it all,
+   and three ways to lose the drawer that you can watch happen on the felt ── */
+const CZ = { X: -32, Z: -15.4, W: 16, D: 12, H: 4.6 };                                       // the door and carpet run between #3's garage (z −13.1) and #5's fence (z −17.6)
+const bank = { cash: () => save.cash, add: n => { save.cash = Math.max(0, Math.round(save.cash + n)); persist(); paintMenu(); } };
+const casino = { bj: createBlackjack(bank), slots: [createSlots(bank), createSlots(bank), createSlots(bank)], rl: createRoulette(bank), views: [], seats: [] };
+function texCanvas(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+const cardMatCache = new Map();
+function cardFace(c) {
+  const k = c.r + c.s; if (cardMatCache.has(k)) return cardMatCache.get(k);
+  const m = new THREE.MeshBasicMaterial({ map: texCanvas(128, 180, (g, w, h) => {
+    g.fillStyle = '#faf6ec'; g.fillRect(0, 0, w, h); g.strokeStyle = '#8a8a99'; g.lineWidth = 4; g.strokeRect(3, 3, w - 6, h - 6);
+    g.fillStyle = isRed(c) ? '#c9302c' : '#14121a'; g.font = 'bold 46px "Patrick Hand", sans-serif'; g.textAlign = 'left'; g.fillText(c.r, 12, 50); g.font = '38px sans-serif'; g.fillText(c.s, 12, 92);
+    g.font = '66px sans-serif'; g.textAlign = 'center'; g.fillText(c.s, w / 2 + 16, h - 30);
+  }) }); cardMatCache.set(k, m); return m;
+}
+const cardBack = new THREE.MeshBasicMaterial({ map: texCanvas(128, 180, (g, w, h) => { g.fillStyle = '#2a4fa8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#faf6ec'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16); g.fillStyle = '#3a6fd8'; for (let y = 16; y < h - 16; y += 16) for (let x = 16 + ((y / 16) % 2) * 8; x < w - 16; x += 16) g.fillRect(x, y, 8, 8); }) });
+const cardSide = new THREE.MeshBasicMaterial({ color: 0xe8e2d2 });
+function makeCardMesh(c) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.7), [cardSide, cardSide, cardFace(c), cardBack, cardSide, cardSide]); m.castShadow = true; scene.add(m); return m; }
+function chipStack(group, x, y, z, n, mat) {                                                  // rebuilds a stack of n chips (cap 14) at x,z
+  while (group.children.length) group.remove(group.children[0]);
+  n = Math.min(14, n); for (let i = 0; i < n; i++) { const c = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.035, 14), mat, x + rnd(-0.01, 0.01), y + 0.018 + i * 0.036, z + rnd(-0.01, 0.01), { parent: group }); c.rotation.y = rnd(0, 3); }
+}
+const symMatCache = new Map();
+function symMat(name) { if (symMatCache.has(name)) return symMatCache.get(name); const m = new THREE.MeshBasicMaterial({ map: makeTex(name, '#23212b', 128, 200, '#faf6ec', 'CF Sketch') }); symMatCache.set(name, m); return m; }
+function tableLabel(x, y, z) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex(' '), transparent: true, depthTest: false, fog: false })); sp.scale.set(2.4, 0.6, 1); sp.position.set(x, y, z); sp.renderOrder = 4; scene.add(sp); sp.userData.text = ''; return sp; }
+function setLabel(sp, text) { if (sp.userData.text === text) return; sp.userData.text = text; const old = sp.material.map; sp.material.map = nameTex(text); if (old) old.dispose(); }
+/* the staff: a plasticine dealer in a vest and a bow tie. one arm deals, the other has opinions */
+function makeDealer(x, z, yaw, tieHex) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = yaw; scene.add(g);
+  const skin = pick(CLAY.skins), shirt = clay(0xf4f4f7), vest = clay(0x1a1a1f), tie = clay(tieHex);
+  outlined(mesh(new THREE.CapsuleGeometry(0.34, 0.45, 6, 16), shirt, 0, 0.95, 0, { parent: g }), 1.05).scale.set(1, 1, 0.85);
+  outlined(mesh(new THREE.BoxGeometry(0.58, 0.72, 0.16), vest, 0, 0.9, 0.2, { parent: g }), 1.05);
+  for (const sx of [-1, 1]) mesh(new THREE.BoxGeometry(0.12, 0.08, 0.05), tie, sx * 0.07, 1.31, 0.33, { parent: g, shadow: false }); mesh(new THREE.BoxGeometry(0.05, 0.05, 0.06), vest, 0, 1.31, 0.34, { parent: g, shadow: false });
+  outlined(mesh(new THREE.SphereGeometry(0.35, 16, 12), vest, 0, 0.5, 0, { parent: g }), 1.05).scale.set(1.05, 0.7, 0.9);
+  for (const sx of [-0.16, 0.16]) { outlined(mesh(new THREE.CapsuleGeometry(0.1, 0.3, 4, 8), vest, sx, 0.28, 0, { parent: g }), 1.08); outlined(mesh(new THREE.CapsuleGeometry(0.12, 0.22, 4, 8), CLAY.shoe, sx, 0.12, 0.08, { parent: g, rot: [Math.PI / 2, 0, 0] }), 1.08); }
+  const arms = [-1, 1].map(sd => { const piv = new THREE.Group(); piv.position.set(sd * 0.4, 1.25, 0); g.add(piv); outlined(mesh(new THREE.CapsuleGeometry(0.09, 0.42, 4, 8), shirt, 0, -0.3, 0, { parent: piv }), 1.08); outlined(mesh(new THREE.SphereGeometry(0.11, 8, 6), skin, 0, -0.56, 0, { parent: piv }), 1.1); piv.rotation.set(-0.7, 0, -sd * 0.35); return piv; });
+  const head = new THREE.Group(); head.position.y = 1.78; g.add(head);
+  outlined(mesh(new THREE.SphereGeometry(0.36, 18, 14), skin, 0, 0, 0, { parent: head }), 1.05).scale.set(1, 1.14, 1);
+  outlined(mesh(new THREE.SphereGeometry(0.385, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), clay(0x14121a), 0, 0.1, -0.03, { parent: head }), 1.05);
+  const d = { g, head, arms, deal: spring(60, 7), nod: spring(50, 6), bubble: null, t: rnd(0, 6), bubbleT: 0 };
+  d.say = text => { if (d.bubble) { head.remove(d.bubble); d.bubble.material.map.dispose(); d.bubble = null; } if (text) { d.bubble = makeBubble(text); d.bubble.position.set(0, 0.72, 0); head.add(d.bubble); d.bubbleT = 3.2; } };
+  d.update = dt => { d.t += dt; springTo(d.deal, 0, dt); springTo(d.nod, 0, dt); arms[1].rotation.x = -0.7 + d.deal.x * 0.06; arms[1].rotation.z = -0.35 - Math.max(0, d.deal.x) * 0.03; head.rotation.set(d.nod.x * 0.05 + Math.sin(d.t * 0.7) * 0.03, Math.sin(d.t * 0.4) * 0.08, 0); if (d.bubbleT > 0) { d.bubbleT -= dt; if (d.bubbleT <= 0) d.say(null); } };
+  return d;
+}
 function buildCasino() {
-  const X = -13.5, Z = -29.5, W = 7, D = 5, H = 4.2;
-  addBox(X, 0, Z, W, H, D, M.casino);
-  addBox(X, H, Z, W + 0.5, 0.4, D + 0.5, M.gold, { solid: false });
-  for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.14, H, 0.14), M.gold, X + W / 2 + 0.02, H / 2, Z + sz * (D / 2 - 0.1));
-  outlined(mesh(new THREE.BoxGeometry(0.14, 2.6, 2.0), M.darkglass, X + W / 2 + 0.06, 1.3, Z), 1.03); mesh(new THREE.BoxGeometry(0.06, 2.6, 0.04), M.gold, X + W / 2 + 0.12, 1.3, Z, { shadow: false });
-  const marquee = mesh(new THREE.BoxGeometry(1.2, 1.3, 5.6), M.vanDark, X + W / 2 + 0.3, H + 0.9, Z);
-  world.neon = [];
-  const n1 = makeLabel('LUCKY LOAF', '#ff3fb0', 512, 110, '#14121a'); n1.position.set(X + W / 2 + 0.92, H + 1.15, Z); n1.rotation.y = Math.PI / 2; n1.scale.set(5.2, 0.9, 1); scene.add(n1);
-  const n2 = makeLabel('C A S I N O', '#ffd23f', 512, 90, '#14121a'); n2.position.set(X + W / 2 + 0.92, H + 0.45, Z); n2.rotation.y = Math.PI / 2; n2.scale.set(5.2, 0.5, 1); scene.add(n2);
-  for (let k = 0; k < 9; k++) { const b = mesh(new THREE.SphereGeometry(0.11, 8, 6), k % 2 ? M.neon : M.neonOff, X + W / 2 + 0.95, H + 1.75, Z - 2.6 + k * 0.65, { shadow: false }); world.neon.push(b); }
-  const n3 = makeLabel('21+ (ish)', '#faf6ec', 256, 70, '#2a2a33', 'Patrick Hand'); n3.position.set(X + W / 2 + 0.14, 2.9, Z); n3.rotation.y = Math.PI / 2; n3.scale.set(1.3, 0.35, 1); scene.add(n3);
-  const n4 = makeLabel('the house always wins. the house is a van.', '#ff3fb0', 512, 60, '#14121a', 'Patrick Hand'); n4.position.set(X + W / 2 + 0.03, 3.6, Z); n4.rotation.y = Math.PI / 2; n4.scale.set(4.4, 0.45, 1); scene.add(n4);
-  const die = outlined(mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), M.frame, X - 1.5, H + 1.0, Z + 1.2, { rot: [0.3, 0.6, 0.2] }), 1.04); for (const [dx, dy] of [[-0.25, 0.25], [0.25, -0.25], [0, 0], [-0.25, -0.25], [0.25, 0.25]]) mesh(new THREE.SphereGeometry(0.09, 6, 6), M.pupil, dx, dy, 0.56, { parent: die, shadow: false });
-  plane(3, 3.4, M.cap, X + W / 2 + 1.6, 0.016, Z);                                                                        // red carpet, sort of
-  world.casinoSpot = { x: X + W / 2 + 1.2, z: Z };
+  const { X, Z, W, D, H } = CZ;
+  plane(W - 0.6, D - 0.6, M.carpet, X, 0.02, Z);
+  addBox(X - W / 2 + 0.15, 0, Z, 0.3, H, D, M.casino); for (const sz of [-1, 1]) addBox(X, 0, Z + sz * (D / 2 - 0.15), W, H, 0.3, M.casino);
+  addBox(X + W / 2 - 0.15, 0, Z - (D / 2 + 1.3) / 2 - 0.35, 0.3, H, D / 2 - 1.3, M.casino); addBox(X + W / 2 - 0.15, 0, Z + (D / 2 + 1.3) / 2 + 0.35, 0.3, H, D / 2 - 1.3, M.casino);   // front wall, door gap 2.6 wide
+  addBox(X, H, Z, W + 0.4, 0.3, D + 0.4, M.vanDark); addBox(X, H + 0.3, Z, W + 0.6, 0.5, D + 0.6, M.gold, { solid: false });
+  for (const y of [1.0, H - 0.35]) { mesh(new THREE.BoxGeometry(W - 0.6, 0.08, 0.06), M.gold, X, y, Z - D / 2 + 0.33, { shadow: false }); mesh(new THREE.BoxGeometry(W - 0.6, 0.08, 0.06), M.gold, X, y, Z + D / 2 - 0.33, { shadow: false }); mesh(new THREE.BoxGeometry(0.06, 0.08, D - 0.6), M.gold, X - W / 2 + 0.33, y, Z, { shadow: false }); }
+  for (const sz of [-1.45, 1.45]) { mesh(new THREE.BoxGeometry(0.4, 3.2, 0.24), M.gold, X + W / 2 + 0.02, 1.6, Z + sz); }
+  for (const sd of [-1, 1]) outlined(mesh(new THREE.BoxGeometry(0.1, 2.9, 1.2), M.darkglass, X + W / 2 + 0.55, 1.45, Z + sd * 1.55, { rot: [0, sd * 1.2, 0] }), 1.03);     // double doors, swung open
+  mesh(new THREE.BoxGeometry(0.4, 0.3, 3.2), M.gold, X + W / 2 + 0.02, 3.1, Z); addBox(X + W / 2 - 0.15, 3.2, Z, 0.3, H - 3.2, 2.8, M.casino, { solid: false });   // the bit of wall over the door
+  const marquee = mesh(new THREE.BoxGeometry(1.3, 1.5, 7.5), M.vanDark, X + W / 2 + 0.4, H + 1.0, Z);
+  const n1 = makeLabel('LUCKY LOAF', '#ff3fb0', 640, 120, '#14121a'); n1.position.set(X + W / 2 + 1.06, H + 1.28, Z); n1.rotation.y = Math.PI / 2; n1.scale.set(7.0, 1.0, 1); scene.add(n1);
+  const n2 = makeLabel('C A S I N O', '#ffd23f', 640, 90, '#14121a'); n2.position.set(X + W / 2 + 1.06, H + 0.5, Z); n2.rotation.y = Math.PI / 2; n2.scale.set(7.0, 0.55, 1); scene.add(n2);
+  world.neon = []; for (let k = 0; k < 13; k++) world.neon.push(mesh(new THREE.SphereGeometry(0.11, 8, 6), k % 2 ? M.neon : M.neonOff, X + W / 2 + 1.1, H + 1.95, Z - 3.6 + k * 0.6, { shadow: false }));
+  const n3 = makeLabel('21+ (ish)', '#faf6ec', 256, 70, '#2a2a33', 'Patrick Hand'); n3.position.set(X + W / 2 + 0.24, 3.55, Z); n3.rotation.y = Math.PI / 2; n3.scale.set(1.4, 0.36, 1); scene.add(n3);
+  const n4 = makeLabel('the house always wins. the house is a van.', '#ff3fb0', 640, 60, '#14121a', 'Patrick Hand'); n4.position.set(X + W / 2 + 0.03, 4.05, Z); n4.rotation.y = Math.PI / 2; n4.scale.set(5.6, 0.5, 1); scene.add(n4);
+  const die = outlined(mesh(new THREE.BoxGeometry(1.3, 1.3, 1.3), M.frame, X - 3, H + 1.2, Z + 3.5, { rot: [0.3, 0.6, 0.2] }), 1.04); for (const [dx, dy] of [[-0.3, 0.3], [0.3, -0.3], [0, 0], [-0.3, -0.3], [0.3, 0.3]]) mesh(new THREE.SphereGeometry(0.1, 6, 6), M.pupil, dx, dy, 0.66, { parent: die, shadow: false });
+  plane(2.2, 15.6, M.cap, X + W / 2 + 7.9, 0.016, Z, Math.PI / 2);                                                                     // red carpet from the sidewalk to the door
+  for (const sx of [X - 4, X + 4]) { const l = new THREE.PointLight(0xffd9a0, 42, 15, 1.6); l.position.set(sx, H - 0.5, Z); scene.add(l); outlined(mesh(new THREE.TorusGeometry(0.6, 0.05, 6, 20), M.gold, sx, H - 0.6, Z, { rot: [Math.PI / 2, 0, 0], shadow: false }), 1.05); for (let k = 0; k < 6; k++) mesh(new THREE.SphereGeometry(0.08, 6, 6), M.lamp, sx + Math.cos(k / 6 * Math.PI * 2) * 0.6, H - 0.7, Z + Math.sin(k / 6 * Math.PI * 2) * 0.6, { shadow: false }); mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6), M.gold, sx, H - 0.3, Z, { shadow: false }); }
+  // the bar along the back wall. water is $4. nobody has bought water.
+  addBox(X - W / 2 + 1.4, 0, Z, 0.9, 1.1, 6, M.desk); mesh(new THREE.BoxGeometry(1.1, 0.08, 6.2), M.gold, X - W / 2 + 1.4, 1.14, Z);
+  addBox(X - W / 2 + 0.45, 1.6, Z, 0.3, 0.08, 5.5, M.desk, { solid: false }); for (let k = 0; k < 9; k++) outlined(mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.42, 8), M.bottle[k % 4], X - W / 2 + 0.45, 1.85, Z - 2.4 + k * 0.6), 1.06);
+  const bs = makeLabel('BAR · water $4 · loaf $9', '#ffd23f', 512, 80, '#14121a', 'Patrick Hand'); bs.position.set(X - W / 2 + 0.32, 2.7, Z); bs.rotation.y = Math.PI / 2; bs.scale.set(3.6, 0.5, 1); scene.add(bs);
+  const in1 = makeLabel('LUCKY LOAF', '#e8c04a', 640, 120, '#14121a'); in1.position.set(X - W / 2 + 0.32, 3.6, Z); in1.rotation.y = Math.PI / 2; in1.scale.set(5, 0.8, 1); scene.add(in1);
+  const in2 = makeLabel('no refunds. no loaves.', '#f4f4f7', 512, 70, '#14121a', 'Patrick Hand'); in2.position.set(X + 1, 3.4, Z - D / 2 + 0.33); in2.scale.set(3.2, 0.45, 1); scene.add(in2);
+  const in3 = makeLabel('gambling problem? deliver boxes.', '#ff3fb0', 512, 70, '#14121a', 'Patrick Hand'); in3.position.set(X + 1, 3.4, Z + D / 2 - 0.33); in3.rotation.y = Math.PI; in3.scale.set(3.4, 0.45, 1); scene.add(in3);
+  buildBlackjack(X - 2, Z - 2.8); buildRoulette(X + 3, Z + 2.8);
+  for (let i = 0; i < 3; i++) buildSlot(X - 5.6 + i * 1.5, Z - D / 2 + 0.75, i);
+}
+function buildBlackjack(x, z) {                                                              // half-moon felt: dealer on the flat side (−z), you on the round side (+z)
+  addBox(x, 0, z, 2.6, 0.72, 1.6, M.desk);
+  const felt = mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.1, 32, 1, false, 0, Math.PI), M.felt, x, 0.86, z, { rot: [0, -Math.PI / 2, 0] });
+  outlined(mesh(new THREE.TorusGeometry(1.62, 0.08, 8, 32, Math.PI), M.desk, x, 0.9, z, { rot: [Math.PI / 2, 0, 0] }), 1.05); addBox(x, 0.84, z - 0.02, 3.3, 0.12, 0.22, M.desk, { solid: false });
+  colliders.push({ min: { x: x - 1.6, y: 0, z: z - 0.2 }, max: { x: x + 1.6, y: 0.9, z: z + 1.6 } });
+  mesh(new THREE.BoxGeometry(0.34, 0.14, 0.5), M.vanDark, x + 1.15, 0.98, z - 0.35);                                                      // the shoe
+  const t1 = makeLabel('BLACKJACK · $5 to $50 · pays 3 to 2', '#faf6ec', 512, 60, '#00000000', 'Patrick Hand'); t1.material.transparent = true; t1.rotation.set(-Math.PI / 2, 0, 0); t1.position.set(x, 0.92, z + 0.05); t1.scale.set(2.2, 0.26, 1); scene.add(t1);
+  const house = new THREE.Group(); scene.add(house); chipStack(house, x - 1.15, 0.91, z - 0.3, 12, M.chip.gold); chipStack(house, x - 0.85, 0.91, z - 0.4, 9, M.chip.black);
+  const dealer = makeDealer(x, z - 1.15, 0, 0xc9302c);
+  const v = { kind: 'bj', x, z, game: casino.bj, dealer, cards: [], hands: -1, bet: new THREE.Group(), cash: new THREE.Group(), label: tableLabel(x + 1.7, 1.45, z - 0.3), lastCash: -1, lastBet: -1, lastPhase: '' };
+  scene.add(v.bet, v.cash); casino.views.push(v);
+  casino.seats.push({ kind: 'bj', x, z: z + 2.3, yaw: Math.PI, hint: 'sit down. 21.', view: v });
+}
+function buildRoulette(x, z) {                                                               // the wheel on the left, the felt with three bets on the right, the croupier across
+  addBox(x, 0, z, 3.8, 0.84, 1.8, M.desk); mesh(new THREE.BoxGeometry(4.0, 0.08, 2.0), M.felt, x, 0.86, z);
+  const feltTex = texCanvas(512, 256, (g, w, h) => { g.fillStyle = '#1f7a3e'; g.fillRect(0, 0, w, h); const zones = [['RED', '#c9302c'], ['BLACK', '#1a1a1f'], ['0', '#2e8b3a']]; zones.forEach(([t, c], i) => { g.fillStyle = c; g.fillRect(12 + i * 166, 24, 150, h - 48); g.strokeStyle = '#e8c04a'; g.lineWidth = 4; g.strokeRect(12 + i * 166, 24, 150, h - 48); g.fillStyle = '#faf6ec'; g.font = 'bold 44px "CF Sketch", sans-serif'; g.textAlign = 'center'; g.fillText(t, 87 + i * 166, h / 2 + 16); }); });
+  const feltZones = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.0), new THREE.MeshBasicMaterial({ map: feltTex })); feltZones.rotation.set(-Math.PI / 2, 0, Math.PI); feltZones.position.set(x + 0.8, 0.905, z); scene.add(feltZones);
+  const wheelTex = texCanvas(512, 512, (g, w, h) => { const c = w / 2, R = c - 6, step = Math.PI * 2 / WHEEL.length; g.fillStyle = '#6a3a1a'; g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fill(); WHEEL.forEach((n, i) => { const a0 = i * step - step / 2; g.beginPath(); g.moveTo(c, c); g.arc(c, c, R - 14, a0, a0 + step); g.closePath(); g.fillStyle = colorOf(n) === 'red' ? '#c9302c' : colorOf(n) === 'black' ? '#1a1a1f' : '#2e8b3a'; g.fill(); g.strokeStyle = '#e8c04a'; g.lineWidth = 2; g.stroke(); g.save(); g.translate(c + Math.cos(a0 + step / 2) * (R - 44), c + Math.sin(a0 + step / 2) * (R - 44)); g.rotate(a0 + step / 2 + Math.PI / 2); g.fillStyle = '#fff'; g.font = 'bold 22px sans-serif'; g.textAlign = 'center'; g.fillText(n, 0, 8); g.restore(); }); g.beginPath(); g.arc(c, c, R * 0.42, 0, Math.PI * 2); g.fillStyle = '#e8c04a'; g.fill(); g.beginPath(); g.arc(c, c, R * 0.28, 0, Math.PI * 2); g.fillStyle = '#6a3a1a'; g.fill(); });
+  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 0.88, 0.14, 48), [M.wheelWood, new THREE.MeshBasicMaterial({ map: wheelTex }), M.wheelWood]); wheel.position.set(x - 1.15, 0.97, z); wheel.castShadow = true; scene.add(wheel);
+  outlined(mesh(new THREE.TorusGeometry(0.92, 0.06, 8, 40), M.gold, x - 1.15, 1.02, z, { rot: [Math.PI / 2, 0, 0], shadow: false }), 1.04);
+  mesh(new THREE.ConeGeometry(0.06, 0.16, 8), M.gold, x - 1.15, 1.1, z - 0.98, { rot: [-Math.PI / 2, 0, 0], shadow: false });                   // the marker, on your side: the pocket under it wins
+  const ball = mesh(new THREE.SphereGeometry(0.06, 10, 8), M.frame, x - 1.15, 1.12, z - 0.72);
+  const t1 = makeLabel('ROULETTE · red or black 2× · zero 36×', '#faf6ec', 512, 60, '#00000000', 'Patrick Hand'); t1.material.transparent = true; t1.rotation.set(-Math.PI / 2, 0, Math.PI); t1.position.set(x + 0.8, 0.915, z + 0.75); t1.scale.set(2.0, 0.22, 1); scene.add(t1);
+  const dealer = makeDealer(x - 0.3, z + 1.5, Math.PI, 0x2e8b3a);
+  const v = { kind: 'rl', x, z, game: casino.rl, dealer, wheel, ball, ang: 0, ballAng: 0, ballR: 0.72, spin: null, chips: { red: new THREE.Group(), black: new THREE.Group(), green: new THREE.Group() }, label: tableLabel(x - 1.15, 1.85, z - 0.5), lastBets: '', cash: new THREE.Group(), lastCash: -1 };
+  scene.add(v.chips.red, v.chips.black, v.chips.green, v.cash); casino.views.push(v);
+  casino.seats.push({ kind: 'rl', x: x + 1.8, z: z - 2.2, yaw: 0, hint: 'sit down. spin.', view: v });     // at the far end of the felt: the camera sits over the felt, the wheel to its right
+}
+function buildSlot(x, z, idx) {                                                              // a cabinet against the wall, facing +z. pull, pray, repeat
+  addBox(x, 0, z, 1.1, 2.15, 0.8, M.slotBody);
+  mesh(new THREE.BoxGeometry(0.94, 0.72, 0.06), M.vanDark, x, 1.38, z + 0.4); mesh(new THREE.BoxGeometry(0.96, 0.76, 0.02), M.gold, x, 1.38, z + 0.38, { shadow: false });
+  const reels = [0, 1, 2].map(i => { const r = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.42), symMat(['loaf', '$', 'gnome'][i])); r.position.set(x - 0.3 + i * 0.3, 1.38, z + 0.44); scene.add(r); return r; });
+  const lever = new THREE.Group(); lever.position.set(x + 0.62, 1.3, z + 0.15); scene.add(lever); mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8), M.metal, 0, 0.3, 0, { parent: lever }); outlined(mesh(new THREE.SphereGeometry(0.09, 10, 8), M.cap, 0, 0.62, 0, { parent: lever }), 1.08);
+  const light = mesh(new THREE.SphereGeometry(0.13, 10, 8), M.hazard, x, 2.28, z, { shadow: false });
+  const sign = makeLabel('LOAF-O-MATIC', '#ffd23f', 384, 80, '#14121a'); sign.position.set(x, 1.95, z + 0.41); sign.scale.set(0.95, 0.24, 1); scene.add(sign);
+  const sub = makeLabel(['pays out. sometimes.', 'lucky one. allegedly.', 'out of order. kidding.'][idx], '#faf6ec', 384, 60, '#14121a', 'Patrick Hand'); sub.position.set(x, 0.85, z + 0.41); sub.scale.set(0.95, 0.16, 1); scene.add(sub);
+  mesh(new THREE.BoxGeometry(0.7, 0.1, 0.3), M.vanDark, x, 0.6, z + 0.5);                                                                     // the tray. coins go in. coins do not come out
+  const v = { kind: 'slot', x, z, game: casino.slots[idx], reels, lever, light, spin: null, leverK: spring(50, 6), label: tableLabel(x, 2.7, z + 0.4) };
+  casino.views.push(v);
+  casino.seats.push({ kind: 'slot', x: x - 0.55, z: z + 1.25, yaw: Math.PI, hint: 'pull the lever. sure.', view: v });   // a step left of the reels, so the camera over your right shoulder sees them
+}
+function nearestSeat(who) { let best = null, bd = 1.7; for (const st of casino.seats) { const d = Math.hypot(who.pos.x - st.x, who.pos.z - st.z); if (d < bd) { bd = d; best = st; } } return best; }
+function sitAt(seat) {
+  world.seat = seat; courier.teleport(seat.x, seat.z, seat.yaw); clearInput();
+  world.camSnap = true;
+  $('cz').classList.add('on'); czPaint(); sfx('door');
+  if (seat.view.dealer && Math.random() < 0.6) seat.view.dealer.say(pick(['welcome. sit. lose.', 'minimum is five. dignity is extra.', 'the house always wins. i am the house.', 'no shirt, no shoes, no problem. no money, problem.']));
+}
+function leaveSeat() { if (!world.seat) return; const st = world.seat; world.seat = null; $('cz').classList.remove('on'); courier.teleport(st.x, st.z + (st.yaw === Math.PI ? 0.6 : -0.6)); }
+/* the seat panel: buttons for the game you're sitting at. the table does the showing */
+function czPaint() {
+  const st = world.seat; if (!st) return; const v = st.view, g = v.game, s = g.state, body = $('cz-body');
+  const bets = (cur, attr) => BETS.map(b => `<button data-${attr}="${b}" class="${cur === b ? 'on' : ''}">$${b}</button>`).join('');
+  $('cz-title').textContent = st.kind === 'bj' ? 'twenty-one' : st.kind === 'rl' ? 'roulette' : 'loaf-o-matic';
+  if (st.kind === 'slot') body.innerHTML = `<div class="r">bet ${bets(s.bet, 'bet')}</div><div class="r"><button class="go" data-a="spin" ${s.spinning ? 'disabled' : ''}>pull</button></div><div class="m">${esc(s.msg)}</div>`;
+  else if (st.kind === 'bj') body.innerHTML = s.phase === 'bet'
+    ? `<div class="r">bet ${bets(s.bet, 'bet')}</div><div class="r"><button class="go" data-a="deal">deal</button></div><div class="m">${esc(s.msg)}</div>`
+    : `<div class="r">you <b class="sk">${handValue(s.p)}</b> · dealer <b class="sk">${s.phase === 'done' ? handValue(s.h) : '?'}</b> · bet $${s.bet}</div><div class="r">${s.phase === 'done' ? '<button class="go" data-a="again">again</button>' : `<button data-a="hit">hit</button><button data-a="stand">stand</button><button data-a="double" ${g.canDouble() ? '' : 'disabled'}>double</button>`}</div><div class="m">${esc(s.msg)}</div>`;
+  else body.innerHTML = `<div class="r">chip ${bets(s.chip, 'chip')}</div><div class="r"><button class="red" data-z="red" ${s.spinning ? 'disabled' : ''}>red $${s.bets.red}</button><button class="blk" data-z="black" ${s.spinning ? 'disabled' : ''}>black $${s.bets.black}</button><button class="grn" data-z="green" ${s.spinning ? 'disabled' : ''}>zero $${s.bets.green}</button></div><div class="r"><button class="go" data-a="spin" ${s.spinning ? 'disabled' : ''}>spin</button><button data-a="clear" ${s.spinning ? 'disabled' : ''}>take chips back</button></div><div class="m">${esc(s.msg)}${s.last.length ? ' · last: ' + s.last.slice(0, 6).join(' ') : ''}</div>`;
+}
+$('cz').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || !world.seat) return; const v = world.seat.view, g = v.game, s = g.state;
+  if (b.dataset.bet) g.setBet(+b.dataset.bet); if (b.dataset.chip) g.setChip(+b.dataset.chip); if (b.dataset.z) g.place(b.dataset.z);
+  const a = b.dataset.a;
+  if (a === 'deal') { if (g.deal()) { v.dealer.deal.v -= 8; } }
+  else if (a === 'hit') { g.hit(); v.dealer.deal.v -= 8; } else if (a === 'stand') { g.stand(); v.dealer.nod.v += 6; } else if (a === 'double') { g.double(); v.dealer.deal.v -= 10; } else if (a === 'again') g.reset();
+  else if (a === 'clear') g.clear();
+  else if (a === 'spin' && world.seat.kind === 'slot') { const r = g.spin(); if (r) { v.spin = { t: 0, final: r.final, stops: [0.9, 1.35, 1.8], done: false }; v.leverK.v += 14; sfx('crash', 3); } }
+  // the cylinder cap maps canvas angle = −world angle, so pocket idx sits under the marker (−z) at idx*step + π
+  else if (a === 'spin' && world.seat.kind === 'rl') { const r = g.spin(); if (r) { const step = Math.PI * 2 / WHEEL.length, idx = WHEEL.indexOf(r.n); let end = idx * step + Math.PI; while (end < v.ang + 4 * Math.PI * 2) end += Math.PI * 2; v.spin = { t: 0, dur: 4.2, start: v.ang, end, n: r.n }; v.dealer.deal.v -= 8; sfx('whoosh'); } }
+  sfx('step', 6); czPaint();
+});
+function updateCasino(dt) {
+  const inside = Math.abs(courier.pos.x - CZ.X) < CZ.W / 2 && Math.abs(courier.pos.z - CZ.Z) < CZ.D / 2;
+  let near = world.seat ? world.seat.view : null, nd = 3.2;                                    // one label at a time: the table you're at, or the nearest one
+  if (!near) for (const v of casino.views) { const d = Math.hypot(courier.pos.x - v.x, courier.pos.z - v.z); if (d < nd) { nd = d; near = v; } }
+  for (const v of casino.views) {
+    v.label.visible = inside && v === near;
+    if (v.dealer && v.dealer.bubble) v.dealer.bubble.visible = inside;
+    if (v.dealer) v.dealer.update(dt);
+    const s = v.game.state;
+    if (v.kind === 'bj') {
+      if (v.hands !== s.hands) { v.hands = s.hands; for (const c of v.cards) scene.remove(c.mesh); v.cards = []; }
+      const rows = [['h', s.h, v.z - 0.42], ['p', s.p, v.z + 0.5]];
+      for (const [row, hand, rz] of rows) hand.forEach((card, i) => {
+        const key = row + i; let cm = v.cards.find(k => k.key === key);
+        if (!cm) { cm = { key, mesh: makeCardMesh(card), t: 0 }; cm.mesh.position.set(v.x + 1.15, 1.1, v.z - 0.35); v.cards.push(cm); v.dealer.deal.v -= 9; sfx('step', 5); }
+        const n = hand.length, tx = v.x - 0.32 * (n - 1) / 2 + i * 0.32, hidden = row === 'h' && i === 1 && s.phase === 'play';
+        cm.t = Math.min(1, cm.t + dt * 4); const tgt = _a.set(tx, 0.93 + i * 0.004, rz);
+        cm.mesh.position.lerp(tgt, Math.min(1, 9 * dt)); cm.mesh.position.y += (1 - cm.t) * 0.25;
+        cm.mesh.rotation.z += angleDelta(cm.mesh.rotation.z, hidden ? Math.PI : 0) * Math.min(1, 8 * dt); cm.mesh.rotation.y = i * 0.7 % 0.3 - 0.15;                                                   // both rows read from your side of the felt
+      });
+      if (v.lastBet !== s.bet || v.lastPhase !== s.phase) { chipStack(v.bet, v.x + 0.95, 0.91, v.z + 0.75, s.phase === 'bet' ? 0 : Math.max(1, Math.round(s.bet / 5)), M.chip.red); v.lastBet = s.bet; }
+      if (v.lastPhase !== s.phase) { if (s.phase === 'done') { v.dealer.nod.v += s.win ? -4 : 6; v.dealer.say(s.win ? pick(['fine.', 'take it. go.', 'beginner\'s luck. still luck.']) : pick(['house.', 'that\'s a shame.', 'again?', 'the van thanks you.'])); } v.lastPhase = s.phase; }
+      if (v.lastCash !== save.cash) { chipStack(v.cash, v.x + 1.35, 0.91, v.z + 1.05, Math.floor(save.cash / 10), M.chip.blue); v.lastCash = save.cash; }
+      setLabel(v.label, s.phase === 'bet' ? `blackjack · $${save.cash} in the drawer` : `you ${handValue(s.p)} · dealer ${s.phase === 'done' ? handValue(s.h) : '?'} · $${save.cash}`);
+    } else if (v.kind === 'rl') {
+      if (v.spin) {
+        const sp = v.spin; sp.t += dt; const t = Math.min(1, sp.t / sp.dur), e = 1 - Math.pow(1 - t, 3);
+        v.ang = sp.start + (sp.end - sp.start) * e; v.ballAng = -(1 - e) * 30; v.ballR = 0.8 - Math.min(1, t / 0.85) * 0.14;
+        if (t >= 0.85) { v.ballAng = 0; }
+        if (t >= 1) { v.spin = null; v.game.settle(); czPaint(); v.dealer.nod.v += s.win ? -5 : 6; v.dealer.say(s.win ? (s.result.color === 'green' ? 'zero. i have never seen that. i have seen that.' : pick(['fine. fine.', 'the wheel likes you. the wheel is wrong.'])) : pick([`${s.result.n}. ${s.result.color}. no.`, 'house.', 'the wheel is also a van.'])); sfx(s.win ? 'ding' : 'thud', 5); }
+        else if (Math.floor(sp.t * 14) !== Math.floor((sp.t - dt) * 14) && t < 0.85) sfx('step', 3);
+      }
+      v.wheel.rotation.y = v.ang; v.ball.position.set(v.x - 1.15 + Math.sin(v.ballAng) * v.ballR, 1.12, v.z - Math.cos(v.ballAng) * v.ballR);
+      const bk = `${s.bets.red}|${s.bets.black}|${s.bets.green}`;
+      if (v.lastBets !== bk) { v.lastBets = bk; chipStack(v.chips.red, v.x + 0.8 + 0.66, 0.91, v.z, Math.round(s.bets.red / 5), M.chip.red); chipStack(v.chips.black, v.x + 0.8, 0.91, v.z, Math.round(s.bets.black / 5), M.chip.white); chipStack(v.chips.green, v.x + 0.8 - 0.66, 0.91, v.z, Math.round(s.bets.green / 5), M.chip.gold); }
+      if (v.lastCash !== save.cash) { chipStack(v.cash, v.x + 1.75, 0.91, v.z + 0.7, Math.floor(save.cash / 10), M.chip.blue); v.lastCash = save.cash; }
+      setLabel(v.label, s.spinning ? 'no more bets.' : s.result ? `last ${s.result.n} ${s.result.color} · $${save.cash}` : `roulette · $${save.cash} in the drawer`);
+    } else {
+      springTo(v.leverK, 0, dt); v.lever.rotation.x = -v.leverK.x * 0.05;
+      if (v.spin) {
+        const sp = v.spin; sp.t += dt;
+        v.reels.forEach((r, i) => { if (sp.t < sp.stops[i]) { if (Math.floor(sp.t * 12) !== Math.floor((sp.t - dt) * 12)) r.material = symMat(pick(SLOT_SYMBOLS)[0]); } else if (r.material !== symMat(sp.final[i])) { r.material = symMat(sp.final[i]); sfx('thud', 3); } });
+        if (sp.t >= sp.stops[2] + 0.2) { v.spin = null; v.game.settle(); czPaint(); v.flash = s.win ? 2.5 : 0; sfx(s.win ? 'ding' : 'squeak'); }
+      }
+      if (v.flash > 0) { v.flash -= dt; v.light.material = Math.floor(v.flash * 8) % 2 ? M.neon : M.hazard; } else v.light.material = M.hazard;
+      setLabel(v.label, s.spinning ? '...' : s.win ? `$${s.win} · $${save.cash} left` : `$${save.cash} in the drawer`);
+    }
+  }
 }
 /* ── la peace: a blue rock that looks like a diamond. it is not a diamond. a monk will explain ── */
-const LAPIS_SPOTS = [[-11.5, 18], [11.5, -7.5], [-11, -25.5], [22, 12], [-23, -13], [26, -47], [8.5, 22.5]];
+const LAPIS_SPOTS = [[-11.5, 18], [11.5, -7.5], [-11, -25.5], [22, 12], [-23, 4], [26, -47], [8.5, 22.5]];
 function buildLapis() {
   const g = new THREE.Group(); scene.add(g); g.visible = false;
   for (let k = 0; k < 5; k++) { const c = outlined(mesh(new THREE.OctahedronGeometry(0.18 + rnd(0, 0.12), 0), M.lapis, rnd(-0.22, 0.22), 0.16 + rnd(0, 0.18), rnd(-0.22, 0.22), { parent: g, rot: [rnd(0, 1), rnd(0, 3), rnd(0, 1)] }), 1.08); c.scale.y = 1.5; }
@@ -790,6 +981,7 @@ function updateYard(dt) {
   for (const s of sprinklers) { if (s.pool) { s.head.rotation.y += dt * 0.4; s.head.position.y = 0.33 + Math.sin(performance.now() / 600) * 0.02; } else s.head.rotation.y += dt * 2.6; }
   for (const t of trampolines) { springTo(t.squash, 0, dt); t.mat.position.y = 0.45 + t.squash.x * 0.02; t.mat.scale.set(1 - t.squash.x * 0.01, 1, 1 - t.squash.x * 0.01); }
   for (const p of potholes) if (p.cd > 0) p.cd -= dt;
+  if (world.neon) { const on = Math.floor(performance.now() / 500) % 2; world.neon.forEach((b, i) => { b.material = (i % 2 === on) ? M.neon : M.neonOff; }); }
   for (const p of puffs) { if (p.life <= 0) continue; p.life -= dt; p.m.position.addScaledVector(p.vel, dt); p.m.scale.setScalar(0.25 + (1.2 - p.life) * 0.7); p.m.material.opacity = Math.max(0, p.life / 1.2) * 0.5; if (p.life <= 0) p.m.visible = false; }
 }
 
@@ -977,7 +1169,7 @@ class Courier {
   setName(n) { this.name = n; const old = this.nameSprite.material.map; this.nameSprite.material.map = nameTex(n || 'new guy'); if (old) old.dispose(); }
   setVisible(v) { this.group.visible = v; this.nameSprite.visible = v; for (const m of [this.legL, this.legR, this.armL, this.armR]) m.setVisible(v); for (const m of [this.footL, this.footR, this.handL, this.handR]) m.visible = v; }
   dispose() { scene.remove(this.group, this.nameSprite); for (const m of [this.legL, this.legR, this.armL, this.armR]) { scene.remove(m.mesh, m.outline); } for (const m of [this.footL, this.footR, this.handL, this.handR]) scene.remove(m); }
-  teleport(x, z, yaw) { this.pos.set(x, 0, z); this.vel.set(0, 0, 0); if (yaw !== undefined) this.yaw = yaw; this.feet[0].pos.set(x - 0.2, 0, z); this.feet[1].pos.set(x + 0.2, 0, z); for (const h of this.hands) { h.p.set(x, 1, z); h.v.set(0, 0, 0); } if (!this.remote) world.camSnap = true; }
+  teleport(x, z, yaw) { this.pos.set(x, 0, z); this.vel.set(0, 0, 0); if (yaw !== undefined) this.yaw = yaw; for (let i = 0; i < 2; i++) { const f = this.feet[i]; f.pos.set(x + (i ? 0.2 : -0.2), 0, z); f.from.copy(f.pos); f.to.copy(f.pos); f.t = 1; } for (const h of this.hands) { h.p.set(x, 1, z); h.v.set(0, 0, 0); } if (!this.remote) world.camSnap = true; }
   update(dt, input, camYaw) { this.simulate(dt, input, camYaw); this.animate(dt); }
   /* ── physics: acceleration, jump, gravity, the world, hazards ── */
   simulate(dt, input, camYaw) {
@@ -1594,7 +1786,7 @@ function updateCarryHud() {
 function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
 /* ── the shift ── */
-const world = { rain: false, running: false, roam: false, locker: false, time: 0, limit: 240, pay: 0, delivered: 0, total: 6, events: [], swapped: false, wetToast: false, peace: 0, pcOpen: false, monk: null };
+const world = { rain: false, running: false, roam: false, locker: false, seat: null, time: 0, limit: 240, pay: 0, delivered: 0, total: 6, events: [], swapped: false, wetToast: false, peace: 0, pcOpen: false, monk: null };
 const courier = new Courier();
 const remotes = [];                                                                       // other players' couriers (multiplayer)
 /* Supabase: same project and the same shared session key as every other page on the site. Only used for online signalling here. */
@@ -1719,6 +1911,8 @@ function nearest(list, from, maxD) { let best = null, bd = maxD; for (const x of
 const nearSpot = (who, sp, r) => sp && Math.hypot(who.pos.x - sp.x, who.pos.z - sp.z) < r;
 function interact(who = courier) {
   if (!world.running && !world.roam) return;
+  if (who === courier && world.seat) { leaveSeat(); return; }
+  if (who === courier && !who.carry && van.driver !== who) { const st = nearestSeat(who); if (st) { sitAt(st); return; } }
   if (who === courier && net.on && !net.host) { netAct('interact'); return; }          // clients ask the host; the host decides
   if (van.driver === who) {
     van.driver = null; van.speed *= 0.5; who.setVisible(true);
@@ -1733,7 +1927,6 @@ function interact(who = courier) {
   }
   if (who === courier && !net.on || net.host) {                                       // things only the local player (or host, for itself) can walk into
     if (who === courier && nearSpot(who, world.pcSpot, 1.7)) { openPC(); return; }
-    if (who === courier && nearSpot(who, world.casinoSpot, 2.0)) { openPC('casino'); return; }
   }
   if (world.lapis && !world.lapis.taken && Math.hypot(who.pos.x - world.lapis.x, who.pos.z - world.lapis.z) < 1.8) { takeLapis(who); return; }
   if (!van.driver && who.pos.distanceTo(door) < 2.2 && Math.abs(van.speed) < 0.5) { van.driver = who; who.setVisible(false); say(who, "you're driving. W gas, S brake, A D wobble, H honk, E to bail."); return; }
@@ -1790,7 +1983,8 @@ function hintText() {
   if (!world.running && !world.roam) return '';
   if (van.driver === courier) return '<kbd>W</kbd> gas · <kbd>S</kbd> brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>H</kbd> honk · <kbd>E</kbd> bail out';
   if (!courier.carry && nearSpot(courier, world.pcSpot, 1.7)) return '<kbd>E</kbd> sit at the pc';
-  if (!courier.carry && nearSpot(courier, world.casinoSpot, 2.0)) return '<kbd>E</kbd> go in. lose money.';
+  if (world.seat) return '';
+  if (!courier.carry && nearestSeat(courier)) return `<kbd>E</kbd> ${nearestSeat(courier).hint}`;
   if (world.lapis && !world.lapis.taken && Math.hypot(courier.pos.x - world.lapis.x, courier.pos.z - world.lapis.z) < 1.8) return '<kbd>E</kbd> is that a diamond';
   if (!world.running) return world.roam && net.on ? (net.host ? 'lobby · <kbd>E</kbd> at the pc to start the shift · <kbd>Esc</kbd> leave' : 'lobby · waiting for the host to clock in · <kbd>Esc</kbd> leave') : '<kbd>Esc</kbd> back to the work order · <kbd>L</kbd> la peace';
   const rear = van.rearPos(), door = van.doorPos();
@@ -1816,7 +2010,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyE') interact();
   if (e.code === 'KeyH') honk();
   if (e.code === 'KeyL' && (world.running || world.roam) && !world.pcOpen) emote(courier, 'peace');
-  if (e.code === 'Escape') { if (world.pcOpen) closePC(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
+  if (e.code === 'Escape') { if (world.pcOpen) closePC(); else if (world.seat) leaveSeat(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
 });
 addEventListener('keyup', e => { if (KEY[e.code]) input[KEY[e.code]] = 0; if (e.code === 'Space') input.jump = 0; });
 // keys that were down when the window lost focus never send their keyup — the courier would walk into the sunset on his own
@@ -1838,6 +2032,11 @@ function updateCamera(dt) {
   const dist = camState.dist * (driving ? 1.7 : 1);
   const off = _b.set(Math.sin(camState.yaw) * Math.cos(camState.pitch), Math.sin(camState.pitch), Math.cos(camState.yaw) * Math.cos(camState.pitch)).multiplyScalar(dist);
   const want = _c.copy(target).add(off); if (want.y < 0.6) want.y = 0.6;
+  if (world.seat && !driving) {                                                                 // seated: over your right shoulder, looking at the felt
+    const st = world.seat, v = st.view, fx = v.x - st.x, fz = v.z - st.z, fl = Math.hypot(fx, fz) || 1, ux = fx / fl, uz = fz / fl, slot = st.kind === 'slot';
+    target.set(v.x - ux * (slot ? 0.5 : 0.3), slot ? 1.35 : 1.0, v.z - uz * (slot ? 0.5 : 0.3));      // the slot target sits just in front of the cabinet, not inside its collider
+    want.set(st.x - ux * (slot ? 1.6 : 1.3) - uz * (slot ? 2.2 : 1.8), slot ? 2.9 : 3.5, st.z - uz * (slot ? 1.6 : 1.3) + ux * (slot ? 2.2 : 1.8));
+  }
   let clipped = false;                                                                        // walk from the courier towards the camera; stop before the first wall
   for (let k = 1; k <= 14; k++) { _d.lerpVectors(target, want, k / 14); if (solidAt(_d)) { want.lerpVectors(target, want, Math.max(0.12, (k - 1) / 14 - 0.03)); clipped = true; break; } }
   if (world.camSnap) { world.camSnap = false; camPos.copy(want); camLook.copy(target); }                    // after a teleport the camera arrives with you, not three seconds later through a wall
@@ -1855,7 +2054,7 @@ function frame(now) {
     acc -= STEP;
     const authority = !net.on || net.host;                                              // the host (or a solo player) runs the world; clients run themselves and watch
     if (world.running || world.roam) {
-      const live = world.pcOpen || world.locker ? { f: 0, b: 0, l: 0, r: 0 } : input;
+      const live = world.pcOpen || world.locker || world.seat ? { f: 0, b: 0, l: 0, r: 0 } : input;
       if (world.locker) courier.yaw += 0.35 * STEP;
       if (world.running && authority) { world.time -= STEP; if (world.time <= 0) { world.time = 0; endShift('time'); break; } }
       updateVan(STEP, van.driver === courier ? live : { f: 0, b: 0, l: 0, r: 0 });
@@ -1872,7 +2071,7 @@ function frame(now) {
   }
   if (rain) updateRain(dt);
   for (const c of clouds) { c.g.position.x += c.v * dt; if (c.g.position.x > 110) c.g.position.x = -110; }
-  updateYard(dt); updateSun(dt); updatePeace(dt); for (const f of birds) f.update(dt);
+  updateYard(dt); updateSun(dt); updatePeace(dt); updateCasino(dt); for (const f of birds) f.update(dt);
   for (const b of boxes) b.render();
   updateCamera(dt);
   if (world.running || world.roam) { updateHud(); $('hint').innerHTML = hintText(); }
@@ -2203,7 +2402,8 @@ if (net.lobby) net.lobby.onChange(() => os.refreshOnline());
 /* ── the PC: MirrorOS on top of the world ── */
 const os = createOS({
   close: () => closePC(), openLocker: () => openLocker(), name: myName,
-  cash: () => save.cash, addCash: n => { save.cash = Math.max(0, Math.round(save.cash + n)); persist(); paintMenu(); },
+  cash: () => save.cash, addCash: n => bank.add(n),
+  games: { slots: casino.slots[0], bj: casino.bj, rl: casino.rl },                              // the PC windows and the tables share one state: what the felt shows is what the window shows
   loadNotes: () => save.notes || '', saveNotes: t => { save.notes = String(t).slice(0, 4000); persist(); },
   startShift: () => { if (net.on && !net.host) return toast('only the host clocks everyone in.'); closePC(true); startShift(); },
   net: { state: netState, rooms: () => net.lobby ? net.lobby.list() : [], host: hostRoom, join: joinRoom, leave: () => netLeave(), chat: sendChat },
@@ -2217,7 +2417,7 @@ function closePC(silent) { if (!world.pcOpen) return; world.pcOpen = false; os.c
 if (!LOCAL_SIG && new URLSearchParams(location.search).get('join')) { const code = new URLSearchParams(location.search).get('join'); setTimeout(() => { enterRoam(); joinRoom(code); }, 800); }   // overwork.html?join=ABCDE
 $('loading').remove();
 /* debug handle (also what the Playwright harness drives) */
-window.__ow = { courier, boxes, van, world, houses, props, customers, remotes, net, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
+window.__ow = { courier, boxes, van, world, houses, props, customers, remotes, net, casino, solidAt, colliders, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
 requestAnimationFrame(frame);
 </script>
 </body>
