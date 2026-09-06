@@ -114,7 +114,7 @@ en: {
   gz_outside:"This game is hosted elsewhere, so these settings can't reach inside it.",
   gz_hrs:"hrs", gz_min:"min",
   gz_menu:"Menu", gz_back:"Back",
-  gz_holdHint:"Hold Esc — or two fingers — for the menu",
+  gz_holdHint:"Hold Esc for the menu (on a phone: the corner button)",
 
   rec_score:"Best score", rec_wave:"Furthest wave", rec_wins:"Matches won",
   g_snake:"Eat, grow, don't bite yourself. The one everybody already knows how to play.",
@@ -283,7 +283,7 @@ es: {
   gz_outside:"Este juego está alojado fuera, así que estos ajustes no le llegan.",
   gz_hrs:"h", gz_min:"min",
   gz_menu:"Menú", gz_back:"Atrás",
-  gz_holdHint:"Mantén Esc — o dos dedos — para el menú",
+  gz_holdHint:"Mantén Esc para el menú (en el móvil: el botón de la esquina)",
 
   rec_score:"Mejor puntuación", rec_wave:"Oleada más lejos", rec_wins:"Partidas ganadas",
   g_snake:"Come, crece y no te muerdas. El que ya sabe jugar todo el mundo.",
@@ -451,7 +451,7 @@ fr: {
   gz_outside:"Ce jeu est hébergé ailleurs, ces réglages ne l'atteignent pas.",
   gz_hrs:"h", gz_min:"min",
   gz_menu:"Menu", gz_back:"Retour",
-  gz_holdHint:"Maintiens Échap — ou deux doigts — pour le menu",
+  gz_holdHint:"Maintiens Échap pour le menu (sur mobile : le bouton dans le coin)",
 
   rec_score:"Meilleur score", rec_wave:"Vague la plus loin", rec_wins:"Matchs gagnés",
   g_snake:"Mange, grandis, ne te mords pas. Celui que tout le monde sait déjà jouer.",
@@ -619,7 +619,7 @@ pt: {
   gz_outside:"Este jogo está alojado fora, por isso estas definições não lhe chegam.",
   gz_hrs:"h", gz_min:"min",
   gz_menu:"Menu", gz_back:"Voltar",
-  gz_holdHint:"Mantém Esc — ou dois dedos — para o menu",
+  gz_holdHint:"Mantém Esc para o menu (no celular: o botão do canto)",
 
   rec_score:"Melhor pontuação", rec_wave:"Onda mais longe", rec_wins:"Partidas ganhas",
   g_snake:"Come, cresce e não te mordas. Aquele que toda a gente já sabe jogar.",

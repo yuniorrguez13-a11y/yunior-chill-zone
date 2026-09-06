@@ -184,6 +184,7 @@ export function createOS(api) {
         <div style="margin-top:6px"><b>who's here</b><ul>${st.players.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>
         <div class="chat" id="on-chat">${chatLog.map(l => `<div class="${l.sys ? 'sys' : ''}">${esc(l.t)}</div>`).join('')}</div>
         <div class="row"><input class="pc-in" id="on-msg" placeholder="say something" maxlength="80" style="flex:1"><button class="pc-btn" id="on-send">send</button></div>
+        <div class="row"><span class="mut" id="on-voice">${esc(api.voice ? api.voice.state() : '')}</span>${api.voice ? `<button class="pc-btn" id="on-mic">${api.voice.open() ? 'mic: open' : 'mic: push to talk'}</button>` : ''}</div>
         <div class="row" style="margin-top:8px">${st.host ? `<button class="pc-btn go" id="on-start">${st.running ? 'shift in progress' : 'clock everyone in'}</button>` : ''}<button class="pc-btn red" id="on-leave">leave room</button></div>
       </div>` : `
       <div class="box"><b>host a shift</b><div class="mut">you drive. they carry. everyone gets the same pay stub.</div><div class="row"><button class="pc-btn go" id="on-host">host</button><span id="on-st" class="mut">${esc(st.status || '')}</span></div></div>
@@ -197,6 +198,7 @@ export function createOS(api) {
     if (q('#on-leave')) q('#on-leave').onclick = () => { api.net.leave(); paintOnline(W); };
     if (q('#on-copy')) q('#on-copy').onclick = () => { try { navigator.clipboard.writeText(st.code); q('#on-copy').textContent = 'copied'; } catch (e) {} };
     if (q('#on-start')) q('#on-start').onclick = () => { api.startShift(); };
+    if (q('#on-mic')) q('#on-mic').onclick = async () => { await api.voice.toggle(); paintOnline(W); };
     if (q('#on-send')) { const send = () => { const v = q('#on-msg').value.trim(); if (!v) return; api.net.chat(v); q('#on-msg').value = ''; }; q('#on-send').onclick = send; q('#on-msg').onkeydown = e => { if (e.key === 'Enter') send(); }; }
     const ch = q('#on-chat'); if (ch) ch.scrollTop = 1e6;
   }

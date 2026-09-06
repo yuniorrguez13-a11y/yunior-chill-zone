@@ -314,6 +314,10 @@
     display:none;overflow:hidden;
   }
   #gz-play.on{display:block;}
+  /* the way out on a phone: a small translucent tab in the corner, only where there is no Esc key */
+  #gz-menu-btn{display:none;position:fixed;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));z-index:60;width:40px;height:40px;border-radius:12px;
+    background:rgba(10,12,18,.55);color:#fff;border:1px solid rgba(255,255,255,.25);align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+  @media(pointer:coarse){#gz-play.on #gz-menu-btn{display:flex;}}
   #gz-frame{
     position:absolute;top:0;left:0;border:0;background:#000;
     width:100%;height:100%;transform-origin:top left;
@@ -528,6 +532,7 @@
 <!-- ══════ THE GAME ══════ -->
 <div id="gz-play">
   <iframe id="gz-frame" src="" allow="autoplay;fullscreen;gamepad;encrypted-media;picture-in-picture" allowfullscreen></iframe>
+  <button id="gz-menu-btn" aria-label="menu"><i data-ic="menu" data-ic-size="18"></i></button>
   <div id="gz-loading" data-i18n="gz_loading">Loading</div>
 </div>
 
@@ -822,7 +827,9 @@ function blip(freq){
    PLAYING
    The game gets the whole screen and none of our furniture. The
    only way back is the guide, so the guide has to be reachable —
-   hold Esc, or hold two fingers on a touch screen.
+   hold Esc, or on a touch screen tap the small corner button (a
+   two-finger hold used to do it, and it fired in the middle of every
+   two-thumb game).
    ═══════════════════════════════════════════════════════════════ */
 let playStart=0, playTimer=null;
 
@@ -1005,7 +1012,7 @@ function focusGame(){
 }
 
 /* ── the guide: hold Esc ─────────────────────────────────────── */
-let escAt=0, escTimer=null, touchTimer=null;
+let escAt=0, escTimer=null;
 const HOLD = 600;
 
 function guideOpen(){
@@ -1031,25 +1038,15 @@ function onEscUp(e){
   if(e.key!=='Escape') return;
   clearTimeout(escTimer); escAt=0;
 }
-/* two fingers held down does the same thing, since phones have no Esc */
-function onTouchStart(e){
-  if(!playing || e.touches.length!==2) return;
-  clearTimeout(touchTimer);
-  touchTimer = setTimeout(guideOpen, HOLD);
-}
-function onTouchEnd(){ clearTimeout(touchTimer); }
+/* phones have no Esc: a small button in the corner opens the guide (shown only on coarse pointers) */
+$('gz-menu-btn').addEventListener('click', guideOpen);
 
 function installGuideHooks(d){
   d.addEventListener('keydown', onEscDown, true);
   d.addEventListener('keyup',   onEscUp,   true);
-  d.addEventListener('touchstart', onTouchStart, true);
-  d.addEventListener('touchend',   onTouchEnd,   true);
-  d.addEventListener('touchcancel',onTouchEnd,   true);
 }
 document.addEventListener('keydown', onEscDown, true);
 document.addEventListener('keyup',   onEscUp,   true);
-document.addEventListener('touchstart', onTouchStart, true);
-document.addEventListener('touchend',   onTouchEnd,   true);
 
 /* guide keyboard navigation */
 let gsel=0;

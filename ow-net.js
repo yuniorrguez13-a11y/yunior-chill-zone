@@ -100,7 +100,9 @@ export function createNet({ sb, local, myKey, log }) {
     pc.onicecandidate = e => { if (e.candidate && sig) sig.send({ from: myKey, to: key, ice: e.candidate }); };
     pc.onnegotiationneeded = async () => { try { peer.making = true; await pc.setLocalDescription(); sig && sig.send({ from: myKey, to: key, desc: pc.localDescription }); } catch (e) { console.warn('[ow-net] negotiation', e); } finally { peer.making = false; } };
     pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState)) dropPeer(key, 'connection ' + pc.connectionState); };
-    if (initiator) { wire(peer, pc.createDataChannel('rel', { ordered: true }), 'rel'); wire(peer, pc.createDataChannel('fast', { ordered: false, maxRetransmits: 0 }), 'fast'); }
+    // one audio line per connection, negotiated up front and silent until someone turns a mic on: a voice is then a replaceTrack away, no renegotiation
+    pc.ontrack = e => { peer.track = e.track; emit('track', peer, e.track); };
+    if (initiator) { pc.addTransceiver('audio', { direction: 'sendrecv' }); wire(peer, pc.createDataChannel('rel', { ordered: true }), 'rel'); wire(peer, pc.createDataChannel('fast', { ordered: false, maxRetransmits: 0 }), 'fast'); }
     else pc.ondatachannel = e => wire(peer, e.channel, e.channel.label);
     net.peers.set(key, peer);
     return peer;
@@ -117,7 +119,7 @@ export function createNet({ sb, local, myKey, log }) {
         if (!peer.polite && collision) return;
         await pc.setRemoteDescription(p.desc);
         for (const c of peer.iceQ.splice(0)) { try { await pc.addIceCandidate(c); } catch (e) {} }
-        if (p.desc.type === 'offer') { await pc.setLocalDescription(); sig.send({ from: myKey, to: p.from, desc: pc.localDescription }); }
+        if (p.desc.type === 'offer') { for (const t of pc.getTransceivers()) if (t.receiver.track && t.receiver.track.kind === 'audio' && t.direction !== 'sendrecv') t.direction = 'sendrecv'; await pc.setLocalDescription(); sig.send({ from: myKey, to: p.from, desc: pc.localDescription }); }   // answer the audio line both ways too
       } else if (p.ice) {
         const cand = new RTCIceCandidate(p.ice);
         if (!pc.remoteDescription) { peer.iceQ.push(cand); return; }
@@ -155,5 +157,6 @@ export function createNet({ sb, local, myKey, log }) {
   net.send = (peer, obj, fast) => { const ch = fast ? peer.fast : peer.rel; if (ch && ch.readyState === 'open') { try { ch.send(JSON.stringify(obj)); } catch (e) {} } };
   net.broadcast = (obj, fast, except) => { const s = JSON.stringify(obj); for (const p of net.peers.values()) { if (p === except || !p.ready) continue; const ch = fast ? p.fast : p.rel; if (ch && ch.readyState === 'open') { try { ch.send(s); } catch (e) {} } } };
   net.hostPeer = () => { for (const p of net.peers.values()) return p; return null; };
+  net.audioSender = peer => { for (const t of peer.pc.getTransceivers()) if (t.receiver.track && t.receiver.track.kind === 'audio') return t.sender; return null; };
   return net;
 }

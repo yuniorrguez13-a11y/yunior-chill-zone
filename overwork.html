@@ -112,6 +112,35 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
 #cz button.on,#cz button.go{background:var(--hi);} #cz button:disabled{opacity:.45;cursor:default;}
 #cz button.red{background:#e05555;color:#fff;} #cz button.blk{background:#2a2a33;color:#fff;} #cz button.grn{background:#3a9e58;color:#fff;}
 #cz .m{font-size:17px;color:var(--pen2);min-height:1.3em;} #cz kbd{display:inline-block;padding:0 7px;border-radius:5px;background:#fff;border:1.5px solid var(--pen);font:inherit;font-size:14px;}
+/* ── touch: a stick where the left thumb lands, camera under the right thumb, four paper buttons ── */
+#touch{position:fixed;inset:0;pointer-events:none;display:none;z-index:4;}
+body.has-touch #touch.on{display:block;}
+#stick{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2.5px solid rgba(243,236,220,.55);background:rgba(13,12,17,.25);display:none;}
+#stick.on{display:block;}
+#stick-nub{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--paper);border:2.5px solid var(--pen);box-shadow:2px 2px 0 var(--pen);}
+.tb{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;font-family:'CF Sketch','Patrick Hand',cursive;font-size:24px;line-height:1;color:var(--pen);background:var(--paper);border:2.5px solid var(--pen);
+  border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;box-shadow:3px 3px 0 var(--pen);user-select:none;-webkit-user-select:none;touch-action:none;opacity:.92;}
+.tb:active,.tb.down{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--pen);background:var(--hi);}
+#tb-e{right:max(24px,env(safe-area-inset-right));bottom:max(96px,calc(env(safe-area-inset-bottom) + 84px));width:88px;height:88px;font-size:40px;background:var(--hi);}
+#tb-jump{right:max(124px,calc(env(safe-area-inset-right) + 100px));bottom:max(64px,calc(env(safe-area-inset-bottom) + 52px));width:72px;height:72px;font-size:20px;}
+#tb-act{right:max(40px,calc(env(safe-area-inset-right) + 16px));bottom:max(200px,calc(env(safe-area-inset-bottom) + 188px));width:64px;height:64px;font-size:19px;}
+#tb-menu{top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));width:56px;height:40px;font-size:18px;transform:rotate(1deg);}
+#tb-chat{top:max(12px,env(safe-area-inset-top));right:max(76px,calc(env(safe-area-inset-right) + 64px));width:56px;height:40px;font-size:18px;transform:rotate(-1deg);}
+#tb-talk{right:max(24px,env(safe-area-inset-right));bottom:max(300px,calc(env(safe-area-inset-bottom) + 288px));width:64px;height:64px;font-size:19px;}
+#tb-talk.live{background:#9dff9d;}
+/* the chat line: Enter (or T) opens it, Enter sends, Esc closes */
+#chatbar{position:fixed;left:14px;bottom:100px;display:none;gap:8px;align-items:center;z-index:6;}
+#chatbar.on{display:flex;}
+#chat-in{font:inherit;font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;font-size:17px;padding:6px 10px;width:min(440px,72vw);background:rgba(0,0,0,.62);color:#fff;border:2px solid rgba(255,255,255,.35);border-radius:4px;outline:none;}
+#chat-in:focus{border-color:#ffff55;}
+#hud.chat #mcchat{bottom:148px;}
+body.has-touch #chatbar{bottom:auto;top:64px;left:14px;} body.has-touch #hud.chat #mcchat{top:110px;}
+body.has-touch.in-game .backlink{display:none;}
+body.has-touch.in-game #toasts{bottom:auto;top:66px;right:auto;left:14px;align-items:flex-start;} body.has-touch.in-game .toast{max-width:46vw;font-size:16px;}
+body.has-touch.in-game #hint{bottom:max(14px,env(safe-area-inset-bottom));font-size:15px;}
+body.has-touch.in-game #carry{bottom:auto;top:130px;}
+body.has-touch.in-game #mcchat{bottom:auto;top:200px;}
+body.has-touch.in-game .hud-top{right:84px;}
 #peace{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 30%,rgba(255,214,120,.28),rgba(255,180,60,0) 70%);opacity:0;transition:opacity 1.2s;}
 #peace.on{opacity:1;}
 @media(max-width:760px){
@@ -140,6 +169,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
   <div id="mcchat"></div>
   <div id="cz" class="paper"><div id="cz-title" class="sk"></div><div id="cz-body"></div><div class="small" style="margin-top:6px"><kbd>E</kbd> stand up</div></div>
 </div>
+<div id="touch">
+  <div id="stick"><div id="stick-nub"></div></div>
+  <button class="tb" id="tb-e">E</button>
+  <button class="tb" id="tb-jump">jump</button>
+  <button class="tb" id="tb-act">peace</button>
+  <button class="tb" id="tb-menu">menu</button>
+  <button class="tb" id="tb-chat">chat</button>
+  <button class="tb" id="tb-talk">talk</button>
+</div>
+<div id="chatbar"><span class="mc">&gt;</span><input id="chat-in" maxlength="80" placeholder="say something. or don't." autocomplete="off" spellcheck="false"></div>
 
 <!-- MENU: the work order -->
 <div class="screen on" id="s-menu">
@@ -154,6 +193,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
       <span><kbd>E</kbd></span><span>grab, drop, load the van, hop in, hop out</span>
       <span><kbd>click</kbd> / <kbd>space</kbd></span><span>throw the box. you shouldn't. you will.</span>
       <span><kbd>drag</kbd> · <kbd>wheel</kbd></span><span>look around · zoom</span>
+      <span><kbd>Enter</kbd> · <kbd>V</kbd></span><span>chat · hold to talk (with friends, at the pc)</span>
     </div>
     <div class="row">
       <button class="btn primary" id="btn-start">clock in</button>
@@ -162,7 +202,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;}
       <span class="note">best shift <b class="sk" id="m-best">$0</b></span>
       <span class="note" style="transform:rotate(1.2deg)">sock drawer <b class="sk" id="m-cash">$0</b></span>
     </div>
-    <p class="small" style="margin-top:14px;">keyboard only for now, phone people, i'm sorry. the money goes in the sock drawer for pitty striker skins later. skins. not stats. don't ask.</p>
+    <p class="small" style="margin-top:14px;">on a phone: left thumb walks, right thumb looks, the paper buttons do the rest. the money goes in the sock drawer for pitty striker skins later. skins. not stats. don't ask.</p>
   </div></div>
 </div>
 
@@ -1073,6 +1113,7 @@ class Limb {
 }
 const _p = new THREE.Vector3(), _t = new THREE.Vector3(), _n = new THREE.Vector3(), _bn = new THREE.Vector3();
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
+const _f = new THREE.Vector3(), _g = new THREE.Vector3();
 const LEG_PROFILE = t => 1.25 - 0.55 * Math.sin(t * Math.PI * 0.9 + 0.3) + 0.45 * Math.exp(-Math.pow((t - 0.62) / 0.16, 2)) - 0.25 * t;   // thigh, waist at the knee, calf bulge, thin ankle
 const ARM_PROFILE = t => 1.1 - 0.35 * t + 0.25 * Math.exp(-Math.pow((t - 0.5) / 0.2, 2));
 
@@ -1217,8 +1258,8 @@ class Courier {
     const maxSpeed = (6.2 - weight * 1.1) * (this.stun > 0 ? 0.2 : 1);
     const accel = 26 * slick / (1 + weight * 0.35);
     let mx = 0, mz = 0;
-    if (input.f) mz -= 1; if (input.b) mz += 1; if (input.l) mx -= 1; if (input.r) mx += 1;
-    const len = Math.hypot(mx, mz); if (len > 0) { mx /= len; mz /= len; }
+    mz -= input.f; mz += input.b; mx -= input.l; mx += input.r;                                     // keys give 1, the touch stick gives fractions
+    const len = Math.hypot(mx, mz); if (len > 1) { mx /= len; mz /= len; }
     const s = Math.sin(camYaw), c = Math.cos(camYaw);
     const wx = mx * c + mz * s, wz = -mx * s + mz * c;
     const targetVx = this.targetVx = wx * maxSpeed, targetVz = this.targetVz = wz * maxSpeed;
@@ -1265,7 +1306,7 @@ class Courier {
     const dirX = speed > 0.3 ? this.vel.x / speed : Math.sin(this.yaw), dirZ = speed > 0.3 ? this.vel.z / speed : Math.cos(this.yaw);
     const sideX = Math.cos(this.yaw), sideZ = -Math.sin(this.yaw);
     const stride = clamp(0.35 + speed * 0.14, 0.35, 1.2) * CS;
-    const stepDur = clamp(0.32 - speed * 0.022, 0.14, 0.32);
+    const stepDur = clamp(0.30 - speed * 0.03, 0.1, 0.30);                                       // quick steps at speed, so the planted foot never trails a metre behind
     for (let i = 0; i < 2; i++) {
       const f = this.feet[i], other = this.feet[1 - i], side = i === 0 ? -1 : 1;
       const hipX = this.pos.x + sideX * side * 0.2 * CS, hipZ = this.pos.z + sideZ * side * 0.2 * CS;
@@ -1282,13 +1323,13 @@ class Courier {
           if (speed > 1 && !this.remote) sfx('step', speed);
         }
       } else if (this.onGround) {
-        const aheadX = hipX + dirX * stride * (speed > 0.3 ? 1 : 0), aheadZ = hipZ + dirZ * stride * (speed > 0.3 ? 1 : 0);
+        const aheadX = hipX + dirX * stride * (speed > 0.3 ? 0.9 : 0), aheadZ = hipZ + dirZ * stride * (speed > 0.3 ? 0.9 : 0);
         const dx = f.pos.x - hipX, dz = f.pos.z - hipZ;
         const behind = dx * dirX + dz * dirZ, dist = Math.hypot(dx, dz);
-        const needs = speed > 0.3 ? (behind < -stride * 0.55 || dist > stride * 1.5) : dist > 0.32 * CS;
+        const needs = speed > 0.3 ? (behind < -stride * 0.15 || dist > stride * 1.2) : dist > 0.32 * CS;                              // step as soon as the foot falls behind the hip: the feet keep up
         if (needs && other.t >= 1 && this.stepCooldown <= 0) {
           f.from.copy(f.pos); f.to.set(aheadX + rnd(-0.07, 0.07), floorHeight(aheadX, aheadZ, this.pos.y + 0.5, 0.15), aheadZ + rnd(-0.07, 0.07));
-          f.t = 0; this.stepCooldown = stepDur * 0.35;
+          f.t = 0; this.stepCooldown = stepDur * 0.15;
           this.lean.z.v += side * 1.6; this.hipTwist.v += side * 3;
         }
         springTo(f.roll, 0, dt);
@@ -1297,7 +1338,7 @@ class Courier {
     }
     // ── body springs (idle: a slow breath through the squash spring) ──
     const ax = (this.targetVx - this.vel.x), az = (this.targetVz - this.vel.z);
-    const fwdLean = (this.vel.x * dirX + this.vel.z * dirZ) * 0.05 + (ax * dirX + az * dirZ) * 0.02;
+    const fwdLean = (this.vel.x * dirX + this.vel.z * dirZ) * 0.026 + (ax * dirX + az * dirZ) * 0.012;                                   // a lean, not a dive (the feet were a metre behind)
     const sideLean = (this.vel.x * sideX + this.vel.z * sideZ) * 0.05;
     const idle = speed < 0.3 && this.onGround;
     springTo(this.lean.x, fwdLean, dt); springTo(this.lean.z, -sideLean, dt);
@@ -1319,10 +1360,11 @@ class Courier {
       const kneeBend = (0.22 + f.knee.x * 0.05 + (1 - f.t) * 0.25) * CS;
       const c1 = _a.copy(hipW).lerp(f.pos, 0.38); c1.x += dirX * kneeBend + sideX * side * 0.05; c1.z += dirZ * kneeBend + sideZ * side * 0.05;
       const c2 = _b.copy(hipW).lerp(f.pos, 0.72); c2.x -= dirX * kneeBend * 0.6; c2.z -= dirZ * kneeBend * 0.6;
-      limb.update(dt, hipW, c1, c2, f.pos, _c.set(sideX, 0, sideZ), LEG_PROFILE);
+      const ankle = _f.set(f.pos.x + dirX * 0.06 * CS, f.pos.y + 0.12 * CS, f.pos.z + dirZ * 0.06 * CS);                                // the leg ends at the ankle, inside the shoe — not at the heel on the ground
+      limb.update(dt, hipW, c1, c2, ankle, _c.set(sideX, 0, sideZ), LEG_PROFILE);
       const foot = i === 0 ? this.footL : this.footR;
-      const ax = (-0.13 + Math.cos(f.roll.x) * 0.23) * CS, ay = Math.sin(f.roll.x) * 0.23 * CS;                                          // the shoe pivots at its heel, where the leg ends: toes down in the air, and the leg still meets the heel
-      foot.position.set(f.pos.x + dirX * ax, f.pos.y + 0.13 * CS + ay, f.pos.z + dirZ * ax); foot.rotation.set(Math.PI / 2 - f.roll.x, this.yaw, 0, 'YXZ');
+      const ax = (0.06 + Math.cos(f.roll.x) * 0.12) * CS, ay = (0.12 + Math.sin(f.roll.x) * 0.12 - 0.02) * CS;                             // the shoe pivots at the ankle: toes down in the air, and the leg stays in the shoe
+      foot.position.set(f.pos.x + dirX * ax, f.pos.y + ay, f.pos.z + dirZ * ax); foot.rotation.set(Math.PI / 2 - f.roll.x, this.yaw, 0, 'YXZ');
     }
     // ── arms: hang and swing against the legs, or hold the box overhead. never longer than an arm ──
     const swing = clamp(speed * 0.09, 0, 0.5);
@@ -1331,7 +1373,7 @@ class Courier {
       const shoulder = _d.set(side * 0.42, 0.95, 0); this.group.localToWorld(shoulder);
       const target = _e;
       if (this.emote > 0 && i === 1) { target.set(0.2, 2.35, 0.15); this.group.localToWorld(target); }
-      else if (this.carry) { const low = this.ride === van; target.set(side * this.carry.size.x * 0.42, low ? 0.15 : 1.85 + this.carry.size.y * 0.1, low ? 0.5 : 0.05); this.group.localToWorld(target); }   // in the bay the box rides at the chest: the roof is right there
+      else if (this.carry) { const up = this.carry.oversized && this.ride !== van; target.set(side * this.carry.size.x * 0.46, up ? 1.85 + this.carry.size.y * 0.1 : 0.2, up ? 0.05 : 0.45 + this.carry.size.z * 0.3); this.group.localToWorld(target); }   // boxes ride in front at the chest; only the fridge goes overhead (and never in the bay)
       else { target.set(side * 0.48, 0.08, -0.05 + fwdLean * 0.7 + Math.sin(this.gait + (i === 0 ? 0 : Math.PI)) * swing); this.group.localToWorld(target); }
       const k = this.carry || this.emote > 0 ? 90 : 24, d = this.carry || this.emote > 0 ? 12 : 4.5;
       h.v.x += ((target.x - h.p.x) * k - h.v.x * d) * dt; h.v.y += ((target.y - h.p.y) * k - h.v.y * d) * dt; h.v.z += ((target.z - h.p.z) * k - h.v.z * d) * dt;
@@ -1345,7 +1387,7 @@ class Courier {
     }
     if (this.carry) {
       const b = this.carry;
-      const top = this.ride === van ? _a.set(0, 0.25 + b.size.y / 2, 0.55) : _a.set(0, 2.1 + b.size.y / 2, 0.05); this.group.localToWorld(top);
+      const up = b.oversized && this.ride !== van, top = up ? _a.set(0, 2.1 + b.size.y / 2, 0.05) : _a.set(0, 0.3 + b.size.y / 2, 0.5 + b.size.z / 2); this.group.localToWorld(top);
       b.pos.lerp(top, Math.min(1, 14 * dt)); b.vel.set(0, 0, 0);
       b.rot = this.yaw + this.hipTwist.x * 0.06 + this.lean.z.x * 0.4 + (b.mystery ? Math.sin(b.tremble * 41) * 0.05 : 0); b.tilt = this.lean.x.x * 1.4;
       if (b.mystery && Math.random() < 0.02) { this.hipTwist.v += rnd(-5, 5); this.headSpring.z.v += rnd(-2, 2); }    // it moved. you felt it move.
@@ -1651,11 +1693,11 @@ function updateVan(dt, input) {
   const px = van.pos.x, pz = van.pos.z, pyaw = van.yaw;
   if (net.on && van.driver !== courier && (!net.host || (van.driver && van.driver.remote))) { vanNetStep(dt); vanPose(dt); carryRiders(px, pz, pyaw); return; }   // someone else is driving (or we're a client): follow the wire
   const drive = van.driver != null;
-  const maxS = 14, acc = drive && input.f ? 9 : drive && input.b ? -6 : 0;
+  const maxS = 14, acc = drive ? 9 * input.f - 6 * input.b : 0;                                 // the stick gives fractions: gentle gas is possible now
   van.speed += acc * dt;
   van.speed -= van.speed * (drive && (input.f || input.b) ? 0.35 : 1.6) * dt;
   van.speed = clamp(van.speed, -5, maxS);
-  const steerIn = drive ? ((input.l ? 1 : 0) - (input.r ? 1 : 0)) : 0;
+  const steerIn = drive ? clamp(input.l - input.r, -1, 1) : 0;
   van.steer = lerp(van.steer, steerIn, Math.min(1, 6 * dt));
   const turn = van.steer * clamp(Math.abs(van.speed) / 4, 0, 1) * 1.6 * (van.speed < 0 ? -1 : 1) * (world.rain ? 1.25 : 1);
   van.yaw += turn * dt;
@@ -2086,7 +2128,7 @@ function applySwap(bi, hi) {
 }
 function hintText() {
   if (!world.running && !world.roam) return '';
-  if (van.driver === courier) return '<kbd>W</kbd> gas · <kbd>S</kbd> brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>H</kbd> honk · <kbd>E</kbd> bail out';
+  if (van.driver === courier) return IS_TOUCH ? 'stick: gas, brake, steer · <kbd>honk</kbd> · <kbd>bail</kbd> to get out' : '<kbd>W</kbd> gas · <kbd>S</kbd> brake · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>H</kbd> honk · <kbd>E</kbd> bail out';
   if (!courier.carry && nearSpot(courier, world.pcSpot, 1.7)) return '<kbd>E</kbd> sit at the pc';
   if (world.seat) return '';
   if (!courier.carry && nearestSeat(courier)) return `<kbd>E</kbd> ${nearestSeat(courier).hint}`;
@@ -2096,7 +2138,7 @@ function hintText() {
   if (courier.carry) {
     if (courier.ride === van) return '<kbd>E</kbd> set it down in here';
     if (courier.pos.distanceTo(rear) < 2.4) return '<kbd>E</kbd> shove it in the van';
-    return "<kbd>E</kbd> put it down · <kbd>click</kbd> throw it (don't) · get it to the glowing doormat";
+    return IS_TOUCH ? "<kbd>E</kbd> put it down · <kbd>throw</kbd> (don't) · get it to the glowing doormat" : "<kbd>E</kbd> put it down · <kbd>click</kbd> throw it (don't) · get it to the glowing doormat";
   }
   if (courier.pos.distanceTo(door) < 2.2) return '<kbd>E</kbd> drive';
   if (courier.ride === van) return nearest(boxes.filter(x => x.state === 'van' && !x.delivered), courier.pos, 1.9) ? '<kbd>E</kbd> grab that one' : van.cargo.length ? 'the boxes are further in.' : 'the bay. empty. like the fridge.';
@@ -2113,21 +2155,58 @@ const clearInput = () => { input.f = input.b = input.l = input.r = input.jump = 
 addEventListener('keydown', e => {
   if (typing(e)) return;
   if (KEY[e.code]) { input[KEY[e.code]] = 1; e.preventDefault(); }
-  if (e.code === 'Space') { if (courier.carry && van.driver !== courier) throwCarried(courier, camForward()); else input.jump = 1; e.preventDefault(); }
+  if (e.code === 'Space') { spaceKey(); e.preventDefault(); }
   if (e.code === 'KeyE') interact();
   if (e.code === 'KeyH') honk();
   if (e.code === 'KeyL' && (world.running || world.roam) && !world.pcOpen) emote(courier, 'peace');
-  if (e.code === 'Escape') { if (world.pcOpen) closePC(); else if (world.seat) leaveSeat(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
+  if (e.code === 'Escape') escapeKey();
+  if ((e.code === 'Enter' || e.code === 'KeyT') && (world.running || world.roam) && !world.pcOpen && !world.locker) { openChat(); e.preventDefault(); }
+  if (e.code === 'KeyV' && !e.repeat) voiceSet(true);
 });
+addEventListener('keyup', e => { if (e.code === 'KeyV') voiceSet(false); });
+function escapeKey() { if (world.pcOpen) closePC(); else if (world.seat) leaveSeat(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
+function spaceKey() { if (courier.carry && van.driver !== courier) throwCarried(courier, camForward()); else input.jump = 1; }
 addEventListener('keyup', e => { if (KEY[e.code]) input[KEY[e.code]] = 0; if (e.code === 'Space') input.jump = 0; });
 // keys that were down when the window lost focus never send their keyup — the courier would walk into the sunset on his own
 addEventListener('blur', clearInput); document.addEventListener('visibilitychange', () => { if (document.hidden) clearInput(); });
 addEventListener('contextmenu', e => { e.preventDefault(); });                                                                // right-drag is a camera control, not "save image as"
-let dragging = false, dragBtn = 0, lastX = 0, lastY = 0, dragMoved = 0;
-canvas.addEventListener('pointerdown', e => { dragging = true; dragBtn = e.button; lastX = e.clientX; lastY = e.clientY; dragMoved = 0; canvas.setPointerCapture(e.pointerId); });
-canvas.addEventListener('pointermove', e => { if (!dragging) return; const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; dragMoved += Math.abs(dx) + Math.abs(dy); camState.yaw -= dx * 0.005; camState.pitch = clamp(camState.pitch + dy * 0.004, 0.08, 1.2); });
-canvas.addEventListener('pointerup', () => { dragging = false; if (dragBtn === 0 && dragMoved < 6 && (world.running || world.roam) && courier.carry && van.driver !== courier) throwCarried(courier, camForward()); });   // only a left click throws
-canvas.addEventListener('pointercancel', () => { dragging = false; });
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches; if (IS_TOUCH) document.body.classList.add('has-touch');
+let dragging = false, dragBtn = 0, lastX = 0, lastY = 0, dragMoved = 0, camPointer = -1;
+const stick = { id: -1, x: 0, y: 0, R: 44 };                                                                                       // the stick appears where the left thumb lands
+function stickSet(dx, dy) { const d = Math.hypot(dx, dy), k = d > stick.R ? stick.R / d : 1; dx *= k; dy *= k; $('stick-nub').style.transform = `translate(${dx}px,${dy}px)`; input.f = Math.max(0, -dy / stick.R); input.b = Math.max(0, dy / stick.R); input.l = Math.max(0, -dx / stick.R); input.r = Math.max(0, dx / stick.R); }
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'touch' && (world.running || world.roam) && !world.pcOpen && !world.seat && !world.locker && e.clientX < innerWidth * 0.45 && stick.id < 0) {
+    stick.id = e.pointerId; stick.x = e.clientX; stick.y = e.clientY; const st = $('stick'); st.style.left = stick.x + 'px'; st.style.top = stick.y + 'px'; st.classList.add('on'); stickSet(0, 0); try { canvas.setPointerCapture(e.pointerId); } catch (_) {} return;
+  }
+  if (e.pointerType === 'touch' && camPointer >= 0) return;
+  dragging = true; camPointer = e.pointerId; dragBtn = e.button; lastX = e.clientX; lastY = e.clientY; dragMoved = 0; try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerId === stick.id) { stickSet(e.clientX - stick.x, e.clientY - stick.y); return; }
+  if (!dragging || e.pointerId !== camPointer) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; dragMoved += Math.abs(dx) + Math.abs(dy);
+  const k = e.pointerType === 'touch' ? 1.6 : 1; camState.yaw -= dx * 0.005 * k; camState.pitch = clamp(camState.pitch + dy * 0.004 * k, 0.08, 1.2);
+});
+const stickEnd = e => { if (e.pointerId === stick.id) { stick.id = -1; $('stick').classList.remove('on'); input.f = input.b = input.l = input.r = 0; } };
+canvas.addEventListener('pointerup', e => { stickEnd(e); if (e.pointerId !== camPointer) return; dragging = false; camPointer = -1; if (dragBtn === 0 && dragMoved < 6 && e.pointerType !== 'touch' && (world.running || world.roam) && courier.carry && van.driver !== courier) throwCarried(courier, camForward()); });   // only a left click throws; a tap on a phone does not
+canvas.addEventListener('pointercancel', e => { stickEnd(e); if (e.pointerId === camPointer) { dragging = false; camPointer = -1; } });
+// the paper buttons. E and the rest fire on press, so they feel like keys
+const tbtn = (id, down, up) => { const el = $(id); el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('down'); down(); }); const rel = () => { el.classList.remove('down'); if (up) up(); }; el.addEventListener('pointerup', rel); el.addEventListener('pointercancel', rel); el.addEventListener('contextmenu', e => e.preventDefault()); };
+tbtn('tb-e', () => interact());
+tbtn('tb-jump', () => { if (van.driver === courier) honk(); else spaceKey(); }, () => { input.jump = 0; });
+tbtn('tb-act', () => { if (van.driver === courier) interact(); else if ((world.running || world.roam) && !world.pcOpen) emote(courier, 'peace'); });
+tbtn('tb-menu', () => escapeKey());
+tbtn('tb-chat', () => openChat());
+tbtn('tb-talk', () => voiceSet(true), () => voiceSet(false));
+function updateTouch() {
+  if (!IS_TOUCH) return;
+  const on = (world.running || world.roam) && !world.pcOpen && !world.seat && !world.locker;
+  $('touch').classList.toggle('on', on); document.body.classList.toggle('in-game', on);
+  if (!on) { if (stick.id >= 0) { stick.id = -1; $('stick').classList.remove('on'); clearInput(); } return; }
+  const j = van.driver === courier ? 'honk' : courier.carry ? 'throw' : 'jump', a = van.driver === courier ? 'bail' : 'peace';
+  if ($('tb-jump').textContent !== j) $('tb-jump').textContent = j; if ($('tb-act').textContent !== a) $('tb-act').textContent = a;
+  $('tb-talk').classList.toggle('live', !!courier.talking); $('tb-talk').style.display = net.on ? '' : 'none';
+}
 canvas.addEventListener('wheel', e => { camState.dist = clamp(camState.dist + e.deltaY * 0.01, 4, 14); }, { passive: true });
 function camForward() { return new THREE.Vector3(-Math.sin(camState.yaw), 0, -Math.cos(camState.yaw)); }
 
@@ -2182,6 +2261,7 @@ function frame(now) {
   for (const b of boxes) b.render();
   updateCamera(dt);
   if (world.running || world.roam) { updateHud(); $('hint').innerHTML = hintText(); }
+  updateTouch(); updateVoice();
   renderer.render(scene, camera);
 }
 $('btn-start').onclick = () => { if (net.on && !net.host) return toast('only the host clocks everyone in.'); if (net.on) netEvent({ k: 'start' }); startShift(); };
@@ -2374,8 +2454,8 @@ function worldSpec() {                                                          
     lapis: world.lapis ? [world.lapis.x, world.lapis.z, world.lapis.taken] : null };
 }
 function snapshot() {
-  const pl = [[0, r2(courier.pos.x), r2(courier.pos.y), r2(courier.pos.z), r2(courier.vel.x), r2(courier.vel.y), r2(courier.vel.z), r2(courier.yaw), courier.onGround ? 1 : 0]];
-  for (const r of remotes) pl.push([r.pid, r2(r.pos.x), r2(r.pos.y), r2(r.pos.z), r2(r.vel.x), r2(r.vel.y), r2(r.vel.z), r2(r.yaw), r.onGround ? 1 : 0]);
+  const pl = [[0, r2(courier.pos.x), r2(courier.pos.y), r2(courier.pos.z), r2(courier.vel.x), r2(courier.vel.y), r2(courier.vel.z), r2(courier.yaw), courier.onGround ? 1 : 0, courier.talking ? 1 : 0]];
+  for (const r of remotes) pl.push([r.pid, r2(r.pos.x), r2(r.pos.y), r2(r.pos.z), r2(r.vel.x), r2(r.vel.y), r2(r.vel.z), r2(r.yaw), r.onGround ? 1 : 0, r.talking ? 1 : 0]);
   const bx = boxes.map(b => b.state === 'van' && b.local ? [r2(b.local.x), r2(b.local.y), r2(b.local.z), r2(b.rotLocal), 0, 2, r2(b.damage), -1, b.hidden ? 1 : 0, b.delivered ? 1 : 0] : [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z), r2(b.rot), r2(b.tilt), STATE_ID[b.state] ?? 0, r2(b.damage), b.carrier ? b.carrier.pid : -1, b.hidden ? 1 : 0, b.delivered ? 1 : 0]);
   const pr = []; props.forEach((p, i) => { if (p.kicked) pr.push([i, r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.yaw), r2(p.tip)]); });
   return { t: 'snap', pl, bx, van: [r2(van.pos.x), r2(van.pos.z), r2(van.yaw), r2(van.speed), van.driver ? van.driver.pid : -1, van.cargo.map(b => boxes.indexOf(b))], dog: dog ? [r2(dog.pos.x), r2(dog.pos.z), r2(dog.yaw)] : 0, pr, w: [world.pay, world.delivered, r2(world.time), r2(world.peace), world.running ? 1 : 0] };
@@ -2384,7 +2464,7 @@ function applySnapshot(m) {
   for (const p of m.pl) {
     const c = byPid(p[0]); if (!c || c === courier) continue;
     if (!c.net) c.net = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, g: true, age: 0 };
-    c.net.pos.set(p[1], p[2], p[3]); c.net.vel.set(p[4], p[5], p[6]); c.net.yaw = p[7]; c.net.g = !!p[8]; c.net.age = 0;
+    c.net.pos.set(p[1], p[2], p[3]); c.net.vel.set(p[4], p[5], p[6]); c.net.yaw = p[7]; c.net.g = !!p[8]; c.net.age = 0; c.talking = !!p[9];
   }
   // boxes: state, damage, who holds what
   for (const c of [courier, ...remotes]) c.carry = null;
@@ -2432,8 +2512,8 @@ function netTick(dt) {
 }
 /* receiving */
 net.addListener('open', peer => {
-  if (net.host) return;                                                                       // host waits for hello
-  net.send(peer, { t: 'hello', name: myName(), look: save.look }, false);
+  if (net.host) { hostMixFor(peer); return; }                                                 // host waits for hello; the audio line to this client gets its mix now
+  net.send(peer, { t: 'hello', name: myName(), look: save.look }, false); voiceWire();
 });
 net.addListener('msg', (peer, m) => {
   if (net.host) {
@@ -2483,6 +2563,7 @@ net.addListener('msg', (peer, m) => {
   }
 });
 net.addListener('gone', (peer, why) => {
+  voiceDrop(peer);
   if (net.host && peer.courier) {
     const c = peer.courier; mcLine(`${c.name} left the game`, true); os.chat(`${c.name} left`, true);
     removeRemote(c); net.broadcast({ t: 'ev', k: 'leave', id: peer.id }, false); lobbyTrack(); os.refreshOnline();
@@ -2490,6 +2571,7 @@ net.addListener('gone', (peer, why) => {
 });
 net.addListener('status', st => { netStatus = st; toast(st); os.refreshOnline(); });
 net.addListener('left', () => {
+  for (const src of voice.sources.values()) { try { src.node.disconnect(); } catch (e) {} } voice.sources.clear(); voice.mixes.clear();
   for (const r of remotes.slice()) removeRemote(r);
   if (van.driver && van.driver !== courier) van.driver = null; van.net = null;
   for (const b of boxes) { b.net = null; if (b.state === 'carried' && b.carrier !== courier) { b.state = 'ground'; b.carrier = null; } }
@@ -2503,7 +2585,58 @@ function lobbyTrack() { if (!net.lobby) return; net.lobby.track(net.on && net.ho
 async function hostRoom() { if (!world.roam && !world.running) enterRoam(); await net.host_(); if (net.on) { net.id = 0; courier.pid = 0; lobbyTrack(); mcLine(`room ${net.code} is open`, true); } os.refreshOnline(); }
 async function joinRoom(code) { if (!world.roam && !world.running) enterRoam(); wasClient = true; await net.join(code); os.refreshOnline(); }
 function netLeave(quiet) { if (!net.on) return; if (net.host && remotes.length) net.broadcast({ t: 'ev', k: 'kick', text: 'the host went home. shift over.' }, false); net.leave(); if (!quiet) toast('left the room.'); }
-function sendChat(text) { text = String(text || '').trim().slice(0, 80); if (!text) return; mcLine(`<${myName()}> ${text}`); os.chat(`${myName()}: ${text}`); if (net.host) netEvent({ k: 'chat', name: myName(), text }); else { const h = net.hostPeer(); if (h) net.send(h, { t: 'chat', text }, false); } }
+function sendChat(text) { text = String(text || '').trim().slice(0, 80); if (!text) return; mcLine(`<${myName()}> ${text}`); os.chat(`${myName()}: ${text}`); if (net.host) netEvent({ k: 'chat', name: myName(), text }); else { const h = net.hostPeer(); if (h) net.send(h, { t: 'chat', text }, false); } if (!net.on && soloChat < 2) { soloChat++; setTimeout(() => mcLine(pick(["nobody's here. it still counts.", 'the van read that. the van has no comment.', 'noted. by nobody.']), true), 700); } }
+let soloChat = 0;
+/* ── the chat line: Enter or T opens it over the block-game chat, Enter sends, Esc closes ── */
+function openChat() { if (!(world.running || world.roam) || world.pcOpen) return; $('chatbar').classList.add('on'); $('hud').classList.add('chat'); clearInput(); const i = $('chat-in'); i.value = ''; i.focus(); }
+function closeChat() { $('chatbar').classList.remove('on'); $('hud').classList.remove('chat'); $('chat-in').blur(); }
+$('chat-in').addEventListener('keydown', e => { if (e.key === 'Enter') { const v = $('chat-in').value; closeChat(); sendChat(v); e.preventDefault(); } else if (e.key === 'Escape') { closeChat(); e.preventDefault(); } e.stopPropagation(); });
+$('chat-in').addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== $('chat-in')) closeChat(); }, 50));
+/* ── voice: hold V (or the talk button). every connection carries one audio line, negotiated at connect time, so a mic is a
+   replaceTrack away. clients send their mic to the host; the host plays what it hears and sends each client a mix of
+   everyone else (host mic + the other clients), so a client sends one stream and gets one back. nothing is recorded ── */
+const voice = { mic: null, track: null, ptt: false, open: false, want: false, micSrc: null, micAn: null, sources: new Map(), mixes: new Map() };
+function voiceCtx() { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); return ac; }
+async function voiceEnable() {
+  if (voice.mic || voice.want) return; voice.want = true;
+  try { voice.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { voice.want = false; toast('no mic. the van heard nothing.', 'bad'); return; }
+  voice.track = voice.mic.getAudioTracks()[0]; voice.track.enabled = voice.ptt || voice.open;
+  const c = voiceCtx(); voice.micSrc = c.createMediaStreamSource(voice.mic); voice.micAn = c.createAnalyser(); voice.micAn.fftSize = 256; voice.micSrc.connect(voice.micAn);
+  voiceWire(); toast(net.on ? 'mic on. hold V to talk.' : "mic on. you're alone. hold V anyway.", 'good'); os.refreshOnline();
+}
+function voiceWire() {                                                                        // put the right track on every line
+  if (!net.on) return;
+  if (!net.host) { const h = net.hostPeer(); if (h && voice.track) { const sn = net.audioSender(h); if (sn && sn.track !== voice.track) sn.replaceTrack(voice.track).catch(() => {}); } return; }
+  for (const p of net.peers.values()) hostMixFor(p);
+}
+function hostMixFor(peer) {                                                                   // host: (host mic + every other client) → this client
+  const c = voiceCtx(); let mx = voice.mixes.get(peer.key);
+  if (!mx) { mx = { dest: c.createMediaStreamDestination(), ins: new Set() }; voice.mixes.set(peer.key, mx); const sn = net.audioSender(peer); if (sn) sn.replaceTrack(mx.dest.stream.getAudioTracks()[0]).catch(() => {}); }
+  if (voice.micSrc && !mx.ins.has(voice.micSrc)) { voice.micSrc.connect(mx.dest); mx.ins.add(voice.micSrc); }
+  for (const [k, src] of voice.sources) if (k !== peer.key && !mx.ins.has(src.node)) { src.node.connect(mx.dest); mx.ins.add(src.node); }
+}
+function voiceDrop(peer) {
+  const src = voice.sources.get(peer.key); if (src) { try { src.node.disconnect(); } catch (e) {} voice.sources.delete(peer.key); }
+  const mx = voice.mixes.get(peer.key); if (mx) { for (const n of mx.ins) { try { n.disconnect(mx.dest); } catch (e) {} } voice.mixes.delete(peer.key); }
+}
+function voiceLevel(an) { const d = new Uint8Array(an.fftSize); an.getByteTimeDomainData(d); let sum = 0; for (const v of d) { const x = (v - 128) / 128; sum += x * x; } return Math.sqrt(sum / d.length); }
+function voiceSet(on) { voice.ptt = on; if (!voice.track) { if (on) voiceEnable(); return; } voice.track.enabled = voice.ptt || voice.open; }
+async function voiceToggleOpen() { if (!voice.track) { await voiceEnable(); if (!voice.track) return; } voice.open = !voice.open; voice.track.enabled = voice.ptt || voice.open; toast(voice.open ? 'mic open. everyone hears everything.' : 'mic back to push to talk.'); }
+function voiceState() { return !navigator.mediaDevices ? 'no mic on this browser' : !voice.track ? 'voice: hold V (or the talk button) to turn the mic on' : voice.open ? 'voice: mic open' : 'voice: hold V to talk'; }
+net.addListener('track', (peer, track) => {                                                  // audio arrived on a line: play it, and (host) feed it into the other mixes
+  const c = voiceCtx(), stream = new MediaStream([track]);
+  const el = new Audio(); el.srcObject = stream; el.muted = true; el.play().catch(() => {});   // chrome quirk: a remote track only flows into WebAudio once an element plays it
+  const node = c.createMediaStreamSource(stream), an = c.createAnalyser(); an.fftSize = 256; node.connect(an); node.connect(c.destination);
+  voiceDrop(peer); voice.sources.set(peer.key, { node, an, el, peer });
+  if (net.host) for (const p of net.peers.values()) if (p !== peer) hostMixFor(p);
+});
+voice.ctx = voiceCtx; voice.wire = voiceWire;                                                    // for the test harness, which swaps the mic for a loud oscillator
+function updateVoice() {
+  courier.talking = !!(voice.track && voice.track.enabled && voice.micAn && voiceLevel(voice.micAn) > 0.02);
+  if (net.host) for (const src of voice.sources.values()) if (src.peer.courier) src.peer.courier.talking = voiceLevel(src.an) > 0.02;
+  for (const c of [courier, ...remotes]) { const want = c.talking ? 0x8dff8d : 0xffffff; if (c.nameSprite.material.color.getHex() !== want) c.nameSprite.material.color.setHex(want); }
+}
 function netState() { return { on: net.on, host: net.host, code: net.code, status: netStatus, players: playerList().map(p => p.name + (p.id === net.id ? ' (you)' : '') + (p.id === 0 ? ' · host' : '')), running: world.running, signedIn: !!sbUser }; }
 if (net.lobby) net.lobby.onChange(() => os.refreshOnline());
 
@@ -2515,6 +2648,7 @@ const os = createOS({
   loadNotes: () => save.notes || '', saveNotes: t => { save.notes = String(t).slice(0, 4000); persist(); },
   startShift: () => { if (net.on && !net.host) return toast('only the host clocks everyone in.'); closePC(true); startShift(); },
   net: { state: netState, rooms: () => net.lobby ? net.lobby.list() : [], host: hostRoom, join: joinRoom, leave: () => netLeave(), chat: sendChat },
+  voice: { state: voiceState, open: () => voice.open, toggle: voiceToggleOpen },
 });
 function openPC(app) {
   if (world.pcOpen) return; world.pcOpen = true; clearInput(); os.open(app); $('hint').innerHTML = '';
@@ -2525,7 +2659,7 @@ function closePC(silent) { if (!world.pcOpen) return; world.pcOpen = false; os.c
 if (!LOCAL_SIG && new URLSearchParams(location.search).get('join')) { const code = new URLSearchParams(location.search).get('join'); setTimeout(() => { enterRoam(); joinRoom(code); }, 800); }   // overwork.html?join=ABCDE
 $('loading').remove();
 /* debug handle (also what the Playwright harness drives) */
-window.__ow = { courier, boxes, van, world, houses, props, customers, remotes, net, casino, solidAt, colliders, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
+window.__ow = { courier, boxes, van, world, houses, props, customers, remotes, net, casino, voice, solidAt, colliders, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
 requestAnimationFrame(frame);
 </script>
 </body>

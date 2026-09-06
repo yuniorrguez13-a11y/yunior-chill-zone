@@ -738,7 +738,47 @@ jumping, houses with no outlines, porch steps the residents clipped through).**
 - **Feet:** the shoe pivots at its heel (`ax/ay` from `f.roll`) so toes-down in the air keeps the leg
   ending at the heel.
 
-Not done yet: Pitty Striker itself, touch controls, more jobs, voice chat, spectating a full room.
+**v6 — phones, voices, and the walk (Sep 2026; owner: "añade soporte móvil", a real Gaming Zone
+screenshot, drop the two-finger exit, then voice chat, a chat line, legs clipping out of the shoes,
+arms going back while carrying, the body leaning too far ahead of the feet).**
+- **Touch** (`#touch`, shown via `body.has-touch` = `(pointer:coarse)` while in game, `.in-game` on
+  body): a **stick appears where the left thumb lands** on the canvas (left 45%; `stick.id` tracks that
+  pointer, `stickSet()` writes *fractions* into `input.f/b/l/r` — the sim and the van take analog now:
+  `mz -= input.f` etc., `acc = 9·f − 6·b`, `steer = l − r`), the right thumb drags the camera
+  (`camPointer`, 1.6× sensitivity), a tap never throws (only a mouse click does). Paper buttons: **E**,
+  **jump / throw / honk** (`spaceKey()`), **peace / bail**, **talk** (hold), **chat**, **menu**
+  (`escapeKey()`); labels update in `updateTouch()`. `setPointerCapture` is wrapped in try/catch (synthetic
+  pointers in the harness have no capture). `scratchpad/ow-touch.js` drives it with dispatched
+  `PointerEvent`s in an `isMobile + hasTouch` context.
+- **Gaming Zone**: the two-finger hold that opened the guide fired in the middle of every two-thumb game
+  and is gone; on coarse pointers a small `#gz-menu-btn` sits in the corner of `#gz-play` instead
+  (`gz_holdHint` strings updated ×4). Overwork's hero/capsule art are real renders (`scratchpad/ow-art.js`
+  frames them: the van's nose, the courier with a box on the "GO AWAY" mat, the resident at the door).
+- **Chat line** (`#chatbar`): Enter or T opens it over the block-game chat (`#hud.chat` lifts
+  `#mcchat`), Enter sends through `sendChat` (host relays), Esc/blur closes; alone, the first two
+  messages get a dry reply. Touch: the chat button.
+- **Voice** — the wire already had perfect negotiation, but it isn't needed: `ow-net.js` adds **one
+  `sendrecv` audio transceiver per connection at connect time** (the answerer flips its direction to
+  `sendrecv` before answering), `pc.ontrack → emit('track', peer, track)`, and `net.audioSender(peer)`.
+  A mic is then `sender.replaceTrack()` away, no renegotiation. Topology follows the star: clients send
+  their mic to the host; the **host mixes per client** with WebAudio (`hostMixFor`: host mic + every
+  other client → a `MediaStreamDestination` track on that client's line) and plays everything it hears;
+  a client sends one stream and gets one back. **Push to talk: V** (or hold the talk button);
+  `voiceToggleOpen()` (the "mic: open" button in the Online window) keeps the track enabled. Mic access
+  is asked on the first V press (`voiceEnable`, a user gesture — also resumes the shared `ac`). Chrome
+  quirk: a remote track only flows into WebAudio once an `Audio` element plays it (muted is fine).
+  **Who's talking**: the host reads an `AnalyserNode` per incoming line, everyone reads their own mic;
+  the flag rides in the snapshot (`pl[9]`) and tints the name sprite green (`updateVoice`). Nothing is
+  recorded, nothing leaves the peer connections. `scratchpad/ow-voice.js` proves both directions with
+  `--use-fake-device-for-media-stream` plus an oscillator swapped in for the (near-silent) fake mic.
+- **Walk/carry**: the leg ends at an **ankle point inside the shoe** (`_f`, 0.06 forward, 0.12 up) and
+  the shoe pivots there; lean coefficients halved (`fwdLean` 0.026·v + 0.012·a); steps trigger as soon as
+  a foot falls behind the hip (`stride·0.15`), fly faster at speed (`stepDur` 0.30 − 0.03·v, min 0.1)
+  with a short cooldown, and land 0.9 stride ahead — the planted foot no longer trails a metre.
+  **Boxes ride in front at the chest** (hands at the box's sides, `0.3 + size.y/2` up, `0.5 + size.z/2`
+  forward); only the oversized one goes overhead, and never in the bay.
+
+Not done yet: Pitty Striker itself, more jobs, spectating a full room.
 Performance: the world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
 swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason).
 
