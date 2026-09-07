@@ -95,6 +95,9 @@ export function createPiano(ac, base = 'art/overwork/piano/') {
     start: (t, k) => { [0, 4, 7].forEach((iv, i) => note(k + 60 + iv, 0.5, t + i * 0.08, 0.7, cueBus)); note(k + 72, 0.55, t + 0.36, 1.2, cueBus, 0.8); },   // clocking in
     lose: t => { for (const [d, n] of [[0, 55], [0.28, 54], [0.56, 53], [0.84, 52]]) note(n, 0.5, t + d, 0.5, cueBus, 0.5); note(40, 0.5, t + 0.84, 1.2, cueBus, 0.8); },   // the casino took it
     win: (t, k) => { [0, 4, 7, 12, 16].forEach((iv, i) => note(k + 60 + iv, 0.55, t + i * 0.09, 0.8, cueBus, 0.7)); },
+    kill: (t, k) => { note(k + 72, 0.6, t, 0.25, cueBus, 0.3); note(k + 67, 0.5, t + 0.08, 0.35, cueBus, 0.4); },                              // pitty striker: a small "there."
+    streak: (t, k) => { [0, 5, 9].forEach((iv, i) => note(k + 67 + iv, 0.55, t + i * 0.07, 0.5, cueBus, 0.5)); },                           // three, five, eight, ten
+    count: t => { note(72, 0.5, t, 0.3, cueBus, 0.3); },                                                                                       // "2" and "1"
   };
   function cue(name, at) {
     if (!ready) { load().catch(() => {}); return false; }
