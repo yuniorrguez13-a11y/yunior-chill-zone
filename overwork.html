@@ -339,7 +339,7 @@ function applyCfg() {                                                           
   OUTLINE.visible = cfg.outlines === 'preset' ? q.outlines : cfg.outlines === 'on';
   scene.fog.near = q.fog[0]; scene.fog.far = q.fog[1];
   if (master) master.gain.value = cfg.mute ? 0 : cfg.volume / 100;
-  if (piano) { piano.setVolume(cfg.music / 100); const want = cfg.music > 0 && !cfg.mute && musicArmed; if (want && piano.ready && !piano.music.playing) piano.music.start(); else if (!want && piano.music.playing) piano.music.stop(); }
+  if (piano) { piano.setVolume(cfg.music / 100 * (musicDucked ? 0.5 : 1)); const want = cfg.music > 0 && !cfg.mute && musicArmed; if (want && piano.ready && !piano.music.playing) piano.music.start(); else if (!want && piano.music.playing) piano.music.stop(); }
   const mc = document.getElementById('mcchat'); if (mc) mc.style.display = cfg.chat ? '' : 'none';
 }
 const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x6a8a4a, 0.85);
@@ -824,7 +824,7 @@ function buildHome() {
   disc(1.4, flat(0x9a4a5a), X + 0.4, 0.03, Z);
   for (let k = 0; k < 3; k++) mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), M.label, X - 0.8, 0.03 + k * 0.07, Z - 2.6, { rot: [0, k * 0.3, 0], shadow: false });
   const po = makeLabel('PITTY STRIKER', '#e10600', 384, 200, '#14121a'); po.position.set(X + W / 2 - 0.32, 2.1, Z - 2.2); po.rotation.y = -Math.PI / 2; po.scale.set(1.4, 0.9, 1); scene.add(po);
-  const po2 = makeLabel('coming soon. still.', '#f4f4f7', 384, 80, '#14121a', 'Patrick Hand'); po2.position.set(X + W / 2 - 0.32, 1.55, Z - 2.2); po2.rotation.y = -Math.PI / 2; po2.scale.set(1.4, 0.3, 1); scene.add(po2);
+  const po2 = makeLabel('installed. finally.', '#f4f4f7', 384, 80, '#14121a', 'Patrick Hand'); po2.position.set(X + W / 2 - 0.32, 1.55, Z - 2.2); po2.rotation.y = -Math.PI / 2; po2.scale.set(1.4, 0.3, 1); scene.add(po2);
   mesh(new THREE.CylinderGeometry(0.28, 0.4, 0.3, 12), M.lamp, X, H - 0.25, Z, { shadow: false }); const lamp = new THREE.PointLight(0xffe0b0, 30, 9, 1.6); lamp.position.set(X, H - 0.5, Z); scene.add(lamp);
   world.pcSpot = { x: X + 1.4, z: Z }; world.homeDoor = { x: X - W / 2 - 1.2, z: Z };
   tree(X + 5.5, Z - 6, 1.1); bush(X - 4.8, Z + 3.4, 0.6);
@@ -2176,9 +2176,15 @@ const FOLEY = {                                                                 
   step:   { f: 'art/sfx/hit2.wav',   rate: [0.3, 0.4],   lvl: 0.18, lp: 900,  dur: 0.13 },      // a footfall: the impact, pitched way down, muffled, cut short
   card:   { f: 'art/sfx/block.wav',  rate: [1.4, 1.7],   lvl: 0.25, lp: 4000, dur: 0.1 },       // a card on the felt, a chip, a tick of the wheel
 };
-function foleyBuffer(k) {
-  const F = FOLEY[k]; if (audio.buffers[F.f]) return audio.buffers[F.f];
-  return audio.buffers[F.f] = fetch(F.f).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(() => { audio.failed++; return null; });
+function loadBuffer(path) {                                                                      // one decode per file, shared with Pitty Striker
+  if (audio.buffers[path]) return audio.buffers[path];
+  return audio.buffers[path] = fetch(path).then(r => r.arrayBuffer()).then(b => ac.decodeAudioData(b)).catch(() => { audio.failed++; return null; });
+}
+const foleyBuffer = k => loadBuffer(FOLEY[k].f);
+let musicDucked = false;
+function musicDuck(on) {                                                                          // a match on the PC: headset on, the pianist in the next room goes quiet and muffled
+  musicDucked = !!on; if (!piano) return;
+  piano.setMuffled(musicDucked || world.rain); piano.setVolume(cfg.music / 100 * (musicDucked ? 0.5 : 1));
 }
 function sfx(kind, v = 5) {
   try {
@@ -2227,7 +2233,7 @@ function updateCarryHud() {
 function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
 /* ── the shift ── */
-const world = { rain: false, running: false, roam: false, locker: false, seat: null, time: 0, limit: 240, pay: 0, delivered: 0, total: 6, events: [], swapped: false, wetToast: false, peace: 0, pcOpen: false, monk: null };
+const world = { rain: false, running: false, roam: false, locker: false, seat: null, time: 0, limit: 240, pay: 0, delivered: 0, total: 6, events: [], swapped: false, wetToast: false, peace: 0, pcOpen: false, psOpen: false, monk: null };
 const courier = new Courier();
 const remotes = [];                                                                       // other players' couriers (multiplayer)
 /* Supabase: same project and the same shared session key as every other page on the site. Only used for online signalling here. */
@@ -2281,7 +2287,7 @@ function applyShiftSpec(spec) {
   for (const h of houses) { h.lawnT = 0; h.lawnDone = false; }
   for (const p of props) p.reset(); for (const t of trampolines) { t.hint = false; t.boxHint = false; } world.wetToast = false;
   if (world.events.includes('rain')) { world.rain = true; spawnRain(); scene.background.copy(SKY_RAIN); scene.fog.color.copy(SKY_RAIN); sun.intensity = 1.1; hemi.intensity = 0.6; }
-  if (piano) piano.setMuffled(world.rain);                                                  // rain on the window: the piano in the next room goes softer
+  if (piano) piano.setMuffled(world.rain || musicDucked);                                   // rain on the window: the piano in the next room goes softer
   if (world.events.includes('dog')) spawnDog();
   for (const sp of spec.boxes) {
     const b = new Package(houses[sp.h], sp);
@@ -2451,6 +2457,7 @@ const typing = e => { const t = e.target; return t && (t.tagName === 'INPUT' || 
 const clearInput = () => { input.f = input.b = input.l = input.r = input.jump = 0; };
 addEventListener('keydown', e => {
   if (typing(e)) return;
+  if (striker.active) return;                                                                   // the shooter has the keyboard; the courier does not honk from inside a game
   if (KEY[e.code]) { input[KEY[e.code]] = 1; e.preventDefault(); }
   if (e.code === 'Space') { spaceKey(); e.preventDefault(); }
   if (e.code === 'KeyE') interact();
@@ -2461,7 +2468,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyV' && !e.repeat) voiceSet(true);
 });
 addEventListener('keyup', e => { if (e.code === 'KeyV') voiceSet(false); });
-function escapeKey() { if ($('s-settings').classList.contains('on')) closeSettings(); else if (world.pcOpen) closePC(); else if (world.seat) leaveSeat(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
+function escapeKey() { if (striker.active && striker.escape()) return; if ($('s-settings').classList.contains('on')) closeSettings(); else if (world.pcOpen) closePC(); else if (world.seat) leaveSeat(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
 function spaceKey() { if (courier.carry && van.driver !== courier) throwCarried(courier, camForward()); else input.jump = 1; }
 addEventListener('keyup', e => { if (KEY[e.code]) input[KEY[e.code]] = 0; if (e.code === 'Space') input.jump = 0; });
 // keys that were down when the window lost focus never send their keyup — the courier would walk into the sunset on his own
@@ -2560,7 +2567,7 @@ function frame(now) {
   if (world.running || world.roam) { updateHud(); $('hint').innerHTML = hintText(); }
   updateTouch(); updateVoice();
   if ($('s-settings').classList.contains('on')) { fpsN++; if (now - fpsT > 500) { $('cfg-fps').textContent = `${Math.round(fpsN * 1000 / (now - fpsT))} fps. it is what it is.`; fpsN = 0; fpsT = now; } }
-  renderer.render(scene, camera);
+  if (!world.psOpen) renderer.render(scene, camera);                                          // Pitty Striker has the monitor: one WebGL context draws at a time
 }
 $('btn-start').onclick = () => { if (net.on && !net.host) return toast('only the host clocks everyone in.'); if (net.on) netEvent({ k: 'start' }); startShift(); };
 $('btn-again').onclick = () => { if (net.on && !net.host) return toast('only the host clocks everyone in.'); if (net.on) netEvent({ k: 'start' }); startShift(); };
@@ -2955,9 +2962,35 @@ function updateVoice() {
 function netState() { return { on: net.on, host: net.host, code: net.code, status: netStatus, players: playerList().map(p => p.name + (p.id === net.id ? ' (you)' : '') + (p.id === 0 ? ' · host' : '')), running: world.running, signedIn: !!sbUser }; }
 if (net.lobby) net.lobby.onChange(() => os.refreshOnline());
 
+/* ── Pitty Striker: the shooter on the PC (ow-striker.js). loaded the first time the icon is clicked — it is a whole game, nobody
+   pays for it on a delivery shift — and mounted inside the monitor frame; while it is up the world stops drawing ── */
+const strikerApi = {
+  THREE, frame: () => document.getElementById('pc-frame'),
+  save: () => save, persist, salt: SAVE_SALT,
+  cash: () => save.cash, addCash: n => bank.add(n), name: myName, isTouch: IS_TOUCH, cfg: () => cfg,
+  audio: { ctx: () => audioCtx(), master: () => (audioCtx(), master), buffer: p => (audioCtx(), loadBuffer(p)), piano: () => (audioCtx(), piano) },
+  musicDuck, toast, onActive: on => { world.psOpen = !!on; if (!on) clearInput(); },
+  scores: { tally: (id, n) => window.yczTally && yczTally(id, n), score: (id, n) => window.yczScore && yczScore(id, n), play: (id, ms) => window.yczPlay && yczPlay(id, ms) },
+  debug: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname),
+};
+let strikerReal = null, strikerLoading = null;
+const striker = {
+  get active() { return !!(strikerReal && strikerReal.active); }, get inMatch() { return !!(strikerReal && strikerReal.inMatch); },
+  get __test() { return strikerReal && strikerReal.__test; }, get real() { return strikerReal; },
+  open(W) {
+    if (strikerReal) return strikerReal.open(W);
+    W.body.innerHTML = '<p style="padding:14px;color:#123">loading pitty_striker.exe…</p>';
+    strikerLoading = strikerLoading || import('./ow-striker.js').then(m => { strikerReal = m.createStriker(strikerApi); return strikerReal; });
+    strikerLoading.then(s => { if (W.el.isConnected) s.open(W); })
+      .catch(err => { console.warn('[pitty]', err); strikerLoading = null; W.body.innerHTML = '<div style="padding:14px;color:#123"><b>pitty_striker.exe has stopped working.</b><br><span style="color:#667">it did not load this time. it is on the list.</span></div>'; });
+  },
+  close() { if (strikerReal) strikerReal.close(); },
+  escape() { return strikerReal ? strikerReal.escape() : false; },
+};
 /* ── the PC: MirrorOS on top of the world ── */
 const os = createOS({
   close: () => closePC(), openLocker: () => openLocker(), name: myName,
+  pitty: { open: W => striker.open(W), close: () => striker.close() },
   cash: () => save.cash, addCash: n => bank.add(n),
   games: { slots: casino.slots[0], bj: casino.bj, rl: casino.rl },                              // the PC windows and the tables share one state: what the felt shows is what the window shows
   loadNotes: () => save.notes || '', saveNotes: t => { save.notes = String(t).slice(0, 4000); persist(); },
@@ -2971,12 +3004,12 @@ function openPC(app) {
   if (net.lobby) net.lobby.join();
   if (world.pcScreen) world.pcScreen.material.color.setHex(0xffffff);
 }
-function closePC(silent) { if (!world.pcOpen) return; world.pcOpen = false; os.close(); if (!silent) sfx('door'); }
+function closePC(silent) { if (!world.pcOpen) return; if (striker.active) striker.close(); world.pcOpen = false; os.close(); if (!silent) sfx('door'); }
 if (!LOCAL_SIG && new URLSearchParams(location.search).get('join')) { const code = new URLSearchParams(location.search).get('join'); setTimeout(() => { enterRoam(); joinRoom(code); }, 800); }   // overwork.html?join=ABCDE
 $('loading').remove();
 if (tampered) { persist(); setTimeout(() => toast('the sock drawer had a hole in it. it is empty now.', 'bad'), 1500); }
 /* debug handle (also what the Playwright harness drives) */
-if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) window.__ow = { courier, boxes, van, world, renderer, scenery, audio, armMusic, sfx, get piano() { return piano; }, get ac() { return ac; }, houses, props, customers, remotes, net, casino, voice, solidAt, colliders, cfg, applyCfg, openSettings, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
+if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) window.__ow = { courier, boxes, van, world, renderer, scenery, audio, armMusic, sfx, striker, grant: n => bank.add(n), get piano() { return piano; }, get ac() { return ac; }, houses, props, customers, remotes, net, casino, voice, solidAt, colliders, cfg, applyCfg, openSettings, startShift, interact, honk, emote, camState, input, openPC, closePC, enterRoam, hostRoom, joinRoom, netLeave, takeLapis, applyLookTo };
 requestAnimationFrame(frame);
 </script>
 </body>

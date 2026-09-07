@@ -2,7 +2,7 @@
    It looks like a certain 2009 operating system with glass borders and a round start button, because that is
    what a courier's home PC looks like. Draggable windows, a taskbar, a start menu, and the apps that matter:
    Overwork Online (host / join a shift), the Lucky Loaf Casino (lose the sock drawer), notes, the locker,
-   a Pitty Striker shortcut that does not work yet, and a recycle bin full of feelings.
+   Pitty Striker (the shooter, ow-striker.js — opened maximised in a window so the taskbar stays), and a recycle bin full of feelings.
    The game hands in an api object; this file only touches its own DOM (#s-pc). */
 
 import { createSlots, createBlackjack, createRoulette, SLOT_SYMBOLS, BETS, WHEEL, colorOf, handValue, isRed } from './ow-casino.js';
@@ -141,7 +141,7 @@ export function createOS(api) {
     const el = document.createElement('div'); el.className = 'win'; el.style.cssText = `width:${w}px;height:${h}px;left:${x}px;top:${y}px;z-index:${++z}`;
     el.innerHTML = `<div class="tb"><i style="background:${ICONS[APPS[key] ? APPS[key].icon : 'notes'][0]}"></i><b>${title}</b><div class="bt"><button data-a="min" title="minimise">–</button><button data-a="max" title="maximise">▢</button><button class="x" data-a="x" title="close">✕</button></div></div><div class="body"></div>`;
     desk.appendChild(el);
-    const W = { key, el, body: el.querySelector('.body'), title, task: null };
+    const W = { key, el, body: el.querySelector('.body'), title, task: null }; W.close = () => closeWin(W);
     el.querySelector('.tb').addEventListener('pointerdown', e => {
       if (e.target.tagName === 'BUTTON') return; focus(W);
       const r = el.getBoundingClientRect(), pr = desk.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top;
@@ -168,9 +168,14 @@ export function createOS(api) {
     if (k === 'casino') return paintCasino(makeWin(k, APPS[k].title, 520, 470, x, y));
     if (k === 'notes') { const W = makeWin(k, APPS[k].title, 420, 320, x, y); W.body.style.padding = '0'; W.body.innerHTML = `<textarea spellcheck="false">${notesText()}</textarea>`; W.body.querySelector('textarea').oninput = e => api.saveNotes(e.target.value); return; }
     if (k === 'bin') { const W = makeWin(k, APPS[k].title, 380, 260, x, y); W.body.innerHTML = `<h3>Recycle Bin</h3><ul><li>motivation.txt</li><li>sleep_schedule.cfg</li><li>raise_request_v7_FINAL.docx</li><li>dignity (shortcut)</li></ul><div class="row"><button class="pc-btn" id="bin-r">Restore</button><button class="pc-btn" id="bin-e">Empty</button></div><p class="mut" id="bin-m"></p>`; W.body.querySelector('#bin-r').onclick = () => W.body.querySelector('#bin-m').textContent = "can't restore that. it's gone. it's been gone."; W.body.querySelector('#bin-e').onclick = () => W.body.querySelector('#bin-m').textContent = 'already empty inside. the bin, too.'; return; }
-    if (k === 'pitty') { const W = makeWin(k, 'pitty_striker.exe', 380, 190, x + 80, y + 120); W.body.innerHTML = `<div class="row"><div class="g" style="width:36px;height:36px;border-radius:8px;background:#c9302c;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;">!</div><div><b>pitty_striker.exe has stopped working.</b><br><span class="mut">it never started. it's on the list. the list is long.</span></div></div><div class="row" style="justify-content:flex-end"><button class="pc-btn" id="pt-ok">Close program</button></div>`; W.body.querySelector('#pt-ok').onclick = () => closeWin(W); return; }
+    if (k === 'pitty') {                                                                             // pitty_striker.exe runs now. the window fills the desktop; the taskbar stays — the 2009 desktop is the bezel
+      const W = makeWin(k, 'pitty_striker.exe', 720, 480, x, y); W.el.classList.add('max'); W.body.style.padding = '0'; W.body.style.overflow = 'hidden';
+      W.onclose = () => { if (api.pitty) api.pitty.close(); };
+      if (api.pitty) api.pitty.open(W); else W.body.innerHTML = '<p style="padding:14px">pitty_striker.exe has stopped working. it never started. it\'s on the list.</p>';
+      return;
+    }
   }
-  function notesText() { return api.loadNotes() || `todo\n- deliver boxes\n- don't throw boxes\n- buy milk\n- ask about the raise (don't)\n- fix the van's "hi" flag (it says hi. that's the fix.)\n- pitty striker when\n\nla peace.`; }
+  function notesText() { return api.loadNotes() || `todo\n- deliver boxes\n- don't throw boxes\n- buy milk\n- ask about the raise (don't)\n- fix the van's "hi" flag (it says hi. that's the fix.)\n- ~~pitty striker when~~ installed. finally.\n\nla peace.`; }
 
   /* ── Overwork Online ── */
   let onlineWin = null;
