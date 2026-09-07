@@ -1,0 +1,39 @@
+Gun sounds used by Pitty Striker (ow-striker.js).
+
+Source: "Snake's Authentic Gun Sounds" and "Snake's SECOND Authentic Gun
+Sounds", by Snake / F8 Studios, supplied by the site owner in September 2026.
+The packs' own readme points at:
+
+  https://f8studios.itch.io/snakes-authentic-gun-sounds
+
+Eighteen clips were kept out of the two packs, converted to mono 32 kHz MP3,
+trimmed to one event each and level-matched. Nothing else was changed: no
+sound was layered with another and none was resynthesised.
+
+  glock_shot   <- 9mm Single
+  ar_shot      <- 556 Single
+  ak_shot      <- 762x39 Single
+  awp_shot     <- 762x54r Single
+
+  glock_magout <- 9mm Pistol Reload 1
+  glock_magin  <- 9mm Pistol Reload 2
+  glock_bolt   <- 9mm Pistol Slide Release
+  glock_lock   <- 9mm Pistol Slide Lock
+  glock_dry    <- 9mm Pistol Dry Fire
+
+  ar_magout    <- AR Reload Part 1
+  ar_magin     <- AR Reload Part 2
+  ar_bolt      <- AR Bolt Release
+
+  ak_magout    <- AK Reload Part 1
+  ak_magin     <- AK Reload Part 2
+  ak_bolt      <- AK Rack
+
+  awp_magout   <- 308 Magazine Part 1
+  awp_magin    <- 308 Magazine Part 2
+  awp_bolt     <- 308 Bolt Cycle
+
+The packs shipped without a licence file. The owner supplied them and has
+been asked to confirm that the itch.io terms allow use in this game; if they
+do not, these files come out and the code falls back to the pitched foley in
+art/sfx/ that it still carries.

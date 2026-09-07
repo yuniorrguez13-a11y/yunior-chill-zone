@@ -14,14 +14,20 @@
 export const LANE_Y = 1.0;
 const L = LANE_Y;
 
-/* ── materials (hex strings; nothing red — #e10600 is UI only) ── */
+/* ── materials (hex strings; nothing red — #e10600 is UI only) ─────────────────────────────────
+   "sandstone" is a night city block, not a desert town. The key names are the ones the MAP rows were
+   written against and they stay, so the blockout is untouched; what changed is what each one paints.
+   Read them as: sand = asphalt, sandstone = concrete wall, sandstoneDark = pavement / precast, stone =
+   kerb and stair concrete, wood = steel crate, awning = shop shutter, palm* = street tree, barrel =
+   dumpster, pot = concrete planter. The ground stays a good deal darker than the walls: with both the
+   same value the arena read as one flat mass and you could not see where a wall ended and the floor began. */
 export const MATS = {
-  // the ground is deliberately a good deal darker than the walls: with both at the same tan the arena read as one flat mass and
-  // you could not see where a wall ended and the floor began
-  sand: '#b79c6f', sandstone: '#dcc79f', sandstoneDark: '#a3854f', stone: '#7d6f52',
-  wood: '#a9773f', woodDark: '#7a5528', awning: '#e0762a', awning2: '#f2e6cc',
-  palmTrunk: '#8a6a48', palmLeaf: '#4a8a3a', water: '#6fb8d8', barrel: '#5a6b4a', ammo: '#556b2f',
-  pot: '#b5664a', metal: '#8b8f9c', skyLo: '#e8d6b0', skyHi: '#7fb8e8',
+  sand: '#31353d', sandstone: '#6a7079', sandstoneDark: '#525862', stone: '#434952',
+  wood: '#4e5a66', woodDark: '#39434d', awning: '#8f3a30', awning2: '#b6bec7',
+  palmTrunk: '#3f3a32', palmLeaf: '#38553c', water: '#283a46', barrel: '#375a45', ammo: '#4a5a34',
+  pot: '#565c65', metal: '#8b929c', skyLo: '#4a3f42', skyHi: '#0d1120',
+  brick: '#6d4c43', brickDark: '#503a33', rust: '#7d5140', glass: '#243040', glow: '#ffb04a', glowWin: '#8a6a34',
+  paint: '#c6c2b4', neon: '#4ad2ff', tarp: '#3a4652',
 };
 
 /* ── the map ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -98,60 +104,151 @@ for (const s of [-1, 1]) {
 }
 export const MAP = MAP_ROWS;
 
-/* ── deco (no colliders) ── */
+/* ── deco (no colliders). The blockout is a night city block: concrete, steel, sodium light.
+   Everything here is the *look* of a MAP collider or free dressing; nothing here stops a bullet or a body.
+   `mat:'glow'` is the one unlit material — lamp lenses, lit windows, sign faces — and every real light
+   source in LIGHTS sits inside one of them. ── */
 const DECO_LIST = [];
 const D = (kind, mat, x, y, z, o) => { DECO_LIST.push(Object.assign({ kind, mat, x, y, z }, o || {})); };
-// crenellations along the four wall tops
-for (let x = -19.8; x <= 19.81; x += 1.2) { D('box', 'sandstoneDark', x, 5.25, 14.25, { w: 0.6, h: 0.5, d: 0.5 }); D('box', 'sandstoneDark', x, 5.25, -14.25, { w: 0.6, h: 0.5, d: 0.5 }); }
-for (let z = -13.2; z <= 13.21; z += 1.2) { D('box', 'sandstoneDark', -20.25, 5.25, z, { w: 0.5, h: 0.5, d: 0.6 }); D('box', 'sandstoneDark', 20.25, 5.25, z, { w: 0.5, h: 0.5, d: 0.6 }); }
-// the fountain: octagonal lip, still water, pillar, finial
-D('torus', 'stone', 0, 0.6, 0, { r: 1.5, r2: 0.12, n: 8 });
-D('cyl', 'water', 0, 0.61, 0, { r: 1.15, h: 0.02, n: 24 });
-D('cyl', 'stone', 0, 1.35, 0, { r: 0.28, r2: 0.32, h: 1.5, n: 8 });
-D('sphere', 'stone', 0, 2.3, 0, { r: 0.22 });
-// palms: tapered trunk + six leaves fanned and drooping. Two grow out of the mid rubble, four in the terrace corners
-function palm(x, y, z, h) {
-  D('cyl', 'palmTrunk', x, y + h / 2, z, { r: 0.15, r2: 0.24, h, n: 7 });
-  for (let i = 0; i < 6; i++) {
-    const a = i * Math.PI / 3 + 0.3, dx = Math.sin(a), dz = Math.cos(a);
-    D('box', 'palmLeaf', x + dx * 1.0, y + h + 0.1, z + dz * 1.0, { w: 0.45, h: 0.05, d: 2.4, rot: [0.55, a, 0] });
+const LIGHT_LIST = [];
+const LI = (x, y, z, color, intensity, dist) => { LIGHT_LIST.push({ x, y, z, color, intensity, dist }); };
+
+// roof coping along the four wall tops, with a vent box every fifth bay
+let cap = 0;
+for (let x = -19.8; x <= 19.81; x += 1.2) {
+  D('box', 'sandstoneDark', x, 5.2, 14.25, { w: 1.2, h: 0.36, d: 0.62 }); D('box', 'sandstoneDark', x, 5.2, -14.25, { w: 1.2, h: 0.36, d: 0.62 });
+  if (cap % 5 === 2) { D('box', 'metal', x, 5.6, 14.25, { w: 0.7, h: 0.44, d: 0.62 }); D('box', 'metal', x, 5.6, -14.25, { w: 0.7, h: 0.44, d: 0.62 }); }
+  cap++;
+}
+for (let z = -13.2; z <= 13.21; z += 1.2) {
+  D('box', 'sandstoneDark', -20.25, 5.2, z, { w: 0.62, h: 0.36, d: 1.2 }); D('box', 'sandstoneDark', 20.25, 5.2, z, { w: 0.62, h: 0.36, d: 1.2 });
+}
+
+/* a sodium street lamp: plinth, tapered pole, a short arm over the walkway, a hooded lantern with a lit lens.
+   `dx/dz` is the direction the arm reaches; the lens is what LIGHTS lights from. */
+function lamp(x, y, z, h, dx, dz) {
+  const ax = dx * 0.85, az = dz * 0.85;
+  D('cyl', 'stone', x, y + 0.09, z, { r: 0.24, r2: 0.28, h: 0.18, n: 8 });
+  D('cyl', 'metal', x, y + h / 2 + 0.15, z, { r: 0.055, r2: 0.1, h, n: 8 });
+  D('box', 'metal', x + ax * 0.5, y + h + 0.14, z + az * 0.5, { w: dx ? 0.85 : 0.07, h: 0.07, d: dz ? 0.85 : 0.07 });
+  D('box', 'metal', x + ax, y + h + 0.06, z + az, { w: 0.34, h: 0.14, d: 0.5, rot: [dz * 0.12, 0, -dx * 0.12] });
+  D('box', 'glow', x + ax, y + h - 0.03, z + az, { w: 0.28, h: 0.04, d: 0.42 });
+  LI(x + ax, y + h - 0.1, z + az, '#ffa441', 2.6, 13);
+}
+/* a bare city tree in a grate: trunk plus four stubby limbs. Winter-dead on purpose — no soft canopy. */
+function tree(x, y, z, h) {
+  D('box', 'stone', x, y + 0.02, z, { w: 1.1, h: 0.06, d: 1.1 });
+  D('cyl', 'palmTrunk', x, y + h / 2, z, { r: 0.1, r2: 0.17, h, n: 7 });
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.257 + 0.4, dx = Math.sin(a), dz = Math.cos(a);
+    D('box', 'palmTrunk', x + dx * 0.5, y + h * 0.82 + i * 0.12, z + dz * 0.5, { w: 0.07, h: 0.07, d: 1.1, rot: [0.5, a, 0] });
+    D('box', 'palmLeaf', x + dx * 0.95, y + h * 0.95 + i * 0.12, z + dz * 0.95, { w: 0.75, h: 0.22, d: 0.75 });
   }
 }
-palm(-4.4, 0.3, -4.4, 4.2); palm(4.4, 0.3, 4.4, 4.6);
-palm(-19.3, L, 13.3, 3.6); palm(19.3, L, 13.3, 3.9); palm(-19.3, L, -6.4, 3.4); palm(19.3, L, -6.4, 3.7);
-// the market stall: four poles, a sloped awning with cream stripes
-for (const [x, z] of [[-1.35, 9.85], [1.35, 9.85], [-1.35, 11.75], [1.35, 11.75]]) D('cyl', 'woodDark', x, L + 1.1, z, { r: 0.03, h: 2.2, n: 6 });
-D('box', 'awning', 0, L + 2.25, 10.8, { w: 3.0, h: 0.06, d: 2.2, rot: [-0.12, 0, 0] });
-for (const x of [-1.05, -0.35, 0.35, 1.05]) D('box', 'awning2', x, L + 2.255, 10.8, { w: 0.3, h: 0.07, d: 2.2, rot: [-0.12, 0, 0] });
-for (const [x, z, r] of [[-0.8, 10.5, 0.16], [-0.45, 11.2, 0.12], [0.9, 11.1, 0.14]]) D('cyl', 'pot', x, L + 1.15, z, { r, r2: r * 0.75, h: 0.3, n: 8 });
-// cloth lines across the north lane with washing on them
+/* a wheelie dumpster over one of the barrel colliders (0.62 × 0.9 at the base, 1.0 high) */
+function dumpster(x, y, z) {
+  D('box', 'barrel', x, y + 0.52, z, { w: 0.6, h: 0.86, d: 0.86 });
+  D('box', 'barrel', x, y + 0.98, z + 0.06, { w: 0.64, h: 0.07, d: 0.9, rot: [-0.06, 0, 0] });
+  D('box', 'metal', x, y + 0.13, z, { w: 0.64, h: 0.1, d: 0.2 });
+  for (const s of [-1, 1]) D('cyl', 'metal', x + s * 0.27, y + 0.07, z + 0.32, { r: 0.07, h: 0.06, n: 8, rot: [0, 0, 1.5708] });
+}
+/* a traffic cone with its reflective band */
+function cone(x, y, z) { D('box', 'awning', x, y + 0.02, z, { w: 0.34, h: 0.04, d: 0.34 }); D('cone', 'awning', x, y + 0.3, z, { r: 0.15, h: 0.56, n: 8 }); D('cyl', 'awning2', x, y + 0.32, z, { r: 0.105, h: 0.09, n: 8 }); }
+/* a kerbside bin */
+function bin(x, y, z, r, h) { D('cyl', 'metal', x, y + h / 2, z, { r, r2: r * 0.86, h, n: 10 }); D('cyl', 'sandstoneDark', x, y + h + 0.03, z, { r: r * 1.08, h: 0.06, n: 10 }); }
+/* an air-conditioning unit bolted to a wall, `face` = the wall normal it hangs off */
+function ac(x, y, z, fx, fz) {
+  D('box', 'metal', x, y, z, { w: fz ? 0.7 : 0.42, h: 0.5, d: fz ? 0.42 : 0.7 });
+  D('box', 'sandstoneDark', x + fx * 0.23, y, z + fz * 0.23, { w: fz ? 0.56 : 0.02, h: 0.36, d: fz ? 0.02 : 0.56 });
+}
+/* a lit window: a dark recess with a warm pane, hung on a wall face */
+function window_(x, y, z, w, h, fx, fz, lit) {
+  D('box', 'brickDark', x, y, z, { w: fz ? w + 0.16 : 0.06, h: h + 0.16, d: fz ? 0.06 : w + 0.16 });
+  D('box', lit ? 'glowWin' : 'glass', x + fx * 0.05, y, z + fz * 0.05, { w: fz ? w : 0.03, h, d: fz ? 0.03 : w });
+  if (lit) LI(x + fx * 0.8, y, z + fz * 0.8, '#ffbe72', 0.5, 5);
+}
+
+// ── the centre: a utility island where the fountain used to be. The basin collider is its kerb.
+D('torus', 'stone', 0, 0.6, 0, { r: 1.5, r2: 0.13, n: 8 });
+D('cyl', 'water', 0, 0.61, 0, { r: 1.15, h: 0.02, n: 24 });                       // standing water, never drains
+D('cyl', 'metal', 0, 1.2, 0, { r: 0.11, r2: 0.14, h: 1.2, n: 8 });                // standpipe
+D('torus', 'metal', 0, 1.72, 0, { r: 0.26, r2: 0.03, n: 10 });                    // the cage around the lamp
+D('sphere', 'glow', 0, 1.86, 0, { r: 0.13 });
+LI(0, 1.86, 0, '#ffb347', 1.5, 9);
+D('cyl', 'stone', 0, 0.63, 1.05, { r: 0.34, h: 0.04, n: 12 });                    // a manhole in the island
+D('cyl', 'stone', 0, 0.63, -1.05, { r: 0.34, h: 0.04, n: 12 });
+
+// ── street lamps and trees. Two light the pit from the old rubble heaps; the rest stand on the terraces.
+lamp(-4.4, 0.3, -4.4, 4.0, 1, 0); lamp(4.4, 0.3, 4.4, 4.0, -1, 0);
+lamp(-19.3, L, 13.3, 3.6, 1, 0); lamp(19.3, L, 13.3, 3.6, -1, 0);
+lamp(-19.3, L, -6.4, 3.4, 1, 0); lamp(19.3, L, -6.4, 3.4, -1, 0);
+lamp(-8.0, L, 5.9, 3.2, 0, -1); lamp(8.0, L, -5.9, 3.2, 0, 1);
+tree(-15.5, L, 12.2, 3.1); tree(15.5, L, 12.2, 2.9); tree(-15.5, L, -12.2, 2.8);
+
+// ── the kiosk over the market counter: steel posts, a corrugated canopy, a lit sign strip, a shutter
+for (const [x, z] of [[-1.35, 9.85], [1.35, 9.85], [-1.35, 11.75], [1.35, 11.75]]) D('cyl', 'metal', x, L + 1.1, z, { r: 0.045, h: 2.2, n: 6 });
+D('box', 'tarp', 0, L + 2.25, 10.8, { w: 3.1, h: 0.08, d: 2.3, rot: [-0.1, 0, 0] });
+for (let x = -1.4; x <= 1.41; x += 0.28) D('box', 'metal', x, L + 2.31, 10.8, { w: 0.06, h: 0.06, d: 2.3, rot: [-0.1, 0, 0] });   // corrugation
+D('box', 'sandstoneDark', 0, L + 1.72, 9.92, { w: 2.6, h: 0.44, d: 0.1 });                                // fascia over the counter
+D('box', 'glow', 0, L + 1.72, 9.85, { w: 1.5, h: 0.14, d: 0.03 });
+LI(0, L + 1.6, 9.5, '#ffd9a0', 0.9, 7);
+D('box', 'awning', 0, L + 0.55, 11.62, { w: 2.3, h: 1.1, d: 0.06 });                                      // the shutter behind the counter
+for (let x = -1.1; x <= 1.11; x += 0.16) D('box', 'rust', x, L + 0.55, 11.58, { w: 0.05, h: 1.1, d: 0.03 });
+for (const [x, z, r] of [[-0.8, 10.5, 0.16], [-0.45, 11.2, 0.12], [0.9, 11.1, 0.14]]) D('cyl', 'metal', x, L + 1.15, z, { r, r2: r * 0.8, h: 0.3, n: 8 });
+
+// ── cables strung over the north lane, with a bare bulb hanging off each
 for (const x of [-14, 10.5]) {
-  D('box', 'awning2', x, 4.7, 10.875, { w: 0.03, h: 0.03, d: 6.25 });
-  [8.6, 9.8, 11.4, 12.7].forEach((z, i) => D('box', i % 2 ? 'awning' : 'awning2', x, 4.4, z, { w: 0.02, h: 0.55, d: 0.42 }));
+  D('box', 'stone', x, 4.7, 10.875, { w: 0.04, h: 0.04, d: 6.25 });
+  [8.9, 11.9].forEach(z => {
+    D('box', 'stone', x, 4.5, z, { w: 0.02, h: 0.42, d: 0.02 });
+    D('cone', 'metal', x, 4.24, z, { r: 0.13, h: 0.14, n: 8, rot: [Math.PI, 0, 0] });
+    D('sphere', 'glow', x, 4.14, z, { r: 0.07 });
+    LI(x, 4.1, z, '#ffc98a', 1.0, 8);
+  });
 }
-// barrel rims (top and belly hoops) and the barrel bodies themselves, drawn as cylinders over their collider blocks
-for (const z of [-13.55, -12.65, -11.75]) {
-  D('cyl', 'barrel', 0, L + 0.51, z, { r: 0.46, h: 1.02, n: 12 });
-  D('torus', 'metal', 0, L + 0.98, z, { r: 0.44, r2: 0.025, n: 12 });
-  D('torus', 'metal', 0, L + 0.5, z, { r: 0.46, r2: 0.025, n: 12 });
-}
-// greenery on the planters, pots along the walls
+
+// ── the dumpster row against the south wall, over the three barrel colliders
+for (const z of [-13.55, -12.65, -11.75]) dumpster(0, L, z);
+
+// ── kerbside clutter where the pots used to stand: cones, bins, a stack of pallets
 for (const s of [-1, 1]) {
-  D('box', 'palmLeaf', s * 11.85, L + 1.35, 4.5, { w: 1.0, h: 0.3, d: 2.2 });
-  D('cyl', 'pot', s * 19.6, L + 0.22, 8.4, { r: 0.22, r2: 0.16, h: 0.45, n: 8 });
-  D('cyl', 'pot', s * 19.1, L + 0.16, 8.9, { r: 0.16, r2: 0.12, h: 0.32, n: 8 });
-  D('cyl', 'pot', s * 14.0, L + 0.2, 12.6, { r: 0.2, r2: 0.15, h: 0.4, n: 8 });
-  D('cyl', 'pot', s * 6.0, L + 0.22, 6.6, { r: 0.22, r2: 0.16, h: 0.45, n: 8 });
-  D('cyl', 'pot', s * 5.6, L + 0.15, 6.15, { r: 0.15, r2: 0.11, h: 0.3, n: 8 });
-  D('cyl', 'pot', s * 19.6, L + 0.2, -8.6, { r: 0.2, r2: 0.15, h: 0.4, n: 8 });
+  cone(s * 19.6, L, 8.4); cone(s * 19.1, L, 8.9);
+  bin(s * 14.0, L, 12.6, 0.24, 0.62);
+  bin(s * 6.0, L, 6.6, 0.26, 0.66);
+  cone(s * 5.6, L, 6.15);
+  bin(s * 19.6, L, -8.6, 0.22, 0.56);
+  D('box', 'palmLeaf', s * 11.85, L + 1.32, 4.5, { w: 1.02, h: 0.26, d: 2.2 });                           // the planter's shrub
+  D('box', 'pot', s * 11.85, L + 1.22, 4.5, { w: 1.28, h: 0.1, d: 2.48 });                                // its coping
+  for (let k = 0; k < 3; k++) D('box', 'woodDark', s * 17.6, L + 2.46 + k * 0.14, -3.2, { w: 1.1, h: 0.1, d: 0.9 });   // pallets on the balcony
 }
+
+// ── the walls stop being blank: lit windows, air conditioners, a fire ladder, roller shutters
+for (const z of [-11.5, -4.5, 3.5, 11.5]) {
+  window_(-19.95, 3.3, z, 0.8, 1.0, 1, 0, z === -4.5 || z === 11.5);
+  window_(19.95, 3.3, z, 0.8, 1.0, -1, 0, z === 3.5);
+}
+for (const x of [-14.5, -6.5, 6.5, 14.5]) {
+  window_(x, 3.5, 13.95, 0.9, 1.1, 0, -1, x === -6.5 || x === 14.5);
+  window_(x, 3.5, -13.95, 0.9, 1.1, 0, 1, x === 6.5);
+}
+ac(-19.7, 2.2, 6.5, 1, 0); ac(19.7, 2.2, -2.5, -1, 0); ac(-9.5, 2.4, 13.9, 0, -1); ac(11.5, 2.4, -13.9, 0, 1);
+for (let k = 0; k < 9; k++) D('box', 'metal', -19.9, 1.4 + k * 0.34, -9.4, { w: 0.06, h: 0.05, d: 0.52 });   // fire-ladder rungs
+for (const s of [-1, 1]) { D('box', 'metal', -19.9, 3.0, -9.4 + s * 0.28, { w: 0.06, h: 3.4, d: 0.06 }); }
+D('box', 'rust', 16.5, 2.0, 13.95, { w: 3.0, h: 2.4, d: 0.08 });                                          // a shutter down over a shopfront
+for (let y = 0.9; y <= 3.11; y += 0.18) D('box', 'awning', 16.5, y, 13.9, { w: 2.9, h: 0.09, d: 0.04 });
 export const DECO = DECO_LIST;
+/* point lights the arena carries. The engine drops the dimmest ones first on low quality. */
+export const LIGHTS = LIGHT_LIST;
 
 /* ── signs: few, generic. Painted letters on the lane walls, a wordless board over the stall ── */
 export const SIGNS = [
-  { id: 'laneA', text: 'A', x: -15.5, y: 3.0, z: 7.78, w: 1.2, h: 1.2, face: '+z', font: 'sketch', ink: '#3a3128', bg: 'none' },
-  { id: 'laneB', text: 'B', x: 15.5, y: 3.0, z: -7.78, w: 1.2, h: 1.2, face: '-z', font: 'sketch', ink: '#3a3128', bg: 'none' },
-  { id: 'shop', text: '', x: 0, y: 3.5, z: 9.9, w: 2.4, h: 0.5, face: '-z', font: 'hand', ink: '#3a3128', bg: '#f2e6cc' },
+  // callouts, sprayed on the lane walls the way a real map labels its sites
+  { id: 'laneA', text: 'A', x: -15.5, y: 3.0, z: 7.78, w: 1.3, h: 1.3, face: '+z', ink: '#d8d3c2', bg: 'none' },
+  { id: 'laneB', text: 'B', x: 15.5, y: 3.0, z: -7.78, w: 1.3, h: 1.3, face: '-z', ink: '#d8d3c2', bg: 'none' },
+  { id: 'noPark', text: 'NO PARKING', x: -10, y: 2.6, z: 7.78, w: 2.6, h: 0.5, face: '+z', ink: '#9aa2ab', bg: 'none' },
+  { id: 'exit', text: 'FIRE EXIT', x: -19.95, y: 2.4, z: -9.4, w: 1.9, h: 0.42, face: '+x', ink: '#8fd6a0', bg: 'none' },
+  { id: 'bay', text: 'LOADING BAY', x: 8, y: 2.4, z: -7.78, w: 2.6, h: 0.46, face: '-z', ink: '#9aa2ab', bg: 'none' },
+  { id: 'keep', text: 'KEEP CLEAR', x: -5.5, y: 2.6, z: 7.24, w: 2.2, h: 0.42, face: '-z', ink: '#c8ccd2', bg: 'none' },
 ];
 
 /* ── ground paint (metres, on the 44 × 32 sand canvas). Only the courtyard floor is visible — the terraces cover the rest —
@@ -160,23 +257,31 @@ export const SIGNS = [
 export const GROUND = {
   w: 44, d: 32, texW: 1024, texH: 768,
   paint: [
-    { kind: 'circle', x: 0, z: 0, r: 4.6, color: '#cdb98e' },
-    { kind: 'circle', x: 0, z: 0, r: 4.0, color: '#b39a6b' },
-    { kind: 'circle', x: 0, z: 0, r: 3.5, color: '#d9c69b' },
-    { kind: 'circle', x: 0, z: 0, r: 2.6, color: '#8a7a5a' },
-    { kind: 'circle', x: 0, z: 0, r: 2.2, color: '#cdb98e' },
-    { kind: 'line', x1: -5, z1: 0, x2: -1.6, z2: 0, width: 1.6, color: '#c9b58a' },
-    { kind: 'line', x1: 5, z1: 0, x2: 1.6, z2: 0, width: 1.6, color: '#c9b58a' },
-    { kind: 'line', x1: 0, z1: 4.0, x2: 0, z2: 1.6, width: 1.2, color: '#c9b58a' },
-    { kind: 'line', x1: 0, z1: -4.0, x2: 0, z2: -1.6, width: 1.2, color: '#c9b58a' },
-    { kind: 'rug', x: -3.3, z: 3.3, w: 1.6, d: 1.0, color: '#a85c3a', color2: '#f2e6cc', rot: 0.3 },
-    { kind: 'rug', x: 3.3, z: -3.3, w: 1.6, d: 1.0, color: '#4a6a8a', color2: '#f2e6cc', rot: -0.2 },
-    { kind: 'stain', x: -4.2, z: -4.2, r: 1.1, color: '#7a6a4a', alpha: 0.25 },
-    { kind: 'stain', x: 4.2, z: 4.2, r: 1.1, color: '#7a6a4a', alpha: 0.25 },
-    { kind: 'stain', x: 1.9, z: -1.6, r: 0.7, color: '#6f8fa0', alpha: 0.18 },
-    { kind: 'stain', x: -2.2, z: 1.3, r: 0.5, color: '#6f8fa0', alpha: 0.15 },
-    { kind: 'rect', x: 0, z: 4.5, w: 1.4, d: 1.1, color: '#c4ae82' },
-    { kind: 'rect', x: 0, z: -4.5, w: 1.4, d: 1.1, color: '#c4ae82' },
+    // the pit is a service yard: worn asphalt, a painted turning circle, bays, drains, oil
+    { kind: 'circle', x: 0, z: 0, r: 4.7, color: '#2a2e35' },
+    { kind: 'circle', x: 0, z: 0, r: 4.55, color: '#7d7a68', alpha: 0.55, ring: 0.16 },
+    { kind: 'circle', x: 0, z: 0, r: 3.4, color: '#2e3239' },
+    { kind: 'circle', x: 0, z: 0, r: 2.35, color: '#7d7a68', alpha: 0.45, ring: 0.14 },
+    { kind: 'line', x1: -5.2, z1: 0, x2: -1.7, z2: 0, width: 0.16, color: '#8a8674', alpha: 0.6 },
+    { kind: 'line', x1: 5.2, z1: 0, x2: 1.7, z2: 0, width: 0.16, color: '#8a8674', alpha: 0.6 },
+    { kind: 'line', x1: 0, z1: 4.2, x2: 0, z2: 1.7, width: 0.16, color: '#8a8674', alpha: 0.6 },
+    { kind: 'line', x1: 0, z1: -4.2, x2: 0, z2: -1.7, width: 0.16, color: '#8a8674', alpha: 0.6 },
+    // two parking bays, hatched
+    { kind: 'rect', x: -3.4, z: 3.4, w: 2.4, d: 1.5, color: '#8a8674', alpha: 0.22, rot: 0.3 },
+    { kind: 'rect', x: 3.4, z: -3.4, w: 2.4, d: 1.5, color: '#8a8674', alpha: 0.22, rot: -0.2 },
+    // oil, water, rubber
+    { kind: 'stain', x: -4.2, z: -4.2, r: 1.3, color: '#101216', alpha: 0.5 },
+    { kind: 'stain', x: 4.2, z: 4.2, r: 1.3, color: '#101216', alpha: 0.5 },
+    { kind: 'stain', x: 1.9, z: -1.6, r: 0.9, color: '#39424a', alpha: 0.35 },
+    { kind: 'stain', x: -2.2, z: 1.3, r: 0.7, color: '#39424a', alpha: 0.3 },
+    { kind: 'stain', x: -4.6, z: 2.1, r: 1.0, color: '#0d0f12', alpha: 0.4 },
+    { kind: 'stain', x: 4.9, z: -1.2, r: 0.8, color: '#0d0f12', alpha: 0.35 },
+    // the two arch thresholds, kept light so you can read the opening from the pit
+    { kind: 'rect', x: 0, z: 4.5, w: 1.6, d: 1.2, color: '#343941' },
+    { kind: 'rect', x: 0, z: -4.5, w: 1.6, d: 1.2, color: '#343941' },
+    // drains
+    { kind: 'circle', x: -3.9, z: -0.6, r: 0.32, color: '#191c21' },
+    { kind: 'circle', x: 3.9, z: 0.6, r: 0.32, color: '#191c21' },
   ],
 };
 
@@ -262,9 +367,9 @@ export const WEAPONS = {
     glb: { file: 'glock.glb', len: 0.22, grip: [0.27, 0.5] },
     id: 'glock', name: 'Glock', slot: 2, dmg: 30, headMul: 3.5, rpm: 400, auto: false, mag: 20, reserve: 120,
     spread: { base: 0.55, perShot: 0.55, max: 3.0, decay: 8 }, falloff: { from: 30, mul: 0.8 },
-    reload: { total: 2.2, magOut: 0.5, magIn: 1.5, bolt: 1.9 },
-    recoil: { pitch: 0.006, pitchAfter: 0.006, firstShots: 0, yawDrift: 0, kickVis: 0.9, kickPos: 0.03, roll: 0.006 }, switchTime: 0.25,
-    sfx: { shot: 'glock_shot', empty: 'empty', magOut: 'magOut', magIn: 'magIn', bolt: 'bolt' },
+    reload: { total: 2.1, magOut: 0.35, magIn: 1.2, bolt: 1.75 },   // marks sit where each real recording starts, so the parts play end to end
+    recoil: { pitch: 0.006, pitchAfter: 0.006, firstShots: 0, yawDrift: 0, kickVis: 0.9, kickPos: 0.03, roll: 0.006 }, switchTime: 0.25, flash: 0.26,
+    sfx: { shot: 'glock_shot', empty: 'empty', magOut: 'glock_magout', magIn: 'glock_magin', bolt: 'glock_bolt' },
     model: [
       P('box', 'slide', 0, 0.075, 0.06, { w: 0.03, h: 0.032, d: 0.19, skin: true }),
       P('box', 'body', 0, 0.046, 0.07, { w: 0.028, h: 0.028, d: 0.12, skin: true }),
@@ -282,9 +387,9 @@ export const WEAPONS = {
     glb: { file: 'ar.glb', len: 0.83, grip: [0.34, 0.52] },
     id: 'ar', name: 'AR', slot: 1, dmg: 33, headMul: 4, rpm: 666, auto: true, mag: 30, reserve: 90,
     spread: { base: 0.35, perShot: 0.28, max: 3.0, decay: 6 }, falloff: { from: 30, mul: 0.85 },
-    reload: { total: 3.1, magOut: 0.7, magIn: 2.1, bolt: 2.7 },
-    recoil: { pitch: 0.007, pitchAfter: 0.004, firstShots: 4, yawDrift: 0.003, kickVis: 1.4, kickPos: 0.05, roll: 0.008 }, switchTime: 0.4,
-    sfx: { shot: 'ar_shot', empty: 'empty', magOut: 'magOut', magIn: 'magIn', bolt: 'bolt' },
+    reload: { total: 2.9, magOut: 0.35, magIn: 1.15, bolt: 2.25 },
+    recoil: { pitch: 0.007, pitchAfter: 0.004, firstShots: 4, yawDrift: 0.003, kickVis: 1.4, kickPos: 0.05, roll: 0.008 }, switchTime: 0.4, flash: 0.36,
+    sfx: { shot: 'ar_shot', empty: 'empty', magOut: 'ar_magout', magIn: 'ar_magin', bolt: 'ar_bolt' },
     model: [
       P('box', 'body', 0, 0.06, 0.05, { w: 0.04, h: 0.05, d: 0.22, skin: true }),                      // upper receiver
       P('box', 'body', 0, 0.02, 0.02, { w: 0.04, h: 0.045, d: 0.14, skin: true }),                     // lower receiver
@@ -307,9 +412,9 @@ export const WEAPONS = {
     glb: { file: 'ak.glb', len: 0.95, grip: [0.39, 0.59] },
     id: 'ak', name: 'AK-47', slot: 1, dmg: 36, headMul: 4, rpm: 600, auto: true, mag: 30, reserve: 90,
     spread: { base: 0.45, perShot: 0.36, max: 3.6, decay: 5 }, falloff: { from: 25, mul: 0.85 },
-    reload: { total: 2.5, magOut: 0.6, magIn: 1.7, bolt: 2.2 },
-    recoil: { pitch: 0.009, pitchAfter: 0.006, firstShots: 3, yawDrift: 0.005, kickVis: 1.7, kickPos: 0.06, roll: 0.012 }, switchTime: 0.45,
-    sfx: { shot: 'ak_shot', empty: 'empty', magOut: 'magOut', magIn: 'magIn', bolt: 'bolt' },
+    reload: { total: 3.0, magOut: 0.3, magIn: 1.1, bolt: 2.05 },
+    recoil: { pitch: 0.009, pitchAfter: 0.006, firstShots: 3, yawDrift: 0.005, kickVis: 1.7, kickPos: 0.06, roll: 0.012 }, switchTime: 0.45, flash: 0.42,
+    sfx: { shot: 'ak_shot', empty: 'empty', magOut: 'ak_magout', magIn: 'ak_magin', bolt: 'ak_bolt' },
     model: [
       P('box', 'body', 0, 0.05, 0.02, { w: 0.045, h: 0.06, d: 0.24, skin: true }),                     // receiver
       P('box', 'body', 0, 0.085, 0.03, { w: 0.04, h: 0.015, d: 0.22, skin: true }),                    // dust cover
@@ -333,10 +438,10 @@ export const WEAPONS = {
     glb: { file: 'awp.glb', len: 1.14, grip: [0.31, 0.33] },
     id: 'awp', name: 'AWP', slot: 1, dmg: 115, headMul: 4, rpm: 41, auto: false, mag: 5, reserve: 30, bolt: 1.45,
     spread: { base: 5.0, perShot: 0, max: 5.0, decay: 0 }, falloff: { from: 999, mul: 1 },
-    reload: { total: 3.7, magOut: 0.8, magIn: 2.6, bolt: 3.3 },
-    recoil: { pitch: 0.03, pitchAfter: 0.03, firstShots: 0, yawDrift: 0, kickVis: 2.6, kickPos: 0.1, roll: 0.015 }, switchTime: 0.6,
+    reload: { total: 3.4, magOut: 0.4, magIn: 1.5, bolt: 2.4 },
+    recoil: { pitch: 0.03, pitchAfter: 0.03, firstShots: 0, yawDrift: 0, kickVis: 2.6, kickPos: 0.1, roll: 0.015 }, switchTime: 0.6, flash: 0.62,
     scope: { fovMul: 0.4, sensMul: 0.35, moveMul: 0.55, spread: 0.05, unscopeOnShot: true },
-    sfx: { shot: 'awp_shot', bolt: 'awp_bolt', scope: 'scope', empty: 'empty', magOut: 'magOut', magIn: 'magIn' },
+    sfx: { shot: 'awp_shot', bolt: 'awp_bolt', scope: 'scope', empty: 'empty', magOut: 'awp_magout', magIn: 'awp_magin' },
     model: [
       P('box', 'body', 0, 0.05, 0.05, { w: 0.045, h: 0.06, d: 0.3, skin: true }),                      // receiver
       P('cyl', 'barrel', 0, 0.07, 0.5, { r: 0.011, l: 0.5, rot: [HALF_PI, 0, 0], skin: true }),        // the long barrel
@@ -411,11 +516,13 @@ export const RARITY = {
 };
 
 /* ── bots: players, not people. Hoodie colours, none red ── */
+/* `color` is the ACCENT, not the whole figure: everyone wears the same dark gear and the accent is the hood, the
+   sleeves and the name plate. Saturated on purpose — it is the only thing that reads at 30 m on a night map. */
 export const BOTS = [
-  { name: 'toaster', color: '#c8c0b0' }, { name: 'ph4ntom', color: '#6a5a8a' }, { name: 'zero_ping', color: '#3aa6a0' },
-  { name: 'capybara', color: '#a67c52' }, { name: 'wifi_off', color: '#4b4f5a' }, { name: 'n00b_slayer', color: '#2f6fd8' },
-  { name: 'afk', color: '#9aa3ad' }, { name: 'sweat', color: '#e0762a' }, { name: 'bob', color: '#f0e0b0' },
-  { name: 'mom_said_no', color: '#d88ab0' }, { name: 'spinbot (not really)', color: '#7fd0a0' }, { name: 'xXdarkXx', color: '#1e1e26' },
+  { name: 'toaster', color: '#e08a2a' }, { name: 'ph4ntom', color: '#8a4fe0' }, { name: 'zero_ping', color: '#16bdb4' },
+  { name: 'capybara', color: '#b0742e' }, { name: 'wifi_off', color: '#6d7686' }, { name: 'n00b_slayer', color: '#2f78ff' },
+  { name: 'afk', color: '#aab3bd' }, { name: 'sweat', color: '#ff5a1a' }, { name: 'bob', color: '#d8c25a' },
+  { name: 'mom_said_no', color: '#ff3f86' }, { name: 'spinbot (not really)', color: '#3ee08a' }, { name: 'xXdarkXx', color: '#7b2fd0' },
 ];
 
 /* ── difficulty knobs: reaction s, aim error E0 deg and its convergence T s, turn cap deg/s, fire-rate multiplier, burst gap s,
@@ -487,24 +594,34 @@ export const LINES = {
 
 /* ── sound table. key → layers [{f, rate:[lo,hi], gain, lp?, from?, dur?, at?, max?}] or {piano:'cue'}.
    `at` = seconds after the event, `max` = instances per second the engine should allow for that layer.
-   A layer list may carry a {piano, at} entry too (die: the ko then the lose cue). Six recordings, nothing synthesised. ── */
+   A layer list may carry a {piano, at} entry too (die: the ko then the lose cue).
+
+   Two families of recording, nothing synthesised. `F` is the six-file foley pack Overwork already
+   used (impacts, footsteps, whooshes). `G` is the owner's gun pack: one real recording per gun
+   event, so a shot is a shot and a reload is that gun's own magazine and bolt, not a pitched thud.
+   The reload parts line up with WEAPONS[id].reload's magOut / magIn / bolt marks. ── */
 const F = { hit1: 'art/sfx/hit1.wav', hit2: 'art/sfx/hit2.wav', ko: 'art/sfx/ko.wav', block: 'art/sfx/block.wav', armor: 'art/sfx/armor.wav', whoosh: 'art/sfx/whoosh.wav' };
+const G = n => 'art/overwork/sfx-guns/' + n + '.mp3';
 const Y = (f, lo, hi, gain, o) => Object.assign({ f: F[f], rate: [lo, hi], gain }, o || {});
+const Z = (n, gain, o) => Object.assign({ f: G(n), rate: [0.98, 1.02], gain }, o || {});   // a real recording, played nearly straight
 export const SFX = {
-  glock_shot: [Y('hit2', 1.6, 1.8, 0.55, { dur: 0.12 })],
-  ar_shot: [Y('hit2', 1.35, 1.5, 0.45, { dur: 0.1, max: 12 }), Y('hit1', 1.1, 1.1, 0.25, { lp: 1800, dur: 0.08, max: 12 })],
-  ak_shot: [Y('hit2', 1.15, 1.3, 0.5, { dur: 0.11, max: 12 }), Y('hit1', 0.9, 0.9, 0.3, { lp: 1500, dur: 0.1, max: 12 })],
-  awp_shot: [Y('ko', 1.3, 1.3, 0.85, { from: 0.28, dur: 0.32 }), Y('block', 1.9, 1.9, 0.5, { dur: 0.08 })],
-  awp_bolt: [Y('armor', 1.3, 1.3, 0.35, { dur: 0.14 }), Y('block', 1.1, 1.1, 0.3, { dur: 0.1, at: 0.35 })],
+  glock_shot: [Z('glock_shot', 0.85, { max: 12 })],
+  ar_shot: [Z('ar_shot', 0.8, { max: 14 })],
+  ak_shot: [Z('ak_shot', 0.85, { max: 14 })],
+  awp_shot: [Z('awp_shot', 1.0, { max: 4 })],
+  glock_magout: [Z('glock_magout', 1.1)], glock_magin: [Z('glock_magin', 0.9)], glock_bolt: [Z('glock_bolt', 0.9)],
+  ar_magout: [Z('ar_magout', 0.9)], ar_magin: [Z('ar_magin', 0.9)], ar_bolt: [Z('ar_bolt', 0.9)],
+  ak_magout: [Z('ak_magout', 0.9)], ak_magin: [Z('ak_magin', 0.9)], ak_bolt: [Z('ak_bolt', 0.9)],
+  awp_magout: [Z('awp_magout', 0.95)], awp_magin: [Z('awp_magin', 0.95)], awp_bolt: [Z('awp_bolt', 0.95)],
   scope: [Y('whoosh', 1.2, 1.2, 0.18, { dur: 0.1 })],
   knife_swing: [Y('whoosh', 1.3, 1.5, 0.35, { dur: 0.14 })],
   knife_hit: [Y('hit1', 0.8, 0.8, 0.6, { lp: 2500, dur: 0.15 })],
   knife_backstab: [Y('hit1', 0.55, 0.55, 0.8, { lp: 1800, dur: 0.25 })],
-  empty: [Y('block', 2.4, 2.4, 0.2, { dur: 0.05 })],
-  magOut: [Y('block', 0.8, 0.8, 0.4, { dur: 0.15 })],
-  magIn: [Y('armor', 1.2, 1.2, 0.35, { dur: 0.2 })],
-  bolt: [Y('block', 1.5, 1.5, 0.3, { dur: 0.08 })],
-  slideLock: [Y('armor', 1.8, 1.8, 0.2, { dur: 0.1 })],
+  empty: [Z('glock_dry', 0.7)],
+  magOut: [Z('ar_magout', 0.85)],
+  magIn: [Z('ar_magin', 0.85)],
+  bolt: [Z('ar_bolt', 0.85)],
+  slideLock: [Z('glock_lock', 0.8)],
   switch: [Y('armor', 1.0, 1.0, 0.3, { dur: 0.2 })],
   hit: [Y('block', 1.6, 1.6, 0.35, { dur: 0.08, max: 12 })],
   headshot: [Y('block', 2.2, 2.2, 0.35, { dur: 0.06 }), Y('armor', 1.5, 1.5, 0.3, { dur: 0.15 })],

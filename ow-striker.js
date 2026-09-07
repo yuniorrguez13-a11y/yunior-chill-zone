@@ -14,7 +14,7 @@ import { GLTFLoader } from './vendor/GLTFLoader.js';
 import * as D from './ow-striker-data.js';
 
 /* the data module, read defensively: a missing export degrades to something empty instead of a link error */
-const MATS = D.MATS || {}, MAP = D.MAP || [], DECO = D.DECO || [], SIGNS = D.SIGNS || [], GROUND = D.GROUND || { w: 44, d: 32, texW: 1024, texH: 768, paint: [] };
+const MATS = D.MATS || {}, MAP = D.MAP || [], DECO = D.DECO || [], SIGNS = D.SIGNS || [], LIGHTS = D.LIGHTS || [], GROUND = D.GROUND || { w: 44, d: 32, texW: 1024, texH: 768, paint: [] };
 const NODES = D.NODES || [], EDGE_HINTS = D.EDGE_HINTS || [], AUTOLINK = D.AUTOLINK || { maxDist: 7.5, maxDy: 0.7, rayHeights: [0.3, 1.0, 1.5], lateral: 0.35 };
 const SPAWNS = D.SPAWNS || [{ x: -18, y: 0, z: 12 }, { x: 18, y: 0, z: -12 }], CRATES = D.CRATES || [], BOUNDS = D.BOUNDS || { minX: -20, maxX: 20, minZ: -14, maxZ: 14 };
 const WEAPONS = D.WEAPONS || {}, SKINS = D.SKINS || [], CASES = D.CASES || { pitty: { id: 'pitty', name: 'pitty case', price: 80, odds: { common: 0.55, uncommon: 0.25, rare: 0.13, legendary: 0.06, knife: 0.01 }, scrapPerCase: 8 } };
@@ -57,7 +57,7 @@ const STEP = 1 / 60, STEP_UP = 0.45, COYOTE = 0.08, JUMP_BUF = 0.10;
 const CSS = `
 #ps-launcher{position:absolute;inset:0;display:flex;flex-direction:column;background:linear-gradient(#2a2b31,#16171b 60%,#101114);color:#e6e4df;font-family:'Segoe UI',Tahoma,'Trebuchet MS',Arial,sans-serif;font-size:14px;user-select:none;-webkit-user-select:none;overflow:hidden;}
 #ps-launcher .hd{display:flex;align-items:baseline;gap:10px;padding:8px 16px 5px;background:linear-gradient(rgba(255,255,255,.12),rgba(255,255,255,.02));border-bottom:1px solid rgba(255,255,255,.12);flex:none;}
-#ps-launcher .wm{font-family:'CF Sketch','Patrick Hand',cursive;font-size:36px;line-height:1;color:#e10600;text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 18px rgba(225,6,0,.35);letter-spacing:.02em;}
+#ps-launcher .wm{font-family:'Arial Narrow','Helvetica Neue Condensed',Impact,'Segoe UI',sans-serif;font-weight:700;font-size:30px;line-height:1;color:#fff;letter-spacing:.14em;text-transform:uppercase;}
 #ps-launcher .ver{color:#9a9aa3;font-size:12px;} #ps-launcher .cash{margin-left:auto;font-weight:600;color:#9be08a;font-size:15px;}
 #ps-launcher .main{flex:1;display:flex;min-height:0;}
 #ps-launcher nav{width:128px;flex:none;display:flex;flex-direction:column;padding:8px 0;overflow-y:auto;border-right:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.18);}
@@ -93,69 +93,102 @@ const CSS = `
 #ps-launcher .cdlg{width:min(420px,90%);background:#f0f0f0;color:#111;border:1px solid #5a7aa0;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5);font-size:13px;}
 #ps-launcher .cdlg .t{padding:6px 10px;background:linear-gradient(#dfe9f5,#b9cde6);border-bottom:1px solid #8aa5c8;font-weight:600;} #ps-launcher .cdlg .b{padding:16px 14px;min-height:54px;} #ps-launcher .cdlg .f{padding:8px 12px;text-align:right;background:#e6e6e6;}
 #ps-launcher .fade{opacity:0;transition:opacity .5s;} #ps-launcher .fade.on{opacity:1;}
-#ps{position:absolute;inset:0;background:#000;overflow:hidden;font-family:'Patrick Hand','Segoe Print',cursive;color:#f3ecdc;--paper:#f3ecdc;--pen:#23212b;--red:#e10600;--hi:#ffd23f;user-select:none;-webkit-user-select:none;z-index:50;}
+#ps{position:absolute;inset:0;background:#000;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;color:#e9eef2;--ink:#e9eef2;--dim:#8d97a3;--panel:rgba(8,10,13,.62);--line:rgba(233,238,242,.22);--red:#ff2f2f;--hi:#ffc247;--go:#7de2a0;user-select:none;-webkit-user-select:none;z-index:50;}
 #ps canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;}
-#ps.dead canvas{filter:grayscale(.7);}
+#ps.dead canvas{filter:grayscale(.85) contrast(1.1) brightness(.8);}
 #ps .hud{position:absolute;inset:0;pointer-events:none;}
-#ps .num{font-family:'CF Sketch','Patrick Hand',cursive;font-variant-numeric:tabular-nums;}
-#ps #ps-xh{position:absolute;left:50%;top:50%;width:0;height:0;--g:8px;--l:9px;--xc:#e10600;} #ps #ps-xh.off{display:none;}
-#ps #ps-xh i{position:absolute;background:var(--xc);box-shadow:0 0 2px rgba(0,0,0,.9);}
-#ps #ps-xh .t{left:-1px;top:calc(-1 * var(--g) - var(--l));width:2px;height:var(--l);} #ps #ps-xh .b{left:-1px;top:var(--g);width:2px;height:var(--l);}
-#ps #ps-xh .l{top:-1px;left:calc(-1 * var(--g) - var(--l));height:2px;width:var(--l);} #ps #ps-xh .r{top:-1px;left:var(--g);height:2px;width:var(--l);} #ps #ps-xh .c{left:-1px;top:-1px;width:2px;height:2px;}
-#ps #ps-hm{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;} #ps #ps-hm i{position:absolute;width:2px;height:10px;background:#fff;left:-1px;top:-5px;box-shadow:0 0 2px #000;}
-#ps #ps-hm .a{transform:rotate(45deg) translateY(-15px);} #ps #ps-hm .b{transform:rotate(135deg) translateY(-15px);} #ps #ps-hm .c{transform:rotate(225deg) translateY(-15px);} #ps #ps-hm .d{transform:rotate(315deg) translateY(-15px);}
-#ps #ps-hm.head i{background:var(--red);width:3px;}
-#ps #ps-hp{position:absolute;left:18px;bottom:16px;text-shadow:0 2px 0 #000;} #ps #ps-hp .lab{font-size:15px;} #ps #ps-hp .bar{width:170px;height:12px;background:rgba(0,0,0,.5);border:2px solid var(--paper);margin:2px 0;} #ps #ps-hp .bar i{display:block;height:100%;background:var(--paper);width:100%;} #ps #ps-hp .n{font-size:40px;line-height:1;display:inline-block;} #ps #ps-hp.low .n{color:var(--red);} #ps #ps-hp.low .bar i{background:var(--red);}
-#ps #ps-am{position:absolute;right:18px;bottom:16px;text-align:right;text-shadow:0 2px 0 #000;} #ps #ps-am .n{font-size:40px;line-height:1;} #ps #ps-am .n small{font-size:20px;color:#d8d0c0;} #ps #ps-am.empty .n{color:var(--red);} #ps #ps-am .w{font-size:17px;} #ps #ps-am .s{font-size:13px;color:#b8b0a0;} #ps #ps-am .rl{height:4px;width:140px;margin:4px 0 0 auto;background:rgba(255,255,255,.2);display:none;} #ps #ps-am .rl i{display:block;height:100%;background:var(--paper);width:0;} #ps #ps-am .msg{font-size:15px;color:var(--red);min-height:1.2em;}
-#ps #ps-clk{position:absolute;left:18px;top:12px;text-shadow:0 2px 0 #000;} #ps #ps-clk .n{font-size:34px;line-height:1;} #ps #ps-clk.low .n{color:var(--red);} #ps #ps-clk .s{font-size:15px;}
-#ps #ps-feed{position:absolute;right:14px;top:12px;display:flex;flex-direction:column;gap:4px;align-items:flex-end;max-width:62%;} #ps #ps-feed div{font-size:15px;padding:2px 9px 1px;background:rgba(13,12,17,.72);color:#eee;border-radius:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;} #ps #ps-feed div.me{border-left:3px solid var(--red);} #ps #ps-feed div.chat{color:#9be08a;} #ps #ps-feed div.sys{color:#b8b0a0;}
-#ps #ps-ctr{position:absolute;left:50%;top:20%;transform:translateX(-50%);text-align:center;width:90%;} #ps #ps-ctr .cbig{font-size:64px;line-height:1;text-shadow:0 3px 0 #000;min-height:1em;} #ps #ps-ctr .t{font-size:24px;margin-top:6px;text-shadow:0 2px 0 #000;min-height:1.2em;}
-#ps #ps-vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(225,6,0,0) 45%,rgba(225,6,0,.75) 100%);opacity:0;}
-#ps #ps-arrow{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;} #ps #ps-arrow i{position:absolute;left:-9px;top:-112px;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:16px solid var(--paper);filter:drop-shadow(0 0 2px #000);}
-#ps #ps-scope{position:absolute;inset:0;display:none;background:radial-gradient(circle at center,rgba(0,0,0,0) 0,rgba(0,0,0,0) 34vmin,rgba(0,0,0,.94) 35vmin);} #ps #ps-scope.on{display:block;}
-#ps #ps-scope .h,#ps #ps-scope .v{position:absolute;left:50%;top:50%;background:var(--paper);} #ps #ps-scope .h{width:60vmin;height:1px;margin-left:-30vmin;} #ps #ps-scope .v{height:60vmin;width:1px;margin-top:-30vmin;} #ps #ps-scope .d{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:var(--red);}
-#ps .ps-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-.6deg);background:var(--paper);color:var(--pen);border:2.5px solid var(--pen);border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;box-shadow:4px 5px 0 rgba(0,0,0,.45);padding:16px 24px 12px;text-align:center;pointer-events:auto;display:none;max-width:92%;max-height:92%;overflow:auto;min-width:240px;} #ps .ps-card.on{display:block;}
-#ps .ps-card h3{font-family:'CF Sketch','Patrick Hand',cursive;font-size:30px;font-weight:400;margin:0 0 4px;line-height:1;} #ps .ps-card p{font-size:18px;margin:4px 0;} #ps .ps-card .mut{color:#5a5566;font-size:15px;} #ps .ps-card .rec{color:#2f6f22;font-size:17px;}
-#ps .ps-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 18px 6px;font:inherit;font-size:19px;line-height:1;background:#e9dfc9;color:var(--pen);border:2.5px solid var(--pen);border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;box-shadow:3px 3px 0 var(--pen);cursor:pointer;margin:6px 4px 0;} #ps .ps-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--pen);} #ps .ps-btn.primary{background:var(--hi);} #ps .ps-btn.red{background:var(--red);color:#fff;} #ps .ps-btn:disabled{opacity:.5;cursor:default;}
-#ps table{border-collapse:collapse;margin:6px auto;font-size:16px;} #ps td,#ps th{padding:2px 9px;border-bottom:1px solid rgba(35,33,43,.2);text-align:left;white-space:nowrap;} #ps th{font-weight:400;color:#5a5566;font-size:14px;} #ps tr.me td{background:rgba(255,210,63,.45);} #ps td.r,#ps th.r{text-align:right;}
-#ps #ps-death{top:62%;} #ps #ps-death .n{font-size:44px;line-height:1;}
+#ps .num{font-family:ui-monospace,'SF Mono',Consolas,'DejaVu Sans Mono',monospace;font-variant-numeric:tabular-nums;font-weight:600;letter-spacing:-.02em;}
+#ps .cap{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);}
+#ps #ps-xh{position:absolute;left:50%;top:50%;width:0;height:0;--g:7px;--l:8px;--xc:#e9f4ff;} #ps #ps-xh.off{display:none;}
+#ps #ps-xh i{position:absolute;background:var(--xc);box-shadow:0 0 3px rgba(0,0,0,.95);}
+#ps #ps-xh .t{left:-.5px;top:calc(-1 * var(--g) - var(--l));width:1.5px;height:var(--l);} #ps #ps-xh .b{left:-.5px;top:var(--g);width:1.5px;height:var(--l);}
+#ps #ps-xh .l{top:-.5px;left:calc(-1 * var(--g) - var(--l));height:1.5px;width:var(--l);} #ps #ps-xh .r{top:-.5px;left:var(--g);height:1.5px;width:var(--l);} #ps #ps-xh .c{left:-1px;top:-1px;width:2px;height:2px;}
+#ps #ps-hm{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;} #ps #ps-hm i{position:absolute;width:2px;height:9px;background:#fff;left:-1px;top:-4.5px;box-shadow:0 0 3px #000;}
+#ps #ps-hm .a{transform:rotate(45deg) translateY(-14px);} #ps #ps-hm .b{transform:rotate(135deg) translateY(-14px);} #ps #ps-hm .c{transform:rotate(225deg) translateY(-14px);} #ps #ps-hm .d{transform:rotate(315deg) translateY(-14px);}
+#ps #ps-hm.head i{background:var(--red);width:2.5px;height:11px;}
+/* the two corner blocks: a thin rule, a micro label, one big number. No paper, no tape, no rotation. */
+#ps #ps-hp{position:absolute;left:20px;bottom:18px;padding-left:10px;border-left:2px solid var(--ink);}
+#ps #ps-hp .lab{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);}
+#ps #ps-hp .n{font-size:42px;line-height:.95;display:inline-block;}
+#ps #ps-hp .bar{width:184px;height:3px;background:rgba(233,238,242,.16);margin:5px 0 0;} #ps #ps-hp .bar i{display:block;height:100%;background:var(--ink);width:100%;transition:width .09s linear;}
+#ps #ps-hp.low{border-left-color:var(--red);} #ps #ps-hp.low .n{color:var(--red);} #ps #ps-hp.low .bar i{background:var(--red);}
+#ps #ps-am{position:absolute;right:20px;bottom:18px;text-align:right;padding-right:10px;border-right:2px solid var(--ink);}
+#ps #ps-am .n{font-size:42px;line-height:.95;} #ps #ps-am .n small{font-size:18px;color:var(--dim);font-weight:500;}
+#ps #ps-am.empty{border-right-color:var(--red);} #ps #ps-am.empty .n{color:var(--red);}
+#ps #ps-am .w{font-size:13px;letter-spacing:.16em;text-transform:uppercase;} #ps #ps-am .s{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+#ps #ps-am .rl{height:3px;width:150px;margin:6px 0 0 auto;background:rgba(233,238,242,.16);display:none;} #ps #ps-am .rl i{display:block;height:100%;background:var(--hi);width:0;}
+#ps #ps-am .msg{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);min-height:1.3em;}
+#ps #ps-clk{position:absolute;left:50%;top:14px;transform:translateX(-50%);text-align:center;background:var(--panel);border:1px solid var(--line);padding:4px 16px 6px;}
+#ps #ps-clk .n{font-size:26px;line-height:1;} #ps #ps-clk.low .n{color:var(--red);} #ps #ps-clk .s{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
+#ps #ps-feed{position:absolute;right:16px;top:14px;display:flex;flex-direction:column;gap:3px;align-items:flex-end;max-width:60%;}
+#ps #ps-feed div{font-size:12.5px;padding:3px 9px;background:var(--panel);border-left:2px solid rgba(233,238,242,.3);color:#dfe5ea;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#ps #ps-feed div.me{border-left-color:var(--red);color:#fff;} #ps #ps-feed div.chat{color:var(--go);} #ps #ps-feed div.sys{color:var(--dim);}
+#ps #ps-ctr{position:absolute;left:50%;top:22%;transform:translateX(-50%);text-align:center;width:90%;}
+#ps #ps-ctr .cbig{font-size:58px;line-height:1;letter-spacing:.02em;text-shadow:0 0 24px rgba(0,0,0,.9);min-height:1em;}
+#ps #ps-ctr .t{font-size:13px;letter-spacing:.24em;text-transform:uppercase;margin-top:8px;color:#dfe5ea;text-shadow:0 0 12px rgba(0,0,0,.9);min-height:1.3em;}
+#ps #ps-vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(255,20,20,0) 42%,rgba(180,10,10,.85) 100%);opacity:0;}
+#ps #ps-arrow{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0;} #ps #ps-arrow i{position:absolute;left:-8px;top:-108px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid var(--red);filter:drop-shadow(0 0 3px #000);}
+#ps #ps-scope{position:absolute;inset:0;display:none;background:radial-gradient(circle at center,rgba(0,0,0,0) 0,rgba(0,0,0,0) 33vmin,rgba(0,0,0,.97) 34vmin);} #ps #ps-scope.on{display:block;}
+#ps #ps-scope .h,#ps #ps-scope .v{position:absolute;left:50%;top:50%;background:rgba(233,238,242,.8);} #ps #ps-scope .h{width:60vmin;height:1px;margin-left:-30vmin;} #ps #ps-scope .v{height:60vmin;width:1px;margin-top:-30vmin;} #ps #ps-scope .d{position:absolute;left:50%;top:50%;width:3px;height:3px;margin:-1.5px 0 0 -1.5px;background:var(--red);}
+/* panels: a flat slab with a notched corner, never a sheet of paper */
+#ps .ps-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(10,12,16,.94);color:var(--ink);border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.7);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));padding:20px 28px 18px;text-align:center;pointer-events:auto;display:none;max-width:92%;max-height:92%;overflow:auto;min-width:260px;}
+#ps .ps-card.on{display:block;}
+#ps .ps-card h3{font-size:15px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;margin:0 0 10px;color:#fff;}
+#ps .ps-card p{font-size:13.5px;margin:5px 0;color:#cdd5dc;} #ps .ps-card .mut{color:var(--dim);font-size:12px;} #ps .ps-card .rec{color:var(--go);font-size:13px;}
+#ps .ps-btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 20px;font:inherit;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;line-height:1;background:rgba(233,238,242,.08);color:var(--ink);border:1px solid var(--line);cursor:pointer;margin:8px 4px 0;transition:background .1s;}
+#ps .ps-btn:hover{background:rgba(233,238,242,.16);} #ps .ps-btn:active{transform:translateY(1px);}
+#ps .ps-btn.primary{background:var(--hi);color:#14161a;border-color:var(--hi);} #ps .ps-btn.red{background:var(--red);color:#fff;border-color:var(--red);} #ps .ps-btn:disabled{opacity:.4;cursor:default;}
+#ps table{border-collapse:collapse;margin:8px auto;font-size:12.5px;} #ps td,#ps th{padding:4px 12px;border-bottom:1px solid rgba(233,238,242,.1);text-align:left;white-space:nowrap;}
+#ps th{font-weight:500;color:var(--dim);font-size:10px;letter-spacing:.16em;text-transform:uppercase;} #ps tr.me td{background:rgba(255,194,71,.16);color:#fff;} #ps td.r,#ps th.r{text-align:right;}
+#ps #ps-death{top:60%;} #ps #ps-death .n{font-size:22px;line-height:1.2;letter-spacing:.1em;}
 #ps .touch{position:absolute;inset:0;pointer-events:none;display:none;font-size:14px;} #ps.has-touch .touch{display:block;} #ps.btn-s .touch{font-size:12px;} #ps.btn-l .touch{font-size:16px;}
-#ps #ps-stick{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2.5px solid rgba(243,236,220,.55);background:rgba(13,12,17,.25);display:none;} #ps #ps-stick.on{display:block;} #ps #ps-stick i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--paper);border:2.5px solid var(--pen);box-shadow:2px 2px 0 var(--pen);}
-#ps .tb{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;font-family:'CF Sketch','Patrick Hand',cursive;font-size:1.4em;line-height:1;color:var(--pen);background:var(--paper);border:2.5px solid var(--pen);border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;box-shadow:3px 3px 0 var(--pen);touch-action:none;opacity:.92;width:var(--s,4em);height:var(--s,4em);}
-#ps .tb.down,#ps .tb.on{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--pen);background:var(--hi);}
-#ps .tb.fire{background:var(--red);color:#fff;--s:6em;right:1.4em;bottom:1.4em;font-size:1.5em;} #ps .tb.fire.down{background:#a00400;}
-#ps .tb.jump{--s:4.3em;right:8em;bottom:1.2em;} #ps .tb.reload{--s:4em;right:8.4em;bottom:6.4em;} #ps .tb.reload.dim{opacity:.5;} #ps .tb.ads{--s:4em;right:2.2em;bottom:8.8em;} #ps .tb.swap{--s:3.7em;right:13.2em;bottom:4em;} #ps .tb.crouch{--s:3.7em;right:13.6em;bottom:9.2em;}
-#ps .tb.score{width:4.6em;height:2.6em;left:1em;top:1em;font-size:1.15em;} #ps .tb.menu{width:4.3em;height:2.6em;right:1em;top:1em;font-size:1.15em;}
-#ps.has-touch #ps-am{right:50%;transform:translateX(50%);text-align:center;bottom:8px;} #ps.has-touch #ps-am .rl{margin:4px auto 0;} #ps.has-touch #ps-hp{bottom:8px;} #ps.has-touch #ps-feed{max-width:44%;}
+#ps #ps-stick{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:1px solid rgba(233,238,242,.4);background:rgba(8,10,13,.3);display:none;} #ps #ps-stick.on{display:block;}
+#ps #ps-stick i{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(233,238,242,.85);border:1px solid rgba(0,0,0,.5);}
+#ps .tb{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;font-size:.82em;font-weight:600;letter-spacing:.1em;text-transform:uppercase;line-height:1;color:var(--ink);background:rgba(8,10,13,.5);border:1px solid rgba(233,238,242,.35);border-radius:50%;touch-action:none;width:var(--s,4em);height:var(--s,4em);}
+#ps .tb.down,#ps .tb.on{background:rgba(233,238,242,.28);border-color:#fff;}
+#ps .tb.fire{background:rgba(255,47,47,.3);border-color:var(--red);color:#fff;--s:6em;right:1.4em;bottom:1.4em;} #ps .tb.fire.down{background:rgba(255,47,47,.7);}
+#ps .tb.jump{--s:4.3em;right:8em;bottom:1.2em;} #ps .tb.reload{--s:4em;right:8.4em;bottom:6.4em;} #ps .tb.reload.dim{opacity:.45;} #ps .tb.ads{--s:4em;right:2.2em;bottom:8.8em;} #ps .tb.swap{--s:3.7em;right:13.2em;bottom:4em;} #ps .tb.crouch{--s:3.7em;right:13.6em;bottom:9.2em;}
+#ps .tb.score{width:4.6em;height:2.4em;left:1em;top:1em;font-size:.72em;border-radius:2px;} #ps .tb.menu{width:4.3em;height:2.4em;right:1em;top:1em;font-size:.72em;border-radius:2px;}
+#ps.has-touch #ps-am{right:50%;transform:translateX(50%);text-align:center;bottom:8px;border-right:0;padding-right:0;} #ps.has-touch #ps-am .rl{margin:6px auto 0;} #ps.has-touch #ps-hp{bottom:8px;} #ps.has-touch #ps-feed{max-width:44%;} #ps.has-touch #ps-clk{top:auto;bottom:96px;}
 `;
 
-/* ── materials: cel-shaded (Overwork's 3-step ramp) for the arena, clay for the figures, flat for the sand. lazy, so importing
-   the module in Node (the harness lints it there) touches neither the GPU nor the DOM ── */
+/* ── materials. NOT Overwork's. Overwork is cel-shaded clay in a cardboard town and it is meant to look warm;
+   this is the courier's own shooter and it is meant to look like night, concrete and steel. So: physically
+   shaded surfaces (rough concrete, semi-metal steel), no 3-step ramp, no ink outlines anywhere, and one
+   unlit `glow` material for every lamp lens, lit window and sign face. Lazy, so importing the module in Node
+   (the harness lints it there) touches neither the GPU nor the DOM ── */
 let MAT = null;
+const GLOW_MATS = { glow: 1, glowWin: 1, neon: 1 };
 function mats() {
   if (MAT) return MAT;
-  const ramp = new THREE.DataTexture(new Uint8Array([70, 70, 70, 255, 150, 150, 150, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
-  ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
-  const toon = (hex, extra) => new THREE.MeshToonMaterial(Object.assign({ color: hexNum(hex), gradientMap: ramp }, extra || {}));
-  const bc = document.createElement('canvas'); bc.width = bc.height = 128; const bg = bc.getContext('2d'), img = bg.createImageData(128, 128);
-  for (let i = 0; i < img.data.length; i += 4) { const v = 118 + Math.random() * 20 | 0; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
-  bg.putImageData(img, 0, 0); const clayBump = new THREE.CanvasTexture(bc); clayBump.wrapS = clayBump.wrapT = THREE.RepeatWrapping; clayBump.repeat.set(3, 3);
-  const clay = hex => new THREE.MeshStandardMaterial({ color: hexNum(hex), emissive: hexNum(hex), emissiveIntensity: 0.14, roughness: 0.93, metalness: 0, bumpMap: clayBump, bumpScale: 0.01 });
-  const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x14121a, side: THREE.BackSide });
+  const gc = document.createElement('canvas'); gc.width = gc.height = 128; const gg = gc.getContext('2d'), img = gg.createImageData(128, 128);
+  for (let i = 0; i < img.data.length; i += 4) { const v = 110 + Math.random() * 36 | 0; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  gg.putImageData(img, 0, 0); const grit = new THREE.CanvasTexture(gc); grit.wrapS = grit.wrapT = THREE.RepeatWrapping; grit.repeat.set(4, 4);
+  // hard = the arena. rough concrete by default, a little metalness and a tighter roughness when the row is flagged metal
+  const hard = (hex, metal) => new THREE.MeshStandardMaterial({ color: hexNum(hex), roughness: metal ? 0.42 : 0.94, metalness: metal ? 0.7 : 0.04, bumpMap: grit, bumpScale: metal ? 0.004 : 0.014 });
+  const lit = hex => new THREE.MeshBasicMaterial({ color: hexNum(hex) });                      // unlit: a lamp lens is the brightest thing in frame, whatever the lighting says
+  const body = hex => new THREE.MeshStandardMaterial({ color: hexNum(hex), roughness: 0.78, metalness: 0.06, bumpMap: grit, bumpScale: 0.006 });
   const cache = {};
-  const world = (name, metal) => { const key = name + (metal ? '!m' : ''); if (!cache[key]) { const hex = MATS[name] || '#8a7a5a'; cache[key] = toon(metal ? shade(hex, 0.8) : hex); } return cache[key]; };
+  const world = (name, metal) => {
+    const key = name + (metal ? '!m' : ''); if (cache[key]) return cache[key];
+    const hex = MATS[name] || '#4c515b';
+    return cache[key] = GLOW_MATS[name] ? lit(hex) : hard(metal ? shade(hex, 0.85) : hex, metal);
+  };
   const blobC = document.createElement('canvas'); blobC.width = blobC.height = 64; const g2 = blobC.getContext('2d'), grad = g2.createRadialGradient(32, 32, 4, 32, 32, 30);
-  grad.addColorStop(0, 'rgba(20,16,10,.7)'); grad.addColorStop(1, 'rgba(20,16,10,0)'); g2.fillStyle = grad; g2.fillRect(0, 0, 64, 64);
-  MAT = { ramp, toon, clay, OUTLINE, world, cache, clayBump,
-    skin: clay('#f6c9a6'), jeans: clay('#3a4a6a'), sneaker: clay('#e8e8ea'), botGun: toon('#2a2a30'), casing: toon('#c9a54a'), crumb: toon('#c8b48a'), lid: toon(MATS.ammo || '#556b2f'),
+  grad.addColorStop(0, 'rgba(0,0,0,.72)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = grad; g2.fillRect(0, 0, 64, 64);
+  MAT = { hard, lit, body, clay: body, toon: hard, world, cache, grit,
+    skin: body('#1f242c'), gear: body('#252a32'), jeans: body('#1c2027'), sneaker: body('#12151a'), botGun: hard('#1a1c21', true), casing: hard('#b8933f', true), crumb: hard('#4a5058'), lid: hard(MATS.ammo || '#3c4a2a', true),
+    flash: new THREE.MeshBasicMaterial({ color: 0xffe6a8, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }),
+    tracer: new THREE.MeshBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }),
+    spark: new THREE.MeshBasicMaterial({ color: 0xffc46a, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }),
     blob: new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(blobC), transparent: true, depthWrite: false }) };
   return MAT;
 }
 function disposeMats() {
   if (!MAT) return;
   for (const k of Object.keys(MAT.cache)) MAT.cache[k].dispose();
-  for (const m of [MAT.skin, MAT.jeans, MAT.sneaker, MAT.botGun, MAT.casing, MAT.crumb, MAT.lid, MAT.blob, MAT.OUTLINE]) { if (m.map) m.map.dispose(); m.dispose(); }
-  MAT.ramp.dispose(); MAT.clayBump.dispose(); MAT = null;
+  for (const m of [MAT.skin, MAT.gear, MAT.jeans, MAT.sneaker, MAT.botGun, MAT.casing, MAT.crumb, MAT.lid, MAT.blob, MAT.flash, MAT.tracer, MAT.spark]) { if (m.map) m.map.dispose(); m.dispose(); }
+  MAT.grit.dispose(); MAT = null;
   for (const k of Object.keys(SKIN_TEX)) { SKIN_TEX[k].dispose(); delete SKIN_TEX[k]; }
 }
 
@@ -262,9 +295,9 @@ function buildGunModel(id, skin, low) {
   const C = { body: hexNum(base), body2: mixHex(base, -0.12), dark: mixHex(base, -0.5), wood: hexNum(accent), wood2: mixHex(accent, -0.25), metal: hexNum(metal), glass: 0x1d2233 };
   for (const p of P.parts) {
     const role = GUN_ROLE[p.name] || 'body';
-    const m = new THREE.MeshToonMaterial(Object.assign({ color: C[role] != null ? C[role] : C.body, gradientMap: MM.ramp },
-      role === 'glass' ? { transparent: true, opacity: 0.85 } : null,
-      look.emissive && (role === 'body' || role === 'metal') ? { emissive: hexNum(look.emissive), emissiveIntensity: 0.3 } : null));
+    const m = new THREE.MeshStandardMaterial(Object.assign({ color: C[role] != null ? C[role] : C.body, roughness: role === 'wood' || role === 'wood2' ? 0.85 : 0.38, metalness: role === 'wood' || role === 'wood2' ? 0.05 : 0.85 },
+      role === 'glass' ? { transparent: true, opacity: 0.85, roughness: 0.1 } : null,
+      look.emissive && (role === 'body' || role === 'metal') ? { emissive: hexNum(look.emissive), emissiveIntensity: 0.45 } : null));
     out.mats.push(m); group.add(new THREE.Mesh(p.geo, m));
   }
   return out;
@@ -276,8 +309,8 @@ function buildGun(id, skin, low) {
 function buildGunPrims(id, skin, low) {
   const M = mats(), W = WEAPONS[id] || { model: [] }, look = (skin && skin.look) || {}, group = new THREE.Group(), out = { group, slide: null, mag: null, bolt: null, mats: [], geos: [] };
   if (low) { const geo = mergeAll((W.model || []).map(primGeo)); if (geo) { group.add(new THREE.Mesh(geo, M.botGun)); out.geos.push(geo); } return out; }
-  const skinMat = new THREE.MeshToonMaterial({ map: skinTexture(skin || stockSkin(id)), gradientMap: M.ramp, emissive: look.emissive ? hexNum(look.emissive) : 0, emissiveIntensity: look.emissive ? 0.35 : 0 });
-  const metal = M.toon(look.metal || '#4a4d55'), wood = M.toon(look.base && (look.pattern === 'wood') ? look.base : '#a9773f'), grip = M.toon('#26262c'), blade = M.toon(look.metal || '#c8ccd6');
+  const skinMat = new THREE.MeshStandardMaterial({ map: skinTexture(skin || stockSkin(id)), roughness: 0.45, metalness: 0.6, emissive: look.emissive ? hexNum(look.emissive) : 0, emissiveIntensity: look.emissive ? 0.45 : 0 });
+  const metal = M.hard(look.metal || '#4a4d55', true), wood = M.hard(look.base && (look.pattern === 'wood') ? look.base : '#6b5030'), grip = M.hard('#1c1e23', true), blade = M.hard(look.metal || '#c8ccd6', true);
   out.mats.push(skinMat, metal, wood, grip, blade);
   const matFor = p => p.skin ? skinMat : p.part === 'wood' ? wood : (p.part === 'grip' || p.part === 'handle' || p.part === 'stock') ? grip : p.part === 'blade' ? blade : metal;
   const buckets = new Map();                                                                                      // material → geometries, per moving group
@@ -300,7 +333,8 @@ function groundTexture() {
   const c = document.createElement('canvas'), tw = GROUND.texW || 1024, th = GROUND.texH || 768, gw = GROUND.w || 44, gd = GROUND.d || 32; c.width = tw; c.height = th;
   const g = c.getContext('2d'), R = xorshift(7), px = x => (x + gw / 2) / gw * tw, pz = z => (z + gd / 2) / gd * th, sx = m => m / gw * tw, sz = m => m / gd * th;
   g.fillStyle = MATS.sand || '#d9c69b'; g.fillRect(0, 0, tw, th);
-  for (let i = 0; i < 4000; i++) { g.fillStyle = R() < 0.5 ? 'rgba(90,70,40,.12)' : 'rgba(255,255,255,.12)'; g.fillRect(R() * tw, R() * th, 2, 2); }
+  for (let i = 0; i < 5200; i++) { g.fillStyle = R() < 0.55 ? 'rgba(0,0,0,.22)' : 'rgba(190,196,205,.10)'; g.fillRect(R() * tw, R() * th, 2, 2); }
+  for (let i = 0; i < 140; i++) { g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1; g.beginPath(); const x = R() * tw, y = R() * th; g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 90, y + (R() - 0.5) * 70); g.stroke(); }   // cracks
   for (const p of GROUND.paint || []) {
     const col = p.color || '#8a7a5a'; g.fillStyle = col; g.strokeStyle = col; g.globalAlpha = p.alpha != null ? p.alpha : 1;
     const x = p.x != null ? p.x : p.cx || 0, z = p.z != null ? p.z : p.cz || 0;
@@ -317,10 +351,13 @@ function groundTexture() {
 function buildAtlas(items) {
   const c = document.createElement('canvas'); c.width = 1024; c.height = 1024; const g = c.getContext('2d'), n = Math.min(items.length, 64);
   for (let i = 0; i < n; i++) {
-    const it = items[i], cx = (i % 4) * 256, cy = Math.floor(i / 4) * 64, font = it.font === 'hand' ? 'Patrick Hand' : 'CF Sketch';
+    const it = items[i], cx = (i % 4) * 256, cy = Math.floor(i / 4) * 64, txt = String(it.text || '').toUpperCase();
     if (it.bg && it.bg !== 'none') { g.fillStyle = it.bg; g.fillRect(cx + 2, cy + 2, 252, 60); }
-    let px = 44; g.font = `${px}px "${font}", "Patrick Hand", cursive`; while (px > 10 && g.measureText(it.text).width > 236) { px -= 2; g.font = `${px}px "${font}", "Patrick Hand", cursive`; }
-    g.fillStyle = it.ink || '#3a2a1a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(it.text, cx + 128, cy + 34);
+    const F = px => `700 ${px}px "Arial Narrow","Helvetica Neue Condensed",Impact,"Segoe UI",sans-serif`;   // sprayed stencil, never a hand-drawn face
+    let px = 46; g.font = F(px); while (px > 10 && g.measureText(txt).width > 232) { px -= 2; g.font = F(px); }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = 'rgba(0,0,0,.55)'; g.fillText(txt, cx + 129, cy + 35.5);
+    g.fillStyle = it.ink || '#c8ccd2'; g.fillText(txt, cx + 128, cy + 34);
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return { tex: t, rect: i => [(i % 4) * 0.25, 1 - Math.floor(i / 4 + 1) * 0.0625, (i % 4) * 0.25 + 0.25, 1 - Math.floor(i / 4) * 0.0625] };
@@ -467,44 +504,125 @@ class Pool {
   dispose() { this.mesh.geometry.dispose(); if (this.mesh.parent) this.mesh.parent.remove(this.mesh); this.mesh.dispose(); }
 }
 
-/* ── the arena: MAP rows are geometry and colliders at once, merged by material; DECO merged by material; one ink hull; one
-   atlas of painted words; the sand canvas; the sky; two ammo crates. ~20 draw calls before anyone moves ── */
+/* ── muzzle flash, tracers, impact sparks. Every one of them is a pooled additive quad that is scaled to zero when it is
+   not alive, so the whole system is three draw calls and never allocates during a match. A flash is one billboard plus a
+   short-lived point light on the player's own gun (the one light worth paying for); a tracer is a stretched box between
+   the muzzle and whatever the bullet found; a spark is a spray of tiny quads off a wall. ── */
+class Fx {
+  constructor(scene) {
+    const M = mats();
+    this.scene = scene; this.t = 0;
+    const flashGeo = new THREE.PlaneGeometry(1, 1), tracerGeo = G.cube(1, 1, 1), sparkGeo = new THREE.PlaneGeometry(1, 1);
+    this.geos = [flashGeo, tracerGeo, sparkGeo];
+    this.flashes = []; this.tracers = []; this.sparks = [];
+    this.o = new THREE.Object3D();
+    const mk = (geo, mat, n, into) => { const m = new THREE.InstancedMesh(geo, mat, n); m.frustumCulled = false; m.renderOrder = 3; scene.add(m); this.o.scale.setScalar(0); this.o.updateMatrix(); for (let i = 0; i < n; i++) { m.setMatrixAt(i, this.o.matrix); into.push({ life: 0, t: 0 }); } return m; };
+    this.flashM = mk(flashGeo, M.flash, 10, this.flashes);
+    this.tracerM = mk(tracerGeo, M.tracer, 16, this.tracers);
+    this.sparkM = mk(sparkGeo, M.spark, 48, this.sparks);
+    this.fi = 0; this.ti = 0; this.si = 0;
+    this.light = new THREE.PointLight(0xffd9a0, 0, 9, 2); this.light.visible = false; scene.add(this.light);
+    this.lightT = 0;
+  }
+  /* the flash sits a little in front of the muzzle, rolled at random so two shots never look identical */
+  muzzle(x, y, z, dx, dy, dz, size, mine) {
+    const q = this.flashes[this.fi++ % this.flashes.length];
+    q.life = 0.075; q.t = 0; q.x = x + dx * 0.12; q.y = y + dy * 0.12; q.z = z + dz * 0.12; q.s = size; q.roll = Math.random() * TAU;
+    if (mine) { this.light.position.set(q.x, q.y, q.z); this.light.intensity = 5.5 * size; this.light.visible = true; this.lightT = 0.05; }
+  }
+  tracer(ax, ay, az, bx, by, bz, w) {
+    const q = this.tracers[this.ti++ % this.tracers.length];
+    q.life = 0.06; q.t = 0; q.ax = ax; q.ay = ay; q.az = az; q.bx = bx; q.by = by; q.bz = bz; q.w = w;
+  }
+  spark(x, y, z, nx, ny, nz, n) {
+    for (let i = 0; i < n; i++) {
+      const q = this.sparks[this.si++ % this.sparks.length];
+      q.life = 0.09 + Math.random() * 0.14; q.t = 0; q.x = x; q.y = y; q.z = z; q.s = 0.03 + Math.random() * 0.05;
+      const sp = 2.5 + Math.random() * 5;
+      q.vx = (nx + (Math.random() - 0.5) * 1.5) * sp; q.vy = (ny + (Math.random() - 0.5) * 1.5) * sp + 1.5; q.vz = (nz + (Math.random() - 0.5) * 1.5) * sp;
+    }
+  }
+  step(dt, cam) {
+    const o = this.o;
+    if (this.lightT > 0) { this.lightT -= dt; if (this.lightT <= 0) { this.light.visible = false; this.light.intensity = 0; } }
+    let any = false;
+    for (let i = 0; i < this.flashes.length; i++) {
+      const q = this.flashes[i]; if (q.life <= 0) continue; any = true; q.life -= dt;
+      const k = Math.max(0, q.life / 0.075), sc = q.s * (0.55 + k * 0.9);
+      o.position.set(q.x, q.y, q.z); if (cam) o.quaternion.copy(cam.quaternion); o.rotateZ(q.roll); o.scale.set(sc, sc, sc);
+      if (q.life <= 0) o.scale.setScalar(0);
+      o.updateMatrix(); this.flashM.setMatrixAt(i, o.matrix);
+    }
+    if (any) this.flashM.instanceMatrix.needsUpdate = true;
+    any = false;
+    for (let i = 0; i < this.tracers.length; i++) {
+      const q = this.tracers[i]; if (q.life <= 0) continue; any = true; q.life -= dt;
+      const dx = q.bx - q.ax, dy = q.by - q.ay, dz = q.bz - q.az, len = Math.hypot(dx, dy, dz) || 0.001, k = Math.max(0, q.life / 0.06);
+      o.position.set((q.ax + q.bx) / 2, (q.ay + q.by) / 2, (q.az + q.bz) / 2);
+      o.lookAt(q.bx, q.by, q.bz); o.scale.set(q.w * k, q.w * k, len);
+      if (q.life <= 0) o.scale.setScalar(0);
+      o.rotation.z = 0; o.updateMatrix(); this.tracerM.setMatrixAt(i, o.matrix);
+    }
+    if (any) this.tracerM.instanceMatrix.needsUpdate = true;
+    any = false;
+    for (let i = 0; i < this.sparks.length; i++) {
+      const q = this.sparks[i]; if (q.life <= 0) continue; any = true; q.life -= dt; q.t += dt;
+      q.vy -= 16 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.vx *= 0.92; q.vz *= 0.92;
+      const sc = q.s * Math.max(0, Math.min(1, q.life * 8));
+      o.position.set(q.x, q.y, q.z); if (cam) o.quaternion.copy(cam.quaternion); o.scale.set(sc, sc, sc);
+      if (q.life <= 0) o.scale.setScalar(0);
+      o.updateMatrix(); this.sparkM.setMatrixAt(i, o.matrix);
+    }
+    if (any) this.sparkM.instanceMatrix.needsUpdate = true;
+  }
+  dispose() { for (const m of [this.flashM, this.tracerM, this.sparkM]) { this.scene.remove(m); m.dispose(); } this.scene.remove(this.light); for (const g of this.geos) g.dispose(); }
+}
+
+/* ── the arena: MAP rows are geometry and colliders at once, merged by material; DECO merged by material; one atlas of
+   sprayed callouts; the asphalt canvas; the night sky; the street lights; two ammo crates. ~22 draw calls before
+   anyone moves ── */
 function buildWorld(scene, opts) {
-  const M = mats(), cols = [], geos = [], meshes = [], byMat = new Map(), hulls = [], labels = [];
+  const M = mats(), cols = [], geos = [], meshes = [], byMat = new Map(), labels = [], lights = [];
   const push = (key, g) => { if (!byMat.has(key)) byMat.set(key, []); byMat.get(key).push(g); };
   for (const r of MAP) {
     const w = r.w || 1, h = r.h || 1, d = r.d || 1, y0 = r.y0 || 0;
     if (!r.hidden) push(r.mat + (r.metal ? '!m' : ''), placed(G.cube(w, h, d), r.x, y0 + h / 2, r.z));            // hidden: a collider whose look is drawn by DECO (the barrels)
     if (!r.deco) cols.push({ min: { x: r.x - w / 2, y: y0, z: r.z - d / 2 }, max: { x: r.x + w / 2, y: y0 + h, z: r.z + d / 2 }, metal: !!r.metal, step: !!r.step, id: r.id });
-    if (opts.outlines && !r.hidden) { const g = G.cube(w, h, d); g.scale(1 + 0.06 / w, 1 + 0.06 / h, 1 + 0.06 / d); hulls.push(placed(g, r.x, y0 + h / 2, r.z)); }
     if (r.label) { const face = r.labelFace || '-z', along = (face === '-z' || face === '+z') ? w : d, lw = Math.min(along * 0.8, 6), lh = Math.min(lw / 4, h * 0.6);
       const x = face === '-x' ? r.x - w / 2 : face === '+x' ? r.x + w / 2 : r.x, z = face === '-z' ? r.z - d / 2 : face === '+z' ? r.z + d / 2 : r.z;
-      labels.push({ text: r.label, font: 'sketch', ink: '#3a2a1a', bg: 'none', w: lw, h: lh, x, y: y0 + h * 0.62, z, face }); }
+      labels.push({ text: r.label, ink: '#c8ccd2', bg: 'none', w: lw, h: lh, x, y: y0 + h * 0.62, z, face }); }
   }
   for (const p of DECO) push(p.mat, primGeo(p));                                                                  // `n` is the radial segment count (primGeo reads it), not a repeat
-  for (const s of SIGNS) labels.push(Object.assign({ font: 'sketch', ink: '#3a2a1a', bg: 'none', w: 2, h: 0.6, face: '-z' }, s));
+  for (const s of SIGNS) labels.push(Object.assign({ ink: '#c8ccd2', bg: 'none', w: 2, h: 0.6, face: '-z' }, s));
   for (const [key, list] of byMat) {
     const geo = mergeAll(list); if (!geo) continue; geos.push(geo);
     const name = key.replace('!m', ''), mesh = new THREE.Mesh(geo, M.world(name, key.endsWith('!m'))); scene.add(mesh); meshes.push(mesh);
   }
-  if (hulls.length) { const geo = mergeAll(hulls); geos.push(geo); const hm = new THREE.Mesh(geo, M.OUTLINE); scene.add(hm); meshes.push(hm); }
   let atlas = null;
   if (labels.length) {
     atlas = buildAtlas(labels); const quads = labels.slice(0, 64).map((l, i) => labelQuad(l.w, l.h, l.face, l.x, l.y, l.z, atlas.rect(i)));
     const geo = mergeAll(quads); geos.push(geo); const lm = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: atlas.tex, transparent: true, depthWrite: false })); lm.renderOrder = 1; scene.add(lm); meshes.push(lm);
   }
   const groundGeo = new THREE.PlaneGeometry(GROUND.w || 44, GROUND.d || 32); groundGeo.rotateX(-Math.PI / 2); geos.push(groundGeo);
-  const groundTex = groundTexture(), ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: groundTex })); scene.add(ground); meshes.push(ground);
+  const groundTex = groundTexture(), ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.72, metalness: 0.05 })); scene.add(ground); meshes.push(ground);
   const sky = skyDome(); scene.add(sky); meshes.push(sky); geos.push(sky.geometry);
-  const sun = new THREE.DirectionalLight(0xfff1d6, 2.0); sun.position.set(30, 50, 20); scene.add(sun);
-  const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x8a7a5a, 0.9); scene.add(hemi);
+  /* night. `sun` keeps its name because everything downstream (shadows, the quality presets) refers to it, but it is a
+     cold moon coming in low from the north-west, deliberately weak: the arena is meant to be read by its street lights.
+     The hemisphere is a hair of sky bounce, not fill — turn it up and the whole block goes flat and friendly again. */
+  const sun = new THREE.DirectionalLight(0xa9c2f5, 1.7); sun.position.set(-26, 40, 34); scene.add(sun);
+  const hemi = new THREE.HemisphereLight(0x4864a0, 0x191d25, 1.3); scene.add(hemi);
+  scene.add(new THREE.AmbientLight(0x3d4f78, 1.35));                                        // the floor of the exposure: below this the arena stops being playable
+  /* the lamps themselves. Three.js pays per light per material, so there is a budget: the brightest N, nearest the play
+     space, and none at all on the low preset — the `glow` lenses are unlit meshes, so a lamp still reads as lit. */
+  const budget = opts.lightBudget != null ? opts.lightBudget : 8;
+  const wanted = (LIGHTS || []).slice().sort((a, b) => (b.intensity || 1) - (a.intensity || 1)).slice(0, Math.max(0, budget));
+  for (const l of wanted) { const pl = new THREE.PointLight(hexNum(l.color || '#ffb347'), (l.intensity || 1) * 2.4, (l.dist || 10) * 1.5, 1.5); pl.position.set(l.x, l.y, l.z); scene.add(pl); lights.push(pl); }
   // the two ammo crates: an olive metal chest with a lid on a spring
   const crates = CRATES.map(c => {
     const grp = new THREE.Group(); grp.position.set(c.x, c.y || 0, c.z);
     const baseGeo = G.cube(0.8, 0.44, 0.5), lidGeo = G.cube(0.82, 0.07, 0.52); geos.push(baseGeo, lidGeo);
     const base = new THREE.Mesh(baseGeo, M.world('ammo', true)); base.position.y = 0.22; grp.add(base);
     const lid = new THREE.Mesh(lidGeo, M.lid); lid.position.y = 0.475; grp.add(lid);
-    if (opts.outlines) { const hb = new THREE.Mesh(baseGeo, M.OUTLINE); hb.scale.set(1 + 0.05 / 0.8, 1 + 0.05 / 0.44, 1 + 0.05 / 0.5); base.add(hb); const hl = new THREE.Mesh(lidGeo, M.OUTLINE); hl.scale.set(1.06, 1.6, 1.09); lid.add(hl); }
     scene.add(grp);
     return { x: c.x, y: c.y || 0, z: c.z, grp, lid, lidS: spring(90, 9), sink: spring(40, 7), gone: 0, floor: c.y || 0 };
   });
@@ -521,9 +639,9 @@ function buildWorld(scene, opts) {
     const g1 = new THREE.BufferGeometry(); g1.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(npts, 3)); geos.push(g1, g2);
     debug = [new THREE.LineSegments(g1, new THREE.LineBasicMaterial({ color: 0x00ff88 })), new THREE.LineSegments(g2, new THREE.LineBasicMaterial({ color: 0xffd23f }))]; debug.forEach(m => scene.add(m));
   }
-  return { cols, geos, meshes, crates, casings, crumbs, nav, sun, hemi, groundTex, atlas, debug,
-    dispose() { for (const g of geos) g.dispose(); for (const m of meshes) { scene.remove(m); if (m.material && m.material !== M.OUTLINE && !M.cache[Object.keys(M.cache).find(k => M.cache[k] === m.material)]) { if (m.material.map) m.material.map.dispose(); m.material.dispose(); } }
-      for (const c of crates) scene.remove(c.grp); casings.dispose(); crumbs.dispose(); if (atlas) atlas.tex.dispose(); groundTex.dispose(); if (debug) debug.forEach(m => { scene.remove(m); m.material.dispose(); }); } };
+  return { cols, geos, meshes, crates, casings, crumbs, nav, sun, hemi, lights, groundTex, atlas, debug,
+    dispose() { for (const g of geos) g.dispose(); for (const m of meshes) { scene.remove(m); if (m.material && !M.cache[Object.keys(M.cache).find(k => M.cache[k] === m.material)]) { if (m.material.map) m.material.map.dispose(); m.material.dispose(); } }
+      for (const c of crates) scene.remove(c.grp); for (const l of lights) scene.remove(l); casings.dispose(); crumbs.dispose(); if (atlas) atlas.tex.dispose(); groundTex.dispose(); if (debug) debug.forEach(m => { scene.remove(m); m.material.dispose(); }); } };
 }
 
 /* ── the figure the bots wear: shared geometries, clay per hoodie colour. cheap capsule limbs hinged at shoulder and hip ── */
@@ -536,8 +654,9 @@ function figGeo() {
 function disposeFig() { if (!FIG) return; for (const k of Object.keys(FIG)) FIG[k].dispose(); FIG = null; }
 function nameTex(text, color = '#faf6ec') {
   const c = document.createElement('canvas'); c.width = 320; c.height = 80; const g = c.getContext('2d');
-  let px = 44; g.font = `${px}px "Patrick Hand", cursive`; while (px > 14 && g.measureText(text).width > 300) { px -= 2; g.font = `${px}px "Patrick Hand", cursive`; }
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineWidth = 7; g.strokeStyle = '#14121a'; g.strokeText(text, 160, 42); g.fillStyle = color; g.fillText(text, 160, 42);
+  const F = px => `600 ${px}px "Segoe UI",system-ui,-apple-system,Arial,sans-serif`;
+  let px = 40; g.font = F(px); while (px > 14 && g.measureText(text).width > 296) { px -= 2; g.font = F(px); }
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round'; g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText(text, 160, 42); g.fillStyle = color; g.fillText(text, 160, 42);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
@@ -625,7 +744,17 @@ export function createStriker(api) {
     const sp = h.scoped && W.scope ? (W.scope.spread || 0.05) : (W.spread ? W.spread.base : 0.5) + s.spread;
     if (W.spread) s.spread = Math.min(Math.max(0, W.spread.max - W.spread.base), s.spread + (W.spread.perShot || 0));
     const eye = eyeOf(h), dir = coneDir(aimDirOf(h), sp, M.rng), hit = hitscan(eye, dir, h, 120);
-    if (hit && hit.body) { let dmg = W.dmg || 30; if (hit.head) dmg *= W.headMul || 2; if (W.falloff && hit.t > W.falloff.from) dmg *= W.falloff.mul; applyDamage(hit.body, dmg, h, { head: hit.head, weapon: h.cur }); }
+    /* the shot you can see: a flash at the muzzle, a tracer down the line, sparks off whatever it lands on.
+       The muzzle sits forward of the eye and, for the player, offset right and down so it leaves the barrel of the
+       viewmodel rather than the middle of the screen. */
+    if (M.fx) {
+      const sn = Math.sin(h.yaw), cs = Math.cos(h.yaw), sz = W.flash || 0.34;
+      const mx = eye.x + dir.x * 0.5 + (h.isPlayer ? cs * 0.14 : 0), my = eye.y + dir.y * 0.5 - (h.isPlayer ? 0.09 : 0), mz = eye.z + dir.z * 0.5 - (h.isPlayer ? sn * 0.14 : 0);
+      M.fx.muzzle(mx, my, mz, dir.x, dir.y, dir.z, sz, h.isPlayer);
+      const t = hit ? hit.t : 120, ex = eye.x + dir.x * t, ey = eye.y + dir.y * t, ez = eye.z + dir.z * t;
+      M.fx.tracer(mx, my, mz, ex, ey, ez, 0.016 + sz * 0.02);
+    }
+    if (hit && hit.body) { let dmg = W.dmg || 30; if (hit.head) dmg *= W.headMul || 2; if (W.falloff && hit.t > W.falloff.from) dmg *= W.falloff.mul; applyDamage(hit.body, dmg, h, { head: hit.head, weapon: h.cur }); if (M.fx) M.fx.spark(hit.point.x, hit.point.y, hit.point.z, -dir.x, -dir.y, -dir.z, 3); }
     else if (hit) worldImpact(hit.point, hit.col);
     if (!h.isPlayer) nearMiss(eye, dir, hit ? hit.t : 120);
     if (h.isPlayer) {
@@ -633,6 +762,8 @@ export function createStriker(api) {
       h.pitch = clamp(h.pitch + kp * 0.35, -1.55, 1.55); h.yaw += ky * 0.35; M.rec.pitch.v += kp * 0.65 * 40; M.rec.yaw.v += ky * 0.65 * 40;   // 35% stays in the camera, 65% springs back
       const vm = M.vm; vm.rot.x.v += R.kickVis != null ? R.kickVis : 1.2; vm.rot.z.v += (M.vmAlt ? 1 : -1) * (R.roll != null ? R.roll : 0.01) * 30; M.vmAlt = !M.vmAlt;
       vm.pos.z.v += 1.4 * clamp((R.kickPos || 0.04) / 0.04, 0.5, 3); vm.pos.y.v += 0.4;
+      const jolt = clamp((R.kickVis != null ? R.kickVis : 1.2) * 0.55, 0.2, 2.2);                                 // the whole camera flinches, not just the gun
+      M.kick.pitch.v -= jolt * 0.5; M.kick.roll.v += (M.rng() - 0.5) * jolt * 0.5;
       if (h.cur === 'glock') M.slideS.v -= 1.2;
       if (h.scoped && W.scope && W.scope.unscopeOnShot !== false) { setScope(false); h.adsLatch = true; }                    // the shot unscopes; holding the button does not re-scope until it is released
     } else h.onShot();
@@ -644,6 +775,15 @@ export function createStriker(api) {
   function casing(h, eye) { const sn = Math.sin(h.yaw), cs = Math.cos(h.yaw), rx = cs, rz = -sn, x = eye.x - sn * 0.35 + rx * 0.18, z = eye.z - cs * 0.35 + rz * 0.18; M.world.casings.spawn(x, eye.y - 0.1, z, rx * 2.5 + M.rng() - 0.5, 2 + M.rng(), rz * 2.5 + M.rng() - 0.5, 1.2, floorAt(M.cols, x, z, eye.y, 0.05), 1); }
   function worldImpact(p, col) {
     const fl = floorAt(M.cols, p.x, p.z, p.y, 0.05); for (let i = 0; i < 3; i++) M.world.crumbs.spawn(p.x, p.y, p.z, (M.rng() - 0.5) * 3, 1 + M.rng() * 2, (M.rng() - 0.5) * 3, 0.7, fl, 0.7);
+    if (M.fx) {                                                                                                   // which face of the box was hit: the axis the point is closest to a bound on
+      let nx = 0, ny = 1, nz = 0;
+      if (col) {
+        const dxa = Math.abs(p.x - col.min.x), dxb = Math.abs(p.x - col.max.x), dya = Math.abs(p.y - col.min.y), dyb = Math.abs(p.y - col.max.y), dza = Math.abs(p.z - col.min.z), dzb = Math.abs(p.z - col.max.z);
+        const m = Math.min(dxa, dxb, dya, dyb, dza, dzb);
+        nx = m === dxa ? -1 : m === dxb ? 1 : 0; ny = m === dya ? -1 : m === dyb ? 1 : 0; nz = m === dza ? -1 : m === dzb ? 1 : 0;
+      }
+      M.fx.spark(p.x, p.y, p.z, nx, ny, nz, col && col.metal ? 6 : 4);
+    }
     if (M.P && p.distanceTo(M.P.pos) < 12) psfx(col && col.metal ? 'worldHitMetal' : 'worldHit', { pos: p });
   }
   function nearMiss(o, d, tHit) {                                                                                 // a bot's bullet passing within 1.5 m of the player's head
@@ -804,15 +944,16 @@ export function createStriker(api) {
       this.errX = spring(9, 2.6); this.errY = spring(9, 2.6); this.holdSign = M.rng() < 0.5 ? -1 : 1; this.holdFlip = 0;
       this.tiltT = 0; this.rootT = 0; this.sinkT = 0; this.nameRed = false;
       giveLoadout(this, this.drawWeapon());
-      const F = figGeo(), MM = mats(), hood = this.mat = MM.clay(this.color), g = this.g = new THREE.Group(); M.scene.add(g);
+      /* the figure is gear, not clay: a dark plate carrier over dark fatigues, a covered head, and the bot's colour used
+         only as an accent (hood, sleeves, name) so twelve of them stay apart on a dark map without going pastel. */
+      const F = figGeo(), MM = mats(), accent = this.mat = MM.body(this.color), gear = MM.gear, g = this.g = new THREE.Group(); M.scene.add(g);
       const body = this.body = new THREE.Group(); g.add(body);
-      const torso = new THREE.Mesh(F.torso, hood); torso.position.y = 0.875; body.add(torso);
-      const ring = new THREE.Mesh(F.hood, hood); ring.position.y = 1.33; ring.rotation.x = Math.PI / 2; body.add(ring);
+      const torso = new THREE.Mesh(F.torso, gear); torso.position.y = 0.875; body.add(torso);
+      const ring = new THREE.Mesh(F.hood, accent); ring.position.y = 1.33; ring.rotation.x = Math.PI / 2; body.add(ring);
       const head = this.head = new THREE.Group(); head.position.y = 1.55; body.add(head); const hm = new THREE.Mesh(F.head, MM.skin); head.add(hm);
-      if (!isTouch) { const o1 = new THREE.Mesh(F.head, MM.OUTLINE); o1.scale.setScalar(1.07); hm.add(o1); const o2 = new THREE.Mesh(F.torso, MM.OUTLINE); o2.scale.setScalar(1.05); torso.add(o2); }
       const leg = (x) => { const grp = new THREE.Group(); grp.position.set(x, 0.5, 0); const m = new THREE.Mesh(F.leg, MM.jeans); m.position.y = -0.25; grp.add(m); const sh = new THREE.Mesh(F.shoe, MM.sneaker); sh.position.set(0, -0.46, 0.05); grp.add(sh); body.add(grp); return grp; };
       this.legL = leg(-0.14); this.legR = leg(0.14);
-      const arm = (x) => { const grp = new THREE.Group(); grp.position.set(x, 1.22, 0.05); const m = new THREE.Mesh(F.arm, hood); m.position.y = -0.23; grp.add(m); body.add(grp); return grp; };
+      const arm = (x) => { const grp = new THREE.Group(); grp.position.set(x, 1.22, 0.05); const m = new THREE.Mesh(F.arm, accent); m.position.y = -0.23; grp.add(m); body.add(grp); return grp; };
       this.armL = arm(-0.34); this.armR = arm(0.34); this.armL.rotation.set(-1.35, 0, 0.35); this.armR.rotation.set(-1.25, 0, -0.2);
       this.gunG = new THREE.Group(); this.gunG.position.set(0.16, 1.0, 0.36); body.add(this.gunG); this.gun = null; this.onSwitch();
       this.nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex(this.name), transparent: true, depthTest: false })); this.nameSprite.scale.set(1.3, 0.33, 1); this.nameSprite.position.y = 2.1; this.nameSprite.renderOrder = 4; g.add(this.nameSprite);
@@ -1030,6 +1171,7 @@ export function createStriker(api) {
     const frame = api.frame(), el = document.createElement('div'); el.id = 'ps'; el.className = (isTouch ? 'has-touch ' : '') + 'btn-' + (PS.cfg.btn || 'm'); el.innerHTML = HUD_HTML; frame.appendChild(el);
     const cv = el.querySelector('canvas'), renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !isTouch, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, isTouch ? 1 : 1.5)); renderer.shadowMap.enabled = false;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;   // night, but a night you can play in: the lamps and the muzzle flash roll off instead of clipping to white
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(PS.cfg.fov || 80, 1, 0.03, 260); scene.add(camera);
     const seed = opts.seed != null ? opts.seed : (Math.random() * 1e9) | 0;
     M = { el, cv, renderer, scene, camera, hud: {}, phase: 'load', paused: false, time: 0, limit: 300, killCap: 20, countT: 3, sudden: false, diff: DIFF[opts.diff] ? opts.diff : 'normal', nBots: clamp(opts.bots | 0 || 5, 3, 7), loadout: PRIMARIES.includes(opts.loadout) ? opts.loadout : 'ar', seed, rng: xorshift(seed),
@@ -1038,7 +1180,7 @@ export function createStriker(api) {
       vm: { root: new THREE.Group(), gun: null, pos: { x: spring(160, 16), y: spring(160, 16), z: spring(160, 16) }, rot: { x: spring(120, 14), y: spring(120, 14), z: spring(120, 14) }, tgt: { x: 0, y: -0.5, z: 0 }, nudgeT: 0 }, vmAlt: false, magS: spring(160, 14), magT: 0, slideS: spring(400, 22), boltS: spring(300, 18),
       raf: 0, lastT: 0, acc: 0, endT: 0, endShown: false, statsDone: false, place: 0, records: [], escT: 0, leaveArmed: false, stick: { id: -1, x: 0, y: 0, R: 44, full: 0 }, look: { id: -1, x: 0, y: 0, moved: 0, t0: 0 }, portrait: false, friction: false, centerT: 0, bigT: 0, boardT: 0, frameH: 800, onStone: false, tapFire: 0 };
     M.eyeS.x = 1.6; M.fov.x = PS.cfg.fov || 80; M.hpShow.x = 100; M.hm.x = 1;
-    M.world = buildWorld(scene, { outlines: !isTouch, debug: debugOn && /debug=colliders/.test(location.search) }); M.cols = M.world.cols; M.nav = M.world.nav;
+    M.world = buildWorld(scene, { lightBudget: PS.cfg.lights != null ? PS.cfg.lights : (isTouch ? 4 : 8), debug: debugOn && /debug=colliders/.test(location.search) }); M.cols = M.world.cols; M.nav = M.world.nav; M.fx = new Fx(scene);
     M.vm.root.rotation.y = Math.PI; camera.add(M.vm.root);
     const H = M.hud, q = s => el.querySelector(s);
     Object.assign(H, { xh: q('#ps-xh'), hm: q('#ps-hm'), vig: q('#ps-vig'), arrow: q('#ps-arrow'), scope: q('#ps-scope'), clk: q('#ps-clk'), clkN: q('#ps-clk .n'), clkS: q('#ps-clk .s'), feed: q('#ps-feed'), big: q('#ps-ctr .cbig'), ctr: q('#ps-ctr .t'),
@@ -1088,7 +1230,7 @@ export function createStriker(api) {
     m.cv.removeEventListener('mousedown', m.onMouseDown); removeEventListener('mouseup', m.onMouseUp); removeEventListener('mousemove', m.onMouseMove); m.cv.removeEventListener('wheel', m.onWheel); m.cv.removeEventListener('click', m.onClick);
     document.removeEventListener('pointerlockchange', m.onLockChange); document.removeEventListener('pointerlockerror', m.onLockError);
     if (document.pointerLockElement === m.cv) { try { document.exitPointerLock(); } catch (e) {} }
-    for (const b of m.bots) b.dispose(); disposeGun(m.vm.gun); m.world.dispose(); disposeFig();
+    for (const b of m.bots) b.dispose(); disposeGun(m.vm.gun); if (m.fx) m.fx.dispose(); m.world.dispose(); disposeFig();
     m.renderer.dispose(); try { m.renderer.forceContextLoss(); } catch (e) {} m.el.remove(); sound.listener = null; duck(false); api.musicDuck(false);
   }
   function mountViewmodel() { if (!M) return; disposeGun(M.vm.gun); M.vm.gun = buildGun(M.P.cur, equipped(M.P.cur)); M.vm.root.add(M.vm.gun.group); M.magT = 0; M.magS.x = 0; M.magS.v = 0; M.slideS.x = 0; M.boltS.x = 0; }
@@ -1149,7 +1291,7 @@ export function createStriker(api) {
     stepPlayer(dt); if (!M) return;
     for (const b of M.bots) { b.simulate(dt); if (!M) return; }
     for (const b of M.bots) b.animate(dt);
-    stepCrates(dt); M.world.casings.step(dt); M.world.crumbs.step(dt); stepCamera(dt);
+    stepCrates(dt); M.world.casings.step(dt); M.world.crumbs.step(dt); if (M.fx) M.fx.step(dt, M.camera); stepCamera(dt);
     if (isTouch) frictionCheck();
   }
   function stepCamera(dt) {
@@ -1425,6 +1567,8 @@ export function createStriker(api) {
     tick: s => { const n = Math.max(1, Math.round((s || STEP) * 60)); for (let i = 0; i < n && M; i++) simStep(STEP); if (M) renderFrame(STEP); },
     openCase: rnd => { if (!PS) loadPS(); const r = doOpenCase(false, rnd); return r ? { skin: r.skin, rarity: r.rarity, duplicate: r.duplicate } : null; },
     equip: id => equipSkin(id), recycle: () => { if (!PS) loadPS(); const r = doOpenCase(true, null); return r ? { skin: r.skin, rarity: r.rarity, duplicate: r.duplicate } : null; },
+    fx: () => (M && M.fx) ? { flash: M.fx.flashes.filter(q => q.life > 0).length, tracer: M.fx.tracers.filter(q => q.life > 0).length, spark: M.fx.sparks.filter(q => q.life > 0).length, light: M.fx.light.visible } : null,
+    lights: () => (M && M.world) ? M.world.lights.length : 0,
     lines: () => flattenLines(LINES), sfxLog: sound.log, paintTab: () => paintTab(), setTab: t => { tab = t; paintTab(); },
     get match() { return M; }, get ps() { return PS; }, draws: () => M ? M.renderer.info.render.calls : 0,
   } : undefined;
