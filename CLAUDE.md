@@ -964,6 +964,18 @@ Snake's Authentic Gun Sounds packs and an Announcer Pack).**
       and smears across the gap. Bones ending in L or R only accept vertices on their own side of the midline.
     - **Finger, toe and `*_end` bones are excluded from the candidate set**, or the knuckle bones capture the
       thigh a hand hangs beside and the leg tears open on the first step.
+    - **Distance past a bone's ROOT end is charged several times over; distance past its TIP is not.** This is the
+      one that fixed the owner's "las waists se atrofiaron": a bone runs from its own joint to its child's, so a
+      vertex on the side of the belly sits above the top of the thigh bone and closer to it than to the spine —
+      the thigh won, and the waist then swung with the leg and pinched shut. Making the penalty symmetric was
+      tried and it wrecked the arms instead, because a hand sits past the far end of the wrist bone by design.
+      Past the root is somebody else's territory; past the tip is still yours.
+  Two approaches that do NOT work and should not be tried again. **Re-posing the donor skeleton to match the
+  target's arms and re-deriving the bind with `calculateInverses()`**: every bind matrix in the file stops
+  agreeing with the geometry and the figure comes apart into flat shards. **Bending the target mesh's arms onto
+  the donor's**: on one undivided mesh there is no way to tell an arm vertex from a leg vertex by position, so
+  the same rotation grabs the legs and the figure melts. The bind path stays exactly as the file wrote it; only
+  the weights are ours.
 - **This is the one place in the codebase where keyframed animation is correct.** That rule is about Overwork's
   courier, whose walk is the point of that game; here the whole value of the donor is its 24 clips. `makeSoldier()`
   crossfades between them by speed; the springs stay for what the clips do not

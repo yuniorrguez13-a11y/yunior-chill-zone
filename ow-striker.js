@@ -571,14 +571,29 @@ function boneSegments(skeleton) {
   return segs;
 }
 const _pa = new THREE.Vector3(), _pb = new THREE.Vector3();
-function distToSegment(px, py, pz, s) {
-  _pa.subVectors(s.b, s.a); const len2 = _pa.lengthSq() || 1e-9;
+/* Distance from a point to a bone, charging extra for the distance past the bone's ROOT end only.
+
+   A bone segment runs from its own joint to its child's joint: UpperLeg.L goes hip to knee, Wrist.L
+   goes wrist to a short stub. Plain distance-to-segment collapsed the soldier's waist, because a
+   vertex on the side of the belly sits about 7 cm above the top of the thigh bone and about 12 cm out
+   from the spine — so the thigh won, and the waist then swung with the leg and pinched shut.
+
+   The penalty is one-sided on purpose. Charging for overhang at BOTH ends was tried and it wrecked the
+   arms: a hand sits past the far end of the wrist bone by design, so penalising that pushed every hand
+   and foot off its own bone and onto the torso, and the arms tore into flat blades. Past the root is
+   somebody else's territory; past the tip is still yours. */
+function distToSegment(px, py, pz, s, overhang = 3) {
+  _pa.subVectors(s.b, s.a); const len2 = _pa.lengthSq() || 1e-9, len = Math.sqrt(len2);
   _pb.set(px - s.a.x, py - s.a.y, pz - s.a.z);
-  const t = clamp(_pb.dot(_pa) / len2, 0, 1);
+  const tRaw = _pb.dot(_pa) / len2, t = clamp(tRaw, 0, 1);
   const dx = px - (s.a.x + _pa.x * t), dy = py - (s.a.y + _pa.y * t), dz = pz - (s.a.z + _pa.z * t);
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  const perp = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (tRaw >= 0) return perp;
+  const over = -tRaw * len;
+  const along = Math.sqrt(Math.max(0, perp * perp - over * over));            // the part that is genuinely sideways
+  return Math.sqrt(along * along + (over * overhang) * (over * overhang));
 }
-function autoSkin(geo, skeleton, k = 4, power = 4, midline = 0.03) {
+function autoSkin(geo, skeleton, k = 4, power = 4, midline = 0.03, overhang = 3) {
   const segs = boneSegments(skeleton); if (!segs.length) return null;
   // in this rig +x is the figure's left (UpperLeg.L sits at x +0.116)
   const cx = segs.reduce((a, s) => a + s.a.x, 0) / segs.length;
@@ -591,7 +606,7 @@ function autoSkin(geo, skeleton, k = 4, power = 4, midline = 0.03) {
     near.length = 0;
     for (const s of segs) {
       if (vSide && s.side && s.side !== vSide) continue;                     // never let a limb borrow its mirror
-      const d = distToSegment(x, y, z, s);
+      const d = distToSegment(x, y, z, s, overhang);
       if (near.length < k) { near.push({ i: s.i, d }); near.sort((a, b) => a.d - b.d); }
       else if (d < near[k - 1].d) { near[k - 1] = { i: s.i, d }; near.sort((a, b) => a.d - b.d); }
     }
@@ -602,10 +617,87 @@ function autoSkin(geo, skeleton, k = 4, power = 4, midline = 0.03) {
   }
   geo.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
   geo.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  // diagnostics, because a bad weight buffer shreds the mesh into flat shards and looks like ten other bugs
+  let nan = 0, sumMin = 9, sumMax = -9, idxMax = -1;
+  for (let v = 0; v < n; v++) {
+    let t = 0;
+    for (let j = 0; j < 4; j++) { const w = sw[v * 4 + j]; if (!isFinite(w)) nan++; else t += w; idxMax = Math.max(idxMax, si[v * 4 + j]); }
+    sumMin = Math.min(sumMin, t); sumMax = Math.max(sumMax, t);
+  }
+  geo.userData.skinStats = { verts: n, nan, sumMin: +sumMin.toFixed(4), sumMax: +sumMax.toFixed(4), idxMax, bones: skeleton.bones.length, segs: segs.length };
   return geo;
 }
 
-const SOLDIER = { url: 'art/overwork/chars/soldier.glb', skinUrl: 'art/overwork/chars/soldier-owner.glb', buf: null, pending: null, dead: false, skinBuf: null, skinPending: null, skinDead: false };
+/* Swing the donor's arm into the target mesh's arm before any weighting happens. The target is one
+   undivided mesh, so "where its arm is" is measured the only way available: the average of the twenty
+   vertices furthest out to each side above the hip, which on a humanoid is the hand.
+
+   Aiming only the shoulder leaves the forearm off-axis and it stretches to a point, so this is two
+   passes of the simplest inverse kinematics there is — rotate each joint in turn so the line from
+   that joint to the wrist points at the target. Shoulder then elbow, twice, is plenty to land on it. */
+/* Where this figure's hand is, measured off one undivided mesh: the most LATERAL vertices on that
+   side, averaged. Two wrong versions before this one, both worth remembering. "Furthest from the
+   shoulder" picks the knee, which on a standing figure is further from the shoulder than the hand is.
+   "Most lateral above the hip" picks the elbow, because arms hang past the hip. The band here keeps
+   the boots and the helmet out and lets a hanging hand in. */
+function armTarget(geo, side, loY, hiY) {
+  const pos = geo.attributes.position, best = [];
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    if (y < loY || y > hiY || (side > 0 ? x <= 0 : x >= 0)) continue;
+    const d = Math.abs(x);
+    if (best.length < 20) { best.push({ d, i }); best.sort((a, b) => b.d - a.d); }
+    else if (d > best[19].d) { best[19] = { d, i }; best.sort((a, b) => b.d - a.d); }
+  }
+  if (!best.length) return null;
+  const t = new THREE.Vector3();
+  for (const q of best) t.add(_v.set(pos.getX(q.i), pos.getY(q.i), pos.getZ(q.i)));
+  return t.multiplyScalar(1 / best.length);
+}
+/* Bend the TARGET MESH's arms onto the donor's arms, rather than posing the donor to match. Both were
+   tried; this is the one that survives. Re-posing the skeleton means re-deriving its bind pose with
+   calculateInverses(), and every bind matrix in the file stops agreeing with the geometry — the
+   figure comes apart into flat shards. Editing the source mesh touches nothing the skeleton believes.
+
+   The owner's soldier holds his arms out; the donor's hang. Each arm vertex is rotated about the
+   shoulder by the rotation that carries one direction onto the other, blended in by how far out the
+   vertex sits, so the shoulder itself barely moves and the hand moves all the way. */
+function bendArmsToRig(geo, skeleton) {
+  const find = re => skeleton.bones.find(b => re.test(b.name || ''));
+  const head = find(/^head$/i);
+  let topY = 1.6; if (head) { const v = new THREE.Vector3(); head.getWorldPosition(v); topY = v.y; }
+  const pos = geo.attributes.position, S = new THREE.Vector3(), W = new THREE.Vector3(), p = new THREE.Vector3();
+  const out = {};
+  for (const side of [1, -1]) {                                              // 1 = the figure's left (+x in this rig)
+    const suffix = side > 0 ? 'l' : 'r';
+    const upper = find(new RegExp('^upperarm[._]?' + suffix + '$', 'i'));
+    const wrist = find(new RegExp('^(wrist|hand)[._]?' + suffix + '$', 'i'));
+    if (!upper || !wrist) continue;
+    upper.getWorldPosition(S); wrist.getWorldPosition(W);
+    const target = armTarget(geo, side, topY * 0.26, topY * 0.95);
+    if (!target) continue;
+    const have = target.clone().sub(S), want = W.clone().sub(S);
+    if (have.lengthSq() < 1e-8 || want.lengthSq() < 1e-8) continue;
+    const q = new THREE.Quaternion().setFromUnitVectors(have.clone().normalize(), want.clone().normalize());
+    const x0 = Math.abs(S.x) * 0.75, x1 = Math.abs(S.x) * 1.45, span = Math.max(1e-6, x1 - x0);
+    const id = new THREE.Quaternion(), qv = new THREE.Quaternion();
+    let moved = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i); if (side > 0 ? x <= 0 : x >= 0) continue;
+      const t = clamp((Math.abs(x) - x0) / span, 0, 1); if (t <= 0) continue;
+      qv.copy(id).slerp(q, t);
+      p.set(x, pos.getY(i), pos.getZ(i)).sub(S).applyQuaternion(qv).add(S);
+      pos.setXYZ(i, p.x, p.y, p.z); moved++;
+    }
+    out[suffix] = { moved, deg: +(2 * Math.acos(clamp(Math.abs(q.w), 0, 1)) * 180 / Math.PI).toFixed(1) };
+  }
+  pos.needsUpdate = true; geo.computeVertexNormals();
+  return out;
+}
+
+const SOLDIER = { url: 'art/overwork/chars/soldier.glb', skinUrl: 'art/overwork/chars/soldier-owner.glb', buf: null, pending: null, dead: false, skinBuf: null, skinPending: null, skinDead: false,
+  // the weighting knobs, in one place because they were tuned by looking at renders, not by theory
+  skin: { k: 4, power: 5, midline: 0.03, overhang: 3, static: false } };
 function soldierBuffer() {
   if (SOLDIER.dead) return Promise.reject(new Error('no model'));
   if (SOLDIER.buf) return Promise.resolve(SOLDIER.buf);
@@ -651,17 +743,19 @@ async function makeSoldier(accentHex, height) {
   root.scale.setScalar(k); root.position.y = -box.min.y * k;
   /* Swap the donor's body for the owner's soldier, rigged on the fly to the donor's skeleton.
 
-     The trap that has to be respected here: this GLB stores its skinned geometry in a space a
-     hundred times smaller than the world, with a scale of 100 on the mesh node and the matching
-     factor baked into the inverse bind matrices. Hand three.js a mesh whose vertices are in metres
-     and bind it to that skeleton and every vertex comes out a hundred times too far from its bone —
-     the figure tears itself into flat sheets across the sky, which is exactly what it did.
+     The thing that decides whether this works at all is that the two BIND POSES have to agree. The
+     owner's soldier stands with his arms held out (his mesh is 1.06 wide); the donor's arms hang
+     almost straight down (0.605 wide). Weight a vertex on the owner's forearm against the donor's
+     skeleton in that state and the nearest bone is a hip, not an elbow — so the arms tore into long
+     spikes the moment anything animated. So the donor's arms are swung out to meet his first, that
+     posture is made the new bind pose with calculateInverses(), and only then are the weights
+     computed. The clips set absolute local rotations, so they play exactly as authored regardless.
 
-     So the order is: normalise the owner's mesh into the donor's WORLD space (same height, same
-     footprint centre, feet on the same plane) because that is the space the bones are in and the
-     space autoSkin measures in; compute the weights there; and only then push the geometry down
-     into the donor mesh's own local space and give the new mesh the donor's transform. */
-  let wore = false;
+     Everything happens in the donor's world space while `root` is still unscaled — the bones are
+     there, the weights are measured there, and the mesh is added to `root` with an identity
+     transform, so the bind matrix is the identity and the k scale applied afterwards moves the mesh
+     and the bones together. */
+  let wore = false, armFit = null, skinStats = null;
   try {
     const skinBuf = await soldierSkinBuffer();
     let skeleton = null, donor = null, donorVerts = -1;
@@ -688,14 +782,17 @@ async function makeSoldier(accentHex, height) {
         merged.translate(-(sBox.min.x + sBox.max.x) / 2, -sBox.min.y, -(sBox.min.z + sBox.max.z) / 2);
         merged.scale(fit, fit, fit);
         merged.translate((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
-        if (autoSkin(merged, skeleton, 4, 5)) {                             // weights measured against world-space bones
+        if (autoSkin(merged, skeleton, SOLDIER.skin.k, SOLDIER.skin.power, SOLDIER.skin.midline, SOLDIER.skin.overhang)) {
+          skinStats = merged.userData.skinStats;
+          // and down into the donor mesh's own space, wearing the donor's transform and bind matrix.
+          // Nothing about the skeleton or its inverse bind matrices is touched.
           donor.updateWorldMatrix(true, false);
-          merged.applyMatrix4(new THREE.Matrix4().copy(donor.matrixWorld).invert());   // down into the donor mesh's own space
+          merged.applyMatrix4(new THREE.Matrix4().copy(donor.matrixWorld).invert());
           const skinned = new THREE.SkinnedMesh(merged, mat);
           skinned.frustumCulled = false;
           skinned.position.copy(donor.position); skinned.quaternion.copy(donor.quaternion); skinned.scale.copy(donor.scale);
           (donor.parent || root).add(skinned);
-          skinned.bind(skeleton, new THREE.Matrix4());                       // identity, the same bind matrix the donor uses
+          skinned.bind(skeleton, new THREE.Matrix4());
           root.traverse(o => { if ((o.isMesh || o.isSkinnedMesh) && o !== skinned) o.visible = false; });
           wore = true;
         }
@@ -738,7 +835,7 @@ async function makeSoldier(accentHex, height) {
   });
   if (!chest) root.traverse(o => { if (!chest && /^torso$/i.test(o.name || '')) chest = o; });
   const hand = palm || wrist;
-  return { root, mixer, actions, hand, chest, mats: [...seen.values()], cur: null, scale: k, wore };
+  return { root, mixer, actions, hand, chest, mats: [...seen.values()], cur: null, scale: k, wore, armFit, skinStats };
 }
 
 /* ── the city outside the walls (the owner's City Pack) ────────────────────────────────────────
@@ -1963,6 +2060,7 @@ export function createStriker(api) {
     tick: s => { const n = Math.max(1, Math.round((s || STEP) * 60)); for (let i = 0; i < n && M; i++) simStep(STEP); if (M) renderFrame(STEP); },
     openCase: rnd => { if (!PS) loadPS(); const r = doOpenCase(false, rnd); return r ? { skin: r.skin, rarity: r.rarity, duplicate: r.duplicate } : null; },
     equip: id => equipSkin(id), recycle: () => { if (!PS) loadPS(); const r = doOpenCase(true, null); return r ? { skin: r.skin, rarity: r.rarity, duplicate: r.duplicate } : null; },
+    skinCfg: () => SOLDIER.skin,
     fx: () => (M && M.fx) ? { flash: M.fx.flashes.filter(q => q.life > 0).length, tracer: M.fx.tracers.filter(q => q.life > 0).length, spark: M.fx.sparks.filter(q => q.life > 0).length, light: M.fx.light.visible } : null,
     lights: () => (M && M.world) ? M.world.lights.length : 0,
     city: () => (M && M.city) ? { meshes: M.city.meshes.length, tris: M.city.geos.reduce((a, g) => a + (g.index ? g.index.count : 0) / 3, 0) } : null,
