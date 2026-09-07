@@ -14,7 +14,7 @@ import { GLTFLoader } from './vendor/GLTFLoader.js';
 import * as D from './ow-striker-data.js';
 
 /* the data module, read defensively: a missing export degrades to something empty instead of a link error */
-const MATS = D.MATS || {}, MAP = D.MAP || [], DECO = D.DECO || [], SIGNS = D.SIGNS || [], LIGHTS = D.LIGHTS || [], GROUND = D.GROUND || { w: 44, d: 32, texW: 1024, texH: 768, paint: [] };
+const MATS = D.MATS || {}, MAP = D.MAP || [], DECO = D.DECO || [], SIGNS = D.SIGNS || [], LIGHTS = D.LIGHTS || [], CITY = D.CITY || [], CITY_FIT = D.CITY_FIT || {}, GROUND = D.GROUND || { w: 44, d: 32, texW: 1024, texH: 768, paint: [] };
 const NODES = D.NODES || [], EDGE_HINTS = D.EDGE_HINTS || [], AUTOLINK = D.AUTOLINK || { maxDist: 7.5, maxDy: 0.7, rayHeights: [0.3, 1.0, 1.5], lateral: 0.35 };
 const SPAWNS = D.SPAWNS || [{ x: -18, y: 0, z: 12 }, { x: 18, y: 0, z: -12 }], CRATES = D.CRATES || [], BOUNDS = D.BOUNDS || { minX: -20, maxX: 20, minZ: -14, maxZ: 14 };
 const WEAPONS = D.WEAPONS || {}, SKINS = D.SKINS || [], CASES = D.CASES || { pitty: { id: 'pitty', name: 'pitty case', price: 80, odds: { common: 0.55, uncommon: 0.25, rare: 0.13, legendary: 0.06, knife: 0.01 }, scrapPerCase: 8 } };
@@ -165,7 +165,9 @@ function mats() {
   for (let i = 0; i < img.data.length; i += 4) { const v = 110 + Math.random() * 36 | 0; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
   gg.putImageData(img, 0, 0); const grit = new THREE.CanvasTexture(gc); grit.wrapS = grit.wrapT = THREE.RepeatWrapping; grit.repeat.set(4, 4);
   // hard = the arena. rough concrete by default, a little metalness and a tighter roughness when the row is flagged metal
-  const hard = (hex, metal) => new THREE.MeshStandardMaterial({ color: hexNum(hex), roughness: metal ? 0.42 : 0.94, metalness: metal ? 0.7 : 0.04, bumpMap: grit, bumpScale: metal ? 0.004 : 0.014 });
+  // metalness above ~0.3 with no environment map renders as black — there is no reflection to stand in for the
+  // missing diffuse — so everything here is painted steel rather than chrome, and reads under a plain sky
+  const hard = (hex, metal) => new THREE.MeshStandardMaterial({ color: hexNum(hex), roughness: metal ? 0.55 : 0.94, metalness: metal ? 0.25 : 0.04, bumpMap: grit, bumpScale: metal ? 0.004 : 0.014 });
   const lit = hex => new THREE.MeshBasicMaterial({ color: hexNum(hex) });                      // unlit: a lamp lens is the brightest thing in frame, whatever the lighting says
   const body = hex => new THREE.MeshStandardMaterial({ color: hexNum(hex), roughness: 0.78, metalness: 0.06, bumpMap: grit, bumpScale: 0.006 });
   const cache = {};
@@ -177,8 +179,10 @@ function mats() {
   const blobC = document.createElement('canvas'); blobC.width = blobC.height = 64; const g2 = blobC.getContext('2d'), grad = g2.createRadialGradient(32, 32, 4, 32, 32, 30);
   grad.addColorStop(0, 'rgba(0,0,0,.72)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = grad; g2.fillRect(0, 0, 64, 64);
   MAT = { hard, lit, body, clay: body, toon: hard, world, cache, grit,
-    skin: body('#1f242c'), gear: body('#252a32'), jeans: body('#1c2027'), sneaker: body('#12151a'), botGun: hard('#1a1c21', true), casing: hard('#b8933f', true), crumb: hard('#4a5058'), lid: hard(MATS.ammo || '#3c4a2a', true),
-    flash: new THREE.MeshBasicMaterial({ color: 0xffe6a8, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }),
+    // dark gear, but never near-black: in sunlight that reads as a hole rather than a person
+    skin: body('#3a4048'), gear: body('#41474f'), jeans: body('#2f343c'), sneaker: body('#22262c'),
+    botGun: hard('#1a1c21', true), casing: hard('#b8933f', true), crumb: hard('#4a5058'), lid: hard(MATS.ammo || '#3c4a2a', true),
+    flash: new THREE.MeshBasicMaterial({ map: flashTex(), color: 0xffe6a8, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }),
     tracer: new THREE.MeshBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }),
     spark: new THREE.MeshBasicMaterial({ color: 0xffc46a, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }),
     blob: new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(blobC), transparent: true, depthWrite: false }) };
@@ -187,9 +191,30 @@ function mats() {
 function disposeMats() {
   if (!MAT) return;
   for (const k of Object.keys(MAT.cache)) MAT.cache[k].dispose();
-  for (const m of [MAT.skin, MAT.gear, MAT.jeans, MAT.sneaker, MAT.botGun, MAT.casing, MAT.crumb, MAT.lid, MAT.blob, MAT.flash, MAT.tracer, MAT.spark]) { if (m.map) m.map.dispose(); m.dispose(); }
-  MAT.grit.dispose(); MAT = null;
+  // `.filter(Boolean)` on purpose: a missing entry here used to throw inside close(), which left the window gone but the shooter still marked active
+  for (const m of [MAT.skin, MAT.gear, MAT.jeans, MAT.sneaker, MAT.botGun, MAT.casing, MAT.crumb, MAT.lid, MAT.blob, MAT.flash, MAT.tracer, MAT.spark].filter(Boolean)) { if (m.map) m.map.dispose(); m.dispose(); }
+  MAT.grit.dispose(); if (FLASH_TEX) { FLASH_TEX.dispose(); FLASH_TEX = null; } MAT = null;
   for (const k of Object.keys(SKIN_TEX)) { SKIN_TEX[k].dispose(); delete SKIN_TEX[k]; }
+}
+
+/* a muzzle flash is a hot core with a few spikes off it, not a square of white — one canvas, shared */
+let FLASH_TEX = null;
+function flashTex() {
+  if (FLASH_TEX) return FLASH_TEX;
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  const core = g.createRadialGradient(64, 64, 2, 64, 64, 40);
+  core.addColorStop(0, 'rgba(255,255,255,1)'); core.addColorStop(0.25, 'rgba(255,235,170,.85)');
+  core.addColorStop(0.6, 'rgba(255,170,60,.28)'); core.addColorStop(1, 'rgba(255,140,40,0)');
+  g.fillStyle = core; g.fillRect(0, 0, 128, 128);
+  g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 6; i++) {                                                        // the spikes, at a fixed spread so every flash is the same drawing (the roll is randomised per shot instead)
+    const a = i * Math.PI / 3 + 0.2, len = i % 2 ? 34 : 58;
+    const gr = g.createLinearGradient(64, 64, 64 + Math.cos(a) * len, 64 + Math.sin(a) * len);
+    gr.addColorStop(0, 'rgba(255,244,205,.75)'); gr.addColorStop(1, 'rgba(255,180,70,0)');
+    g.strokeStyle = gr; g.lineWidth = i % 2 ? 5 : 8; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(64, 64); g.lineTo(64 + Math.cos(a) * len, 64 + Math.sin(a) * len); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return FLASH_TEX = t;
 }
 
 /* ── skins are paint. one canvas per skin, patterned by name; the gun parts flagged skin:true wear it ── */
@@ -295,8 +320,8 @@ function buildGunModel(id, skin, low) {
   const C = { body: hexNum(base), body2: mixHex(base, -0.12), dark: mixHex(base, -0.5), wood: hexNum(accent), wood2: mixHex(accent, -0.25), metal: hexNum(metal), glass: 0x1d2233 };
   for (const p of P.parts) {
     const role = GUN_ROLE[p.name] || 'body';
-    const m = new THREE.MeshStandardMaterial(Object.assign({ color: C[role] != null ? C[role] : C.body, roughness: role === 'wood' || role === 'wood2' ? 0.85 : 0.38, metalness: role === 'wood' || role === 'wood2' ? 0.05 : 0.85 },
-      role === 'glass' ? { transparent: true, opacity: 0.85, roughness: 0.1 } : null,
+    const m = new THREE.MeshStandardMaterial(Object.assign({ color: C[role] != null ? C[role] : C.body, roughness: role === 'wood' || role === 'wood2' ? 0.85 : 0.52, metalness: role === 'wood' || role === 'wood2' ? 0.05 : 0.28 },
+      role === 'glass' ? { transparent: true, opacity: 0.85, roughness: 0.2, metalness: 0.2 } : null,
       look.emissive && (role === 'body' || role === 'metal') ? { emissive: hexNum(look.emissive), emissiveIntensity: 0.45 } : null));
     out.mats.push(m); group.add(new THREE.Mesh(p.geo, m));
   }
@@ -309,7 +334,7 @@ function buildGun(id, skin, low) {
 function buildGunPrims(id, skin, low) {
   const M = mats(), W = WEAPONS[id] || { model: [] }, look = (skin && skin.look) || {}, group = new THREE.Group(), out = { group, slide: null, mag: null, bolt: null, mats: [], geos: [] };
   if (low) { const geo = mergeAll((W.model || []).map(primGeo)); if (geo) { group.add(new THREE.Mesh(geo, M.botGun)); out.geos.push(geo); } return out; }
-  const skinMat = new THREE.MeshStandardMaterial({ map: skinTexture(skin || stockSkin(id)), roughness: 0.45, metalness: 0.6, emissive: look.emissive ? hexNum(look.emissive) : 0, emissiveIntensity: look.emissive ? 0.45 : 0 });
+  const skinMat = new THREE.MeshStandardMaterial({ map: skinTexture(skin || stockSkin(id)), roughness: 0.55, metalness: 0.2, emissive: look.emissive ? hexNum(look.emissive) : 0, emissiveIntensity: look.emissive ? 0.45 : 0 });
   const metal = M.hard(look.metal || '#4a4d55', true), wood = M.hard(look.base && (look.pattern === 'wood') ? look.base : '#6b5030'), grip = M.hard('#1c1e23', true), blade = M.hard(look.metal || '#c8ccd6', true);
   out.mats.push(skinMat, metal, wood, grip, blade);
   const matFor = p => p.skin ? skinMat : p.part === 'wood' ? wood : (p.part === 'grip' || p.part === 'handle' || p.part === 'stock') ? grip : p.part === 'blade' ? blade : metal;
@@ -408,7 +433,7 @@ function rayAABB(o, d, c, maxT) {
   return t0;
 }
 function rayWorld(cols, o, d, maxT) { let best = maxT, hit = null; for (const c of cols) { const t = rayAABB(o, d, c, best); if (t >= 0 && t < best) { best = t; hit = c; } } return hit ? { t: best, c: hit } : null; }
-const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _sa = new THREE.Vector3(), _sb = new THREE.Vector3();
+const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _v = new THREE.Vector3();
 function segmentClear(cols, a, b) { _d.copy(b).sub(a); const len = _d.length(); if (len < 1e-6) return true; _d.multiplyScalar(1 / len); return !rayWorld(cols, a, _d, len); }
 /* hit shapes: a head sphere then a body cylinder; the head wins when both are hit */
 function raySphere(o, d, cx, cy, cz, r, maxT) { const ox = o.x - cx, oy = o.y - cy, oz = o.z - cz, b = ox * d.x + oy * d.y + oz * d.z, c = ox * ox + oy * oy + oz * oz - r * r, disc = b * b - c; if (disc < 0) return -1; let t = -b - Math.sqrt(disc); if (t < 0) t = -b + Math.sqrt(disc); return t >= 0 && t <= maxT ? t : -1; }
@@ -504,6 +529,151 @@ class Pool {
   dispose() { this.mesh.geometry.dispose(); if (this.mesh.parent) this.mesh.parent.remove(this.mesh); this.mesh.dispose(); }
 }
 
+/* ── the soldier the bots wear (the owner's model) ─────────────────────────────────────────────
+   Overwork's rule is "no keyframed animation, add a spring not a clip". That rule is about the
+   courier: his walk is the whole point of that game. This is the other game, and the owner handed
+   over a rigged soldier whose entire value is its twenty-four clips (Idle_Gun, Walk, Run, Run_Shoot,
+   Gun_Shoot, Death, HitRecieve...), so here the clips are what he asked for and the springs stay
+   only for the things the clips do not cover: lean, bob, recoil kick and the aim pitch.
+
+   The capsule figure underneath is still built and still runs — the model is switched in on top of
+   it and the capsules are hidden — so every reference the rest of the class makes (body, head, legL,
+   gunG, the springs) stays valid, and a bot whose model failed to load simply looks like it did in
+   v1 instead of disappearing. ── */
+const SOLDIER = { url: 'art/overwork/chars/soldier.glb', buf: null, pending: null, dead: false };
+function soldierBuffer() {
+  if (SOLDIER.dead) return Promise.reject(new Error('no model'));
+  if (SOLDIER.buf) return Promise.resolve(SOLDIER.buf);
+  if (!SOLDIER.pending) SOLDIER.pending = fetch(SOLDIER.url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+    .then(b => (SOLDIER.buf = b)).catch(e => { SOLDIER.dead = true; throw e; });
+  return SOLDIER.pending;
+}
+/* One parse per bot. A SkinnedMesh cannot simply be cloned — the clone would keep pointing at the
+   original's bones and seven soldiers would share one pose — and SkeletonUtils is not vendored, so
+   the buffer is fetched once and parsed per figure. It is 10k triangles; the parse is cheap. */
+function parseSoldier(buf) {
+  return new Promise((res, rej) => { new GLTFLoader().parse(buf.slice(0), '', res, rej); });
+}
+const SOLDIER_ANIM = { idle: 'Idle_Gun', walk: 'Walk', run: 'Run', dead: 'Death', hurt: 'HitRecieve', shoot: 'Gun_Shoot' };
+const clipNamed = (clips, want) => clips.find(c => c.name === want) || clips.find(c => c.name.split('|').pop() === want) || null;
+async function makeSoldier(accentHex, height) {
+  const gltf = await parseSoldier(await soldierBuffer());
+  const root = gltf.scene;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), size = new THREE.Vector3(); box.getSize(size);
+  const k = height / (size.y || 1);
+  root.scale.setScalar(k); root.position.y = -box.min.y * k;
+  // materials are shared across the parse, so clone them per figure and put this bot's colour on the fatigues
+  const accent = new THREE.Color(hexNum(accentHex)), seen = new Map();
+  root.traverse(o => {
+    if (!o.isMesh && !o.isSkinnedMesh) return;
+    o.frustumCulled = false;                                                   // a skinned bounding box that never updates culls the figure at the wrong moment
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    const out = list.map(src => {
+      if (seen.has(src)) return seen.get(src);
+      const m = src.clone();
+      if (/^(Green|LightGreen)$/.test(src.name || '')) m.color.copy(accent).multiplyScalar(/Light/.test(src.name) ? 1.15 : 0.78);
+      m.roughness = m.roughness == null ? 0.86 : Math.max(0.5, m.roughness); m.metalness = 0.05;
+      seen.set(src, m); return m;
+    });
+    o.material = Array.isArray(o.material) ? out : out[0];
+  });
+  const mixer = new THREE.AnimationMixer(root), actions = {};
+  for (const key in SOLDIER_ANIM) {
+    const clip = clipNamed(gltf.animations || [], SOLDIER_ANIM[key]); if (!clip) continue;
+    const a = mixer.clipAction(clip); actions[key] = a;
+    if (key === 'dead') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+  }
+  // GLTFLoader sanitises node names (a dot becomes an underscore), so match on shape rather than the literal
+  let hand = null, chest = null;
+  root.traverse(o => {
+    if (!hand && /^(wrist|hand|mixamorig.?right.?hand)[._]?r?$/i.test(o.name || '')) hand = o;
+    if (!chest && /^(chest|spine2|upperchest)$/i.test(o.name || '')) chest = o;
+  });
+  if (!chest) root.traverse(o => { if (!chest && /^torso$/i.test(o.name || '')) chest = o; });
+  return { root, mixer, actions, hand, chest, mats: [...seen.values()], cur: null, scale: k };
+}
+
+/* ── the city outside the walls (the owner's City Pack) ────────────────────────────────────────
+   Loaded after the match has already started, so nobody waits on 2 MB of buildings, and skipped
+   entirely on the low light budget (phones) — the arena is complete without it.
+
+   Placing thirty buildings as thirty scene graphs would be three hundred draw calls, so nothing is
+   added as a model: every mesh is baked to world space, fitted, positioned, and merged by material
+   into a handful of geometries. Two materials count as the same one when their name, colour and
+   texture agree, which is what collapses six buildings' worth of `concrete` into one mesh. ── */
+const CITY_CACHE = {};
+function cityFit(name, box) {
+  const spec = CITY_FIT[name]; if (spec == null) return 1;
+  const size = new THREE.Vector3(); box.getSize(size);
+  if (typeof spec === 'object') { const w = Math.max(size.x, size.z) || 1; return (spec.s || 1) / w; }
+  return (spec || 1) / (size.y || 1);
+}
+/* every geometry that goes into a merge must carry exactly position, normal and uv, in that order */
+function cityGeo(geo, mat4) {
+  const g = new THREE.BufferGeometry();
+  const pos = geo.attributes.position; if (!pos) return null;
+  g.setAttribute('position', pos.clone());
+  g.setAttribute('normal', geo.attributes.normal ? geo.attributes.normal.clone() : new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3));
+  g.setAttribute('uv', geo.attributes.uv ? geo.attributes.uv.clone() : new THREE.BufferAttribute(new Float32Array(pos.count * 2), 2));
+  if (geo.index) g.setIndex(geo.index.clone()); else g.setIndex([...Array(pos.count).keys()]);
+  if (!geo.attributes.normal) g.computeVertexNormals();
+  g.applyMatrix4(mat4);
+  return g;
+}
+async function loadCityModel(name) {
+  if (CITY_CACHE[name]) return CITY_CACHE[name];
+  const gltf = await new GLTFLoader().loadAsync('art/overwork/city/' + name + '.glb');
+  const root = gltf.scene; root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), k = cityFit(name, box);
+  // normalise: scale to the target size, centre on x/z, and stand on y = 0
+  const norm = new THREE.Matrix4().makeScale(k, k, k).multiply(new THREE.Matrix4().makeTranslation(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2));
+  const parts = [];
+  root.traverse(o => {
+    if (!o.isMesh || !o.geometry) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    const world = new THREE.Matrix4().multiplyMatrices(norm, o.matrixWorld);
+    parts.push({ geo: o.geometry, mat: mats[0], world });
+  });
+  return CITY_CACHE[name] = { parts };
+}
+/* the night grade: the pack is lit for daylight, so everything comes down and cools off, and the
+   window material forks into a dark pane and a warm lit one */
+function cityMaterial(src, lit, made) {
+  const isWindow = /glass|window/i.test(src.name || '');
+  const key = (src.name || 'm') + '|' + (src.color ? src.color.getHexString() : '0') + '|' + (src.map ? (src.map.uuid || 'map') : '-') + (isWindow && lit ? '|lit' : '');
+  if (made.has(key)) return made.get(key);
+  let m;
+  if (isWindow) {                                                                             // daylight: a window is dark glass with a little sky in it, lit or not
+    m = new THREE.MeshStandardMaterial({ color: 0x4a5a6b, roughness: 0.28, metalness: 0.24 });   // glass with a bright sky in it
+  } else {
+    m = new THREE.MeshStandardMaterial({ color: (src.color ? src.color.clone() : new THREE.Color(0x808080)).multiplyScalar(1.0).lerp(new THREE.Color(0xb5ad9a), 0.1), map: src.map || null, roughness: 0.94, metalness: 0.03 });
+  }
+  made.set(key, m); return m;
+}
+async function buildCity(scene) {
+  const names = [...new Set(CITY.map(c => c.f))];
+  const loaded = {};
+  for (const n of names) { try { loaded[n] = await loadCityModel(n); } catch (e) { /* one missing model must not take the skyline with it */ } }
+  const made = new Map(), buckets = new Map(), tmp = new THREE.Matrix4();
+  for (const c of CITY) {
+    const model = loaded[c.f]; if (!model) continue;
+    const place = new THREE.Matrix4().makeRotationY(c.ry || 0); place.setPosition(c.x, c.y || 0, c.z);
+    for (const part of model.parts) {
+      const m = cityMaterial(part.mat || {}, !!c.lit, made);
+      const g = cityGeo(part.geo, tmp.multiplyMatrices(place, part.world)); if (!g) continue;
+      if (!buckets.has(m)) buckets.set(m, []); buckets.get(m).push(g);
+    }
+  }
+  const meshes = [], geos = [], mats = [];
+  for (const [m, list] of buckets) {
+    const geo = mergeAll(list); if (!geo) continue;
+    const mesh = new THREE.Mesh(geo, m); mesh.matrixAutoUpdate = false; scene.add(mesh);
+    meshes.push(mesh); geos.push(geo); mats.push(m);
+  }
+  return { meshes, geos, mats, dispose() { for (const mesh of meshes) scene.remove(mesh); for (const g of geos) g.dispose(); for (const m of mats) m.dispose(); } };
+}
+
 /* ── muzzle flash, tracers, impact sparks. Every one of them is a pooled additive quad that is scaled to zero when it is
    not alive, so the whole system is three draw calls and never allocates during a match. A flash is one billboard plus a
    short-lived point light on the player's own gun (the one light worth paying for); a tracer is a stretched box between
@@ -528,7 +698,7 @@ class Fx {
   muzzle(x, y, z, dx, dy, dz, size, mine) {
     const q = this.flashes[this.fi++ % this.flashes.length];
     q.life = 0.075; q.t = 0; q.x = x + dx * 0.12; q.y = y + dy * 0.12; q.z = z + dz * 0.12; q.s = size; q.roll = Math.random() * TAU;
-    if (mine) { this.light.position.set(q.x, q.y, q.z); this.light.intensity = 5.5 * size; this.light.visible = true; this.lightT = 0.05; }
+    if (mine) { this.light.position.set(q.x, q.y, q.z); this.light.intensity = 3.0 * size; this.light.visible = true; this.lightT = 0.05; }
   }
   tracer(ax, ay, az, bx, by, bz, w) {
     const q = this.tracers[this.ti++ % this.tracers.length];
@@ -609,12 +779,17 @@ function buildWorld(scene, opts) {
   /* night. `sun` keeps its name because everything downstream (shadows, the quality presets) refers to it, but it is a
      cold moon coming in low from the north-west, deliberately weak: the arena is meant to be read by its street lights.
      The hemisphere is a hair of sky bounce, not fill — turn it up and the whole block goes flat and friendly again. */
-  const sun = new THREE.DirectionalLight(0xa9c2f5, 1.7); sun.position.set(-26, 40, 34); scene.add(sun);
-  const hemi = new THREE.HemisphereLight(0x4864a0, 0x191d25, 1.3); scene.add(hemi);
-  scene.add(new THREE.AmbientLight(0x3d4f78, 1.35));                                        // the floor of the exposure: below this the arena stops being playable
+  /* A normal sunny day. Two wrong turns got here: first a night map, which was not un-cozy, it was frightening;
+     then a grey overcast one, which was just miserable. The reference is Counter-Strike — those maps are bright,
+     warm and blue-skied, and nothing about them is cosy, because what makes a shooter feel like a shooter is the
+     geometry, the guns, the HUD and the sound, not a desaturated palette. So: a warm high sun, a blue sky bounce,
+     and enough ambient that no corner of the map is a place you cannot read. */
+  const sun = new THREE.DirectionalLight(0xfff4dd, 2.4); sun.position.set(-30, 56, 22); scene.add(sun);
+  const hemi = new THREE.HemisphereLight(0xbcd8ff, 0x8a8272, 1.55); scene.add(hemi);
+  scene.add(new THREE.AmbientLight(0xb9bcbf, 0.55));                                        // the floor of the exposure: below this the arena stops being playable
   /* the lamps themselves. Three.js pays per light per material, so there is a budget: the brightest N, nearest the play
      space, and none at all on the low preset — the `glow` lenses are unlit meshes, so a lamp still reads as lit. */
-  const budget = opts.lightBudget != null ? opts.lightBudget : 8;
+  const budget = opts.lightBudget != null ? opts.lightBudget : 0;                             // the street lamps are off: it is the middle of the day
   const wanted = (LIGHTS || []).slice().sort((a, b) => (b.intensity || 1) - (a.intensity || 1)).slice(0, Math.max(0, budget));
   for (const l of wanted) { const pl = new THREE.PointLight(hexNum(l.color || '#ffb347'), (l.intensity || 1) * 2.4, (l.dist || 10) * 1.5, 1.5); pl.position.set(l.x, l.y, l.z); scene.add(pl); lights.push(pl); }
   // the two ammo crates: an olive metal chest with a lid on a spring
@@ -748,11 +923,16 @@ export function createStriker(api) {
        The muzzle sits forward of the eye and, for the player, offset right and down so it leaves the barrel of the
        viewmodel rather than the middle of the screen. */
     if (M.fx) {
-      const sn = Math.sin(h.yaw), cs = Math.cos(h.yaw), sz = W.flash || 0.34;
-      const mx = eye.x + dir.x * 0.5 + (h.isPlayer ? cs * 0.14 : 0), my = eye.y + dir.y * 0.5 - (h.isPlayer ? 0.09 : 0), mz = eye.z + dir.z * 0.5 - (h.isPlayer ? sn * 0.14 : 0);
+      // the muzzle is where this gun's barrel ends; the player's own flash is drawn at half size because it is
+      // 70 cm from the eye, and at full size it filled a quarter of the screen
+      const sn = Math.sin(h.yaw), cs = Math.cos(h.yaw), sz = (W.flash || 0.34) * (h.isPlayer ? 0.5 : 1);
+      const fwd = h.isPlayer ? ((W.glb && W.glb.len) || 0.6) * 1.08 : 0.5;                                       // just past the muzzle, or the quad clips through the barrel
+      const mx = eye.x + dir.x * fwd + (h.isPlayer ? cs * 0.13 : 0), my = eye.y + dir.y * fwd - (h.isPlayer ? 0.09 : 0), mz = eye.z + dir.z * fwd - (h.isPlayer ? sn * 0.13 : 0);
       M.fx.muzzle(mx, my, mz, dir.x, dir.y, dir.z, sz, h.isPlayer);
-      const t = hit ? hit.t : 120, ex = eye.x + dir.x * t, ey = eye.y + dir.y * t, ez = eye.z + dir.z * t;
-      M.fx.tracer(mx, my, mz, ex, ey, ez, 0.016 + sz * 0.02);
+      // the tracer starts two metres out for your own gun: drawn from the muzzle it lies across the viewmodel as a
+      // white bar. Every shooter cheats this the same way — you never see the first stretch of your own tracer anyway.
+      const t = hit ? hit.t : 120, t0 = h.isPlayer ? Math.min(2.0, t * 0.5) : 0;
+      if (t - t0 > 0.2) M.fx.tracer(eye.x + dir.x * t0, eye.y + dir.y * t0, eye.z + dir.z * t0, eye.x + dir.x * t, eye.y + dir.y * t, eye.z + dir.z * t, 0.011 + sz * 0.012);
     }
     if (hit && hit.body) { let dmg = W.dmg || 30; if (hit.head) dmg *= W.headMul || 2; if (W.falloff && hit.t > W.falloff.from) dmg *= W.falloff.mul; applyDamage(hit.body, dmg, h, { head: hit.head, weapon: h.cur }); if (M.fx) M.fx.spark(hit.point.x, hit.point.y, hit.point.z, -dir.x, -dir.y, -dir.z, 3); }
     else if (hit) worldImpact(hit.point, hit.col);
@@ -960,6 +1140,30 @@ export function createStriker(api) {
       this.blob = new THREE.Mesh(F.blob, MM.blob); this.blob.position.y = 0.02; this.blob.renderOrder = -1; g.add(this.blob);
       this.swing = [spring(90, 9), spring(90, 9)]; this.bob = spring(220, 20); this.lean = { x: spring(40, 6), z: spring(40, 6) }; this.headS = { x: spring(60, 6), z: spring(60, 6), y: spring(80, 8) };
       this.squash = spring(120, 9); this.tilt = spring(80, 9); this.rootY = spring(60, 8); this.scaleS = spring(120, 9); this.armKick = spring(60, 7); this.gunKick = spring(200, 16); this.scaleS.x = 1;
+      this.capsules = [torso, ring, head, this.legL, this.legR, this.armL, this.armR];
+      this.soldier = null;
+      // the owner's model replaces the capsules as soon as it has parsed; until then, and if it never
+      // arrives, the bot is the v1 figure and everything else about it is unchanged
+      makeSoldier(this.color, this.height).then(sol => {
+        if (!this.g || !this.g.parent) { sol.mats.forEach(m => m.dispose()); return; }
+        this.soldier = sol; this.body.add(sol.root);
+        for (const c of this.capsules) c.visible = false;
+        // the gun is NOT parented to the hand bone: the bone carries the armature's own scale and rotation, which
+        // made the rifle twenty times too big and pointing at the sky. It stays a child of `body` (unscaled, already
+        // yawed) and every frame it is moved to wherever the hand currently is. Close up the grip is approximate;
+        // at any distance that matters it is a soldier holding his rifle where his hand is, pointed where he aims.
+        this.gunG.scale.setScalar(1);
+        this.playClip('idle', 0);
+      }).catch(() => {});
+    }
+    /* one clip at a time, crossfaded. The mixer owns the pose; the springs are applied on top of it. */
+    playClip(key, fade = 0.18) {
+      const sol = this.soldier; if (!sol) return;
+      const next = sol.actions[key]; if (!next || sol.cur === key) return;
+      const prev = sol.cur && sol.actions[sol.cur];
+      next.reset().setEffectiveWeight(1).play();
+      if (prev && fade > 0) prev.crossFadeTo(next, fade, false); else if (prev) prev.stop();
+      sol.cur = key;
     }
     drawWeapon() { const w = diffK().weaponWeights || { ar: 0.45, ak: 0.3, awp: 0.25 }, r = M.rng() * ((w.ar || 0) + (w.ak || 0) + (w.awp || 0)); return r < (w.ar || 0) ? 'ar' : r < (w.ar || 0) + (w.ak || 0) ? 'ak' : 'awp'; }
     onSwitch() { disposeGun(this.gun); this.gun = buildGun(this.cur, null, true); this.gunG.add(this.gun.group); }
@@ -1117,7 +1321,22 @@ export function createStriker(api) {
       const ax = (this.vel.x - this.pvx) / dt, az = (this.vel.z - this.pvz) / dt; this.pvx = this.vel.x; this.pvz = this.vel.z;
       const fwdV = -(this.vel.x * sn + this.vel.z * cs), sideV = this.vel.x * cs - this.vel.z * sn, fwdA = -(ax * sn + az * cs), sideA = ax * cs - az * sn;
       springTo(this.lean.x, clamp(0.026 * fwdV + 0.012 * fwdA, -0.45, 0.45), dt); springTo(this.lean.z, clamp(-(0.026 * sideV + 0.012 * sideA), -0.45, 0.45), dt); this.headS.x.v -= fwdA * 0.004;
-      springTo(this.tilt, this.tiltT, dt); this.body.rotation.set(this.lean.x.x, 0, this.lean.z.x + this.tilt.x);
+      springTo(this.tilt, this.tiltT, dt); this.body.rotation.set(this.lean.x.x, 0, this.soldier ? this.lean.z.x : this.lean.z.x + this.tilt.x);
+      if (this.soldier) {
+        const sol = this.soldier, spd = Math.hypot(this.vel.x, this.vel.z);
+        this.playClip(this.dead ? 'dead' : spd > 3.2 ? 'run' : spd > 0.5 ? 'walk' : 'idle');
+        sol.mixer.update(dt);
+        // the mixer rewrites the skeleton every frame, so anything of ours goes on afterwards: the chest
+        // carries the aim, and the gun hand takes the recoil kick the springs already track
+        if (sol.chest && !this.dead) sol.chest.rotation.x -= clamp(this.pitch, -0.9, 0.9) * 0.55;
+        if (sol.hand) {
+          sol.hand.updateWorldMatrix(true, false);
+          sol.hand.getWorldPosition(_v); this.body.worldToLocal(_v);
+          this.gunG.position.set(_v.x, _v.y, _v.z - this.gunKick.x * 0.03);
+          this.gunG.rotation.set(-clamp(this.pitch, -0.9, 0.9) - this.gunKick.x * 0.06, 0, 0);
+          this.gunG.visible = !this.dead;
+        }
+      }
       springTo(this.bob, 0, dt); this.body.position.y = this.bob.x + (this.crouch ? -0.45 : 0);
       springTo(this.headS.x, 0, dt); springTo(this.headS.z, 0, dt); springTo(this.headS.y, 0, dt); this.head.rotation.set(this.headS.x.x, 0, this.headS.z.x); this.head.position.y = 1.55 + this.headS.y.x;
       const sp = Math.hypot(this.vel.x, this.vel.z), walking = this.onGround && sp > 0.5 && !this.dead;
@@ -1127,7 +1346,7 @@ export function createStriker(api) {
       const wantRed = this.red > 0; if (wantRed !== this.nameRed) { this.nameRed = wantRed; this.nameSprite.material.color.setHex(wantRed ? 0xe10600 : 0xffffff); }
       this.blob.position.y = (this.onGround ? 0 : floorAt(M.cols, this.pos.x, this.pos.z, this.pos.y, 0.3) - this.pos.y) - this.rootY.x + 0.02; this.blob.visible = !this.dead;
     }
-    dispose() { if (this.g.parent) this.g.parent.remove(this.g); disposeGun(this.gun); this.mat.dispose(); this.nameSprite.material.map.dispose(); this.nameSprite.material.dispose(); }
+    dispose() { if (this.g.parent) this.g.parent.remove(this.g); disposeGun(this.gun); if (this.soldier) { this.soldier.mixer.stopAllAction(); this.soldier.mats.forEach(m => m.dispose()); this.soldier = null; } this.mat.dispose(); this.nameSprite.material.map.dispose(); this.nameSprite.material.dispose(); }
   }
   function botChat(name, line) { feedLine(name + ': ' + line, 'chat'); }
 
@@ -1171,7 +1390,7 @@ export function createStriker(api) {
     const frame = api.frame(), el = document.createElement('div'); el.id = 'ps'; el.className = (isTouch ? 'has-touch ' : '') + 'btn-' + (PS.cfg.btn || 'm'); el.innerHTML = HUD_HTML; frame.appendChild(el);
     const cv = el.querySelector('canvas'), renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !isTouch, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, isTouch ? 1 : 1.5)); renderer.shadowMap.enabled = false;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;   // night, but a night you can play in: the lamps and the muzzle flash roll off instead of clipping to white
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;   // night, but a night you can play in: the lamps and the muzzle flash roll off instead of clipping to white
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(PS.cfg.fov || 80, 1, 0.03, 260); scene.add(camera);
     const seed = opts.seed != null ? opts.seed : (Math.random() * 1e9) | 0;
     M = { el, cv, renderer, scene, camera, hud: {}, phase: 'load', paused: false, time: 0, limit: 300, killCap: 20, countT: 3, sudden: false, diff: DIFF[opts.diff] ? opts.diff : 'normal', nBots: clamp(opts.bots | 0 || 5, 3, 7), loadout: PRIMARIES.includes(opts.loadout) ? opts.loadout : 'ar', seed, rng: xorshift(seed),
@@ -1180,7 +1399,13 @@ export function createStriker(api) {
       vm: { root: new THREE.Group(), gun: null, pos: { x: spring(160, 16), y: spring(160, 16), z: spring(160, 16) }, rot: { x: spring(120, 14), y: spring(120, 14), z: spring(120, 14) }, tgt: { x: 0, y: -0.5, z: 0 }, nudgeT: 0 }, vmAlt: false, magS: spring(160, 14), magT: 0, slideS: spring(400, 22), boltS: spring(300, 18),
       raf: 0, lastT: 0, acc: 0, endT: 0, endShown: false, statsDone: false, place: 0, records: [], escT: 0, leaveArmed: false, stick: { id: -1, x: 0, y: 0, R: 44, full: 0 }, look: { id: -1, x: 0, y: 0, moved: 0, t0: 0 }, portrait: false, friction: false, centerT: 0, bigT: 0, boardT: 0, frameH: 800, onStone: false, tapFire: 0 };
     M.eyeS.x = 1.6; M.fov.x = PS.cfg.fov || 80; M.hpShow.x = 100; M.hm.x = 1;
-    M.world = buildWorld(scene, { lightBudget: PS.cfg.lights != null ? PS.cfg.lights : (isTouch ? 4 : 8), debug: debugOn && /debug=colliders/.test(location.search) }); M.cols = M.world.cols; M.nav = M.world.nav; M.fx = new Fx(scene);
+    M.world = buildWorld(scene, { lightBudget: PS.cfg.lights != null ? PS.cfg.lights : 0, debug: debugOn && /debug=colliders/.test(location.search) }); M.cols = M.world.cols; M.nav = M.world.nav; M.fx = new Fx(scene);
+    /* the skyline arrives late and only on a machine that can carry it: the match is already playable
+       without it, and a match that ended while the buildings were still downloading throws them away */
+    if (!isTouch) {
+      const mine = M;
+      buildCity(scene).then(city => { if (M === mine && city) mine.city = city; else if (city) city.dispose(); }).catch(() => {});
+    }
     M.vm.root.rotation.y = Math.PI; camera.add(M.vm.root);
     const H = M.hud, q = s => el.querySelector(s);
     Object.assign(H, { xh: q('#ps-xh'), hm: q('#ps-hm'), vig: q('#ps-vig'), arrow: q('#ps-arrow'), scope: q('#ps-scope'), clk: q('#ps-clk'), clkN: q('#ps-clk .n'), clkS: q('#ps-clk .s'), feed: q('#ps-feed'), big: q('#ps-ctr .cbig'), ctr: q('#ps-ctr .t'),
@@ -1230,7 +1455,7 @@ export function createStriker(api) {
     m.cv.removeEventListener('mousedown', m.onMouseDown); removeEventListener('mouseup', m.onMouseUp); removeEventListener('mousemove', m.onMouseMove); m.cv.removeEventListener('wheel', m.onWheel); m.cv.removeEventListener('click', m.onClick);
     document.removeEventListener('pointerlockchange', m.onLockChange); document.removeEventListener('pointerlockerror', m.onLockError);
     if (document.pointerLockElement === m.cv) { try { document.exitPointerLock(); } catch (e) {} }
-    for (const b of m.bots) b.dispose(); disposeGun(m.vm.gun); if (m.fx) m.fx.dispose(); m.world.dispose(); disposeFig();
+    for (const b of m.bots) b.dispose(); disposeGun(m.vm.gun); if (m.fx) m.fx.dispose(); if (m.city) m.city.dispose(); m.world.dispose(); disposeFig();
     m.renderer.dispose(); try { m.renderer.forceContextLoss(); } catch (e) {} m.el.remove(); sound.listener = null; duck(false); api.musicDuck(false);
   }
   function mountViewmodel() { if (!M) return; disposeGun(M.vm.gun); M.vm.gun = buildGun(M.P.cur, equipped(M.P.cur)); M.vm.root.add(M.vm.gun.group); M.magT = 0; M.magS.x = 0; M.magS.v = 0; M.slideS.x = 0; M.boltS.x = 0; }
@@ -1569,6 +1794,7 @@ export function createStriker(api) {
     equip: id => equipSkin(id), recycle: () => { if (!PS) loadPS(); const r = doOpenCase(true, null); return r ? { skin: r.skin, rarity: r.rarity, duplicate: r.duplicate } : null; },
     fx: () => (M && M.fx) ? { flash: M.fx.flashes.filter(q => q.life > 0).length, tracer: M.fx.tracers.filter(q => q.life > 0).length, spark: M.fx.sparks.filter(q => q.life > 0).length, light: M.fx.light.visible } : null,
     lights: () => (M && M.world) ? M.world.lights.length : 0,
+    city: () => (M && M.city) ? { meshes: M.city.meshes.length, tris: M.city.geos.reduce((a, g) => a + (g.index ? g.index.count : 0) / 3, 0) } : null,
     lines: () => flattenLines(LINES), sfxLog: sound.log, paintTab: () => paintTab(), setTab: t => { tab = t; paintTab(); },
     get match() { return M; }, get ps() { return PS; }, draws: () => M ? M.renderer.info.render.calls : 0,
   } : undefined;

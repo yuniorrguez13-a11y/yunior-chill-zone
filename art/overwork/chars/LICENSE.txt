@@ -1,0 +1,18 @@
+Character model used by Pitty Striker (ow-striker.js).
+
+Source: the "City Pack" (glb), supplied by the site owner in September 2026.
+One model was kept and renamed:
+
+  soldier.glb <- Adventurer.glb
+
+Nothing was changed: no geometry was edited, no texture was added, and the
+model's own twenty-four animation clips are used as they shipped (Idle_Gun,
+Walk, Run, Death, HitRecieve and the rest). The game scales it to 1.75 m at
+load time and recolours its existing Green / LightGreen materials to the bot's
+identity colour so twelve of them stay apart on screen. No brand name or logo
+is painted onto it.
+
+The pack shipped without a licence file. The owner supplied it and has been
+asked to confirm that its licence allows use in this game; if it does not, this
+file comes out and the bots fall back to the capsule figure the game still
+carries and still builds underneath the model.

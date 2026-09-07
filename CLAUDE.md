@@ -67,8 +67,9 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `ow-net.js` | Overwork's wire: signalling over Supabase realtime broadcast (or a `BroadcastChannel` with `?signal=local` for two tabs on one machine) and one WebRTC connection per peer with two data channels (`rel` ordered for events, `fast` lossy for snapshots). Knows nothing about the game. |
 | `ow-os.js` | **MirrorOS**, the operating system on the PC in the courier's apartment: a 2009-glass-look desktop (own name, own icons, no trademarks) with draggable windows, taskbar, start orb, and the apps: Overwork Online (host/join/rooms/chat), Lucky Loaf Casino (slots + 21 + roulette, the flat edition of the real tables — same state objects, handed over in `api.games`), notes, locker shortcut, a Pitty Striker shortcut that crashes on purpose, a recycle bin. Takes an `api` object from the game; touches only its own DOM. **All of its CSS is scoped under `#s-pc`** — a bare `.card` rule in here once shrank the game's work-order card to a playing card. Desktop icons open on a single click. |
 | `ow-piano.js` | **The piano** (Sep 2026). Every musical sound in Overwork: a sampled grand piano (18 notes every third semitone A1–C6, `art/overwork/piano/`, CC BY 3.0 via tonejs-instruments, ~1 MB), a generative lo-fi background tune that is never the same twice, and the *cues* the game used to synthesise (delivery, la peace, mystery box, dog, horn) played like a silent-film accompanist. Felt lowpass + small-room convolution + limiter. `createPiano(ac, base)` → `load()`, `cue(name)`, `music.start/stop/pause`, `setVolume`, `setMuffled`, `until(t)` (also drives an `OfflineAudioContext` render in the harness). **No oscillators anywhere in Overwork** — owner's rule, see the sound section below. |
-| `ow-striker.js` · `ow-striker-data.js` | **Pitty Striker** (Sep 2026), the shooter on the apartment PC — the courier's *own* game, nothing about the job inside it (owner's correction, see its section). `ow-striker.js` is the machine (launcher in the MirrorOS window, loot-case reel, inventory, stats, settings, the match: own WebGLRenderer inside `#pc-frame`, cylinder-vs-AABB solver, five real-world guns, spring-driven viewmodels, bots with a state machine on a node graph, DOM HUD, pointer lock, touch layer, foley routing). `ow-striker-data.js` is pure data: the "sandstone" map table (rows = geometry AND colliders), nodes and edge hints, WEAPONS, SKINS + CASES + RARITY, BOTS, DIFF, every line of copy (LINES), the sound table (SFX), `validatePS`/`psSig`/`rollCase`. Lazy-loaded by `overwork.html` on the first click of the desktop icon. |
+| `ow-striker.js` · `ow-striker-data.js` | **Pitty Striker** (Sep 2026), the shooter on the apartment PC — the courier's *own* game, nothing about the job inside it (owner's correction, see its section). `ow-striker.js` is the machine (launcher in the MirrorOS window, loot-case reel, inventory, stats, settings, the match: own WebGLRenderer inside `#pc-frame`, cylinder-vs-AABB solver, five real-world guns, spring-driven viewmodels, bots with a state machine on a node graph, DOM HUD, pointer lock, touch layer, foley routing). `ow-striker-data.js` is pure data: the "sandstone" map table (rows = geometry AND colliders — the name is historical, it is a sunny city block now), the deco and its `LIGHTS`, nodes and edge hints, WEAPONS, SKINS + CASES + RARITY, BOTS, DIFF, every line of copy (LINES), the sound table (SFX), the `CITY`/`CITY_FIT` placement table for the buildings outside the walls, `validatePS`/`psSig`/`rollCase`. Lazy-loaded by `overwork.html` on the first click of the desktop icon. |
 | `ow-casino.js` | The rules of the Lucky Loaf Casino with no pixels attached: `createSlots/createBlackjack/createRoulette(bank)` are small state machines over a `{cash(), add(n)}` bank. The 3D tables in `overwork.html` and the MirrorOS window both render the *same* instances, so what the felt shows is what the window shows. Spins/deals decide the result up front (`spin()` returns the pending outcome, the renderer animates and calls `settle()`). |
+| `art/overwork/guns/` · `art/overwork/sfx-guns/` · `art/overwork/city/` · `art/overwork/chars/` | Pitty Striker's assets, all owner-supplied, each with a LICENSE.txt naming the source and saying what happens if the licence turns out not to allow it: five weapon models, eighteen gun recordings, twenty-eight city models, one rigged soldier. |
 | `vendor/` | Third-party libraries served from our own origin (no CDN dependency, CSP `'self'`). `three.module.min.js` (r169, MIT) and `supabase-2.115.0.min.js` (UMD, MIT), licences alongside. `_headers` caches `/vendor/*` for a year as immutable, so **rename the file when upgrading**. |
 | `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
 
@@ -881,12 +882,81 @@ modules for box/van/depot/deliver/shift/coworker/hr before adding copy — `scra
   tamper, a match through `__test`: countdown, move, shoot, knife, pause, Esc chain, back to the courier), `ps-bots.js` (7 hard
   bots, 300 s of sim: everyone moves, someone reaches a balcony, no unsticks), `ps-touch.js` (stick, look, fire, portrait card),
   `ps-lint.js` (copy: no '!', no emoji, no theme words, no createOscillator). Pointer lock cannot be exercised headless; the
-  flow uses `__test.startMatch` which skips the lock prompt.
+  flow uses `__test.startMatch` which skips the lock prompt. **`ps-bots.js` is stochastic** — "nobody reached a balcony" in a
+  single 300 s run is a coin toss, not a regression; re-run before believing it.
+
+**v9 — the look, and the guns you can hear (Sep 2026; owner: "se ve ultra cozy el shooter y odio eso", plus a City Pack, two
+Snake's Authentic Gun Sounds packs and an Announcer Pack).**
+- **Why it looked cozy, and what actually fixed it.** The shooter had inherited Overwork's design language wholesale: cel
+  shading on a three-step ramp, ink outlines on every box, clay figures, a taped-paper HUD in a hand-drawn font, a warm tan
+  desert town. Right for a game about a tired courier, wrong for the game he plays to stop thinking about it. **Two wrong
+  turns before the right one, both worth remembering: a night map is not un-cozy, it is frightening ("eso en vez de hacerlo
+  menos cozy solo lo hace aterrador"), and a grey overcast one is just miserable ("no tiene un puto moody day que un emo
+  implementaría"). The reference is Counter-Strike: those maps are bright, warm, blue-skied and sunny, and nothing about them
+  is cosy — because what makes a shooter read as a shooter is the geometry, the guns, the HUD and the sound, never a
+  desaturated palette.** So Pitty Striker is a normal sunny afternoon.
+- **The map is a city block, on the same blockout.** Every MAP collider, the 69-node graph, the spawns and the bot behaviour
+  are untouched; only the dressing changed. Concrete, asphalt and painted steel instead of sandstone and sand; a street lamp
+  where each palm stood, a wheelie-bin row over the barrel colliders, a shuttered kiosk instead of the market stall, cables
+  with bulbs instead of washing lines, windows and air conditioners and a fire ladder on the perimeter walls, cones and bins
+  on the kerb, wooden crates. The ground paint is a service yard: turning circle, bays, drains, oil. Callouts (A, B, NO
+  PARKING, LOADING BAY) are sprayed stencil caps from the same atlas, never a hand-drawn face.
+- **`MATS` key names are historical.** They still say `sandstone` and `palmLeaf` because the MAP rows were written against
+  them; read them as concrete, pavement, kerb, steel crate, shop shutter, street tree, dumpster, concrete planter. Changing
+  the names means touching all 104 map rows for nothing.
+- **Materials: `MeshStandardMaterial`, no toon ramp, no ink hull anywhere in the shooter.** The one trap: **metalness above
+  ~0.3 with no environment map renders black** (a metal has no diffuse, and there is no reflection to stand in for it) — the
+  viewmodel was a silhouette until every gun and world metal came down to ~0.25 and read as painted steel.
+- **Lighting** is a warm high sun, a blue sky bounce and enough ambient that no corner is unreadable. `LIGHTS` (20 sodium
+  lamps declared in the data) and `opts.lightBudget` still exist and are set to 0: a night variant is one number away.
+- **The city outside** (`CITY`, `CITY_FIT`, `buildCity`) is 28 models from the owner's City Pack, in `art/overwork/city/`.
+  **None of it is solid and none of it is in the play space** — buildings and parked cars beyond the walls, AC units and roof
+  exits and billboards on top of them, manholes and litter flat on the floor. That is what keeps the colliders and the nav
+  graph untouched. It loads *after* the match starts (nobody waits on 2 MB) and is skipped on touch. Placing thirty buildings
+  as thirty scene graphs would be ~300 draw calls, so nothing is added as a model: every mesh is baked to world space, fitted
+  to a target size (`CITY_FIT` — the pack's scales are wild, a building arrives 3.5 units tall and a hydrant 232) and merged
+  by material, where two materials match when name, colour and texture agree. 53 meshes, 112k tris, ~82 draw calls all in.
+- **The bots are the owner's soldier model** (`art/overwork/chars/soldier.glb`, the City Pack's `Adventurer`), and this is the
+  one place in the codebase where **keyframed animation is correct**: that rule is about Overwork's courier, whose walk is the
+  point of that game, and the owner handed over a rigged figure whose entire value is its 24 clips. `makeSoldier()` picks
+  Idle_Gun / Walk / Run / Death / HitRecieve / Gun_Shoot and crossfades by speed; the springs stay for what the clips do not
+  cover — lean, bob, recoil kick and the aim pitch (applied to the `Chest` bone *after* `mixer.update`, because the mixer
+  rewrites the skeleton every frame). Three traps, all paid for: **a SkinnedMesh cannot be cloned** (the clone keeps pointing
+  at the original's bones and every soldier shares one pose) and SkeletonUtils is not vendored, so the buffer is fetched once
+  and `GLTFLoader.parse`d per bot; **GLTFLoader sanitises node names**, so `Wrist.R` arrives as `WristR` and the bone lookup
+  matches on shape; and **the gun is not parented to the hand bone** — the bone carries the armature's own scale and
+  rotation, which made the rifle twenty times too big and pointing at the sky, so `gunG` stays a child of `body` and is moved
+  to the hand's world position each frame. `frustumCulled = false` on the skinned meshes, or a stale skinned bounding box
+  culls the figure at the wrong moment. The capsule figure is still built underneath and merely hidden, so every reference in
+  the class stays valid and a bot whose model failed to load looks like v1 instead of vanishing. Their `color` tints the
+  model's Green / LightGreen materials — saturated on purpose, it is the only thing that reads at 30 m.
+- **Bug worth remembering:** a `//` comment left mid-line inside the `MAT` object literal swallowed four material definitions
+  (`botGun`, `casing`, `crumb`, `lid`). The bots' guns silently fell back to Three's default material, and `disposeMats()`
+  threw on `undefined.map` *inside `close()`* — which left the MirrorOS window gone but the shooter still marked active, so
+  the courier could not move afterwards. The dispose list is `.filter(Boolean)` now, but the real lesson is that a thrown
+  error inside a teardown path leaves the app in a state no test name describes.
+- **The HUD** is thin rules, micro caps, tabular numbers and a notched-corner slab. No paper, no tape, no rotation, no cursive.
+- **Punch**: `class Fx` — a muzzle flash (a canvas flash shape, not a white card; the player's own is drawn at half size just
+  past the barrel or it fills a quarter of the screen and clips through the gun), a tracer (**started 2 m out for your own
+  gun**, or it lies across the viewmodel as a white bar), impact sparks off the face that was hit (the normal comes from
+  whichever bound the point is nearest), a short muzzle light, and a camera flinch per shot. Three instanced draw calls, no
+  allocation during a match.
+- **Sound**: the owner's two Snake's packs (F8 Studios), 18 clips at 208 kB in `art/overwork/sfx-guns/`. One real recording
+  per gun event — 9mm, 5.56, 7.62x39 and 7.62x54R for the four guns, each gun's own magazine and bolt on the reload's
+  `magOut`/`magIn`/`bolt` marks (which were **retimed to where each recording actually starts**, so the parts play end to end),
+  and a real dry fire. `SFX` has two families now: `Y(...)` is the old six-file foley, `Z(...)` is a gun recording played
+  nearly straight. Licences for the models and the sounds are owner-supplied and **pending his confirmation**.
+- **New harnesses:** `ps-fx.js` (one shot produces a flash, a tracer, sparks and the muzzle light — read in the same evaluate
+  so no rAF frame slips in), `ps-audio.js` (every file in `SFX` decodes with a healthy peak, every weapon sfx key resolves),
+  `ps-look.js` (five vantage points), `ps-flash.js` (cancels the rAF, fires, renders one frame, then screenshots — the only
+  reliable way to catch a 75 ms effect under swiftshader), `ow-pace.js` (measured courier and van speeds).
+- **The Announcer Pack is not wired.** The two mp3s split cleanly into 29 + 31 spoken lines, but the sandbox has no speech
+  recognition (the vosk model host is blocked) and no TTS, so nothing can label them. The owner has to say what the lines are.
 
 Not done yet: Pitty Striker multiplayer (the WebRTC wire exists), more Overwork jobs, spectating a full room, a host-side speed
 check on self-reported positions.
-Performance: the world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
-swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason).
+Performance: Overwork's world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
+swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason). Pitty Striker is ~82.
 
 ## Known gaps / next up
 

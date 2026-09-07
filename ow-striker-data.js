@@ -22,12 +22,12 @@ const L = LANE_Y;
    dumpster, pot = concrete planter. The ground stays a good deal darker than the walls: with both the
    same value the arena read as one flat mass and you could not see where a wall ended and the floor began. */
 export const MATS = {
-  sand: '#31353d', sandstone: '#6a7079', sandstoneDark: '#525862', stone: '#434952',
-  wood: '#4e5a66', woodDark: '#39434d', awning: '#8f3a30', awning2: '#b6bec7',
-  palmTrunk: '#3f3a32', palmLeaf: '#38553c', water: '#283a46', barrel: '#375a45', ammo: '#4a5a34',
-  pot: '#565c65', metal: '#8b929c', skyLo: '#4a3f42', skyHi: '#0d1120',
-  brick: '#6d4c43', brickDark: '#503a33', rust: '#7d5140', glass: '#243040', glow: '#ffb04a', glowWin: '#8a6a34',
-  paint: '#c6c2b4', neon: '#4ad2ff', tarp: '#3a4652',
+  sand: '#54575c', sandstone: '#9a9488', sandstoneDark: '#837e74', stone: '#726d64',
+  wood: '#a07a48', woodDark: '#7d5c33', awning: '#b04a3a', awning2: '#cfd4d8',
+  palmTrunk: '#6a5a45', palmLeaf: '#5c7f4a', water: '#4f7f96', barrel: '#3f7a52', ammo: '#5f7040',
+  pot: '#8a8478', metal: '#a8aeb6', skyLo: '#dfe9f2', skyHi: '#4e8fd0',
+  brick: '#96604f', brickDark: '#734739', rust: '#9c6444', glass: '#6d8296', glow: '#f2eddc', glowWin: '#5a6472',
+  paint: '#e2ded0', neon: '#4ad2ff', tarp: '#6a7382',
 };
 
 /* ── the map ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -126,14 +126,14 @@ for (let z = -13.2; z <= 13.21; z += 1.2) {
 
 /* a sodium street lamp: plinth, tapered pole, a short arm over the walkway, a hooded lantern with a lit lens.
    `dx/dz` is the direction the arm reaches; the lens is what LIGHTS lights from. */
-function lamp(x, y, z, h, dx, dz) {
+function lamp(x, y, z, h, dx, dz, power) {
   const ax = dx * 0.85, az = dz * 0.85;
   D('cyl', 'stone', x, y + 0.09, z, { r: 0.24, r2: 0.28, h: 0.18, n: 8 });
   D('cyl', 'metal', x, y + h / 2 + 0.15, z, { r: 0.055, r2: 0.1, h, n: 8 });
   D('box', 'metal', x + ax * 0.5, y + h + 0.14, z + az * 0.5, { w: dx ? 0.85 : 0.07, h: 0.07, d: dz ? 0.85 : 0.07 });
   D('box', 'metal', x + ax, y + h + 0.06, z + az, { w: 0.34, h: 0.14, d: 0.5, rot: [dz * 0.12, 0, -dx * 0.12] });
   D('box', 'glow', x + ax, y + h - 0.03, z + az, { w: 0.28, h: 0.04, d: 0.42 });
-  LI(x + ax, y + h - 0.1, z + az, '#ffa441', 2.6, 13);
+  LI(x + ax, y + h - 0.1, z + az, '#ffa441', 2.6 * (power || 1), 13 * (power || 1));
 }
 /* a bare city tree in a grate: trunk plus four stubby limbs. Winter-dead on purpose — no soft canopy. */
 function tree(x, y, z, h) {
@@ -179,7 +179,7 @@ D('cyl', 'stone', 0, 0.63, 1.05, { r: 0.34, h: 0.04, n: 12 });                  
 D('cyl', 'stone', 0, 0.63, -1.05, { r: 0.34, h: 0.04, n: 12 });
 
 // ── street lamps and trees. Two light the pit from the old rubble heaps; the rest stand on the terraces.
-lamp(-4.4, 0.3, -4.4, 4.0, 1, 0); lamp(4.4, 0.3, 4.4, 4.0, -1, 0);
+lamp(-4.4, 0.3, -4.4, 4.0, 1, 0, 1.35); lamp(4.4, 0.3, 4.4, 4.0, -1, 0, 1.35);   // the pit has no sky over it worth speaking of: its two lamps carry it
 lamp(-19.3, L, 13.3, 3.6, 1, 0); lamp(19.3, L, 13.3, 3.6, -1, 0);
 lamp(-19.3, L, -6.4, 3.4, 1, 0); lamp(19.3, L, -6.4, 3.4, -1, 0);
 lamp(-8.0, L, 5.9, 3.2, 0, -1); lamp(8.0, L, -5.9, 3.2, 0, 1);
@@ -258,32 +258,83 @@ export const GROUND = {
   w: 44, d: 32, texW: 1024, texH: 768,
   paint: [
     // the pit is a service yard: worn asphalt, a painted turning circle, bays, drains, oil
-    { kind: 'circle', x: 0, z: 0, r: 4.7, color: '#2a2e35' },
-    { kind: 'circle', x: 0, z: 0, r: 4.55, color: '#7d7a68', alpha: 0.55, ring: 0.16 },
-    { kind: 'circle', x: 0, z: 0, r: 3.4, color: '#2e3239' },
-    { kind: 'circle', x: 0, z: 0, r: 2.35, color: '#7d7a68', alpha: 0.45, ring: 0.14 },
-    { kind: 'line', x1: -5.2, z1: 0, x2: -1.7, z2: 0, width: 0.16, color: '#8a8674', alpha: 0.6 },
-    { kind: 'line', x1: 5.2, z1: 0, x2: 1.7, z2: 0, width: 0.16, color: '#8a8674', alpha: 0.6 },
-    { kind: 'line', x1: 0, z1: 4.2, x2: 0, z2: 1.7, width: 0.16, color: '#8a8674', alpha: 0.6 },
-    { kind: 'line', x1: 0, z1: -4.2, x2: 0, z2: -1.7, width: 0.16, color: '#8a8674', alpha: 0.6 },
+    { kind: 'circle', x: 0, z: 0, r: 4.7, color: '#4b4e53' },
+    { kind: 'circle', x: 0, z: 0, r: 4.55, color: '#ddd8c6', alpha: 0.55, ring: 0.16 },
+    { kind: 'circle', x: 0, z: 0, r: 3.4, color: '#4f5257' },
+    { kind: 'circle', x: 0, z: 0, r: 2.35, color: '#ddd8c6', alpha: 0.45, ring: 0.14 },
+    { kind: 'line', x1: -5.2, z1: 0, x2: -1.7, z2: 0, width: 0.16, color: '#e4dfcd', alpha: 0.6 },
+    { kind: 'line', x1: 5.2, z1: 0, x2: 1.7, z2: 0, width: 0.16, color: '#e4dfcd', alpha: 0.6 },
+    { kind: 'line', x1: 0, z1: 4.2, x2: 0, z2: 1.7, width: 0.16, color: '#e4dfcd', alpha: 0.6 },
+    { kind: 'line', x1: 0, z1: -4.2, x2: 0, z2: -1.7, width: 0.16, color: '#e4dfcd', alpha: 0.6 },
     // two parking bays, hatched
-    { kind: 'rect', x: -3.4, z: 3.4, w: 2.4, d: 1.5, color: '#8a8674', alpha: 0.22, rot: 0.3 },
-    { kind: 'rect', x: 3.4, z: -3.4, w: 2.4, d: 1.5, color: '#8a8674', alpha: 0.22, rot: -0.2 },
+    { kind: 'rect', x: -3.4, z: 3.4, w: 2.4, d: 1.5, color: '#e4dfcd', alpha: 0.22, rot: 0.3 },
+    { kind: 'rect', x: 3.4, z: -3.4, w: 2.4, d: 1.5, color: '#e4dfcd', alpha: 0.22, rot: -0.2 },
     // oil, water, rubber
-    { kind: 'stain', x: -4.2, z: -4.2, r: 1.3, color: '#101216', alpha: 0.5 },
-    { kind: 'stain', x: 4.2, z: 4.2, r: 1.3, color: '#101216', alpha: 0.5 },
-    { kind: 'stain', x: 1.9, z: -1.6, r: 0.9, color: '#39424a', alpha: 0.35 },
-    { kind: 'stain', x: -2.2, z: 1.3, r: 0.7, color: '#39424a', alpha: 0.3 },
-    { kind: 'stain', x: -4.6, z: 2.1, r: 1.0, color: '#0d0f12', alpha: 0.4 },
-    { kind: 'stain', x: 4.9, z: -1.2, r: 0.8, color: '#0d0f12', alpha: 0.35 },
+    { kind: 'stain', x: -4.2, z: -4.2, r: 1.3, color: '#2a2c2f', alpha: 0.5 },
+    { kind: 'stain', x: 4.2, z: 4.2, r: 1.3, color: '#2a2c2f', alpha: 0.5 },
+    { kind: 'stain', x: 1.9, z: -1.6, r: 0.9, color: '#5b6169', alpha: 0.35 },
+    { kind: 'stain', x: -2.2, z: 1.3, r: 0.7, color: '#5b6169', alpha: 0.3 },
+    { kind: 'stain', x: -4.6, z: 2.1, r: 1.0, color: '#26282b', alpha: 0.4 },
+    { kind: 'stain', x: 4.9, z: -1.2, r: 0.8, color: '#26282b', alpha: 0.35 },
     // the two arch thresholds, kept light so you can read the opening from the pit
-    { kind: 'rect', x: 0, z: 4.5, w: 1.6, d: 1.2, color: '#343941' },
-    { kind: 'rect', x: 0, z: -4.5, w: 1.6, d: 1.2, color: '#343941' },
+    { kind: 'rect', x: 0, z: 4.5, w: 1.6, d: 1.2, color: '#5e6167' },
+    { kind: 'rect', x: 0, z: -4.5, w: 1.6, d: 1.2, color: '#5e6167' },
     // drains
-    { kind: 'circle', x: -3.9, z: -0.6, r: 0.32, color: '#191c21' },
-    { kind: 'circle', x: 3.9, z: 0.6, r: 0.32, color: '#191c21' },
+    { kind: 'circle', x: -3.9, z: -0.6, r: 0.32, color: '#33363a' },
+    { kind: 'circle', x: 3.9, z: 0.6, r: 0.32, color: '#33363a' },
   ],
 };
+
+/* ── the city around the arena (the owner's City Pack) ─────────────────────────────────────────
+   None of this is solid and none of it is inside the play space: it all stands beyond the perimeter
+   walls, on top of them, or flat on the floor. That is deliberate — the arena's colliders, its
+   waypoint graph and every bot test stay exactly as they were, and the block still reads as a city
+   because you see it over the wall from anywhere and in full from the balconies.
+
+   `FIT` is the target size in metres per model, because the pack's scales are all over the place: a
+   building arrives 3.5 units tall and a fire hydrant arrives 232. `axis:'w'` fits flat things by
+   width instead of height. Every placement is {f: file, x, z, ry, y?, lit?}; `lit` swaps that
+   building's window material for the warm one, so only some of the skyline is awake. ── */
+export const CITY_FIT = {
+  'block-red': 13, 'block-plain-r': 13, 'block-plain-g': 13, 'block-green': 13,
+  'block-red-corner': 13, 'block-shop': 13, 'block-brown': 15,
+  car: 1.35, suv: 1.75, police: 1.42, van: 2.6,
+  ac: 0.9, 'roof-exit': 2.2, 'fire-escape': 3.2, billboard: 4.5, 'traffic-light': 4.2,
+  'bus-stop': 2.6, dumpster: 1.35, 'trash-can': 1.0, cone: 0.6, hydrant: 0.85, bench: 0.9,
+  'power-box': 1.1, fence: 2.0, tree: 6.5,
+  manhole: { s: 1.1, axis: 'w' }, papers: { s: 1.1, axis: 'w' }, 'road-bits': { s: 6, axis: 'w' },
+};
+const CITY_LIST = [];
+const C = (f, x, z, ry, o) => { CITY_LIST.push(Object.assign({ f, x, z, ry }, o || {})); };
+const BLOCKS = ['block-red', 'block-plain-r', 'block-green', 'block-plain-g', 'block-brown', 'block-red-corner', 'block-shop'];
+// four terraces of buildings, one per side, facing the arena. The pick is deterministic so the skyline
+// is the same every match — people learn a map by its landmarks.
+let bi = 0;
+for (const x of [-34, -25, -16, -7, 2, 11, 20, 29]) { C(BLOCKS[bi++ % 7], x, 23.5, Math.PI, { lit: bi % 3 === 0 }); C(BLOCKS[bi++ % 7], x, -23.5, 0, { lit: bi % 4 === 0 }); }
+for (const z of [-27, -18, -9, 0, 9, 18, 27]) { C(BLOCKS[bi++ % 7], -32.5, z, Math.PI / 2, { lit: bi % 3 === 1 }); C(BLOCKS[bi++ % 7], 32.5, z, -Math.PI / 2, { lit: bi % 5 === 0 }); }
+// the street between the wall and the buildings: parked cars, a bus stop, lights, trees, bins
+C('car', -14, 17.6, 0.02); C('suv', 2, 17.6, Math.PI + 0.03); C('police', 16, 17.8, 0.0);
+C('van', -6, -17.6, Math.PI); C('car', 12, -17.8, 0.04); C('suv', -19, -17.6, 0.0);
+C('car', -25.5, 4, Math.PI / 2); C('van', 25.5, -6, -Math.PI / 2);
+C('traffic-light', -21.5, 17.5, 0.4); C('traffic-light', 21.5, -17.5, Math.PI + 0.4);
+C('bus-stop', 6, 18.6, Math.PI); C('bench', 9.5, 18.2, Math.PI); C('trash-can', 11.5, 18.2, 0);
+C('hydrant', -10, 16.4, 0); C('hydrant', 14, -16.4, 0);
+C('fence', -27, 12, 0); C('fence', -27, 14, 0); C('fence', 27, -12, 0);
+for (const [x, z] of [[-29, 8], [-29, -8], [29, 10], [29, -4], [-16, 20], [8, -20]]) C('tree', x, z, (x + z) * 0.3);
+C('dumpster', -23.5, -10, Math.PI / 2); C('dumpster', 23.5, 6, -Math.PI / 2);
+C('cone', -21.8, 16.2, 0.3); C('cone', -21.2, 15.6, 1.1);
+// on top of the perimeter walls, where nobody can reach but everybody can see
+for (const [x, z, ry] of [[-13, 14.25, Math.PI], [6, 14.25, Math.PI], [-4, -14.25, 0], [15, -14.25, 0]]) C('ac', x, z, ry, { y: 5.0 });
+C('roof-exit', -8, 14.0, Math.PI, { y: 5.0 }); C('roof-exit', 10, -14.0, 0, { y: 5.0 });
+C('ac', -20.25, 6, Math.PI / 2, { y: 5.0 }); C('ac', 20.25, -3, -Math.PI / 2, { y: 5.0 });
+C('billboard', -17, 15.6, Math.PI, { y: 5.2 }); C('billboard', 18, -15.6, 0, { y: 5.2 });
+C('power-box', -20.25, -12, Math.PI / 2, { y: 5.0 }); C('power-box', 20.25, 12, -Math.PI / 2, { y: 5.0 });
+C('fire-escape', -19.95, -3.5, Math.PI / 2, { y: 2.2 }); C('fire-escape', 19.95, 9.5, -Math.PI / 2, { y: 2.2 });
+// flat on the floor of the pit, so a bullet and a boot both ignore them
+C('manhole', -3.9, -0.6, 0.2); C('manhole', 3.9, 0.6, 1.1);
+C('papers', -2.4, 2.9, 0.6); C('papers', 3.1, -2.2, 2.3); C('papers', -4.8, -1.4, 4.1);
+C('road-bits', -2.5, -3.6, 0.0); C('road-bits', 2.5, 3.6, Math.PI);
+export const CITY = CITY_LIST;
 
 /* ── waypoint graph ── */
 const N = (id, x, y, z) => ({ id, x, y, z });

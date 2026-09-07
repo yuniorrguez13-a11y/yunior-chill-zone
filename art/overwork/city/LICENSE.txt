@@ -1,0 +1,49 @@
+City models used by Pitty Striker (ow-striker.js).
+
+Source: the "City Pack" (glb), supplied by the site owner in September 2026.
+Twenty-eight models were kept out of the pack and renamed for the game:
+
+  block-red.glb        <- Building Red.glb
+  block-red-corner.glb <- Building Red Corner.glb
+  block-green.glb      <- Building Green.glb
+  block-brown.glb      <- Brown Building.glb
+  block-plain-r.glb    <- RB Blank.glb
+  block-plain-g.glb    <- Gb Blank.glb
+  block-shop.glb       <- Pizza Corner.glb
+  car.glb              <- Car.glb
+  suv.glb              <- SUV.glb
+  van.glb              <- Van.glb
+  police.glb           <- Police Car.glb
+  ac.glb               <- Air conditioner.glb
+  roof-exit.glb        <- Roof Exit.glb
+  fire-escape.glb      <- Fire Exit.glb
+  billboard.glb        <- Billboard.glb
+  traffic-light.glb    <- Traffic Light.glb
+  bus-stop.glb         <- Bus Stop.glb
+  dumpster.glb         <- Dumpster.glb
+  trash-can.glb        <- Trash Can.glb
+  cone.glb             <- Cone.glb
+  hydrant.glb          <- Fire hydrant.glb
+  bench.glb            <- Bench.glb
+  manhole.glb          <- Manhole Cover.glb
+  papers.glb           <- Debris Papers.glb
+  road-bits.glb        <- Road Bits.glb
+  fence.glb            <- Fence.glb
+  power-box.glb        <- Power Box.glb
+  tree.glb             <- Tree.glb
+
+Nothing else was changed: no geometry was edited and no texture was added or
+repainted. The game scales each model to a target size at load time (the pack's
+scales are inconsistent — a building arrives 3.5 units tall and a hydrant 232),
+tints the existing materials for the time of day, and merges them by material.
+No brand name or logo is painted onto anything.
+
+The rest of the pack was left out. That includes every character model and the
+bicycle, and it includes the two cars from the separate "skibidi" upload: the
+Lamborghini carries the manufacturer's badge on its nose, which is a trademark,
+so it is not in the repository.
+
+The pack shipped without a licence file. The owner supplied it and has been
+asked to confirm that its licence allows use in this game; if it does not, this
+whole folder comes out and the arena loses its skyline and nothing else — the
+city is decoration outside the walls, it is not part of the map.
