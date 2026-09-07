@@ -1,22 +1,30 @@
-Character model used by Pitty Striker (ow-striker.js).
+Character models used by Pitty Striker (ow-striker.js).
 
-Source: the "City Pack" (glb), supplied by the site owner in September 2026.
-One model was kept and renamed:
+  soldier-owner.glb   the figure you see: helmet, goggles, balaclava, plate
+                      carrier, knee pads, backpack. 7,104 triangles, one mesh,
+                      one texture. Supplied by the site owner on 7 Sep 2026.
 
-  soldier.glb <- Adventurer.glb
+  soldier.glb         <- Adventurer.glb, from the City Pack. Present for its
+                      SKELETON and its twenty-four animation clips, not for its
+                      appearance, which is never drawn.
 
-Nothing was changed: no geometry was edited, no texture was added, and the
-model's own twenty-four animation clips are used as they shipped (Idle_Gun,
-Walk, Run, Death, HitRecieve and the rest). The game scales it to 1.75 m at
-load time and recolours its existing Green / LightGreen materials to the bot's
-identity colour so twelve of them stay apart on screen. No brand name or logo
-is painted onto it.
+Why there are two. The owner's soldier arrived as a single static mesh with no
+skeleton and no animations, so on its own it can only slide around the map like
+a statue. At load time the game rigs it: `autoSkin` in ow-striker.js weights
+every vertex to the nearest bone segments of the other model's skeleton, and the
+result is a SkinnedMesh that plays that model's clips (Idle_Gun, Run_Shoot,
+Death and the rest) wearing the owner's geometry. The donor's own meshes are
+hidden.
 
-The pack shipped without a licence file. The owner supplied it and, on
+Nothing was edited in either file. No geometry was changed, no texture was
+repainted, and no brand name or logo appears on either.
+
+Both shipped without a licence file. The owner supplied them and, on
 7 September 2026, confirmed that the material he provides is free of
 copyright — that is why none of the packs he sends carry licence text.
 
 Provenance is written down here so every file in the repository can be
-traced back to where it came from. If that ever needs revisiting:
-this file comes out and the bots fall back to the capsule figure the
-game still carries and still builds underneath the model.
+traced back to where it came from. If that ever needs revisiting: drop
+soldier-owner.glb and the bots wear the donor model, which is rigged and
+complete on its own; drop both and they fall back to the capsule figure the
+game still carries and still builds underneath.

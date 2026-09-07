@@ -433,7 +433,7 @@ function rayAABB(o, d, c, maxT) {
   return t0;
 }
 function rayWorld(cols, o, d, maxT) { let best = maxT, hit = null; for (const c of cols) { const t = rayAABB(o, d, c, best); if (t >= 0 && t < best) { best = t; hit = c; } } return hit ? { t: best, c: hit } : null; }
-const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _v = new THREE.Vector3();
+const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _v = new THREE.Vector3(), _na = new THREE.Vector3(), _nb = new THREE.Vector3();
 function segmentClear(cols, a, b) { _d.copy(b).sub(a); const len = _d.length(); if (len < 1e-6) return true; _d.multiplyScalar(1 / len); return !rayWorld(cols, a, _d, len); }
 /* hit shapes: a head sphere then a body cylinder; the head wins when both are hit */
 function raySphere(o, d, cx, cy, cz, r, maxT) { const ox = o.x - cx, oy = o.y - cy, oz = o.z - cz, b = ox * d.x + oy * d.y + oz * d.z, c = ox * ox + oy * oy + oz * oz - r * r, disc = b * b - c; if (disc < 0) return -1; let t = -b - Math.sqrt(disc); if (t < 0) t = -b + Math.sqrt(disc); return t >= 0 && t <= maxT ? t : -1; }
@@ -540,7 +540,72 @@ class Pool {
    it and the capsules are hidden — so every reference the rest of the class makes (body, head, legL,
    gunG, the springs) stays valid, and a bot whose model failed to load simply looks like it did in
    v1 instead of disappearing. ── */
-const SOLDIER = { url: 'art/overwork/chars/soldier.glb', buf: null, pending: null, dead: false };
+/* The owner's soldier (helmet, plate carrier, knee pads) is the figure he wants in the game, and it
+   arrived as ONE static mesh: 7k triangles, one material, no skeleton and no animation clips. On its
+   own it can only slide around the map like a statue.
+
+   So it gets rigged here, at load time, against the skeleton of the other model in the pack — the one
+   that does have bones and twenty-four clips. `autoSkin` is envelope skinning: for every vertex, find
+   the nearest few bone SEGMENTS in the bind pose and weight by inverse distance. It is the crude
+   version of what a rigger does by hand, and it is good enough here for two reasons: both figures are
+   low-poly humanoids of nearly the same height standing in nearly the same relaxed pose, and nobody
+   ever sees a bot from closer than a couple of metres. Finger, toe and *_end bones are excluded from
+   the candidate set — leave the fingers in and the knuckle bones capture the thigh a hand hangs
+   beside, which tears the leg apart the moment he walks. */
+const SKIN_SKIP = /^(index|middle|ring|pinky|thumb|pt)\d*[._]?[lr]?$/i;
+function boneSegments(skeleton) {
+  const segs = [], p = new THREE.Vector3(), c = new THREE.Vector3();
+  for (const bone of skeleton.bones) {
+    const n = bone.name || '';
+    if (SKIN_SKIP.test(n) || /_end$/i.test(n) || /^root$/i.test(n)) continue;
+    bone.getWorldPosition(p);
+    const kids = bone.children.filter(k => k.isBone);
+    if (kids.length) { c.set(0, 0, 0); for (const k of kids) { k.getWorldPosition(_v); c.add(_v); } c.multiplyScalar(1 / kids.length); }
+    else { c.copy(p).addScaledVector(new THREE.Vector3(0, 1, 0), 0.06); }                      // a leaf gets a short stub so it still has a length
+    // which side of the body this bone belongs to, from its name suffix. Without this the classic
+    // envelope-skinning failure shows up immediately: a foot mid-stride picks up the OTHER leg's shin
+    // and smears across the gap between them.
+    const side = /[._]?l$/i.test(n) ? 1 : /[._]?r$/i.test(n) ? -1 : 0;
+    segs.push({ i: skeleton.bones.indexOf(bone), a: p.clone(), b: c.clone(), name: n, side });
+  }
+  return segs;
+}
+const _pa = new THREE.Vector3(), _pb = new THREE.Vector3();
+function distToSegment(px, py, pz, s) {
+  _pa.subVectors(s.b, s.a); const len2 = _pa.lengthSq() || 1e-9;
+  _pb.set(px - s.a.x, py - s.a.y, pz - s.a.z);
+  const t = clamp(_pb.dot(_pa) / len2, 0, 1);
+  const dx = px - (s.a.x + _pa.x * t), dy = py - (s.a.y + _pa.y * t), dz = pz - (s.a.z + _pa.z * t);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+function autoSkin(geo, skeleton, k = 4, power = 4, midline = 0.03) {
+  const segs = boneSegments(skeleton); if (!segs.length) return null;
+  // in this rig +x is the figure's left (UpperLeg.L sits at x +0.116)
+  const cx = segs.reduce((a, s) => a + s.a.x, 0) / segs.length;
+  const pos = geo.attributes.position, n = pos.count;
+  const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  const near = [];
+  for (let v = 0; v < n; v++) {
+    const x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
+    const vSide = x - cx > midline ? 1 : x - cx < -midline ? -1 : 0;
+    near.length = 0;
+    for (const s of segs) {
+      if (vSide && s.side && s.side !== vSide) continue;                     // never let a limb borrow its mirror
+      const d = distToSegment(x, y, z, s);
+      if (near.length < k) { near.push({ i: s.i, d }); near.sort((a, b) => a.d - b.d); }
+      else if (d < near[k - 1].d) { near[k - 1] = { i: s.i, d }; near.sort((a, b) => a.d - b.d); }
+    }
+    if (!near.length) { si[v * 4] = 0; sw[v * 4] = 1; continue; }
+    let total = 0; const w = [];
+    for (const q of near) { const ww = 1 / (Math.pow(q.d, power) + 1e-6); w.push(ww); total += ww; }
+    for (let j = 0; j < 4; j++) { si[v * 4 + j] = near[j] ? near[j].i : 0; sw[v * 4 + j] = near[j] ? w[j] / total : 0; }
+  }
+  geo.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+  geo.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+  return geo;
+}
+
+const SOLDIER = { url: 'art/overwork/chars/soldier.glb', skinUrl: 'art/overwork/chars/soldier-owner.glb', buf: null, pending: null, dead: false, skinBuf: null, skinPending: null, skinDead: false };
 function soldierBuffer() {
   if (SOLDIER.dead) return Promise.reject(new Error('no model'));
   if (SOLDIER.buf) return Promise.resolve(SOLDIER.buf);
@@ -548,13 +613,34 @@ function soldierBuffer() {
     .then(b => (SOLDIER.buf = b)).catch(e => { SOLDIER.dead = true; throw e; });
   return SOLDIER.pending;
 }
+/* the owner's mesh. Optional on purpose: if it is missing the bots simply wear the donor model, which
+   is rigged and complete, rather than disappearing. */
+function soldierSkinBuffer() {
+  if (SOLDIER.skinDead) return Promise.resolve(null);
+  if (SOLDIER.skinBuf) return Promise.resolve(SOLDIER.skinBuf);
+  if (!SOLDIER.skinPending) SOLDIER.skinPending = fetch(SOLDIER.skinUrl).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+    .then(b => (SOLDIER.skinBuf = b)).catch(() => { SOLDIER.skinDead = true; return null; });
+  return SOLDIER.skinPending;
+}
 /* One parse per bot. A SkinnedMesh cannot simply be cloned — the clone would keep pointing at the
    original's bones and seven soldiers would share one pose — and SkeletonUtils is not vendored, so
    the buffer is fetched once and parsed per figure. It is 10k triangles; the parse is cheap. */
 function parseSoldier(buf) {
   return new Promise((res, rej) => { new GLTFLoader().parse(buf.slice(0), '', res, rej); });
 }
-const SOLDIER_ANIM = { idle: 'Idle_Gun', walk: 'Walk', run: 'Run', dead: 'Death', hurt: 'HitRecieve', shoot: 'Gun_Shoot' };
+/* The clip set matters more than anything the code does with the gun. The first cut used `Run` and
+   `Walk`, which are a plain jog with the arms swinging at the sides — so the soldier ran along while a
+   rifle floated in front of him, which is exactly what it looked like. The pack ships rifle-carry
+   clips and those are the ones a shooter wants: the hands are ON the weapon in every one of them, so
+   the gun anchored to the palm ends up gripped instead of hovering. */
+const SOLDIER_ANIM = {
+  idle: 'Idle_Gun',              // rifle up, at rest
+  aim: 'Idle_Gun_Pointing',      // rifle up, sighted on someone — played while a bot is engaging
+  move: 'Run_Shoot',             // rifle up, moving. The important one: bots are almost always moving
+  idleKnife: 'Idle_Sword',
+  moveKnife: 'Run',
+  dead: 'Death', hurt: 'HitRecieve', shoot: 'Gun_Shoot', slash: 'Sword_Slash',
+};
 const clipNamed = (clips, want) => clips.find(c => c.name === want) || clips.find(c => c.name.split('|').pop() === want) || null;
 async function makeSoldier(accentHex, height) {
   const gltf = await parseSoldier(await soldierBuffer());
@@ -563,6 +649,59 @@ async function makeSoldier(accentHex, height) {
   const box = new THREE.Box3().setFromObject(root), size = new THREE.Vector3(); box.getSize(size);
   const k = height / (size.y || 1);
   root.scale.setScalar(k); root.position.y = -box.min.y * k;
+  /* Swap the donor's body for the owner's soldier, rigged on the fly to the donor's skeleton.
+
+     The trap that has to be respected here: this GLB stores its skinned geometry in a space a
+     hundred times smaller than the world, with a scale of 100 on the mesh node and the matching
+     factor baked into the inverse bind matrices. Hand three.js a mesh whose vertices are in metres
+     and bind it to that skeleton and every vertex comes out a hundred times too far from its bone —
+     the figure tears itself into flat sheets across the sky, which is exactly what it did.
+
+     So the order is: normalise the owner's mesh into the donor's WORLD space (same height, same
+     footprint centre, feet on the same plane) because that is the space the bones are in and the
+     space autoSkin measures in; compute the weights there; and only then push the geometry down
+     into the donor mesh's own local space and give the new mesh the donor's transform. */
+  let wore = false;
+  try {
+    const skinBuf = await soldierSkinBuffer();
+    let skeleton = null, donor = null, donorVerts = -1;
+    root.traverse(o => {
+      if (!o.isSkinnedMesh || !o.skeleton) return;
+      if (!skeleton) skeleton = o.skeleton;
+      const n = o.geometry.attributes.position ? o.geometry.attributes.position.count : 0;
+      if (o.skeleton === skeleton && n > donorVerts) { donorVerts = n; donor = o; }
+    });
+    if (skinBuf && skeleton && donor) {
+      const skinGltf = await parseSoldier(skinBuf);
+      skinGltf.scene.updateMatrixWorld(true);
+      const sBox = new THREE.Box3().setFromObject(skinGltf.scene), sSize = new THREE.Vector3(); sBox.getSize(sSize);
+      const parts = []; let mat = null;
+      skinGltf.scene.traverse(o => {
+        if (!o.isMesh || !o.geometry) return;
+        if (!mat) mat = Array.isArray(o.material) ? o.material[0] : o.material;
+        parts.push(o.geometry.clone().applyMatrix4(o.matrixWorld));
+      });
+      const merged = mergeAll(parts);
+      if (merged && mat) {
+        // into the donor's world space: scale to its height, centre on x/z, stand on its floor
+        const fit = (size.y || 1) / (sSize.y || 1);
+        merged.translate(-(sBox.min.x + sBox.max.x) / 2, -sBox.min.y, -(sBox.min.z + sBox.max.z) / 2);
+        merged.scale(fit, fit, fit);
+        merged.translate((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
+        if (autoSkin(merged, skeleton, 4, 5)) {                             // weights measured against world-space bones
+          donor.updateWorldMatrix(true, false);
+          merged.applyMatrix4(new THREE.Matrix4().copy(donor.matrixWorld).invert());   // down into the donor mesh's own space
+          const skinned = new THREE.SkinnedMesh(merged, mat);
+          skinned.frustumCulled = false;
+          skinned.position.copy(donor.position); skinned.quaternion.copy(donor.quaternion); skinned.scale.copy(donor.scale);
+          (donor.parent || root).add(skinned);
+          skinned.bind(skeleton, new THREE.Matrix4());                       // identity, the same bind matrix the donor uses
+          root.traverse(o => { if ((o.isMesh || o.isSkinnedMesh) && o !== skinned) o.visible = false; });
+          wore = true;
+        }
+      }
+    }
+  } catch (e) { /* the donor model on its own is a complete fallback */ }
   // materials are shared across the parse, so clone them per figure and put this bot's colour on the fatigues
   const accent = new THREE.Color(hexNum(accentHex)), seen = new Map();
   root.traverse(o => {
@@ -572,7 +711,10 @@ async function makeSoldier(accentHex, height) {
     const out = list.map(src => {
       if (seen.has(src)) return seen.get(src);
       const m = src.clone();
-      if (/^(Green|LightGreen)$/.test(src.name || '')) m.color.copy(accent).multiplyScalar(/Light/.test(src.name) ? 1.15 : 0.78);
+      // the owner's soldier is one textured material and it stays as painted; the donor's fatigues
+      // take the bot's identity colour, which only matters when his mesh failed to load
+      if (m.map) { m.color.setHex(0xffffff); }
+      else if (/^(Green|LightGreen)$/.test(src.name || '')) m.color.copy(accent).multiplyScalar(/Light/.test(src.name) ? 1.15 : 0.78);
       m.roughness = m.roughness == null ? 0.86 : Math.max(0.5, m.roughness); m.metalness = 0.05;
       seen.set(src, m); return m;
     });
@@ -584,14 +726,19 @@ async function makeSoldier(accentHex, height) {
     const a = mixer.clipAction(clip); actions[key] = a;
     if (key === 'dead') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
   }
-  // GLTFLoader sanitises node names (a dot becomes an underscore), so match on shape rather than the literal
-  let hand = null, chest = null;
+  // GLTFLoader sanitises node names (a dot becomes an underscore), so match on shape rather than the literal.
+  // The weapon hangs off the PALM (the base of the middle finger), not the wrist: a weapon model's origin
+  // is its grip, and the grip sits where the fingers close, a few centimetres past the wrist joint.
+  let palm = null, wrist = null, chest = null;
   root.traverse(o => {
-    if (!hand && /^(wrist|hand|mixamorig.?right.?hand)[._]?r?$/i.test(o.name || '')) hand = o;
-    if (!chest && /^(chest|spine2|upperchest)$/i.test(o.name || '')) chest = o;
+    const n = o.name || '';
+    if (!palm && /^middle1[._]?r$/i.test(n)) palm = o;
+    if (!wrist && /^(wrist|hand|mixamorig.?right.?hand)[._]?r?$/i.test(n)) wrist = o;
+    if (!chest && /^(chest|spine2|upperchest)$/i.test(n)) chest = o;
   });
   if (!chest) root.traverse(o => { if (!chest && /^torso$/i.test(o.name || '')) chest = o; });
-  return { root, mixer, actions, hand, chest, mats: [...seen.values()], cur: null, scale: k };
+  const hand = palm || wrist;
+  return { root, mixer, actions, hand, chest, mats: [...seen.values()], cur: null, scale: k, wore };
 }
 
 /* ── the city outside the walls (the owner's City Pack) ────────────────────────────────────────
@@ -1136,7 +1283,9 @@ export function createStriker(api) {
       const arm = (x) => { const grp = new THREE.Group(); grp.position.set(x, 1.22, 0.05); const m = new THREE.Mesh(F.arm, accent); m.position.y = -0.23; grp.add(m); body.add(grp); return grp; };
       this.armL = arm(-0.34); this.armR = arm(0.34); this.armL.rotation.set(-1.35, 0, 0.35); this.armR.rotation.set(-1.25, 0, -0.2);
       this.gunG = new THREE.Group(); this.gunG.position.set(0.16, 1.0, 0.36); body.add(this.gunG); this.gun = null; this.onSwitch();
-      this.nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex(this.name), transparent: true, depthTest: false })); this.nameSprite.scale.set(1.3, 0.33, 1); this.nameSprite.position.y = 2.1; this.nameSprite.renderOrder = 4; g.add(this.nameSprite);
+      // depthTest stays ON. With it off the name floated over every wall in the map, which is a wallhack:
+      // you could read where all seven bots were standing without seeing any of them.
+      this.nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex(this.name), transparent: true, depthTest: true })); this.nameSprite.scale.set(1.3, 0.33, 1); this.nameSprite.position.y = 2.1; this.nameSprite.renderOrder = 4; g.add(this.nameSprite);
       this.blob = new THREE.Mesh(F.blob, MM.blob); this.blob.position.y = 0.02; this.blob.renderOrder = -1; g.add(this.blob);
       this.swing = [spring(90, 9), spring(90, 9)]; this.bob = spring(220, 20); this.lean = { x: spring(40, 6), z: spring(40, 6) }; this.headS = { x: spring(60, 6), z: spring(60, 6), y: spring(80, 8) };
       this.squash = spring(120, 9); this.tilt = spring(80, 9); this.rootY = spring(60, 8); this.scaleS = spring(120, 9); this.armKick = spring(60, 7); this.gunKick = spring(200, 16); this.scaleS.x = 1;
@@ -1323,8 +1472,16 @@ export function createStriker(api) {
       springTo(this.lean.x, clamp(0.026 * fwdV + 0.012 * fwdA, -0.45, 0.45), dt); springTo(this.lean.z, clamp(-(0.026 * sideV + 0.012 * sideA), -0.45, 0.45), dt); this.headS.x.v -= fwdA * 0.004;
       springTo(this.tilt, this.tiltT, dt); this.body.rotation.set(this.lean.x.x, 0, this.soldier ? this.lean.z.x : this.lean.z.x + this.tilt.x);
       if (this.soldier) {
-        const sol = this.soldier, spd = Math.hypot(this.vel.x, this.vel.z);
-        this.playClip(this.dead ? 'dead' : spd > 3.2 ? 'run' : spd > 0.5 ? 'walk' : 'idle');
+        const sol = this.soldier, spd = Math.hypot(this.vel.x, this.vel.z), melee = !!(WEAPONS[this.cur] && WEAPONS[this.cur].melee);
+        const key = this.dead ? 'dead'
+          : spd > 0.5 ? (melee ? 'moveKnife' : 'move')
+          : melee ? 'idleKnife'
+          : (this.state === 'engage' ? 'aim' : 'idle');
+        this.playClip(key);
+        // one carry-run clip covers every speed: slow it down for a walk rather than switching to a
+        // second clip, which is what used to put him in the arms-swinging jog
+        const act = sol.actions[key];
+        if (act) act.setEffectiveTimeScale(key === 'move' || key === 'moveKnife' ? clamp(spd / 4.5, 0.55, 1.45) : 1);
         sol.mixer.update(dt);
         // the mixer rewrites the skeleton every frame, so anything of ours goes on afterwards: the chest
         // carries the aim, and the gun hand takes the recoil kick the springs already track
@@ -1345,6 +1502,20 @@ export function createStriker(api) {
       if (this.dead) { this.sinkT -= dt; if (this.sinkT <= 0) this.rootT = -2.4; }
       const wantRed = this.red > 0; if (wantRed !== this.nameRed) { this.nameRed = wantRed; this.nameSprite.material.color.setHex(wantRed ? 0xe10600 : 0xffffff); }
       this.blob.position.y = (this.onGround ? 0 : floorAt(M.cols, this.pos.x, this.pos.z, this.pos.y, 0.3) - this.pos.y) - this.rootY.x + 0.02; this.blob.visible = !this.dead;
+      /* the name shows only when the player has a clear line to the body. Depth testing alone is not
+         enough: a sprite is a flat card at head height, so it still peeks over a parapet the body is
+         hidden behind. This is the same segment test the bots use to decide whether they can see you. */
+      const P = M.P;
+      let named = false;
+      if (P && !this.dead && !P.dead) {
+        const dx = this.pos.x - P.pos.x, dz = this.pos.z - P.pos.z;
+        if (dx * dx + dz * dz < 1600) {                                          // 40 m; past that the tag is unreadable anyway
+          _na.set(P.pos.x, P.pos.y + (P.crouch ? 1.05 : 1.6), P.pos.z);
+          _nb.set(this.pos.x, this.pos.y + 1.45, this.pos.z);
+          named = segmentClear(M.cols, _na, _nb);
+        }
+      }
+      this.nameSprite.visible = named;
     }
     dispose() { if (this.g.parent) this.g.parent.remove(this.g); disposeGun(this.gun); if (this.soldier) { this.soldier.mixer.stopAllAction(); this.soldier.mats.forEach(m => m.dispose()); this.soldier = null; } this.mat.dispose(); this.nameSprite.material.map.dispose(); this.nameSprite.material.dispose(); }
   }

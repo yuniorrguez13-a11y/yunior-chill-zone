@@ -929,10 +929,44 @@ Snake's Authentic Gun Sounds packs and an Announcer Pack).**
   as thirty scene graphs would be ~300 draw calls, so nothing is added as a model: every mesh is baked to world space, fitted
   to a target size (`CITY_FIT` — the pack's scales are wild, a building arrives 3.5 units tall and a hydrant 232) and merged
   by material, where two materials match when name, colour and texture agree. 53 meshes, 112k tris, ~82 draw calls all in.
-- **The bots are the owner's soldier model** (`art/overwork/chars/soldier.glb`, the City Pack's `Adventurer`), and this is the
-  one place in the codebase where **keyframed animation is correct**: that rule is about Overwork's courier, whose walk is the
-  point of that game, and the owner handed over a rigged figure whose entire value is its 24 clips. `makeSoldier()` picks
-  Idle_Gun / Walk / Run / Death / HitRecieve / Gun_Shoot and crossfades by speed; the springs stay for what the clips do not
+- **The clip choice is the whole thing, not the attachment.** The first cut anchored the weapon to the hand
+  and played the pack's plain `Run` and `Walk`, which are a jog with the arms swinging at the sides. The owner's
+  verdict: *"en la animación el tipo solo está corriendo, lo que estás haciendo solo es poner la pistola flotando
+  en frente de él"* — and he was right, no amount of attachment maths fixes a pose whose hands are nowhere near
+  the weapon. The pack ships rifle-carry clips and those are the ones a shooter uses: `Run_Shoot` for any
+  movement (slowed with `setEffectiveTimeScale` for a walk rather than switching to a second clip),
+  `Idle_Gun` at rest, `Idle_Gun_Pointing` while engaging, `Idle_Sword`/`Run` for the knife. The weapon hangs off
+  the **palm** (`Middle1.R`), not the wrist, because a weapon model's origin is its grip and the grip is where
+  the fingers close.
+- **Name tags are depth-tested AND line-of-sight gated.** They shipped once with `depthTest:false`, which in a
+  shooter is a wallhack: every bot's name floated over every wall, so you always knew where all seven were.
+  Depth testing alone is not enough either — a sprite is a flat card at head height and still peeks over a
+  parapet the body is behind — so `animate()` runs the same `segmentClear` the bots use, from the player's eye
+  to the bot's chest, and hides the tag when the line is blocked or past 40 m.
+- **Nothing decorative goes on the floor of the play space.** Two `road-bits` models (six metres of painted
+  crosswalk and lane markings) were dropped in the middle of the courtyard and read exactly like a piece of
+  street left lying in an arena. They live on the road outside now. What is left on the pit floor is two drain
+  covers and one scrap of litter, and that is the ceiling for it.
+- **The bots wear the owner's soldier, rigged at load time.** He supplied `art/overwork/chars/soldier-owner.glb`
+  — helmet, goggles, balaclava, plate carrier, knee pads — and it is **one static mesh with no skeleton and no
+  clips**, so on its own it can only slide around like a statue. `autoSkin()` fixes that: envelope skinning,
+  every vertex weighted to the nearest bone SEGMENTS of the donor model's skeleton, then bound as a SkinnedMesh
+  that plays the donor's clips. The donor (`soldier.glb`, the City Pack's Adventurer) is present for its bones
+  and animations only and its own meshes are hidden. One mesh, one material, so a bot is one draw call instead
+  of fifteen. Three things this cost, all of them load-bearing:
+    - **The donor's skinned geometry lives in a space 100× smaller than the world** (scale 100 on the mesh node,
+      the matching factor baked into the inverse bind matrices). Bind a metres-space mesh to that skeleton and
+      every vertex lands a hundred times too far from its bone: the figure tears into flat sheets across the sky.
+      So the order is fixed — normalise into the donor's WORLD space, weight there (that is where the bones are),
+      then push the geometry down through `donor.matrixWorld.invert()` and give the new mesh the donor's own
+      transform and bind matrix.
+    - **Weights are locked to one side of the body.** Without it a foot mid-stride picks up the other leg's shin
+      and smears across the gap. Bones ending in L or R only accept vertices on their own side of the midline.
+    - **Finger, toe and `*_end` bones are excluded from the candidate set**, or the knuckle bones capture the
+      thigh a hand hangs beside and the leg tears open on the first step.
+- **This is the one place in the codebase where keyframed animation is correct.** That rule is about Overwork's
+  courier, whose walk is the point of that game; here the whole value of the donor is its 24 clips. `makeSoldier()`
+  crossfades between them by speed; the springs stay for what the clips do not
   cover — lean, bob, recoil kick and the aim pitch (applied to the `Chest` bone *after* `mixer.update`, because the mixer
   rewrites the skeleton every frame). Three traps, all paid for: **a SkinnedMesh cannot be cloned** (the clone keeps pointing
   at the original's bones and every soldier shares one pose) and SkeletonUtils is not vendored, so the buffer is fetched once

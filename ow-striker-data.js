@@ -24,7 +24,7 @@ const L = LANE_Y;
 export const MATS = {
   sand: '#54575c', sandstone: '#9a9488', sandstoneDark: '#837e74', stone: '#726d64',
   wood: '#a07a48', woodDark: '#7d5c33', awning: '#b04a3a', awning2: '#cfd4d8',
-  palmTrunk: '#6a5a45', palmLeaf: '#5c7f4a', water: '#4f7f96', barrel: '#3f7a52', ammo: '#5f7040',
+  palmTrunk: '#6a5a45', palmLeaf: '#5c7f4a', water: '#41525c', barrel: '#3f7a52', ammo: '#5f7040',
   pot: '#8a8478', metal: '#a8aeb6', skyLo: '#dfe9f2', skyHi: '#4e8fd0',
   brick: '#96604f', brickDark: '#734739', rust: '#9c6444', glass: '#6d8296', glow: '#f2eddc', glowWin: '#5a6472',
   paint: '#e2ded0', neon: '#4ad2ff', tarp: '#6a7382',
@@ -302,7 +302,7 @@ export const CITY_FIT = {
   ac: 0.9, 'roof-exit': 2.2, 'fire-escape': 3.2, billboard: 4.5, 'traffic-light': 4.2,
   'bus-stop': 2.6, dumpster: 1.35, 'trash-can': 1.0, cone: 0.6, hydrant: 0.85, bench: 0.9,
   'power-box': 1.1, fence: 2.0, tree: 6.5,
-  manhole: { s: 1.1, axis: 'w' }, papers: { s: 1.1, axis: 'w' }, 'road-bits': { s: 6, axis: 'w' },
+  manhole: { s: 0.9, axis: 'w' }, papers: { s: 0.9, axis: 'w' }, 'road-bits': { s: 6, axis: 'w' },
 };
 const CITY_LIST = [];
 const C = (f, x, z, ry, o) => { CITY_LIST.push(Object.assign({ f, x, z, ry }, o || {})); };
@@ -330,10 +330,14 @@ C('ac', -20.25, 6, Math.PI / 2, { y: 5.0 }); C('ac', 20.25, -3, -Math.PI / 2, { 
 C('billboard', -17, 15.6, Math.PI, { y: 5.2 }); C('billboard', 18, -15.6, 0, { y: 5.2 });
 C('power-box', -20.25, -12, Math.PI / 2, { y: 5.0 }); C('power-box', 20.25, 12, -Math.PI / 2, { y: 5.0 });
 C('fire-escape', -19.95, -3.5, Math.PI / 2, { y: 2.2 }); C('fire-escape', 19.95, 9.5, -Math.PI / 2, { y: 2.2 });
-// flat on the floor of the pit, so a bullet and a boot both ignore them
+// Flat on the floor, so a bullet and a boot both ignore them. Two drain covers and one scrap of litter,
+// and that is the lot. The `road-bits` model went here first and it was a mistake: it is six metres of
+// painted road markings, crosswalk and lane dashes, and dropping two of them in the middle of a
+// courtyard read as somebody had left a piece of street lying in the arena. It belongs on a road, and
+// the only roads here are outside the walls.
 C('manhole', -3.9, -0.6, 0.2); C('manhole', 3.9, 0.6, 1.1);
-C('papers', -2.4, 2.9, 0.6); C('papers', 3.1, -2.2, 2.3); C('papers', -4.8, -1.4, 4.1);
-C('road-bits', -2.5, -3.6, 0.0); C('road-bits', 2.5, 3.6, Math.PI);
+C('papers', -4.8, -1.4, 4.1);
+C('road-bits', -14, 17.6, 0); C('road-bits', 8, -17.6, Math.PI);
 export const CITY = CITY_LIST;
 
 /* ── waypoint graph ── */
