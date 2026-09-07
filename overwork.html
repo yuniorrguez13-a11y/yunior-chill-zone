@@ -191,6 +191,7 @@ body.has-touch.in-game .hud-top{right:84px;}
     also something stupid happens every shift. that's kind of the whole thing.</p>
     <div class="keys">
       <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>walk. also drive. same keys, don't overthink it</span>
+      <span><kbd>shift</kbd></span><span>run. on a phone, shove the stick past the ring</span>
       <span><kbd>E</kbd></span><span>grab, drop, load the van, hop in, hop out</span>
       <span><kbd>click</kbd> / <kbd>space</kbd></span><span>throw the box. you shouldn't. you will.</span>
       <span><kbd>drag</kbd> · <kbd>wheel</kbd></span><span>look around · zoom</span>
@@ -1529,8 +1530,12 @@ class Courier {
     if (wetZone && !world.rain && !this.wetToast && this.onGround) { this.wetToast = true; say(this, wetZone.pool ? 'you are in the pool. you are at work.' : 'sprinkler. of course.'); }
     const slick = wet ? 0.55 : 1;
     const weight = this.carry ? this.carry.mass : 0;
-    const maxSpeed = (6.2 - weight * 1.1) * (this.stun > 0 ? 0.2 : 1);
-    const accel = 26 * slick / (1 + weight * 0.35);
+    /* pace pass: the courier used to plod. Base speed up, the carry penalty down (the whole game is carrying something),
+       and a sprint on shift — or, on a phone, on the stick pushed all the way to the rim, so the touch layer needs no
+       seventh button. Sprinting is purely local state: it never crosses the wire, it only changes this courier's speed. */
+    const sprint = input.sprint ? 1.45 : 1;
+    const maxSpeed = (7.2 - weight * 0.8) * sprint * (this.stun > 0 ? 0.2 : 1);
+    const accel = 34 * slick / (1 + weight * 0.3);
     let mx = 0, mz = 0;
     mz -= input.f; mz += input.b; mx -= input.l; mx += input.r;                                     // keys give 1, the touch stick gives fractions
     const len = Math.hypot(mx, mz); if (len > 1) { mx /= len; mz /= len; }
@@ -1540,7 +1545,7 @@ class Courier {
     const fr = this.onGround ? (wet ? 4.5 : 11) : 1.5;
     this.vel.x += (targetVx - this.vel.x) * Math.min(1, (len > 0 ? accel / maxSpeed : fr) * dt);
     this.vel.z += (targetVz - this.vel.z) * Math.min(1, (len > 0 ? accel / maxSpeed : fr) * dt);
-    if (input.jump && this.onGround && this.stun <= 0) { this.vel.y = 6.5 - weight * 0.8; this.onGround = false; this.squash.v -= 6; this.legL.kick(6); this.legR.kick(6); input.jump = false; }
+    if (input.jump && this.onGround && this.stun <= 0) { this.vel.y = 7.0 - weight * 0.8; this.onGround = false; this.squash.v -= 6; this.legL.kick(6); this.legR.kick(6); input.jump = false; }
     this.vel.y -= 18 * dt;
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
     this.ride = null; collideCylinder(this, dt);
@@ -1967,10 +1972,10 @@ function updateVan(dt, input) {
   const px = van.pos.x, pz = van.pos.z, pyaw = van.yaw;
   if (net.on && van.driver !== courier && (!net.host || (van.driver && van.driver.remote))) { vanNetStep(dt); vanPose(dt); carryRiders(px, pz, pyaw); return; }   // someone else is driving (or we're a client): follow the wire
   const drive = van.driver != null;
-  const maxS = 14, acc = drive ? 9 * input.f - 6 * input.b : 0;                                 // the stick gives fractions: gentle gas is possible now
+  const maxS = 18, acc = drive ? 12 * input.f - 8 * input.b : 0;                                // the stick gives fractions: gentle gas is possible now
   van.speed += acc * dt;
-  van.speed -= van.speed * (drive && (input.f || input.b) ? 0.35 : 1.6) * dt;
-  van.speed = clamp(van.speed, -5, maxS);
+  van.speed -= van.speed * (drive && (input.f || input.b) ? 0.32 : 1.4) * dt;                   // pace pass: pulls harder, coasts longer, tops out higher
+  van.speed = clamp(van.speed, -7, maxS);
   const steerIn = drive ? clamp(input.l - input.r, -1, 1) : 0;
   van.steer = lerp(van.steer, steerIn, Math.min(1, 6 * dt));
   const turn = van.steer * clamp(Math.abs(van.speed) / 4, 0, 1) * 1.6 * (van.speed < 0 ? -1 : 1) * (world.rain ? 1.25 : 1);
@@ -2233,7 +2238,7 @@ function updateCarryHud() {
 function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
 /* ── the shift ── */
-const world = { rain: false, running: false, roam: false, locker: false, seat: null, time: 0, limit: 240, pay: 0, delivered: 0, total: 6, events: [], swapped: false, wetToast: false, peace: 0, pcOpen: false, psOpen: false, monk: null };
+const world = { rain: false, running: false, roam: false, locker: false, seat: null, time: 0, limit: 215, pay: 0, delivered: 0, total: 6, events: [], swapped: false, wetToast: false, peace: 0, pcOpen: false, psOpen: false, monk: null };
 const courier = new Courier();
 const remotes = [];                                                                       // other players' couriers (multiplayer)
 /* Supabase: same project and the same shared session key as every other page on the site. Only used for online signalling here. */
@@ -2248,7 +2253,7 @@ net.id = 0; courier.pid = 0;
 if (sb) sb.auth.getSession().then(r => { sbUser = r && r.data && r.data.session ? r.data.session.user : null; }).catch(() => {});
 buildWorld();
 const camState = { yaw: Math.PI, pitch: 0.4, dist: 7.5 };
-const input = { f: 0, b: 0, l: 0, r: 0, jump: 0 };
+const input = { f: 0, b: 0, l: 0, r: 0, jump: 0, sprint: 0 };
 const EVENT_TEXT = {
   rain: "raining. everything's soap now.",
   dog: "there's a dog. he's not friendly. he's not unfriendly. he's a dog.",
@@ -2454,12 +2459,13 @@ function hintText() {
 /* ── input ── */
 const KEY = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
 const typing = e => { const t = e.target; return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable); };   // the locker's fields want their W A S D back
-const clearInput = () => { input.f = input.b = input.l = input.r = input.jump = 0; };
+const clearInput = () => { input.f = input.b = input.l = input.r = input.jump = input.sprint = 0; };
 addEventListener('keydown', e => {
   if (typing(e)) return;
   if (striker.active) return;                                                                   // the shooter has the keyboard; the courier does not honk from inside a game
   if (KEY[e.code]) { input[KEY[e.code]] = 1; e.preventDefault(); }
   if (e.code === 'Space') { spaceKey(); e.preventDefault(); }
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.sprint = 1;
   if (e.code === 'KeyE') interact();
   if (e.code === 'KeyH') honk();
   if (e.code === 'KeyL' && (world.running || world.roam) && !world.pcOpen) emote(courier, 'peace');
@@ -2470,14 +2476,14 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { if (e.code === 'KeyV') voiceSet(false); });
 function escapeKey() { if (striker.active && striker.escape()) return; if ($('s-settings').classList.contains('on')) closeSettings(); else if (world.pcOpen) closePC(); else if (world.seat) leaveSeat(); else if (world.running) { if (net.on && !net.host) toast("only the host can end the shift. you can leave from the pc."); else endShift('quit'); } else if (world.roam) leaveRoam(); }
 function spaceKey() { if (courier.carry && van.driver !== courier) throwCarried(courier, camForward()); else input.jump = 1; }
-addEventListener('keyup', e => { if (KEY[e.code]) input[KEY[e.code]] = 0; if (e.code === 'Space') input.jump = 0; });
+addEventListener('keyup', e => { if (KEY[e.code]) input[KEY[e.code]] = 0; if (e.code === 'Space') input.jump = 0; if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.sprint = 0; });
 // keys that were down when the window lost focus never send their keyup — the courier would walk into the sunset on his own
 addEventListener('blur', clearInput); document.addEventListener('visibilitychange', () => { if (document.hidden) clearInput(); });
 addEventListener('contextmenu', e => { e.preventDefault(); });                                                                // right-drag is a camera control, not "save image as"
 const IS_TOUCH = matchMedia('(pointer:coarse)').matches; if (IS_TOUCH) document.body.classList.add('has-touch');
 let dragging = false, dragBtn = 0, lastX = 0, lastY = 0, dragMoved = 0, camPointer = -1;
 const stick = { id: -1, x: 0, y: 0, R: 44 };                                                                                       // the stick appears where the left thumb lands
-function stickSet(dx, dy) { const d = Math.hypot(dx, dy), k = d > stick.R ? stick.R / d : 1; dx *= k; dy *= k; $('stick-nub').style.transform = `translate(${dx}px,${dy}px)`; input.f = Math.max(0, -dy / stick.R); input.b = Math.max(0, dy / stick.R); input.l = Math.max(0, -dx / stick.R); input.r = Math.max(0, dx / stick.R); }
+function stickSet(dx, dy) { const d = Math.hypot(dx, dy), k = d > stick.R ? stick.R / d : 1; input.sprint = d > stick.R * 1.35 ? 1 : 0; dx *= k; dy *= k; $('stick-nub').style.transform = `translate(${dx}px,${dy}px)`; input.f = Math.max(0, -dy / stick.R); input.b = Math.max(0, dy / stick.R); input.l = Math.max(0, -dx / stick.R); input.r = Math.max(0, dx / stick.R); }
 canvas.addEventListener('pointerdown', e => {
   if (e.pointerType === 'touch' && (world.running || world.roam) && !world.pcOpen && !world.seat && !world.locker && e.clientX < innerWidth * 0.45 && stick.id < 0) {
     stick.id = e.pointerId; stick.x = e.clientX; stick.y = e.clientY; const st = $('stick'); st.style.left = stick.x + 'px'; st.style.top = stick.y + 'px'; st.classList.add('on'); stickSet(0, 0); try { canvas.setPointerCapture(e.pointerId); } catch (_) {} return;
@@ -2491,7 +2497,7 @@ canvas.addEventListener('pointermove', e => {
   const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; dragMoved += Math.abs(dx) + Math.abs(dy);
   const k = (e.pointerType === 'touch' ? 1.6 : 1) * cfg.sens / 10; camState.yaw -= dx * 0.005 * k; camState.pitch = clamp(camState.pitch + dy * 0.004 * k * (cfg.invert ? -1 : 1), 0.08, 1.2);
 });
-const stickEnd = e => { if (e.pointerId === stick.id) { stick.id = -1; $('stick').classList.remove('on'); input.f = input.b = input.l = input.r = 0; } };
+const stickEnd = e => { if (e.pointerId === stick.id) { stick.id = -1; $('stick').classList.remove('on'); input.f = input.b = input.l = input.r = input.sprint = 0; } };
 canvas.addEventListener('pointerup', e => { stickEnd(e); if (e.pointerId !== camPointer) return; dragging = false; camPointer = -1; if (dragBtn === 0 && dragMoved < 6 && e.pointerType !== 'touch' && (world.running || world.roam) && courier.carry && van.driver !== courier) throwCarried(courier, camForward()); });   // only a left click throws; a tap on a phone does not
 canvas.addEventListener('pointercancel', e => { stickEnd(e); if (e.pointerId === camPointer) { dragging = false; camPointer = -1; } });
 // the paper buttons. E and the rest fire on press, so they feel like keys
