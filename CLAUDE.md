@@ -67,6 +67,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `ow-net.js` | Overwork's wire: signalling over Supabase realtime broadcast (or a `BroadcastChannel` with `?signal=local` for two tabs on one machine) and one WebRTC connection per peer with two data channels (`rel` ordered for events, `fast` lossy for snapshots). Knows nothing about the game. |
 | `ow-os.js` | **MirrorOS**, the operating system on the PC in the courier's apartment: a 2009-glass-look desktop (own name, own icons, no trademarks) with draggable windows, taskbar, start orb, and the apps: Overwork Online (host/join/rooms/chat), Lucky Loaf Casino (slots + 21 + roulette, the flat edition of the real tables — same state objects, handed over in `api.games`), notes, locker shortcut, a Pitty Striker shortcut that crashes on purpose, a recycle bin. Takes an `api` object from the game; touches only its own DOM. **All of its CSS is scoped under `#s-pc`** — a bare `.card` rule in here once shrank the game's work-order card to a playing card. Desktop icons open on a single click. |
 | `ow-piano.js` | **The piano** (Sep 2026). Every musical sound in Overwork: a sampled grand piano (18 notes every third semitone A1–C6, `art/overwork/piano/`, CC BY 3.0 via tonejs-instruments, ~1 MB), a generative lo-fi background tune that is never the same twice, and the *cues* the game used to synthesise (delivery, la peace, mystery box, dog, horn) played like a silent-film accompanist. Felt lowpass + small-room convolution + limiter. `createPiano(ac, base)` → `load()`, `cue(name)`, `music.start/stop/pause`, `setVolume`, `setMuffled`, `until(t)` (also drives an `OfflineAudioContext` render in the harness). **No oscillators anywhere in Overwork** — owner's rule, see the sound section below. |
+| `ow-striker.js` · `ow-striker-data.js` | **Pitty Striker** (Sep 2026), the shooter on the apartment PC — the courier's *own* game, nothing about the job inside it (owner's correction, see its section). `ow-striker.js` is the machine (launcher in the MirrorOS window, loot-case reel, inventory, stats, settings, the match: own WebGLRenderer inside `#pc-frame`, cylinder-vs-AABB solver, five real-world guns, spring-driven viewmodels, bots with a state machine on a node graph, DOM HUD, pointer lock, touch layer, foley routing). `ow-striker-data.js` is pure data: the "sandstone" map table (rows = geometry AND colliders), nodes and edge hints, WEAPONS, SKINS + CASES + RARITY, BOTS, DIFF, every line of copy (LINES), the sound table (SFX), `validatePS`/`psSig`/`rollCase`. Lazy-loaded by `overwork.html` on the first click of the desktop icon. |
 | `ow-casino.js` | The rules of the Lucky Loaf Casino with no pixels attached: `createSlots/createBlackjack/createRoulette(bank)` are small state machines over a `{cash(), add(n)}` bank. The 3D tables in `overwork.html` and the MirrorOS window both render the *same* instances, so what the felt shows is what the window shows. Spins/deals decide the result up front (`spin()` returns the pending outcome, the renderer animates and calls `settle()`). |
 | `vendor/` | Third-party libraries served from our own origin (no CDN dependency, CSP `'self'`). `three.module.min.js` (r169, MIT) and `supabase-2.115.0.min.js` (UMD, MIT), licences alongside. `_headers` caches `/vendor/*` for a year as immutable, so **rename the file when upgrading**. |
 | `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
@@ -833,8 +834,37 @@ poner esos estúpidos pixel sound effects y tus estúpidos synths … tiene que 
   and **renders 30 s of music plus the cues offline to WAV** so a human can listen before shipping — do that when touching
   the generator; the sandbox has no ears.
 
-Not done yet: Pitty Striker itself, more jobs, spectating a full room, a host-side speed check on
-self-reported positions.
+**v8 — Pitty Striker v1 (Sep 2026).** The game inside the game finally runs. **The owner's rule, learned the hard way: it is
+NOT a parody of the delivery job** — a first design (a depot map, "the stapler", coworker bots, HR kill feed) was rejected:
+"it would make no sense to have a delivery guy play a game mocking his own job". Pitty Striker is the courier's own separate
+game: **real-world gun names and silhouettes** (knife, Glock, AR, AK-47, AWP — the owner asked for them by name; no brand
+logos are ever painted into a texture), **skins come out of loot cases** bought with the sock-drawer cash (not a shop), a
+CS-flavoured desert-town arena ("sandstone"), gamer-named bots (toaster, ph4ntom, zero_ping, capybara…) that type "gg"
+and "lag" into the feed, plain game copy ("x killed y (headshot)", triple / rampage / unstoppable / godlike). Grep the two
+modules for box/van/depot/deliver/shift/coworker/hr before adding copy — `scratchpad/ps-lint.js` does exactly that.
+- **Where it lives.** MirrorOS `openApp('pitty')` makes a maximised window and calls `api.pitty.open(W)`; `overwork.html`
+  lazy-imports `ow-striker.js` on that first click (the delivery game never pays for the shooter's download) through a small
+  proxy `striker` (`active`, `inMatch`, `open/close/escape`, `__test`); if the import fails the window shows the old crash
+  dialog and nothing else breaks. The launcher renders in the window body; a match mounts `#ps` over the whole monitor frame
+  with its own renderer, and `world.psOpen` makes the outer `frame()` skip its render and gates Overwork's keys (`striker.active`
+  early-returns in keydown; `escapeKey()` asks `striker.escape()` first; `closePC()` closes the shooter too). The shooter gets
+  `strikerApi`: frame, save/persist/salt, cash/addCash (the casino's `bank`), name, isTouch, cfg, `audio` (ctx, master,
+  `loadBuffer`, piano), `musicDuck` (halves + muffles the piano for the match), toast, onActive, ycz scores, debug.
+- **Sound stays inside the rule:** every shot is layers of the six recordings (a high crack + a low body; the AWP is `ko.wav`
+  past its swell), the knife is `whoosh` + `hit1`, ticks/reveals/countdown/end use the piano cues (`count`, `start`, `kill`,
+  `streak`, `win`/`lose`/`ding`). Nothing synthesized.
+- **Save:** `save.ps` (v2) — owned case skins, scrap, cases opened, equipped per weapon, loadout, difficulty, bots, cfg,
+  lifetime stats — validated on load by `validatePS`; its own `sig` (FNV-1a over sorted owned + scrap + salt) is independent of
+  the cash signature, so a tampered inventory resets to stock without touching the drawer. Cases cost $80; duplicates give
+  scrap, 8 scrap recycle into a free case; matches pay nothing (cash comes from deliveries, by design).
+- **Testing:** `scratchpad/ps-flow.js` (launcher, case with a deterministic roll, persistence across reload, pre-v1 save fixture,
+  tamper, a match through `__test`: countdown, move, shoot, knife, pause, Esc chain, back to the courier), `ps-bots.js` (7 hard
+  bots, 300 s of sim: everyone moves, someone reaches a balcony, no unsticks), `ps-touch.js` (stick, look, fire, portrait card),
+  `ps-lint.js` (copy: no '!', no emoji, no theme words, no createOscillator). Pointer lock cannot be exercised headless; the
+  flow uses `__test.startMatch` which skips the lock prompt.
+
+Not done yet: Pitty Striker multiplayer (the WebRTC wire exists), more Overwork jobs, spectating a full room, a host-side speed
+check on self-reported positions.
 Performance: the world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
 swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason).
 
