@@ -38,12 +38,19 @@ scales are inconsistent — a building arrives 3.5 units tall and a hydrant 232)
 tints the existing materials for the time of day, and merges them by material.
 No brand name or logo is painted onto anything.
 
-The rest of the pack was left out. That includes every character model and the
-bicycle, and it includes the two cars from the separate "skibidi" upload: the
-Lamborghini carries the manufacturer's badge on its nose, which is a trademark,
-so it is not in the repository.
+The rest of the pack was left out. That includes the bicycle and the other
+people models, and it includes the two cars from the separate "skibidi"
+upload: the Lamborghini carries the manufacturer's badge on its nose, which
+is a trademark, so it is not in the repository. One character model from this
+same pack IS used, as the bots in Pitty Striker — it lives in
+art/overwork/chars/ and is credited there.
 
-The pack shipped without a licence file. The owner supplied it and has been
-asked to confirm that its licence allows use in this game; if it does not, this
-whole folder comes out and the arena loses its skyline and nothing else — the
-city is decoration outside the walls, it is not part of the map.
+The pack shipped without a licence file. The owner supplied it and, on
+7 September 2026, confirmed that the material he provides is free of
+copyright — that is why none of the packs he sends carry licence text.
+
+Provenance is written down here so every file in the repository can be
+traced back to where it came from. If that ever needs revisiting:
+this whole folder comes out and the arena loses its skyline and
+nothing else. The city is decoration outside the walls, it is not part
+of the map.

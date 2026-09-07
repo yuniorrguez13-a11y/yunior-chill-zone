@@ -1,0 +1,32 @@
+Wearable models used by Overwork (overwork.html).
+
+This file covers only the four .glb files sitting directly in this folder:
+
+  cap.glb
+  frog.glb
+  glasses.glb
+  headphones.glb
+
+They are the hats and accessories the courier can put on in the locker. Each
+subfolder here carries its own LICENSE.txt for what it contains:
+
+  chars/     the soldier the Pitty Striker bots wear
+  city/      the buildings and street props around the Pitty Striker arena
+  guns/      the five weapon models
+  piano/     the sampled grand piano (CC BY 3.0 — see that file, it is the one
+             asset here that came with real licence terms and they are honoured)
+  sfx-guns/  the gun recordings
+
+Source: supplied by the site owner in September 2026. Nothing was changed: no
+geometry was edited and no texture was added. The game bakes each model to
+world space once, centres it per mesh and fits it to the head with the measured
+offsets in ACC_FIT. No brand name or logo is painted onto any of them.
+
+The models shipped without a licence file. The owner supplied them and, on
+7 September 2026, confirmed that the material he provides is free of
+copyright — that is why none of the packs he sends carry licence text.
+
+Provenance is written down here so every file in the repository can be
+traced back to where it came from. If that ever needs revisiting: these four
+files come out, the locker loses the hat options, and the courier keeps his
+built-in cap and hair, which are original geometry.

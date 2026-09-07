@@ -47,7 +47,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `index.html` | The main app. ~2,600 lines, everything inline. Chat, servers, channels, voice, DMs, friends, profiles, bots, notifications. |
 | `ycz-theme.css` | Shared stylesheet. Loaded **after** each page's own `<style>` so it wins the cascade. |
 | `ycz-i18n.js` | Translation engine + dictionaries (en/es/fr/pt). `t('key')` in JS, `data-i18n="key"` in markup. |
-| `ycz-icons.js` | Two icon families. **Stroke set** (~49 inline SVGs, Discord-like): `icon('hash')` / `<i data-ic="hash">`. **Bold set** (Sep 2026): chunky filled glyphs from Itcherpro's free game-asset pack, 36 white PNGs trimmed to 160px squares in `art/icons-bold/`, rendered as CSS masks so they take `currentColor`: `icon('b:gift')` / `<i data-ic="b:gift">`, names whitelisted in `YCZ_BOLD`. Used where a game-UI feel fits: SFFG menu, the Treasury (tabs, shop tiers, leaderboard medals), the landing feature cards (this killed the landing emoji). The pack's brand logos (Steam/Twitch/YouTube/Apple/Facebook) were **left out** — trademarks. The zip carried no licence text; the owner supplied it and was asked to confirm the itch.io page allows use. |
+| `ycz-icons.js` | Two icon families. **Stroke set** (~49 inline SVGs, Discord-like): `icon('hash')` / `<i data-ic="hash">`. **Bold set** (Sep 2026): chunky filled glyphs from Itcherpro's free game-asset pack, 36 white PNGs trimmed to 160px squares in `art/icons-bold/`, rendered as CSS masks so they take `currentColor`: `icon('b:gift')` / `<i data-ic="b:gift">`, names whitelisted in `YCZ_BOLD`. Used where a game-UI feel fits: SFFG menu, the Treasury (tabs, shop tiers, leaderboard medals), the landing feature cards (this killed the landing emoji). The pack's brand logos (Steam/Twitch/YouTube/Apple/Facebook) were **left out** — trademarks. The zip carried no licence text; the owner confirmed (7 Sep 2026) that what he supplies is free of copyright, recorded in `art/icons-bold/LICENSE.txt`. |
 | `ycz-scores.js` | Records + playtime, kept in `localStorage` under `ycz-games`. `yczScore(id,n)` for a high score, `yczTally(id)` for a running count, `yczPlay(id,ms)` for time, `yczData()` to read. Loaded by the games that keep score and by the console. |
 | `video.html` | VideoZone. Own app, shares session + theme. |
 | `qmages.html` | Image board. Own app, shares session + theme. |
@@ -69,7 +69,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `ow-piano.js` | **The piano** (Sep 2026). Every musical sound in Overwork: a sampled grand piano (18 notes every third semitone A1–C6, `art/overwork/piano/`, CC BY 3.0 via tonejs-instruments, ~1 MB), a generative lo-fi background tune that is never the same twice, and the *cues* the game used to synthesise (delivery, la peace, mystery box, dog, horn) played like a silent-film accompanist. Felt lowpass + small-room convolution + limiter. `createPiano(ac, base)` → `load()`, `cue(name)`, `music.start/stop/pause`, `setVolume`, `setMuffled`, `until(t)` (also drives an `OfflineAudioContext` render in the harness). **No oscillators anywhere in Overwork** — owner's rule, see the sound section below. |
 | `ow-striker.js` · `ow-striker-data.js` | **Pitty Striker** (Sep 2026), the shooter on the apartment PC — the courier's *own* game, nothing about the job inside it (owner's correction, see its section). `ow-striker.js` is the machine (launcher in the MirrorOS window, loot-case reel, inventory, stats, settings, the match: own WebGLRenderer inside `#pc-frame`, cylinder-vs-AABB solver, five real-world guns, spring-driven viewmodels, bots with a state machine on a node graph, DOM HUD, pointer lock, touch layer, foley routing). `ow-striker-data.js` is pure data: the "sandstone" map table (rows = geometry AND colliders — the name is historical, it is a sunny city block now), the deco and its `LIGHTS`, nodes and edge hints, WEAPONS, SKINS + CASES + RARITY, BOTS, DIFF, every line of copy (LINES), the sound table (SFX), the `CITY`/`CITY_FIT` placement table for the buildings outside the walls, `validatePS`/`psSig`/`rollCase`. Lazy-loaded by `overwork.html` on the first click of the desktop icon. |
 | `ow-casino.js` | The rules of the Lucky Loaf Casino with no pixels attached: `createSlots/createBlackjack/createRoulette(bank)` are small state machines over a `{cash(), add(n)}` bank. The 3D tables in `overwork.html` and the MirrorOS window both render the *same* instances, so what the felt shows is what the window shows. Spins/deals decide the result up front (`spin()` returns the pending outcome, the renderer animates and calls `settle()`). |
-| `art/overwork/guns/` · `art/overwork/sfx-guns/` · `art/overwork/city/` · `art/overwork/chars/` | Pitty Striker's assets, all owner-supplied, each with a LICENSE.txt naming the source and saying what happens if the licence turns out not to allow it: five weapon models, eighteen gun recordings, twenty-eight city models, one rigged soldier. |
+| `art/overwork/guns/` · `art/overwork/sfx-guns/` · `art/overwork/city/` · `art/overwork/chars/` | Pitty Striker's assets, all owner-supplied: five weapon models, eighteen gun recordings, twenty-eight city models, one rigged soldier. Each folder has a LICENSE.txt naming the source, listing the original filename of every file, and saying what the game falls back to if the folder ever has to come out. |
 | `vendor/` | Third-party libraries served from our own origin (no CDN dependency, CSP `'self'`). `three.module.min.js` (r169, MIT) and `supabase-2.115.0.min.js` (UMD, MIT), licences alongside. `_headers` caches `/vendor/*` for a year as immutable, so **rename the file when upgrading**. |
 | `promo/` | Promo-video production material — brief (`BRIEF.md`), smooth 1080p gameplay clips, original synth music, English TTS narration, the frame-stepped capture script. Excluded from publishing via `.assetsignore`. Read `promo/BRIEF.md` before touching video work: three cloud-made videos were rejected; the owner produces videos in a **local** session with his own editing tools. |
 
@@ -248,6 +248,19 @@ migration: `ycz_sv_role(text)` (your role in a server, 'owner' if you own it),
 - SQL is written idempotent (safe to re-run) with a verification `select` at the end,
   and is **never committed to the repo** — always hand it to the owner in chat so he can
   paste it into the Supabase SQL editor himself. This is an explicit owner rule.
+- **Assets the owner supplies are free of copyright — he said so (7 Sep 2026) and that
+  is why his packs never carry licence text. Don't ask him again.** What we still do
+  every time: put a LICENSE.txt in the folder naming the pack, listing the original
+  filename of every file kept, saying what was changed, and saying what the game falls
+  back to if the folder ever has to come out. That record is for us, not for him.
+  Two exceptions carry *real* third-party terms and those are honoured on their own
+  merits: `art/overwork/piano/` (CC BY 3.0, attribution required) and `art/sfx/`
+  (Chequered Ink, free for commercial use, not resellable as assets).
+- **Trademarks are a separate question from copyright and the answer there is still no.**
+  Brand logos come out of every pack regardless of its terms: the icon pack's
+  Steam/Twitch/YouTube/Apple/Facebook glyphs were dropped, and the skibidi Lamborghini
+  was left out of the repo entirely because of the badge on its nose.
+
 - The Supabase anon/publishable key is in the client on purpose — that's what it's for.
   Security comes from RLS. **Never** put a service-role key or the Cloudflare TURN token
   in client code.
@@ -695,8 +708,8 @@ covering part (the van's collar) rather than fighting the scale.
 - **Wearables are the owner's GLB models** (`art/overwork/{cap,frog,glasses,headphones}.glb`, loaded
   once by the vendored `GLTFLoader`, baked to world space, centred per mesh, cloned per courier via
   `fitAcc(name)` with the measured `ACC_FIT` offsets — the cap's crown centroid and brim direction were
-  measured with a probe page, don't eyeball them). Licence for the models: owner-supplied, asked to
-  confirm. **Outline gotcha for imported models:** `outlined()` (a scaled inverted hull) breaks on
+  measured with a probe page, don't eyeball them). Licence: owner-supplied and free of copyright by his
+  confirmation, recorded in `art/overwork/LICENSE.txt`. **Outline gotcha for imported models:** `outlined()` (a scaled inverted hull) breaks on
   them — they are thin shells with inner faces, and scaling about the centre pushes the inner faces
   out through the crown as black polygon patches ("una cosa rara arriba de la cabeza"). Their hull is
   built in `loadAcc` instead: `mergeVertices` → smooth normals → vertices pushed along the normal by a
@@ -852,7 +865,7 @@ modules for box/van/depot/deliver/shift/coworker/hr before adding copy — `scra
   `strikerApi`: frame, save/persist/salt, cash/addCash (the casino's `bank`), name, isTouch, cfg, `audio` (ctx, master,
   `loadBuffer`, piano), `musicDuck` (halves + muffles the piano for the match), toast, onActive, ycz scores, debug.
 - **The guns are the owner's models** (`art/overwork/guns/{knife,glock,ar,ak,awp}.glb`, five picked out of an "Ultimate Guns
-  Pack" he supplied — licence pending his confirmation, see the LICENSE.txt beside them). They carry no textures but every
+  Pack" he supplied — see the LICENSE.txt beside them). They carry no textures but every
   surface is a *named material* (Wood, DarkWood, Metal, DarkMetal, LightMetal, Black, Grey, Green, Main/MainDark/MainLight,
   Glass), so `GUN_ROLE` maps each name to a role and a skin repaints them — base, a darker shade of base, wood/accent, metal,
   glass — instead of painting a texture. `prepGunModel()` bakes each file once into game space: merge by material, then
@@ -945,7 +958,7 @@ Snake's Authentic Gun Sounds packs and an Announcer Pack).**
   per gun event — 9mm, 5.56, 7.62x39 and 7.62x54R for the four guns, each gun's own magazine and bolt on the reload's
   `magOut`/`magIn`/`bolt` marks (which were **retimed to where each recording actually starts**, so the parts play end to end),
   and a real dry fire. `SFX` has two families now: `Y(...)` is the old six-file foley, `Z(...)` is a gun recording played
-  nearly straight. Licences for the models and the sounds are owner-supplied and **pending his confirmation**.
+  nearly straight. Licences: see the LICENSE.txt in each folder.
 - **New harnesses:** `ps-fx.js` (one shot produces a flash, a tracer, sparks and the muzzle light — read in the same evaluate
   so no rAF frame slips in), `ps-audio.js` (every file in `SFX` decodes with a healthy peak, every weapon sfx key resolves),
   `ps-look.js` (five vantage points), `ps-flash.js` (cancels the rAF, fires, renders one frame, then screenshots — the only

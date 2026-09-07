@@ -33,7 +33,11 @@ sound was layered with another and none was resynthesised.
   awp_magin    <- 308 Magazine Part 2
   awp_bolt     <- 308 Bolt Cycle
 
-The packs shipped without a licence file. The owner supplied them and has
-been asked to confirm that the itch.io terms allow use in this game; if they
-do not, these files come out and the code falls back to the pitched foley in
-art/sfx/ that it still carries.
+The packs shipped without a licence file. The owner supplied them and, on
+7 September 2026, confirmed that the material he provides is free of
+copyright — that is why none of the packs he sends carry licence text.
+
+Provenance is written down here so every file in the repository can be
+traced back to where it came from. If that ever needs revisiting:
+these files come out and the code falls back to the pitched foley
+in art/sfx/ that it still carries.

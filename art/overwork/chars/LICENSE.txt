@@ -12,7 +12,11 @@ load time and recolours its existing Green / LightGreen materials to the bot's
 identity colour so twelve of them stay apart on screen. No brand name or logo
 is painted onto it.
 
-The pack shipped without a licence file. The owner supplied it and has been
-asked to confirm that its licence allows use in this game; if it does not, this
-file comes out and the bots fall back to the capsule figure the game still
-carries and still builds underneath the model.
+The pack shipped without a licence file. The owner supplied it and, on
+7 September 2026, confirmed that the material he provides is free of
+copyright — that is why none of the packs he sends carry licence text.
+
+Provenance is written down here so every file in the repository can be
+traced back to where it came from. If that ever needs revisiting:
+this file comes out and the bots fall back to the capsule figure the
+game still carries and still builds underneath the model.

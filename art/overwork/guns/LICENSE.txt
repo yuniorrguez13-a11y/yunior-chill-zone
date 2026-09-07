@@ -15,7 +15,11 @@ The game recolours the models' existing named materials (Wood, Metal,
 DarkMetal, LightMetal, Black, Grey, Green, Main...) to show skins, and never
 paints a brand name or logo onto them.
 
-The pack shipped without a licence file. The owner supplied it and has been
-asked to confirm that its licence allows use in this game; if it does not,
-these five files come out and the code falls back to the primitive gun
-models it still carries.
+The pack shipped without a licence file. The owner supplied it and, on
+7 September 2026, confirmed that the material he provides is free of
+copyright — that is why none of the packs he sends carry licence text.
+
+Provenance is written down here so every file in the repository can be
+traced back to where it came from. If that ever needs revisiting:
+these five files come out and the code falls back to the primitive
+gun models it still carries and still builds.

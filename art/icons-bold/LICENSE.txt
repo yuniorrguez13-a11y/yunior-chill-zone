@@ -1,0 +1,22 @@
+Bold icon set, used across the site through ycz-icons.js.
+
+Thirty-six white PNGs, trimmed to 160px squares and rendered as CSS masks so
+they take currentColor. Names are whitelisted in YCZ_BOLD; reach them with
+icon('b:gift') or <i data-ic="b:gift">.
+
+Source: Itcherpro's free game-asset pack, supplied by the site owner in
+September 2026. The only change is the trim and the resize; no glyph was
+redrawn and nothing was added.
+
+The pack's brand logos (Steam, Twitch, YouTube, Apple, Facebook) were
+deliberately left out. Those are trademarks and they do not belong in this
+interface whatever the pack's terms say.
+
+The zip carried no licence text. The owner supplied it and, on 7 September
+2026, confirmed that the material he provides is free of copyright — that is
+why none of the packs he sends carry licence text.
+
+Provenance is written down here so every file in the repository can be traced
+back to where it came from. If that ever needs revisiting: this folder comes
+out and every b: icon falls back to the stroke set, which is original inline
+SVG and covers the interface on its own.
