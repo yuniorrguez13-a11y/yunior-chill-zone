@@ -11,7 +11,9 @@ const css = `
 #s-pc{position:fixed;inset:0;display:none;z-index:6;font-family:'Segoe UI',Tahoma,'Trebuchet MS',Arial,sans-serif;font-size:14px;color:#111;user-select:none;}
 #s-pc.on{display:block;}
 #pc-frame{position:absolute;inset:4vh 4vw 3vh 4vw;border-radius:14px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 14px #1a1a1f,0 0 0 16px #3a3a44;background:#1a1a1f;}
-#pc-desk{position:absolute;inset:0;background:
+/* own stacking context: windows inside get an ever-increasing z-index, and after ~50 opened in one
+   session one of them started painting over the Pitty Striker match (#ps sits at 50, as a sibling) */
+#pc-desk{position:absolute;inset:0;z-index:1;background:
   radial-gradient(ellipse at 20% 110%,rgba(255,255,255,.28),rgba(255,255,255,0) 45%),
   radial-gradient(ellipse at 75% 35%,rgba(120,220,255,.35),rgba(120,220,255,0) 55%),
   radial-gradient(ellipse at 40% 60%,rgba(20,90,200,.55),rgba(20,90,200,0) 60%),

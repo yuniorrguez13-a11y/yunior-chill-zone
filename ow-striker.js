@@ -1162,7 +1162,10 @@ export function createStriker(api) {
     if (h.sprint) { h.sprint = false; h.sprintBlock = 0.12; }
     const sp = h.scoped && W.scope ? (W.scope.spread || 0.05) : (W.spread ? W.spread.base : 0.5) + s.spread;
     if (W.spread) s.spread = Math.min(Math.max(0, W.spread.max - W.spread.base), s.spread + (W.spread.perShot || 0));
-    const eye = eyeOf(h), dir = coneDir(aimDirOf(h), sp, M.rng), hit = hitscan(eye, dir, h, 120);
+    // fire down the line the camera is ACTUALLY showing. The recoil springs move the view and used to
+    // leave the shot behind, so a held trigger put every bullet a degree and a half above the crosshair.
+    const look = h.isPlayer ? yawPitchDir(h.yaw + M.rec.yaw.x, clamp(h.pitch + M.rec.pitch.x + M.kick.pitch.x, -1.55, 1.55)) : aimDirOf(h);
+    const eye = eyeOf(h), dir = coneDir(look, sp, M.rng), hit = hitscan(eye, dir, h, 120);
     /* the shot you can see: a flash at the muzzle, a tracer down the line, sparks off whatever it lands on.
        The muzzle sits forward of the eye and, for the player, offset right and down so it leaves the barrel of the
        viewmodel rather than the middle of the screen. */
@@ -1224,7 +1227,10 @@ export function createStriker(api) {
   function cycleWeapon(h, dir) { const order = [h.primary, 'glock', 'knife'], i = order.indexOf((h.switching && h.switching.to) || h.cur); switchTo(h, order[(i + dir + 3) % 3]); }
   function stepGuns(h, dt) {
     for (const k in h.guns) {
-      const s = h.guns[k], W = WEAPONS[k] || {}; s.cd -= dt; if (W.spread) s.spread = Math.max(0, s.spread - (W.spread.decay || 6) * dt);
+      const s = h.guns[k], W = WEAPONS[k] || {}; s.cd -= dt;
+      // only while the gun is off cooldown, or the per-second decay outruns the per-shot growth at every
+      // weapon's own fire rate and no gun ever blooms
+      if (W.spread && s.cd <= 0) s.spread = Math.max(0, s.spread - (W.spread.decay || 6) * dt);
       if (s.reload) {
         const r = s.reload, R = W.reload || { total: 2.2, magOut: 0.5, magIn: 1.5, bolt: 1.9 }, at = h.isPlayer ? {} : { pos: h.pos }; r.t += dt;
         if (!r.out && r.t >= R.magOut) { r.out = true; psfx((W.sfx && W.sfx.magOut) || 'magOut', at); if (h.isPlayer) M.magT = -0.35; }
@@ -1240,6 +1246,7 @@ export function createStriker(api) {
   function meleeAttack(h, kind) {
     const W = WEAPONS.knife || {}, s = h.guns.knife; if (!s || s.cd > 0 || h.switching || h.melee || h.cur !== 'knife' || h.dead || M.phase !== 'play') return;
     const mm = (W.melee && W.melee[kind]) || (kind === 'stab' ? { dmg: 65, time: 1.0 } : { dmg: 40, time: 0.45 }); s.cd = mm.time; h.melee = { kind, t: mm.time * 0.3, dmg: mm.dmg };
+    if (h.isPlayer) { PS.stats.shots++; M.mShots++; }                        // a committed swing is an attempt; without this a knife pushed lifetime accuracy past 100%
     psfx((W.sfx && W.sfx.swing) || 'knife_swing', h.isPlayer ? {} : { pos: h.pos });
     if (h.prot > 0) h.prot = 0;
     if (h.isPlayer) { M.vm.rot.x.v -= kind === 'stab' ? 5 : 7; M.vm.pos.z.v -= kind === 'stab' ? 4 : 2.5; M.vm.pos.x.v -= kind === 'stab' ? 0 : 1.2; M.vm.pos.y.v -= 1; }
@@ -1321,7 +1328,7 @@ export function createStriker(api) {
   function playerHurt(from, dmg) {
     const P = M.P, dx = from.pos.x - P.pos.x, dz = from.pos.z - P.pos.z, d = Math.hypot(dx, dz) || 1, side = clamp((dx * Math.cos(P.yaw) - dz * Math.sin(P.yaw)) / d, -1, 1);
     M.vigS.x = Math.min(1, M.vigS.x + dmg / 60); M.arrowT = 0.8; M.arrowFrom.copy(from.pos); M.kick.pitch.v += 0.02 * 30; M.kick.roll.v += side * 0.015 * 30; M.hpWob.v += (side < 0 ? -1 : 1) * 60;
-    if (P.hp >= 30) psfx('hurt', { pan: side * 0.7 });
+    if (P.hp > 0) psfx('hurt', { pan: side * 0.7 });
   }
   function playerDied(k, info) {
     const P = M.P; P.scoped = false; M.hud.scope.classList.remove('on'); M.hud.xh.classList.add('off'); M.vm.root.visible = true; M.fovT = PS.cfg.fov; P.lastKilledBy = k; if (!k.isPlayer) k.red = 5; gunOf(P).reload = null; P.switching = null; P.melee = null;
@@ -1330,13 +1337,18 @@ export function createStriker(api) {
     M.hud.death.classList.add('on'); M.vm.tgt.y = -0.5;
   }
   function pickSpawn(who) {
-    const enemies = M.all.filter(b => b !== who && !b.dead), A = new THREE.Vector3(), B = new THREE.Vector3(); let best = null, bd = -1, far = null, fd = -1;
+    const enemies = M.all.filter(b => b !== who && !b.dead), A = new THREE.Vector3(), B = new THREE.Vector3(); let best = [], bd = -1e9, far = [], fd = -1e9;
     for (const s of SPAWNS) {
       let md = 1e9, bad = false;
       for (const e of enemies) { const d = Math.hypot(s.x - e.pos.x, s.z - e.pos.z); if (d < md) md = d; if (d < 12) { A.set(s.x, (s.y || 0) + 1.5, s.z); B.set(e.pos.x, e.pos.y + 1.5, e.pos.z); if (segmentClear(M.cols, A, B)) bad = true; } }
-      if (md > fd) { fd = md; far = s; } if (!bad && md > bd) { bd = md; best = s; }
+      // ties within a metre are a tie: without this, the first spawn of a match sees nobody, every
+      // candidate scores the same, and `>` hands the win to whichever came first in the list — so the
+      // player opened every single match standing on SPAWNS[0]
+      if (md > fd + 1) { fd = md; far = [s]; } else if (md > fd - 1) far.push(s);
+      if (!bad) { if (md > bd + 1) { bd = md; best = [s]; } else if (md > bd - 1) best.push(s); }
     }
-    const s = best || far || SPAWNS[0]; return new THREE.Vector3(s.x, s.y || 0, s.z);
+    const pool = (best && best.length ? best : far && far.length ? far : SPAWNS), s = pool[Math.floor(M.rng() * pool.length) % pool.length];
+    return new THREE.Vector3(s.x, s.y || 0, s.z);
   }
   function respawn(P) {
     const sp = pickSpawn(P); P.pos.copy(sp); P.spawnAt.copy(sp); P.vel.set(0, 0, 0); P.yaw = Math.atan2(sp.x, sp.z); P.pitch = 0; P.hp = 100; P.dead = false; P.prot = 1; P.regenT = 0; P.crouch = false; P.streak = 0; P.onGround = true;
@@ -1353,7 +1365,8 @@ export function createStriker(api) {
       if (h.isPlayer) { psfx('ammo'); centerToast(L('ammo', 'ammo')); }
     }
   }
-  function stepCrates(dt) { for (const c of M.world.crates) { c.gone -= dt; springTo(c.lidS, 0, dt); springTo(c.sink, c.gone > 0 ? -0.5 : 0, dt); c.grp.position.y = c.y + c.sink.x; c.lid.position.y = 0.475 + clamp(c.lidS.x, -0.02, 0.3); } }
+  // -1.6, not -0.5: at -0.5 the top of a taken crate still poked through the floor
+  function stepCrates(dt) { for (const c of M.world.crates) { c.gone -= dt; springTo(c.lidS, 0, dt); springTo(c.sink, c.gone > 0 ? -1.6 : 0, dt); c.grp.position.y = c.y + c.sink.x; c.lid.position.y = 0.475 + clamp(c.lidS.x, -0.02, 0.3); } }
 
   /* ── bots: clay hoodie figures on cheap capsule limbs, every motion a spring. decisions at 10 Hz (staggered), movement at 60 Hz
      through the same solver as the player, the same guns, the same hit shapes. WANDER → NOTICE → ENGAGE → HUNT / RETREAT / RESUPPLY ── */
@@ -1428,7 +1441,9 @@ export function createStriker(api) {
     }
     onKill(v) { this.armKick.v += 14; if (v.isPlayer) this.holdT = 0.8; if (M.rng() < 0.25) botChat(this.name, pick(LA('botKill', ['gg', 'ez', '?', 'nice try', '1v1 me', 'sit', 'ok']))); }
     die() {
-      this.tilt.k = 30; this.tilt.d = 4; this.tiltT = (M.rng() < 0.5 ? -1 : 1) * 1.45; this.rootT = -0.7; this.sinkT = 1.5; this.crouch = false; this.state = 'wander'; this.path = null; this.target = null; this.tTracked = 0; this.holdT = 0;
+      // no extra root drop on a soldier: the Death clip already puts him on the floor
+      this.tilt.k = 30; this.tilt.d = 4; this.tiltT = (M.rng() < 0.5 ? -1 : 1) * 1.45; this.rootT = this.soldier ? 0 : -0.7;
+      this.sinkT = 1.5; this.crouch = false; this.state = 'wander'; this.path = null; this.target = null; this.tTracked = 0; this.holdT = 0;
       for (let i = 0; i < 8; i++) M.world.crumbs.spawn(this.pos.x, this.pos.y + 1.0, this.pos.z, (M.rng() - 0.5) * 5, 2 + M.rng() * 3, (M.rng() - 0.5) * 5, 1.2, this.pos.y, 1);
       psfx('botDie', { pos: this.pos }); if (M.rng() < 0.25) botChat(this.name, pick(LA('botDie', ['lag', 'nice shot', 'how', 'wall hacks', 'my mouse slipped', 'afk sorry'])));
     }
@@ -1511,7 +1526,9 @@ export function createStriker(api) {
           break;
         }
       }
-      this.crouch = M.diff === 'hard' && !this.target && !!P && !P.dead && this.pos.distanceTo(P.pos) < 10;
+      // the rigged soldier has no crouch clip, so a crouching one shrank its head sphere to 1.0 while
+      // standing up straight on screen: an invisible helmet you could shoot through. He just stays up.
+      this.crouch = !this.soldier && M.diff === 'hard' && !this.target && !!P && !P.dead && this.pos.distanceTo(P.pos) < 10;
     }
     simulate(dt) {
       if (this.dead) { this.deadT -= dt; if (this.deadT <= 0) this.respawnNow(); return; }
@@ -1555,7 +1572,9 @@ export function createStriker(api) {
       if (!canFire || W.melee || M.phase !== 'play') return;
       const errDeg = (Math.abs(angleDelta(this.yaw, wantYaw)) + Math.abs(wantPitch - this.pitch)) / DEG; if (errDeg > (W.spread ? W.spread.base : 1) + 1) return;
       this.gap -= dt; if (this.gap > 0) return;
-      if (this.cur === 'awp') { if (errDeg > 1.0) return; if (tryFire(this, true)) this.gap = (0.8 + M.rng() * 0.6) / K.fireMul; return; }
+      // `scoped` is only ever set on the player, so a bot's AWP was firing the 5 degree hip-fire cone
+      // right after aiming to within one degree. It has earned the scoped cone for this shot.
+      if (this.cur === 'awp') { if (errDeg > 1.0) return; this.scoped = true; const fired = tryFire(this, true); this.scoped = false; if (fired) this.gap = (0.8 + M.rng() * 0.6) / K.fireMul; return; }
       if (this.cur === 'glock') { if (tryFire(this, true)) { this.burst++; this.gap = 0.18 / K.fireMul; if (this.burst >= 3) { this.burst = 0; this.gap = K.burstGap; } } return; }
       if (this.burst === 0) this.burstLen = 4 + Math.floor(M.rng() * 4);
       if (tryFire(this, this.burst === 0)) { this.burst++; this.gap = (60 / (W.rpm || 600)) * (1 / K.fireMul - 1); if (this.burst >= this.burstLen) { this.burst = 0; this.gap = K.burstGap; this.headIntent = M.rng() < K.headIntent; } }
@@ -1578,7 +1597,9 @@ export function createStriker(api) {
         // one carry-run clip covers every speed: slow it down for a walk rather than switching to a
         // second clip, which is what used to put him in the arms-swinging jog
         const act = sol.actions[key];
-        if (act) act.setEffectiveTimeScale(key === 'move' || key === 'moveKnife' ? clamp(spd / 4.5, 0.55, 1.45) : 1);
+        // and run it backwards when he is backpedalling — engaged bots strafe and retreat while facing you,
+        // and a forward-playing run clip on a body sliding backwards is a moonwalk
+        if (act) act.setEffectiveTimeScale(key === 'move' || key === 'moveKnife' ? clamp(spd / 4.5, 0.55, 1.45) * (fwdV < -0.5 ? -1 : 1) : 1);
         sol.mixer.update(dt);
         // the mixer rewrites the skeleton every frame, so anything of ours goes on afterwards: the chest
         // carries the aim, and the gun hand takes the recoil kick the springs already track
@@ -1591,11 +1612,13 @@ export function createStriker(api) {
           this.gunG.visible = !this.dead;
         }
       }
-      springTo(this.bob, 0, dt); this.body.position.y = this.bob.x + (this.crouch ? -0.45 : 0);
+      springTo(this.bob, 0, dt); this.body.position.y = this.bob.x + (this.crouch && !this.soldier ? -0.45 : 0);
       springTo(this.headS.x, 0, dt); springTo(this.headS.z, 0, dt); springTo(this.headS.y, 0, dt); this.head.rotation.set(this.headS.x.x, 0, this.headS.z.x); this.head.position.y = 1.55 + this.headS.y.x;
       const sp = Math.hypot(this.vel.x, this.vel.z), walking = this.onGround && sp > 0.5 && !this.dead;
       springTo(this.swing[0], walking ? this.swingSign * 0.6 : (this.crouch ? 0.9 : 0), dt); springTo(this.swing[1], walking ? -this.swingSign * 0.6 : (this.crouch ? 0.9 : 0), dt); this.legL.rotation.x = this.swing[0].x; this.legR.rotation.x = this.swing[1].x;
-      springTo(this.armKick, 0, dt); springTo(this.gunKick, 0, dt); this.armL.rotation.x = -1.35 - this.armKick.x * 0.15; this.armR.rotation.x = -1.25 - this.gunKick.x * 0.2; this.gunG.position.z = 0.36 - this.gunKick.x * 0.03;
+      springTo(this.armKick, 0, dt); springTo(this.gunKick, 0, dt); this.armL.rotation.x = -1.35 - this.armKick.x * 0.15; this.armR.rotation.x = -1.25 - this.gunKick.x * 0.2;
+      // capsule-figure only: on a rigged soldier this constant overwrote the hand-follow every frame and put the rifle back in mid-air
+      if (!this.soldier) this.gunG.position.z = 0.36 - this.gunKick.x * 0.03;
       if (this.dead) { this.sinkT -= dt; if (this.sinkT <= 0) this.rootT = -2.4; }
       const wantRed = this.red > 0; if (wantRed !== this.nameRed) { this.nameRed = wantRed; this.nameSprite.material.color.setHex(wantRed ? 0xe10600 : 0xffffff); }
       this.blob.position.y = (this.onGround ? 0 : floorAt(M.cols, this.pos.x, this.pos.z, this.pos.y, 0.3) - this.pos.y) - this.rootY.x + 0.02; this.blob.visible = !this.dead;
@@ -1715,7 +1738,10 @@ export function createStriker(api) {
     if (!PS.seenTutorial) { PS.seenTutorial = true; if (isTouch) PS.seenTouch = true; api.persist(); }
     M.lastT = performance.now(); M.raf = requestAnimationFrame(loop);
   }
-  function resizeMatch() { if (!M) return; const f = api.frame(), w = Math.max(2, f.clientWidth), h = Math.max(2, f.clientHeight); M.renderer.setSize(w, h, false); M.camera.aspect = w / h; M.camera.updateProjectionMatrix(); M.frameH = h; const por = isTouch && h > w; if (por !== M.portrait) { M.portrait = por; M.hud.portrait.classList.toggle('on', por); M.hud.pause.classList.toggle('on', M.paused && !por); if (por && (M.phase === 'count' || M.phase === 'play') && !M.paused) { pauseGame(); M.portraitPaused = true; } else if (!por && M.portraitPaused) { M.portraitPaused = false; resumeGame(); } } }
+  function resizeMatch() { if (!M) return; const f = api.frame(), w = Math.max(2, f.clientWidth), h = Math.max(2, f.clientHeight); M.renderer.setSize(w, h, false); M.camera.aspect = w / h; M.camera.updateProjectionMatrix(); M.frameH = h; const por = isTouch && h > w; if (por !== M.portrait) { M.portrait = por; M.hud.portrait.classList.toggle('on', por); if (por && (M.phase === 'count' || M.phase === 'play') && !M.paused) { pauseGame(); M.portraitPaused = true; } else if (!por && M.portraitPaused) { M.portraitPaused = false; resumeGame(); }
+    // last, not first: turning the phone upright calls pauseGame(), which puts the pause card back on
+    // — hiding it before that ran left the two cards stacked on top of each other
+    M.hud.pause.classList.toggle('on', M.paused && !por); } }
   function requestLock() { const cv = M.cv; try { const p = cv.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => { try { cv.requestPointerLock(); } catch (e) {} }); } catch (e) { try { cv.requestPointerLock(); } catch (_) {} } }
   function unmountMatch() {
     if (!M) return; const m = M; M = null;
@@ -1770,6 +1796,7 @@ export function createStriker(api) {
   /* the sim step: everything that moves, at 60 Hz */
   function simStep(dt) {
     if (!M) return;
+    if (M.fx) M.fx.step(dt, M.camera);                                        // above the phase branches: a pause used to freeze a flash in the air with its light still on
     if (M.phase === 'end') { M.endT += dt; if (!M.endShown && M.endT >= 1.2) showEnd(); for (const b of M.bots) b.animate(dt); stepCamera(dt); return; }
     if (M.paused || M.phase === 'load') { stepCamera(dt); return; }
     if (M.phase === 'count') {
@@ -1784,7 +1811,7 @@ export function createStriker(api) {
     stepPlayer(dt); if (!M) return;
     for (const b of M.bots) { b.simulate(dt); if (!M) return; }
     for (const b of M.bots) b.animate(dt);
-    stepCrates(dt); M.world.casings.step(dt); M.world.crumbs.step(dt); if (M.fx) M.fx.step(dt, M.camera); stepCamera(dt);
+    stepCrates(dt); M.world.casings.step(dt); M.world.crumbs.step(dt); stepCamera(dt);
     if (isTouch) frictionCheck();
   }
   function stepCamera(dt) {
@@ -1825,7 +1852,7 @@ export function createStriker(api) {
     H.am.classList.toggle('empty', !W.melee && s.mag <= 0); setText(H.wName, weaponName(P.cur)); const sk = equipped(P.cur); setText(H.sName, sk.rarity === 'stock' ? '' : sk.name || '');
     setText(H.amMsg, W.melee ? '' : s.reload ? '' : s.mag <= 0 && s.reserve <= 0 ? L('hud.dry', 'no ammo. find a crate.') : s.mag <= 0 ? L('hud.reload', 'reload') : (M.ammoMsg && s.mag > 0 ? '' : M.ammoMsg)); if (s.mag > 0) M.ammoMsg = '';
     if (s.reload) { H.rl.style.display = 'block'; H.rlI.style.width = clamp(s.reload.t / ((W.reload && W.reload.total) || 2), 0, 1) * 100 + '%'; } else H.rl.style.display = 'none';
-    const spread = P.scoped && W.scope ? 0 : (W.spread ? W.spread.base : 0) + s.spread; H.xh.style.setProperty('--g', (6 + spread * 14 * (M.frameH / 800)).toFixed(1) + 'px'); H.xh.style.setProperty('--xc', M.xhFlash > 0 ? '#e10600' : ({ red: '#e10600', white: '#f3ecdc', green: '#3ad86a', cyan: '#3ad8e8' })[PS.cfg.xhair] || '#e10600');
+    const spread = P.scoped && W.scope ? 0 : (W.spread ? W.spread.base : 0) + s.spread; H.xh.style.setProperty('--g', (6 + spread * 14 * (M.frameH / 800)).toFixed(1) + 'px'); H.xh.style.setProperty('--xc', M.xhFlash > 0 ? '#ffffff' : ({ red: '#e10600', white: '#f3ecdc', green: '#3ad86a', cyan: '#3ad8e8' })[PS.cfg.xhair] || '#e10600');
     H.hm.style.opacity = M.hmT > 0 ? '1' : '0'; if (M.hmT > 0) H.hm.style.transform = `scale(${M.hm.x.toFixed(3)})`;
     H.vig.style.opacity = clamp(M.vigS.x + (P.hp < 30 && !P.dead ? 0.25 : 0), 0, 0.9).toFixed(3);
     if (M.arrowT > 0) { const dx = M.arrowFrom.x - P.pos.x, dz = M.arrowFrom.z - P.pos.z, ang = Math.atan2(dx, -dz) + P.yaw; H.arrow.style.opacity = (M.arrowT / 0.8).toFixed(2); H.arrow.style.transform = `rotate(${(ang / DEG).toFixed(1)}deg)`; } else H.arrow.style.opacity = '0';
@@ -1847,6 +1874,7 @@ export function createStriker(api) {
   }
   function endMatch() {
     if (!M || M.phase === 'end') return; M.phase = 'end'; M.el.classList.remove('dead'); duck(false); M.vm.root.visible = true; M.endT = 0; M.endShown = false; M.vm.tgt.y = -0.5; M.hud.xh.classList.add('off'); M.hud.scope.classList.remove('on'); M.hud.death.classList.remove('on'); M.hud.board.classList.remove('on'); M.P.scoped = false; M.fovT = PS.cfg.fov || 80; clearInput();
+    for (const b of M.bots) { b.vel.x = 0; b.vel.z = 0; b.wantMove = false; }   // otherwise they run on the spot through the whole end screen
     psfx('endWhistle'); if (M.locked) { try { document.exitPointerLock(); } catch (e) {} }
     const st = standings(); M.place = st.indexOf(M.P) + 1; const place = M.place, n = st.length;
     setTimeout(() => { if (!M || M.phase !== 'end') return; psfx(place === 1 ? 'endWin' : place === n ? 'endLose' : 'endMid'); }, 800);
@@ -2046,7 +2074,12 @@ export function createStriker(api) {
       if (M.phase === 'end') { toLauncher(); return true; }
       if (M.phase === 'load') { unmountMatch(); if (launcher) paintTab(); return true; }
       if (!M.paused) { if (M.locked) { try { document.exitPointerLock(); } catch (e) { pauseGame(); } } else pauseGame(); return true; }
-      const now = performance.now(); if (now - M.escT < 1500) { leaveMatch(); return true; } M.escT = now; return true;
+      // Esc arms the same way the leave button does. It used to forfeit outright on the second press
+      // within 1.5 s — and pauseGame() stamps escT, so the very tap that opened the pause card started
+      // that clock: one nervous double-tap of Esc handed you a loss with nothing asked.
+      const now = performance.now();
+      if (M.leaveArmed && now - M.escT < 4000) { leaveMatch(); return true; }
+      M.leaveArmed = true; M.escT = now; M.hud.pause.querySelector('.pnote').textContent = L('leaveConfirm', 'leave match? it counts as a loss.'); return true;
     }
     if (win) { const W = win; if (W.close) W.close(); else close(); return true; }
     return false;

@@ -1011,6 +1011,28 @@ Snake's Authentic Gun Sounds packs and an Announcer Pack).**
   reliable way to catch a 75 ms effect under swiftshader), `ow-pace.js` (measured courier and van speeds).
 - **The Announcer Pack is not wired.** The two mp3s split cleanly into 29 + 31 spoken lines, but the sandbox has no speech
   recognition (the vosk model host is blocked) and no TTS, so nothing can label them. The owner has to say what the lines are.
+- **The defect pass after v9.** A fan-out review of the two modules came back with real things, and the lessons are worth
+  keeping. Geometry: a **`TorusGeometry` lies in the XY plane** — unrotated it stands on edge, which is why the fountain kerb
+  was a 3 m hoop in the middle of the arena; **`buildAtlas` cells are 256×64 and `labelQuad` applies no aspect correction**,
+  so every sign quad must be 4:1 or its glyphs stretch; `outlined()`-free imported models still need their long axis checked
+  (the wall-top air conditioners hung off both edges of a 0.5 m coping, the billboard's face is its thin **x** axis, and the
+  2.5 m-deep roof exits belonged on a city building at y 13, not on the perimeter wall). Engine: the shot now leaves down
+  **the line the camera is showing** (`h.yaw + M.rec.yaw.x`, `h.pitch + M.rec.pitch.x + M.kick.pitch.x`) — the recoil springs
+  move the view and the shot used to stay behind it; spread decays only while the gun is **off cooldown**, or the per-second
+  decay outruns the per-shot growth and no gun ever blooms; a bot's AWP borrows `scoped` for its shot, because `scoped` is
+  only ever set on the player and the bot was firing the 5° hip cone right after aiming to within one degree; `M.fx.step` runs
+  **above** the phase branches so a pause cannot freeze a flash in the air; bots are stopped in `endMatch` instead of running
+  on the spot through the end screen; the run clip plays **backwards when `fwdV < -0.5`**, because engaged bots retreat while
+  facing you and a forward clip on a body sliding backwards is a moonwalk; rigged soldiers never crouch (there is no crouch
+  clip, so a crouching one shrank its head sphere to 1.0 while standing up straight — an invisible helmet); `pickSpawn` treats
+  ties within a metre as ties and picks among them, or the first spawn of a match — where nobody has spawned yet, so every
+  candidate scores the same — always handed the player `SPAWNS[0]`; **Esc arms the leave the way the button does** (it used to
+  forfeit on the second press within 1.5 s, and `pauseGame()` stamps `escT`, so the tap that opened the pause card started the
+  clock); the portrait card hides the pause card **after** the pause/resume branch, not before, or the two stack; and
+  `#pc-desk` now makes its own stacking context, because MirrorOS window z-indexes climb forever and eventually painted over
+  the match at `#ps`'s 50. **Do not leave a `//` comment mid-line in this codebase** — a scripted edit did it twice and
+  swallowed the rest of two statements, once silently (the `MAT` literal lost four materials and `disposeMats()` threw inside
+  `close()`, leaving the shooter holding the keyboard with its window gone).
 
 Not done yet: Pitty Striker multiplayer (the WebRTC wire exists), more Overwork jobs, spectating a full room, a host-side speed
 check on self-reported positions.

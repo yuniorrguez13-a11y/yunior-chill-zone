@@ -169,10 +169,10 @@ function window_(x, y, z, w, h, fx, fz, lit) {
 }
 
 // ── the centre: a utility island where the fountain used to be. The basin collider is its kerb.
-D('torus', 'stone', 0, 0.6, 0, { r: 1.5, r2: 0.13, n: 8 });
+D('torus', 'stone', 0, 0.6, 0, { r: 1.5, r2: 0.13, n: 8, rot: [Math.PI / 2, 0, 0] });   // a TorusGeometry lies in the XY plane: without this it is a 3 m hoop standing on edge in the middle of the arena
 D('cyl', 'water', 0, 0.61, 0, { r: 1.15, h: 0.02, n: 24 });                       // standing water, never drains
 D('cyl', 'metal', 0, 1.2, 0, { r: 0.11, r2: 0.14, h: 1.2, n: 8 });                // standpipe
-D('torus', 'metal', 0, 1.72, 0, { r: 0.26, r2: 0.03, n: 10 });                    // the cage around the lamp
+D('torus', 'metal', 0, 1.86, 0, { r: 0.26, r2: 0.03, n: 10, rot: [Math.PI / 2, 0, 0] });   // the cage around the lamp, flat and centred on the bulb
 D('sphere', 'glow', 0, 1.86, 0, { r: 0.13 });
 LI(0, 1.86, 0, '#ffb347', 1.5, 9);
 D('cyl', 'stone', 0, 0.63, 1.05, { r: 0.34, h: 0.04, n: 12 });                    // a manhole in the island
@@ -219,7 +219,7 @@ for (const s of [-1, 1]) {
   bin(s * 19.6, L, -8.6, 0.22, 0.56);
   D('box', 'palmLeaf', s * 11.85, L + 1.32, 4.5, { w: 1.02, h: 0.26, d: 2.2 });                           // the planter's shrub
   D('box', 'pot', s * 11.85, L + 1.22, 4.5, { w: 1.28, h: 0.1, d: 2.48 });                                // its coping
-  for (let k = 0; k < 3; k++) D('box', 'woodDark', s * 17.6, L + 2.46 + k * 0.14, -3.2, { w: 1.1, h: 0.1, d: 0.9 });   // pallets on the balcony
+  for (let k = 0; k < 3; k++) D('box', 'woodDark', s * 17.6, L + 2.46 + k * 0.14, -0.9, { w: 1.1, h: 0.1, d: 0.9 });   // pallets ON the balcony: its deck is only z -1.5..1.5
 }
 
 // ── the walls stop being blank: lit windows, air conditioners, a fire ladder, roller shutters
@@ -243,12 +243,14 @@ export const LIGHTS = LIGHT_LIST;
 /* ── signs: few, generic. Painted letters on the lane walls, a wordless board over the stall ── */
 export const SIGNS = [
   // callouts, sprayed on the lane walls the way a real map labels its sites
-  { id: 'laneA', text: 'A', x: -15.5, y: 3.0, z: 7.78, w: 1.3, h: 1.3, face: '+z', ink: '#d8d3c2', bg: 'none' },
-  { id: 'laneB', text: 'B', x: 15.5, y: 3.0, z: -7.78, w: 1.3, h: 1.3, face: '-z', ink: '#d8d3c2', bg: 'none' },
-  { id: 'noPark', text: 'NO PARKING', x: -10, y: 2.6, z: 7.78, w: 2.6, h: 0.5, face: '+z', ink: '#9aa2ab', bg: 'none' },
-  { id: 'exit', text: 'FIRE EXIT', x: -19.95, y: 2.4, z: -9.4, w: 1.9, h: 0.42, face: '+x', ink: '#8fd6a0', bg: 'none' },
-  { id: 'bay', text: 'LOADING BAY', x: 8, y: 2.4, z: -7.78, w: 2.6, h: 0.46, face: '-z', ink: '#9aa2ab', bg: 'none' },
-  { id: 'keep', text: 'KEEP CLEAR', x: -5.5, y: 2.6, z: 7.24, w: 2.2, h: 0.42, face: '-z', ink: '#c8ccd2', bg: 'none' },
+  // every quad here must be 4:1 — that is the shape of an atlas cell, and labelQuad applies no aspect
+  // correction, so a square one stretches its glyph to four times its height
+  { id: 'laneA', text: 'A', x: -15.5, y: 3.0, z: 7.78, w: 2.6, h: 0.65, face: '+z', ink: '#d8d3c2', bg: 'none' },
+  { id: 'laneB', text: 'B', x: 15.5, y: 3.0, z: -7.78, w: 2.6, h: 0.65, face: '-z', ink: '#d8d3c2', bg: 'none' },
+  { id: 'noPark', text: 'NO PARKING', x: -12.6, y: 2.6, z: 7.78, w: 2.6, h: 0.65, face: '+z', ink: '#9aa2ab', bg: 'none' },
+  { id: 'exit', text: 'FIRE EXIT', x: -19.95, y: 2.4, z: -9.4, w: 1.9, h: 0.48, face: '+x', ink: '#8fd6a0', bg: 'none' },
+  { id: 'bay', text: 'LOADING BAY', x: 12, y: 2.4, z: -7.78, w: 2.6, h: 0.65, face: '-z', ink: '#9aa2ab', bg: 'none' },
+  { id: 'keep', text: 'KEEP CLEAR', x: -5.5, y: 2.6, z: 7.24, w: 2.2, h: 0.55, face: '-z', ink: '#c8ccd2', bg: 'none' },
 ];
 
 /* ── ground paint (metres, on the 44 × 32 sand canvas). Only the courtyard floor is visible — the terraces cover the rest —
@@ -311,7 +313,9 @@ const BLOCKS = ['block-red', 'block-plain-r', 'block-green', 'block-plain-g', 'b
 // is the same every match — people learn a map by its landmarks.
 let bi = 0;
 for (const x of [-34, -25, -16, -7, 2, 11, 20, 29]) { C(BLOCKS[bi++ % 7], x, 23.5, Math.PI, { lit: bi % 3 === 0 }); C(BLOCKS[bi++ % 7], x, -23.5, 0, { lit: bi % 4 === 0 }); }
-for (const z of [-27, -18, -9, 0, 9, 18, 27]) { C(BLOCKS[bi++ % 7], -32.5, z, Math.PI / 2, { lit: bi % 3 === 1 }); C(BLOCKS[bi++ % 7], 32.5, z, -Math.PI / 2, { lit: bi % 5 === 0 }); }
+// |z| <= 16 keeps every east/west building clear of the north/south rows: turned a quarter turn a
+// block is 9 m along z, and the NS terraces occupy |z| 21..26
+for (const z of [-16, -8, 0, 8, 16]) { C(BLOCKS[bi++ % 7], -32.5, z, Math.PI / 2, { lit: bi % 3 === 1 }); C(BLOCKS[bi++ % 7], 32.5, z, -Math.PI / 2, { lit: bi % 5 === 0 }); }
 // the street between the wall and the buildings: parked cars, a bus stop, lights, trees, bins
 C('car', -14, 17.6, 0.02); C('suv', 2, 17.6, Math.PI + 0.03); C('police', 16, 17.8, 0.0);
 C('van', -6, -17.6, Math.PI); C('car', 12, -17.8, 0.04); C('suv', -19, -17.6, 0.0);
@@ -324,10 +328,10 @@ for (const [x, z] of [[-29, 8], [-29, -8], [29, 10], [29, -4], [-16, 20], [8, -2
 C('dumpster', -23.5, -10, Math.PI / 2); C('dumpster', 23.5, 6, -Math.PI / 2);
 C('cone', -21.8, 16.2, 0.3); C('cone', -21.2, 15.6, 1.1);
 // on top of the perimeter walls, where nobody can reach but everybody can see
-for (const [x, z, ry] of [[-13, 14.25, Math.PI], [6, 14.25, Math.PI], [-4, -14.25, 0], [15, -14.25, 0]]) C('ac', x, z, ry, { y: 5.0 });
-C('roof-exit', -8, 14.0, Math.PI, { y: 5.0 }); C('roof-exit', 10, -14.0, 0, { y: 5.0 });
-C('ac', -20.25, 6, Math.PI / 2, { y: 5.0 }); C('ac', 20.25, -3, -Math.PI / 2, { y: 5.0 });
-C('billboard', -17, 15.6, Math.PI, { y: 5.2 }); C('billboard', 18, -15.6, 0, { y: 5.2 });
+for (const [x, z, ry] of [[-13, 14.25, -Math.PI / 2], [6, 14.25, Math.PI / 2], [-4, -14.25, -Math.PI / 2], [15, -14.25, Math.PI / 2]]) C('ac', x, z, ry, { y: 5.0 });
+C('ac', -20.25, 6, 0, { y: 5.0 }); C('ac', 20.25, -3, Math.PI, { y: 5.0 });   // long axis along the wall: across it they hang off both edges of a 0.5 m coping
+C('billboard', -17, 15.6, -Math.PI / 2, { y: 5.2 }); C('billboard', 18, -15.6, Math.PI / 2, { y: 5.2 });   // this model's face is its thin x axis, not z
+C('roof-exit', -25, 23.5, Math.PI, { y: 13 }); C('roof-exit', 20, -23.5, 0, { y: 13 });   // 2.5 m deep: they belong on a building, not on a 0.5 m wall
 C('power-box', -20.25, -12, Math.PI / 2, { y: 5.0 }); C('power-box', 20.25, 12, -Math.PI / 2, { y: 5.0 });
 C('fire-escape', -19.95, -3.5, Math.PI / 2, { y: 2.2 }); C('fire-escape', 19.95, 9.5, -Math.PI / 2, { y: 2.2 });
 // Flat on the floor, so a bullet and a boot both ignore them. Two drain covers and one scrap of litter,
