@@ -2981,7 +2981,7 @@ const striker = {
     if (strikerReal) return strikerReal.open(W);
     W.body.innerHTML = '<p style="padding:14px;color:#123">loading pitty_striker.exe…</p>';
     strikerLoading = strikerLoading || import('./ow-striker.js').then(m => { strikerReal = m.createStriker(strikerApi); return strikerReal; });
-    strikerLoading.then(s => { if (W.el.isConnected) s.open(W); })
+    strikerLoading.then(s => { if (W.el.isConnected && world.pcOpen) s.open(W); else if (W.close) W.close(); })   // the pc can be closed while the module downloads; do not mount into a hidden desktop
       .catch(err => { console.warn('[pitty]', err); strikerLoading = null; W.body.innerHTML = '<div style="padding:14px;color:#123"><b>pitty_striker.exe has stopped working.</b><br><span style="color:#667">it did not load this time. it is on the list.</span></div>'; });
   },
   close() { if (strikerReal) strikerReal.close(); },

@@ -850,9 +850,29 @@ modules for box/van/depot/deliver/shift/coworker/hr before adding copy — `scra
   early-returns in keydown; `escapeKey()` asks `striker.escape()` first; `closePC()` closes the shooter too). The shooter gets
   `strikerApi`: frame, save/persist/salt, cash/addCash (the casino's `bank`), name, isTouch, cfg, `audio` (ctx, master,
   `loadBuffer`, piano), `musicDuck` (halves + muffles the piano for the match), toast, onActive, ycz scores, debug.
+- **The guns are the owner's models** (`art/overwork/guns/{knife,glock,ar,ak,awp}.glb`, five picked out of an "Ultimate Guns
+  Pack" he supplied — licence pending his confirmation, see the LICENSE.txt beside them). They carry no textures but every
+  surface is a *named material* (Wood, DarkWood, Metal, DarkMetal, LightMetal, Black, Grey, Green, Main/MainDark/MainLight,
+  Glass), so `GUN_ROLE` maps each name to a role and a skin repaints them — base, a darker shade of base, wood/accent, metal,
+  glass — instead of painting a texture. `prepGunModel()` bakes each file once into game space: merge by material, then
+  rotate (**the pack points its barrel along +x with +y up; the game wants +z forward**), scale to the length the primitive
+  model had, and translate so the grip sits at the origin (`WEAPONS[id].glb = {file, len, grip:[alongLength, fromBottom]}` —
+  the grip fractions were measured from the primitive models, don't eyeball them). Clones after that are free: geometry is
+  shared, only materials are per-instance. **The primitive gun models are still in the data and still build** — if a `.glb`
+  fails to load, `buildGun` falls back to `buildGunPrims`, so the shooter never depends on the download. One consequence:
+  the models are one piece, so there is no separate magazine to drop — the reload spring tips the whole gun instead
+  (`vm.gun.model`).
 - **Sound stays inside the rule:** every shot is layers of the six recordings (a high crack + a low body; the AWP is `ko.wav`
   past its swell), the knife is `whoosh` + `hit1`, ticks/reveals/countdown/end use the piano cues (`count`, `start`, `kill`,
   `streak`, `win`/`lose`/`ding`). Nothing synthesized.
+- **Springs, not sines, for the bots too:** the aim wander used to be two sine waves on `M.time` and the post-kill strafe a
+  square wave — both are now springs kicked in `think()` (`errX`/`errY`) and a sign that flips on a per-bot timer. Fixed with
+  them, from the review: bots kept **spawn protection while shooting** (firing now drops it for everyone, and a bot that
+  walks 1.5 m off its spawn loses it like the player does), dying mid-reload left the gun hanging low for the rest of the
+  life (`mountViewmodel` resets `magT`), the end screen inherited the death grey and the ducked sound bus, `close()` blanked
+  the MirrorOS window instead of closing it (the taskbar kept a blank maximised one), and the lazy import could mount into a
+  PC that had already been closed. Map palette: **the ground is deliberately much darker than the walls** — at the same tan
+  the arena read as one flat mass.
 - **Save:** `save.ps` (v2) — owned case skins, scrap, cases opened, equipped per weapon, loadout, difficulty, bots, cfg,
   lifetime stats — validated on load by `validatePS`; its own `sig` (FNV-1a over sorted owned + scrap + salt) is independent of
   the cash signature, so a tampered inventory resets to stock without touching the drawer. Cases cost $80; duplicates give

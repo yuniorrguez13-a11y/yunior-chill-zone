@@ -16,7 +16,9 @@ const L = LANE_Y;
 
 /* ── materials (hex strings; nothing red — #e10600 is UI only) ── */
 export const MATS = {
-  sand: '#d9c69b', sandstone: '#d8c39a', sandstoneDark: '#b39a6b', stone: '#8a7a5a',
+  // the ground is deliberately a good deal darker than the walls: with both at the same tan the arena read as one flat mass and
+  // you could not see where a wall ended and the floor began
+  sand: '#b79c6f', sandstone: '#dcc79f', sandstoneDark: '#a3854f', stone: '#7d6f52',
   wood: '#a9773f', woodDark: '#7a5528', awning: '#e0762a', awning2: '#f2e6cc',
   palmTrunk: '#8a6a48', palmLeaf: '#4a8a3a', water: '#6fb8d8', barrel: '#5a6b4a', ammo: '#556b2f',
   pot: '#b5664a', metal: '#8b8f9c', skyLo: '#e8d6b0', skyHi: '#7fb8e8',
@@ -237,6 +239,8 @@ const HALF_PI = Math.PI / 2;
 const P = (kind, part, x, y, z, o) => Object.assign({ kind, part, x, y, z }, o || {});
 export const WEAPONS = {
   knife: {
+    // the owner's model: barrel along +x in the file, fitted to the length and grip anchor the primitive model used
+    glb: { file: 'knife.glb', len: 0.33, grip: [0.18, 0.4] },
     id: 'knife', name: 'knife', slot: 3,
     melee: { slash: { dmg: 40, time: 0.45 }, stab: { dmg: 65, time: 1.0 }, reach: 1.6, arcDeg: 45, backstabDeg: 60, speedBonus: 0.25 },
     dmg: 40, headMul: 1, rpm: 133, auto: false, mag: 0, reserve: 0,
@@ -254,6 +258,8 @@ export const WEAPONS = {
     ],
   },
   glock: {
+    // the owner's model: barrel along +x in the file, fitted to the length and grip anchor the primitive model used
+    glb: { file: 'glock.glb', len: 0.22, grip: [0.27, 0.5] },
     id: 'glock', name: 'Glock', slot: 2, dmg: 30, headMul: 3.5, rpm: 400, auto: false, mag: 20, reserve: 120,
     spread: { base: 0.55, perShot: 0.55, max: 3.0, decay: 8 }, falloff: { from: 30, mul: 0.8 },
     reload: { total: 2.2, magOut: 0.5, magIn: 1.5, bolt: 1.9 },
@@ -272,6 +278,8 @@ export const WEAPONS = {
     ],
   },
   ar: {
+    // the owner's model: barrel along +x in the file, fitted to the length and grip anchor the primitive model used
+    glb: { file: 'ar.glb', len: 0.83, grip: [0.34, 0.52] },
     id: 'ar', name: 'AR', slot: 1, dmg: 33, headMul: 4, rpm: 666, auto: true, mag: 30, reserve: 90,
     spread: { base: 0.35, perShot: 0.28, max: 3.0, decay: 6 }, falloff: { from: 30, mul: 0.85 },
     reload: { total: 3.1, magOut: 0.7, magIn: 2.1, bolt: 2.7 },
@@ -295,6 +303,8 @@ export const WEAPONS = {
     ],
   },
   ak: {
+    // the owner's model: barrel along +x in the file, fitted to the length and grip anchor the primitive model used
+    glb: { file: 'ak.glb', len: 0.95, grip: [0.39, 0.59] },
     id: 'ak', name: 'AK-47', slot: 1, dmg: 36, headMul: 4, rpm: 600, auto: true, mag: 30, reserve: 90,
     spread: { base: 0.45, perShot: 0.36, max: 3.6, decay: 5 }, falloff: { from: 25, mul: 0.85 },
     reload: { total: 2.5, magOut: 0.6, magIn: 1.7, bolt: 2.2 },
@@ -319,6 +329,8 @@ export const WEAPONS = {
     ],
   },
   awp: {
+    // the owner's model: barrel along +x in the file, fitted to the length and grip anchor the primitive model used
+    glb: { file: 'awp.glb', len: 1.14, grip: [0.31, 0.33] },
     id: 'awp', name: 'AWP', slot: 1, dmg: 115, headMul: 4, rpm: 41, auto: false, mag: 5, reserve: 30, bolt: 1.45,
     spread: { base: 5.0, perShot: 0, max: 5.0, decay: 0 }, falloff: { from: 999, mul: 1 },
     reload: { total: 3.7, magOut: 0.8, magIn: 2.6, bolt: 3.3 },

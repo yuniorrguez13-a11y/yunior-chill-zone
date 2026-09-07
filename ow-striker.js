@@ -10,6 +10,7 @@
 
 import * as THREE from './vendor/three.module.min.js';
 import { mergeGeometries, mergeVertices } from './vendor/BufferGeometryUtils.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
 import * as D from './ow-striker-data.js';
 
 /* the data module, read defensively: a missing export degrades to something empty instead of a link error */
@@ -59,7 +60,7 @@ const CSS = `
 #ps-launcher .wm{font-family:'CF Sketch','Patrick Hand',cursive;font-size:36px;line-height:1;color:#e10600;text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 18px rgba(225,6,0,.35);letter-spacing:.02em;}
 #ps-launcher .ver{color:#9a9aa3;font-size:12px;} #ps-launcher .cash{margin-left:auto;font-weight:600;color:#9be08a;font-size:15px;}
 #ps-launcher .main{flex:1;display:flex;min-height:0;}
-#ps-launcher nav{width:128px;flex:none;display:flex;flex-direction:column;padding:8px 0;border-right:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.18);}
+#ps-launcher nav{width:128px;flex:none;display:flex;flex-direction:column;padding:8px 0;overflow-y:auto;border-right:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.18);}
 #ps-launcher nav button{font:inherit;font-size:15px;text-align:left;padding:8px 16px;color:#c9c8c4;background:none;border:0;border-left:3px solid transparent;cursor:pointer;}
 #ps-launcher nav button:hover{background:rgba(255,255,255,.06);color:#fff;}
 #ps-launcher nav button.on{color:#fff;border-left-color:#e10600;background:linear-gradient(90deg,rgba(225,6,0,.28),rgba(225,6,0,0));}
@@ -123,8 +124,8 @@ const CSS = `
 #ps .tb{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;font-family:'CF Sketch','Patrick Hand',cursive;font-size:1.4em;line-height:1;color:var(--pen);background:var(--paper);border:2.5px solid var(--pen);border-radius:255px 15px 225px 15px / 15px 225px 15px 255px;box-shadow:3px 3px 0 var(--pen);touch-action:none;opacity:.92;width:var(--s,4em);height:var(--s,4em);}
 #ps .tb.down,#ps .tb.on{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--pen);background:var(--hi);}
 #ps .tb.fire{background:var(--red);color:#fff;--s:6em;right:1.4em;bottom:1.4em;font-size:1.5em;} #ps .tb.fire.down{background:#a00400;}
-#ps .tb.jump{--s:4.3em;right:8em;bottom:1.2em;} #ps .tb.reload{--s:4em;right:8.4em;bottom:6.4em;} #ps .tb.reload.dim{opacity:.5;} #ps .tb.ads{--s:4em;right:2.2em;bottom:8.6em;} #ps .tb.swap{--s:3.7em;right:13.2em;bottom:4em;} #ps .tb.crouch{--s:3.7em;left:1.2em;top:8em;}
-#ps .tb.score{width:4.6em;height:2.7em;left:1em;top:4.4em;font-size:1.15em;} #ps .tb.menu{width:4.3em;height:2.7em;right:1em;top:4.4em;font-size:1.15em;}
+#ps .tb.jump{--s:4.3em;right:8em;bottom:1.2em;} #ps .tb.reload{--s:4em;right:8.4em;bottom:6.4em;} #ps .tb.reload.dim{opacity:.5;} #ps .tb.ads{--s:4em;right:2.2em;bottom:8.8em;} #ps .tb.swap{--s:3.7em;right:13.2em;bottom:4em;} #ps .tb.crouch{--s:3.7em;right:13.6em;bottom:9.2em;}
+#ps .tb.score{width:4.6em;height:2.6em;left:1em;top:1em;font-size:1.15em;} #ps .tb.menu{width:4.3em;height:2.6em;right:1em;top:1em;font-size:1.15em;}
 #ps.has-touch #ps-am{right:50%;transform:translateX(50%);text-align:center;bottom:8px;} #ps.has-touch #ps-am .rl{margin:4px auto 0;} #ps.has-touch #ps-hp{bottom:8px;} #ps.has-touch #ps-feed{max-width:44%;}
 `;
 
@@ -207,7 +208,72 @@ function primGeo(p) {
 /* ── guns: primitives from WEAPONS[id].model, merged by material. moving parts (slide, mag, bolt) stay their own meshes so
    the reload and the recoil can spring them. `low` builds the one-mesh copy the bots carry ── */
 const METAL_PARTS = { slide: 1, bolt: 1, scope: 1, barrel: 1, sight: 1, guard: 1 };
+
+/* ── the guns are the owner's models (art/overwork/guns/*.glb) ────────────────────────────────
+   They carry no textures, but every surface is a named material — Wood, DarkWood, Metal, DarkMetal,
+   LightMetal, Black, Grey, Green, Main/MainDark/MainLight, Glass — so a skin repaints them by role
+   instead of by texture. The pack points a barrel along +x with +y up; the game wants +z forward and
+   the grip at the origin (that is where the primitive models put it), so each model is baked once
+   into game space and every clone after that is free. If a model fails to load the primitive gun
+   below still builds, so the shooter never depends on the download. ── */
+const GUN_ROLE = { Wood: 'wood', DarkWood: 'wood2', Green: 'wood', Main: 'body', Metal: 'body', Grey: 'body2', MainDark: 'dark', DarkMetal: 'dark', Black: 'dark', Black2: 'dark', LightMetal: 'metal', LightMetal2: 'metal', MainLight: 'metal', Glass: 'glass' };
+const GUN_MODELS = {}; let gunLoad = null;
+function loadGunModels() {
+  if (gunLoad) return gunLoad;
+  const L = new GLTFLoader();
+  gunLoad = Promise.all(Object.keys(WEAPONS).map(id => {
+    const spec = WEAPONS[id] && WEAPONS[id].glb; if (!spec || !spec.file) return null;
+    return L.loadAsync('art/overwork/guns/' + spec.file).then(g => { const m = prepGunModel(g.scene, spec); if (m) GUN_MODELS[id] = m; }).catch(() => {});
+  }).filter(Boolean));
+  return gunLoad;
+}
+function prepGunModel(scene, spec) {
+  scene.updateMatrixWorld(true);
+  const byMat = new Map();
+  scene.traverse(o => {
+    if (!o.isMesh || !o.geometry) return;
+    const g = o.geometry.clone(); g.applyMatrix4(o.matrixWorld);                                    // bake the node transforms; the pack scales its meshes by 100
+    const n = (o.material && o.material.name) || 'Main';
+    if (!byMat.has(n)) byMat.set(n, []); byMat.get(n).push(g);
+  });
+  const parts = []; for (const [name, list] of byMat) { const geo = mergeAll(list); if (geo) parts.push({ name, geo }); }
+  if (!parts.length) return null;
+  const box = new THREE.Box3(); for (const p of parts) { p.geo.computeBoundingBox(); box.union(p.geo.boundingBox); }
+  const size = box.getSize(new THREE.Vector3()), grip = spec.grip || [0.34, 0.5];
+  const s = (spec.len || 0.6) / Math.max(1e-6, size.x);                                             // the file's length runs along x
+  const anchor = new THREE.Vector3(box.min.x + size.x * grip[0], box.min.y + size.y * grip[1], (box.min.z + box.max.z) / 2);
+  const m = new THREE.Matrix4().makeRotationY(-Math.PI / 2)                                          // barrel +x → +z
+    .multiply(new THREE.Matrix4().makeScale(s, s, s))
+    .multiply(new THREE.Matrix4().makeTranslation(-anchor.x, -anchor.y, -anchor.z));
+  for (const p of parts) p.geo.applyMatrix4(m);
+  return { parts, low: null };
+}
+const mixHex = (hex, amt) => {                                                                       // amt < 0 darkens, > 0 lightens; keeps the hue so a skin still reads
+  const n = hexNum(hex), f = amt < 0 ? 1 + amt : 1 - amt, add = amt > 0 ? 255 * amt : 0;
+  const ch = i => clamp(Math.round((((n >> i) & 255) * f) + add), 0, 255);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+};
+function buildGunModel(id, skin, low) {
+  const P = GUN_MODELS[id]; if (!P) return null;
+  const MM = mats(), look = (skin && skin.look) || {}, group = new THREE.Group();
+  const out = { group, slide: null, mag: null, bolt: null, mats: [], geos: [], model: true };        // one mesh per material: no separate slide or mag, so the reload springs the whole gun
+  if (low) { if (!P.low) P.low = mergeAll(P.parts.map(p => p.geo.clone())); if (P.low) group.add(new THREE.Mesh(P.low, MM.botGun)); return out; }
+  const base = look.base || '#4a4d55', metal = look.metal || '#8b8f9c', accent = look.accent || '#a9773f';
+  const C = { body: hexNum(base), body2: mixHex(base, -0.12), dark: mixHex(base, -0.5), wood: hexNum(accent), wood2: mixHex(accent, -0.25), metal: hexNum(metal), glass: 0x1d2233 };
+  for (const p of P.parts) {
+    const role = GUN_ROLE[p.name] || 'body';
+    const m = new THREE.MeshToonMaterial(Object.assign({ color: C[role] != null ? C[role] : C.body, gradientMap: MM.ramp },
+      role === 'glass' ? { transparent: true, opacity: 0.85 } : null,
+      look.emissive && (role === 'body' || role === 'metal') ? { emissive: hexNum(look.emissive), emissiveIntensity: 0.3 } : null));
+    out.mats.push(m); group.add(new THREE.Mesh(p.geo, m));
+  }
+  return out;
+}
 function buildGun(id, skin, low) {
+  const fromModel = buildGunModel(id, skin, low); if (fromModel) return fromModel;
+  return buildGunPrims(id, skin, low);
+}
+function buildGunPrims(id, skin, low) {
   const M = mats(), W = WEAPONS[id] || { model: [] }, look = (skin && skin.look) || {}, group = new THREE.Group(), out = { group, slide: null, mag: null, bolt: null, mats: [], geos: [] };
   if (low) { const geo = mergeAll((W.model || []).map(primGeo)); if (geo) { group.add(new THREE.Mesh(geo, M.botGun)); out.geos.push(geo); } return out; }
   const skinMat = new THREE.MeshToonMaterial({ map: skinTexture(skin || stockSkin(id)), gradientMap: M.ramp, emissive: look.emissive ? hexNum(look.emissive) : 0, emissiveIntensity: look.emissive ? 0.35 : 0 });
@@ -553,7 +619,8 @@ export function createStriker(api) {
   function shoot(h) {
     const W = wep(h), s = gunOf(h), R = W.recoil || {};
     s.mag--; s.shots++; s.cd = W.bolt ? W.bolt : 60 / (W.rpm || 600); if (W.bolt) h.boltSfx = 0.25;
-    if (h.isPlayer) { PS.stats.shots++; M.mShots++; if (h.prot > 0) h.prot = 0; }
+    if (h.prot > 0) h.prot = 0;                                                                                     // firing gives up spawn protection — bots too, or they shoot you from inside it
+    if (h.isPlayer) { PS.stats.shots++; M.mShots++; }
     if (h.sprint) { h.sprint = false; h.sprintBlock = 0.12; }
     const sp = h.scoped && W.scope ? (W.scope.spread || 0.05) : (W.spread ? W.spread.base : 0.5) + s.spread;
     if (W.spread) s.spread = Math.min(Math.max(0, W.spread.max - W.spread.base), s.spread + (W.spread.perShot || 0));
@@ -610,7 +677,8 @@ export function createStriker(api) {
     const W = WEAPONS.knife || {}, s = h.guns.knife; if (!s || s.cd > 0 || h.switching || h.melee || h.cur !== 'knife' || h.dead || M.phase !== 'play') return;
     const mm = (W.melee && W.melee[kind]) || (kind === 'stab' ? { dmg: 65, time: 1.0 } : { dmg: 40, time: 0.45 }); s.cd = mm.time; h.melee = { kind, t: mm.time * 0.3, dmg: mm.dmg };
     psfx((W.sfx && W.sfx.swing) || 'knife_swing', h.isPlayer ? {} : { pos: h.pos });
-    if (h.isPlayer) { M.vm.rot.x.v -= kind === 'stab' ? 5 : 7; M.vm.pos.z.v -= kind === 'stab' ? 4 : 2.5; M.vm.pos.x.v -= kind === 'stab' ? 0 : 1.2; M.vm.pos.y.v -= 1; if (h.prot > 0) h.prot = 0; }
+    if (h.prot > 0) h.prot = 0;
+    if (h.isPlayer) { M.vm.rot.x.v -= kind === 'stab' ? 5 : 7; M.vm.pos.z.v -= kind === 'stab' ? 4 : 2.5; M.vm.pos.x.v -= kind === 'stab' ? 0 : 1.2; M.vm.pos.y.v -= 1; }
   }
   function meleeImpact(h, m) {
     const W = WEAPONS.knife || {}, ml = W.melee || {}, reach = ml.reach || 1.6, half = (ml.arcDeg || 45) * DEG / 2, eye = eyeOf(h); let best = null, bd = 1e9;
@@ -732,7 +800,9 @@ export function createStriker(api) {
       this.hp = 100; this.dead = false; this.deadT = 0; this.prot = 0; this.regenT = 0; this.kills = 0; this.deaths = 0; this.streak = 0; this.bestStreak = 0; this.wk = {}; this.red = 0; this.killedBy = null; this.lastHit = null;
       this.state = 'wander'; this.target = null; this.seen = new THREE.Vector3(); this.aimPos = new THREE.Vector3(); this.seenT = -9; this.lostT = 9; this.tTracked = 0; this.noticeT = 0; this.huntT = 0; this.holdT = 0; this.strafeT = 0; this.burst = 0; this.burstLen = 5; this.gap = 0; this.headIntent = false; this.jumpWant = 0;
       this.path = null; this.pathI = 0; this.thinkT = 0.1 * idx / 8; this.stuckT = 0; this.stuckN = 0; this.stuckPos = new THREE.Vector3(); this.unsticks = 0; this.moved = 0; this.wantMove = false; this.stepDist = 0; this.swingSign = 1; this.pvx = 0; this.pvz = 0;
-      this.ph = [M.rng() * TAU, M.rng() * TAU, M.rng() * TAU, M.rng() * TAU]; this.tiltT = 0; this.rootT = 0; this.sinkT = 0; this.nameRed = false;
+      // the hand wanders on two springs kicked by every decision, not on a clock — a sine wave would be the one keyframed thing in the game
+      this.errX = spring(9, 2.6); this.errY = spring(9, 2.6); this.holdSign = M.rng() < 0.5 ? -1 : 1; this.holdFlip = 0;
+      this.tiltT = 0; this.rootT = 0; this.sinkT = 0; this.nameRed = false;
       giveLoadout(this, this.drawWeapon());
       const F = figGeo(), MM = mats(), hood = this.mat = MM.clay(this.color), g = this.g = new THREE.Group(); M.scene.add(g);
       const body = this.body = new THREE.Group(); g.add(body);
@@ -772,7 +842,7 @@ export function createStriker(api) {
       psfx('botDie', { pos: this.pos }); if (M.rng() < 0.25) botChat(this.name, pick(LA('botDie', ['lag', 'nice shot', 'how', 'wall hacks', 'my mouse slipped', 'afk sorry'])));
     }
     respawnNow() {
-      const sp = pickSpawn(this); this.pos.copy(sp); this.vel.set(0, 0, 0); this.yaw = Math.atan2(sp.x, sp.z); this.pitch = 0; this.hp = 100; this.dead = false; this.prot = 1; this.regenT = 0; this.onGround = true; this.streak = 0;
+      const sp = pickSpawn(this); this.pos.copy(sp); (this.spawnAt || (this.spawnAt = new THREE.Vector3())).copy(sp); this.vel.set(0, 0, 0); this.yaw = Math.atan2(sp.x, sp.z); this.pitch = 0; this.hp = 100; this.dead = false; this.prot = 1; this.regenT = 0; this.onGround = true; this.streak = 0;
       this.tilt.k = 80; this.tilt.d = 9; this.tilt.x = 0; this.tilt.v = 0; this.tiltT = 0; this.rootT = 0; this.rootY.x = 0; this.rootY.v = 0; this.scaleS.x = 0; this.scaleS.v = 4;
       giveLoadout(this, this.drawWeapon()); this.onSwitch(); this.state = 'wander'; this.path = null; this.target = null; this.lostT = 9; this.stuckN = 0; this.stuckPos.copy(this.pos);
     }
@@ -828,6 +898,7 @@ export function createStriker(api) {
       if (bestT && (!this.target || !vis.includes(this.target))) { if (!(this.state === 'wander' && M.rng() < K.ignore)) this.target = bestT; }
       const tv = !!this.target && vis.includes(this.target);
       if (tv) { this.seen.copy(this.target.pos); this.aimPos.copy(this.target.pos); this.seenT = M.time; this.tTracked += 0.1; this.lostT = 0; } else { this.lostT += 0.1; if (this.lostT > 0.4) this.tTracked = 0; }
+      this.errX.v += (M.rng() - 0.5) * 26; this.errY.v += (M.rng() - 0.5) * 20;                                        // one nudge per decision: the hand drifts and settles, never on a loop
       if (!W.melee && !s.reload && s.mag < (W.mag || 30) * 0.3 && s.reserve > 0) { const ok = M.diff === 'easy' || (M.diff === 'normal' ? (M.rng() < 0.6 || !vis.length) : !vis.length); if (ok) startReload(this); }
       if (s.mag <= 0 && s.reserve <= 0 && !s.reload) { const other = this.cur === 'glock' ? this.primary : 'glock', so = this.guns[other]; if (so.mag > 0 || so.reserve > 0) switchTo(this, other); else if (this.state !== 'resupply') { this.state = 'resupply'; this.path = null; } }
       else if (this.cur === 'glock' && (this.guns[this.primary].mag > 0 || this.guns[this.primary].reserve > 0) && !vis.length && !this.switching) switchTo(this, this.primary);
@@ -853,10 +924,11 @@ export function createStriker(api) {
     }
     simulate(dt) {
       if (this.dead) { this.deadT -= dt; if (this.deadT <= 0) this.respawnNow(); return; }
-      this.prot -= dt; this.red -= dt; this.regenT -= dt; if (this.regenT <= 0 && this.hp < 100) this.hp = Math.min(100, this.hp + 30 * dt);
+      this.prot -= dt; if (this.prot > 0 && this.spawnAt && Math.hypot(this.pos.x - this.spawnAt.x, this.pos.z - this.spawnAt.z) > 1.5) this.prot = 0;
+      this.red -= dt; this.regenT -= dt; if (this.regenT <= 0 && this.hp < 100) this.hp = Math.min(100, this.hp + 30 * dt);
       this.thinkT -= dt; if (this.thinkT <= 0) { this.thinkT += 0.1; this.think(); }
       let mx = 0, mz = 0; this.wantMove = false;
-      if (this.holdT > 0) { this.holdT -= dt; const s = Math.sin(M.time * 5) > 0 ? 1 : -1, sn = Math.sin(this.yaw), cs = Math.cos(this.yaw); mx = cs * s * 0.6; mz = -sn * s * 0.6; this.wantMove = true; }
+      if (this.holdT > 0) { this.holdT -= dt; this.holdFlip -= dt; if (this.holdFlip <= 0) { this.holdFlip = 0.3 + M.rng() * 0.35; this.holdSign = -this.holdSign; } const s = this.holdSign, sn = Math.sin(this.yaw), cs = Math.cos(this.yaw); mx = cs * s * 0.6; mz = -sn * s * 0.6; this.wantMove = true; }
       else if (this.path && this.pathI < this.path.length) {
         const n = M.nav.nodes[this.path[this.pathI]], dx = n.x - this.pos.x, dz = n.z - this.pos.z, d = Math.hypot(dx, dz), edge = this.pathI > 0 ? M.nav.edge(this.path[this.pathI - 1], this.path[this.pathI]) : null, kind = edge ? edge.kind : 'walk';
         if (d < 0.6 && (Math.abs(n.y - this.pos.y) < 0.8 || kind === 'drop')) this.pathI++;
@@ -877,11 +949,12 @@ export function createStriker(api) {
       stepGuns(this, dt); if (this.state === 'resupply') pickups(this);
     }
     aim(dt) {
+      springTo(this.errX, 0, dt); springTo(this.errY, 0, dt);
       const K = diffK(), W = wep(this); let wantYaw, wantPitch = 0, canFire = false;
       const engaged = (this.state === 'engage' || this.state === 'notice' || this.state === 'retreat') && this.target && !this.target.dead && this.lostT < 0.4;
       if (engaged) {
-        const tg = this.target, e = K.e0 * Math.max(0.25, 1 - this.tTracked / K.T), t = M.time;
-        const ex = e * (0.6 * Math.sin(1.3 * t + this.ph[0]) + 0.4 * Math.sin(2.7 * t + this.ph[1])), ey = e * (0.6 * Math.sin(1.3 * t + this.ph[2]) + 0.4 * Math.sin(2.7 * t + this.ph[3]));
+        const tg = this.target, e = K.e0 * Math.max(0.25, 1 - this.tTracked / K.T);
+        const ex = e * this.errX.x, ey = e * this.errY.x;                                                              // the springs are kicked in think(); they settle towards the target between kicks
         const ap = this.aimPos, ay = ap.y + (this.headIntent ? (tg.crouch ? 1.0 : 1.55) : (tg.crouch ? 0.7 : 1.0)), dx = ap.x - this.pos.x, dy = ay - (this.pos.y + 1.6), dz = ap.z - this.pos.z;   // where the target was at the last decision: decisions run at 10 Hz, so movers get missed
         wantYaw = Math.atan2(-dx, -dz) + ex * DEG; wantPitch = Math.atan2(dy, Math.hypot(dx, dz)) + ey * DEG; canFire = this.state === 'engage';
       } else if (this.wantMove && Math.hypot(this.vel.x, this.vel.z) > 0.5) wantYaw = Math.atan2(-this.vel.x, -this.vel.z);
@@ -937,7 +1010,8 @@ export function createStriker(api) {
 <div class="touch"><div id="ps-stick"><i></i></div><div class="tb fire" data-b="fire">fire</div><div class="tb jump" data-b="jump">jump</div><div class="tb reload" data-b="reload">reload</div><div class="tb ads" data-b="ads">scope</div><div class="tb swap" data-b="swap">swap</div><div class="tb crouch" data-b="crouch">crouch</div><div class="tb score" data-b="score">score</div><div class="tb menu" data-b="menu">menu</div></div>`;
   const KEYMAP = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r', Space: 'jump', ShiftLeft: 'sprint', ShiftRight: 'sprint', ControlLeft: 'crouch', ControlRight: 'crouch', KeyC: 'crouch', KeyR: 'reload', Tab: 'score' };
   const typing = e => { const t = e.target; return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); };
-  function clearInput() { if (!M) return; const I = M.input; for (const k in I) I[k] = 0; M.crouchLatch = false; }
+  function clearInput() { if (!M) return; const I = M.input; for (const k in I) I[k] = 0; M.crouchLatch = false;
+    if (M.el) M.el.querySelectorAll('.tb.on, .tb.down').forEach(e => e.classList.remove('on', 'down')); }   // a paused or blurred game must not leave a button looking held
   function onKeyDown(e) {
     if (!active || typing(e)) return;
     if (e.code === 'Escape') { if (M || win) { escape(); e.preventDefault(); } return; }
@@ -1006,7 +1080,7 @@ export function createStriker(api) {
     if (!PS.seenTutorial) { PS.seenTutorial = true; if (isTouch) PS.seenTouch = true; api.persist(); }
     M.lastT = performance.now(); M.raf = requestAnimationFrame(loop);
   }
-  function resizeMatch() { if (!M) return; const f = api.frame(), w = Math.max(2, f.clientWidth), h = Math.max(2, f.clientHeight); M.renderer.setSize(w, h, false); M.camera.aspect = w / h; M.camera.updateProjectionMatrix(); M.frameH = h; const por = isTouch && h > w; if (por !== M.portrait) { M.portrait = por; M.hud.portrait.classList.toggle('on', por); if (por && (M.phase === 'count' || M.phase === 'play') && !M.paused) { pauseGame(); M.portraitPaused = true; } else if (!por && M.portraitPaused) { M.portraitPaused = false; resumeGame(); } } }
+  function resizeMatch() { if (!M) return; const f = api.frame(), w = Math.max(2, f.clientWidth), h = Math.max(2, f.clientHeight); M.renderer.setSize(w, h, false); M.camera.aspect = w / h; M.camera.updateProjectionMatrix(); M.frameH = h; const por = isTouch && h > w; if (por !== M.portrait) { M.portrait = por; M.hud.portrait.classList.toggle('on', por); M.hud.pause.classList.toggle('on', M.paused && !por); if (por && (M.phase === 'count' || M.phase === 'play') && !M.paused) { pauseGame(); M.portraitPaused = true; } else if (!por && M.portraitPaused) { M.portraitPaused = false; resumeGame(); } } }
   function requestLock() { const cv = M.cv; try { const p = cv.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => { try { cv.requestPointerLock(); } catch (e) {} }); } catch (e) { try { cv.requestPointerLock(); } catch (_) {} } }
   function unmountMatch() {
     if (!M) return; const m = M; M = null;
@@ -1017,7 +1091,7 @@ export function createStriker(api) {
     for (const b of m.bots) b.dispose(); disposeGun(m.vm.gun); m.world.dispose(); disposeFig();
     m.renderer.dispose(); try { m.renderer.forceContextLoss(); } catch (e) {} m.el.remove(); sound.listener = null; duck(false); api.musicDuck(false);
   }
-  function mountViewmodel() { if (!M) return; disposeGun(M.vm.gun); M.vm.gun = buildGun(M.P.cur, equipped(M.P.cur)); M.vm.root.add(M.vm.gun.group); M.magS.x = 0; M.magS.v = 0; M.slideS.x = 0; M.boltS.x = 0; }
+  function mountViewmodel() { if (!M) return; disposeGun(M.vm.gun); M.vm.gun = buildGun(M.P.cur, equipped(M.P.cur)); M.vm.root.add(M.vm.gun.group); M.magT = 0; M.magS.x = 0; M.magS.v = 0; M.slideS.x = 0; M.boltS.x = 0; }
   function look(dx, dy, mul) {
     const P = M.P; if (!P || P.dead || M.phase === 'end') return; const W = wep(P);
     let k = (PS.cfg.sens || 10) / 10 * 0.0022 * mul; if (P.scoped && W.scope) k *= W.scope.sensMul || 0.35; if (M.friction) k *= 0.6;
@@ -1082,7 +1156,7 @@ export function createStriker(api) {
     const P = M.P, vm = M.vm, sprinting = P.sprint && !P.dead;
     springTo(M.rec.pitch, 0, dt); springTo(M.rec.yaw, 0, dt); springTo(M.kick.pitch, 0, dt); springTo(M.kick.roll, 0, dt); springTo(M.bob, 0, dt);
     springTo(M.eyeS, P.crouch ? 1.05 : 1.6, dt); springTo(M.fov, M.fovT, dt); springTo(M.slump, M.slumpT, dt); springTo(M.roll, M.rollT, dt); springTo(M.vigS, 0, dt); springTo(M.hpWob, 0, dt); springTo(M.hpShow, P.hp, dt); springTo(M.hm, 1, dt);
-    const tx = vm.tgt.x + (sprinting ? 0.06 : 0) + (P.switching ? 0 : 0), ty = vm.tgt.y + (P.switching || P.dead || M.phase === 'end' || M.phase === 'count' ? -0.5 : 0) + (sprinting ? -0.04 : 0), tz = vm.tgt.z + (sprinting ? 0.04 : 0);
+    const tx = vm.tgt.x + (sprinting ? 0.06 : 0), ty = vm.tgt.y + (P.switching || P.dead || M.phase === 'end' || M.phase === 'count' ? -0.5 : 0) + (sprinting ? -0.04 : 0), tz = vm.tgt.z + (sprinting ? 0.04 : 0);
     vm.nudgeT -= dt; if (vm.nudgeT <= 0) { vm.nudgeT = 1.2; vm.rot.x.v += (M.rng() - 0.5) * 0.04; vm.rot.z.v += (M.rng() - 0.5) * 0.04; vm.pos.x.v += (M.rng() - 0.5) * 0.02; vm.pos.y.v += (M.rng() - 0.5) * 0.02; }
     springTo(vm.pos.x, tx, dt); springTo(vm.pos.y, ty, dt); springTo(vm.pos.z, tz, dt); springTo(vm.rot.x, 0, dt); springTo(vm.rot.y, 0, dt); springTo(vm.rot.z, 0, dt);
     springTo(M.magS, M.magT, dt); springTo(M.slideS, P.guns.glock && P.guns.glock.lock && P.cur === 'glock' ? -0.03 : 0, dt); springTo(M.boltS, 0, dt);
@@ -1096,7 +1170,11 @@ export function createStriker(api) {
     cam.rotation.set(P.pitch + M.rec.pitch.x + M.kick.pitch.x + (P.dead ? 0.26 : 0), P.yaw + M.rec.yaw.x, M.roll.x + M.kick.roll.x, 'YXZ');
     if (Math.abs(cam.fov - M.fov.x) > 0.05) { cam.fov = M.fov.x; cam.updateProjectionMatrix(); }
     vm.root.position.set(0.2 + vm.pos.x.x, -0.2 + vm.pos.y.x, -0.45 + vm.pos.z.x); vm.root.rotation.set(vm.rot.x.x, Math.PI + vm.rot.y.x, vm.rot.z.x);
-    if (vm.gun) { if (vm.gun.mag) vm.gun.mag.position.y = M.magS.x; if (vm.gun.slide) vm.gun.slide.position.z = M.slideS.x; if (vm.gun.bolt) vm.gun.bolt.position.z = M.boltS.x * 0.03; }
+    if (vm.gun) {
+      if (vm.gun.mag) vm.gun.mag.position.y = M.magS.x; if (vm.gun.slide) vm.gun.slide.position.z = M.slideS.x; if (vm.gun.bolt) vm.gun.bolt.position.z = M.boltS.x * 0.03;
+      // the owner's models are one piece: no magazine to drop, so the reload spring tips the whole gun instead of a part
+      if (vm.gun.model) { vm.gun.group.position.y = M.magS.x * 0.55; vm.gun.group.rotation.z = M.magS.x * 1.3; vm.gun.group.position.z = M.slideS.x * 0.6; }
+    }
     if (sound.listener) sound.listener.yaw = P.yaw;
     updateHud(dt);
     M.renderer.render(M.scene, cam);
@@ -1128,12 +1206,12 @@ export function createStriker(api) {
   function feedLine(text, cls) { if (!M) return; const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = text; M.hud.feed.appendChild(d); const s = spring(120, 12); s.x = 40; M.feedEls.push({ el: d, t: 5, s }); while (M.feedEls.length > 6) M.feedEls.shift().el.remove(); }
   const standings = () => M.all.slice().sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
   function tableHtml(final) {
-    const rows = standings().map((p, i) => `<tr class="${p.isPlayer ? 'me' : ''}"><td>${i + 1}</td><td>${esc(p.name)}</td><td class="r">${p.kills}</td><td class="r">${p.deaths}</td><td class="r">${(p.kills / Math.max(1, p.deaths)).toFixed(2)}</td><td class="r">${p.bestStreak}</td><td>${esc(weaponName(p.isPlayer ? p.primary : p.primary))}</td></tr>`).join('');
+    const rows = standings().map((p, i) => `<tr class="${p.isPlayer ? 'me' : ''}"><td>${i + 1}</td><td>${esc(p.name)}</td><td class="r">${p.kills}</td><td class="r">${p.deaths}</td><td class="r">${(p.kills / Math.max(1, p.deaths)).toFixed(2)}</td><td class="r">${p.bestStreak}</td><td>${esc(weaponName(p.isPlayer ? p.cur : p.primary))}</td></tr>`).join('');
     const c = k => esc(L('hud.cols.' + k, k));
     return `<table><tr><th>#</th><th>${c('name')}</th><th class="r">${c('kills')}</th><th class="r">${c('deaths')}</th><th class="r">${c('kd')}</th><th class="r">${c('streak')}</th><th>${c('weapon')}</th></tr>${rows}</table>`;
   }
   function endMatch() {
-    if (!M || M.phase === 'end') return; M.phase = 'end'; M.endT = 0; M.endShown = false; M.vm.tgt.y = -0.5; M.hud.xh.classList.add('off'); M.hud.scope.classList.remove('on'); M.hud.death.classList.remove('on'); M.hud.board.classList.remove('on'); M.P.scoped = false; M.fovT = PS.cfg.fov || 80; clearInput();
+    if (!M || M.phase === 'end') return; M.phase = 'end'; M.el.classList.remove('dead'); duck(false); M.vm.root.visible = true; M.endT = 0; M.endShown = false; M.vm.tgt.y = -0.5; M.hud.xh.classList.add('off'); M.hud.scope.classList.remove('on'); M.hud.death.classList.remove('on'); M.hud.board.classList.remove('on'); M.P.scoped = false; M.fovT = PS.cfg.fov || 80; clearInput();
     psfx('endWhistle'); if (M.locked) { try { document.exitPointerLock(); } catch (e) {} }
     const st = standings(); M.place = st.indexOf(M.P) + 1; const place = M.place, n = st.length;
     setTimeout(() => { if (!M || M.phase !== 'end') return; psfx(place === 1 ? 'endWin' : place === n ? 'endLose' : 'endMid'); }, 800);
@@ -1189,7 +1267,7 @@ export function createStriker(api) {
   function startPreview(cv, wid, skin) {
     stopPreview(); if (!cv) return;
     try {
-      const w = cv.clientWidth || 260, h = cv.clientHeight || 150, r = new THREE.WebGLRenderer({ canvas: cv, antialias: !isTouch, alpha: true }); r.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); r.setSize(w, h, false);
+      const w = cv.clientWidth || 260, h = cv.clientHeight || 150, r = new THREE.WebGLRenderer({ canvas: cv, antialias: !isTouch, alpha: true }); r.setPixelRatio(Math.min(devicePixelRatio || 1, isTouch ? 1 : 1.5)); r.setSize(w, h, false);
       const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, w / h, 0.01, 20); cam.position.set(0, 0.16, 1.15); cam.lookAt(0, 0, 0);
       sc.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.1)); const dl = new THREE.DirectionalLight(0xfff1d6, 1.6); dl.position.set(2, 3, 2); sc.add(dl);
       const gun = buildGun(wid, skin), pivot = new THREE.Group(); sc.add(pivot); pivot.add(gun.group);
@@ -1208,10 +1286,11 @@ export function createStriker(api) {
 
   /* ── cases: one case, bought with cash; a reel that lands on the rolled skin; duplicates become scrap, eight scrap is a case ── */
   const theCase = () => CASES.pitty || Object.values(CASES)[0] || { id: 'pitty', name: 'pitty case', price: 80, odds: {}, scrapPerCase: 8 };
+  function paintCash() { if (!launcher) return; const a = launcher.querySelector('.cash'), b = launcher.querySelector('#ps-cases-cash'); const t = '$' + api.cash(); if (a) a.textContent = t; if (b) b.textContent = t; }
   function paintCases(pane) {
     const C = theCase(), LP = 'launcher.cases.', per = C.scrapPerCase || 8, odds = C.odds || {};
     pane.innerHTML = `<h2>${esc(L(LP + 'title', 'cases'))}</h2>
-      <div class="panel"><div class="row" style="justify-content:space-between"><b style="font-size:16px">${esc(C.name || 'pitty case')}</b><b style="color:#9be08a">${esc(fmt(L(LP + 'cash', '${n}'), { n: '$' + api.cash() }))}</b></div>
+      <div class="panel"><div class="row" style="justify-content:space-between"><b style="font-size:16px">${esc(C.name || 'pitty case')}</b><b style="color:#9be08a" id="ps-cases-cash">${esc(fmt(L(LP + 'cash', '${n}'), { n: '$' + api.cash() }))}</b></div>
         <table><tr>${Object.keys(odds).map(r => `<th style="color:${rarColor(r)}">${esc((RARITY[r] && RARITY[r].label) || r)}</th>`).join('')}</tr><tr>${Object.keys(odds).map(r => `<td>${Math.round(odds[r] * 100)}%</td>`).join('')}</tr></table>
         <div class="row"><button class="pc-btn go pbig" id="ps-open">${esc(fmt(L(LP + 'open', 'open · ${p}'), { p: '$' + C.price }))}</button><span class="mut" id="ps-scrap">${esc(fmt(L(LP + 'scrap', 'scrap {n}/8'), { n: PS.scrap | 0 }))}</span><button class="pc-btn" id="ps-recycle" ${(PS.scrap | 0) >= per ? '' : 'disabled'}>${esc(L(LP + 'recycle', 'recycle'))}</button><span class="mut" id="ps-casemsg"></span></div></div>
       <div class="creel" id="ps-reel" style="display:none"><div class="mk"></div><div class="strip"></div></div><div id="ps-result"></div>
@@ -1230,7 +1309,7 @@ export function createStriker(api) {
   }
   function openCaseUI(free) {
     if (REEL && !REEL.done) return; const res = doOpenCase(free, null); if (!res) return; psfx('uiClick');
-    launcher.querySelector('.cash').textContent = '$' + api.cash(); const pane = launcher.querySelector('.pane'); pane.querySelector('#ps-open').disabled = true; pane.querySelector('#ps-recycle').disabled = true;
+    paintCash(); const pane = launcher.querySelector('.pane'); pane.querySelector('#ps-open').disabled = true; pane.querySelector('#ps-recycle').disabled = true;
     const el = pane.querySelector('#ps-reel'), strip = el.querySelector('.strip'); el.style.display = ''; el.classList.remove('land');
     const N = 40, WIN = 33, PITCH = 102, rare = ['common', 'uncommon', 'rare', 'legendary', 'knife'], cards = [];
     const filler = () => { const r = Math.random(), rar = r < 0.55 ? rare[0] : r < 0.8 ? rare[1] : r < 0.93 ? rare[2] : r < 0.99 ? rare[3] : rare[4], pool = SKINS.filter(s => s.rarity === rar); return pool.length ? pick(pool) : (SKINS[Math.floor(Math.random() * SKINS.length)] || res.skinObj); };
@@ -1306,6 +1385,7 @@ export function createStriker(api) {
     if (active && win === W) { if (!M && !launcher) paintLauncher(); return; }
     if (active) close();
     ensureStyle(); win = W; active = true; api.onActive(true); loadPS(); PS.launches = (PS.launches | 0) + 1; api.persist();
+    loadGunModels().then(() => { if (!active) return; if (M) mountViewmodel(); if (launcher && tab === 'play') paintTab(); });   // the models arrive while you read the menu
     addEventListener('keydown', onKeyDown); addEventListener('keyup', onKeyUp); addEventListener('blur', onBlur); document.addEventListener('visibilitychange', onVis);
     W.body.style.padding = '0'; W.body.style.overflow = 'hidden'; W.body.style.position = 'relative';
     if (PS.launches === 1) {                                                                                     // the first launch crashes. it is kidding. once
@@ -1318,10 +1398,11 @@ export function createStriker(api) {
     if (!active) return;
     if (M) { if (M.phase === 'play' || M.phase === 'count') finishStats(false); unmountMatch(); }
     stopPreview(); REEL = null; if (uiRaf) { cancelAnimationFrame(uiRaf); uiRaf = 0; }
-    if (launcher) { launcher.remove(); launcher = null; } if (win && win.body) win.body.innerHTML = '';
+    if (launcher) { launcher.remove(); launcher = null; }
     removeEventListener('keydown', onKeyDown); removeEventListener('keyup', onKeyUp); removeEventListener('blur', onBlur); document.removeEventListener('visibilitychange', onVis);
     disposeFig(); disposeMats(); if (PS) api.persist();
-    active = false; win = null; api.musicDuck(false); api.onActive(false);
+    const W = win; active = false; win = null; api.musicDuck(false); api.onActive(false);
+    if (W) { if (W.body) W.body.innerHTML = ''; if (W.close) W.close(); }                                    // re-entrant: the window's onclose calls back in and returns at !active
   }
   function quit() { api.toast(L('closedToast', 'pitty_striker.exe closed. properly. for once.')); const W = win; if (W && W.close) W.close(); else close(); }
   function escape() {

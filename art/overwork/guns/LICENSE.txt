@@ -1,0 +1,21 @@
+Weapon models used by Pitty Striker (overwork.html / ow-striker.js).
+
+Source: the "Ultimate Guns Pack" (glb), supplied by the site owner in
+September 2026. Five models were kept out of the pack and renamed for the
+game:
+
+  knife.glb  <- Bayonet.glb
+  glock.glb  <- Pistol-J3i9KDQ3kt.glb
+  ar.glb     <- Assault Rifle-Bgvuu4CUMV.glb
+  ak.glb     <- Assault Rifle.glb
+  awp.glb    <- Sniper Rifle-TKaBjAEofL.glb
+
+Nothing else was changed: no geometry was edited and no texture was added.
+The game recolours the models' existing named materials (Wood, Metal,
+DarkMetal, LightMetal, Black, Grey, Green, Main...) to show skins, and never
+paints a brand name or logo onto them.
+
+The pack shipped without a licence file. The owner supplied it and has been
+asked to confirm that its licence allows use in this game; if it does not,
+these five files come out and the code falls back to the primitive gun
+models it still carries.
