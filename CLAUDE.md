@@ -64,7 +64,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `ycz-denarii.js` | Shared Denarii client: `YCZDenarii.plural(n)`, the live **coin pill** (`mount(sb,{into,onOpen})`, `setUser(user)`), a realtime subscription to the user's own `denarii_ledger` rows that bumps the pill, floats a `+N` and toasts the reason, `on('award'|'wallet')`, `reasonLabel()`, and `NAME_COLORS` (the id → hex whitelist for bought name colours). Loaded by `index.html`, `fight.html`, `video.html`, `qmages.html`; injects its own CSS. |
 | `denarii.html` | The public guide to **Denarii**, the site currency: where it lives, the plural rule, how you earn, streaks, the leaderboard, the catalog, troubleshooting, FAQ. Static, no scripts (its CSP has `script-src 'none'`). Linked from the Treasury, the settings row and the landing card. |
 | `overwork.html` | **Overwork**, the delivery game (Sep 2026): 3D, Three.js from `vendor/`, hand-rolled physics, clay characters, an apartment with a PC, a casino, host-authoritative multiplayer. See its own section below. |
-| `ow-net.js` | Overwork's wire: signalling over Supabase realtime broadcast (or a `BroadcastChannel` with `?signal=local` for two tabs on one machine) and one WebRTC connection per peer with two data channels (`rel` ordered for events, `fast` lossy for snapshots). Knows nothing about the game. |
+| `ow-net.js` | The wire, shared by Overwork **and** Pitty Striker: signalling over Supabase realtime broadcast (or a `BroadcastChannel` with `?signal=local` for two tabs on one machine) and one WebRTC connection per peer with two data channels (`rel` ordered for events, `fast` lossy for snapshots). `ns` picks the channel prefix — `ow:` for the delivery game, `ps:` for the shooter, so the two never share a room list. Knows nothing about either game. |
 | `ow-os.js` | **MirrorOS**, the operating system on the PC in the courier's apartment: a 2009-glass-look desktop (own name, own icons, no trademarks) with draggable windows, taskbar, start orb, and the apps: Overwork Online (host/join/rooms/chat), Lucky Loaf Casino (slots + 21 + roulette, the flat edition of the real tables — same state objects, handed over in `api.games`), notes, locker shortcut, a Pitty Striker shortcut that crashes on purpose, a recycle bin. Takes an `api` object from the game; touches only its own DOM. **All of its CSS is scoped under `#s-pc`** — a bare `.card` rule in here once shrank the game's work-order card to a playing card. Desktop icons open on a single click. |
 | `ow-piano.js` | **The piano** (Sep 2026). Every musical sound in Overwork: a sampled grand piano (18 notes every third semitone A1–C6, `art/overwork/piano/`, CC BY 3.0 via tonejs-instruments, ~1 MB), a generative lo-fi background tune that is never the same twice, and the *cues* the game used to synthesise (delivery, la peace, mystery box, dog, horn) played like a silent-film accompanist. Felt lowpass + small-room convolution + limiter. `createPiano(ac, base)` → `load()`, `cue(name)`, `music.start/stop/pause`, `setVolume`, `setMuffled`, `until(t)` (also drives an `OfflineAudioContext` render in the harness). **No oscillators anywhere in Overwork** — owner's rule, see the sound section below. |
 | `ow-striker.js` · `ow-striker-data.js` | **Pitty Striker** (Sep 2026), the shooter on the apartment PC — the courier's *own* game, nothing about the job inside it (owner's correction, see its section). `ow-striker.js` is the machine (launcher in the MirrorOS window, loot-case reel, inventory, stats, settings, the match: own WebGLRenderer inside `#pc-frame`, cylinder-vs-AABB solver, five real-world guns, spring-driven viewmodels, bots with a state machine on a node graph, DOM HUD, pointer lock, touch layer, foley routing). `ow-striker-data.js` is pure data: the "sandstone" map table (rows = geometry AND colliders — the name is historical, it is a sunny city block now), the deco and its `LIGHTS`, nodes and edge hints, WEAPONS, SKINS + CASES + RARITY, BOTS, DIFF, every line of copy (LINES), the sound table (SFX), the `CITY`/`CITY_FIT` placement table for the buildings outside the walls, `validatePS`/`psSig`/`rollCase`. Lazy-loaded by `overwork.html` on the first click of the desktop icon. |
@@ -1048,8 +1048,48 @@ Snake's Authentic Gun Sounds packs and an Announcer Pack).**
   The Gaming Zone iframe already carried `allow="fullscreen;pointer-lock"`, so this works embedded too. `scratchpad/ps-keys.js`
   drives the real chord through CDP with a second tab open and checks the tab is still there afterwards.
 
-Not done yet: Pitty Striker multiplayer (the WebRTC wire exists), more Overwork jobs, spectating a full room, a host-side speed
-check on self-reported positions.
+**v10 — Pitty Striker online (Sep 2026; owner: "ahora añade matchmaking basico y multijugador de verdad").**
+- **`ow-net.js` grew a namespace.** `createNet({… ns})` prefixes the room and lobby channels; Overwork stays `ow:`, the
+  shooter is `ps:`. Without it a delivery shift and a deathmatch advertise into the same room list on the same Supabase
+  project. `overwork.html` hands the shooter its own instance through `strikerApi.net()` — same project, same TURN
+  credentials from the same edge function, separate lobby.
+- **Host-authoritative, the same shape as Overwork.** The host owns the clock, the phase, the bots, every spawn and
+  **every point of damage**; `applyDamage()` returns immediately on a client, so nothing a client believes about health
+  is ever true until the host says so (the harness checks exactly that). Each player simulates their own soldier and
+  reports position/velocity/yaw/pitch at 20 Hz on the lossy channel; the host broadcasts the whole roster at 15 Hz.
+- **A shot is a request.** The client draws its own muzzle flash and tracer the instant you click — anything else feels
+  dead — and sends `{w, eye, dir, lag}`. The host re-runs the hitscan and decides. The one thing it refuses to take on
+  trust is the **rate of fire** (`s.cd > 0.004` and the shot is dropped) and the **eye position** (more than 3.5 m from
+  the body it is tracking and the eye is replaced with the real one).
+- **Lag compensation is real, not a comment.** Every combatant keeps 800 ms of positions (`pushHist`, 20 Hz); `rewound()`
+  interpolates everyone but the shooter back to `M.time - lag` for the duration of one hitscan and puts them back in a
+  `finally`. `lag` is half a measured round trip (a `ping`/`pong` every second, smoothed) and is **clamped to 400 ms** —
+  a client cannot buy itself a second of rewind by lying.
+- **Matches are always live; there is no lobby to wait in.** You join one in progress and spawn straight in, taking a
+  bot's slot (the weakest bot, by kills). When you leave the bot does not come back. On a site this size, waiting for
+  four people is how a mode dies before anyone plays it. The launcher's **online** tab is the whole matchmaker: quick
+  play (drops you into the busiest room, opens one if there is none), a live room list off the `ps:lobby` presence
+  channel, host, and join-by-code.
+- **One class does every figure.** A remote player and a bot seen from a client are both a `Bot` with `wire` set:
+  `netStep()` instead of `simulate()` — dead reckoning between packets, a pull toward the host's last word, a snap only
+  past 3 m, and extrapolation that **stops after 600 ms** so a peer that went quiet does not walk off through a wall.
+  `human` only decides whether it types in chat and whether "reconnected" is printed when the nav graph loses it. That
+  reuse is why remote players got the soldier model, the hit shapes, the name-tag line-of-sight gate and the death
+  animation for free.
+- **Two sources of truth for one death.** The kill event (reliable, ordered) and the snapshot (lossy) both carry it, and
+  either can land first — so `die()` is idempotent (`this.dying`, cleared on respawn). Spawns are events too: the host
+  picks the point and tells the owner, because a client that respawned itself would be a teleport.
+- **Known limit, deliberate:** the host does not re-run collision for a remote player, so positions stay self-reported —
+  same as Overwork. Money and inventory are untouched by matches, so the worst a cheat buys is a bad game for seven
+  people, and the fix (a host-side speed/solid check) is on the list.
+- **Testing:** `scratchpad/ps-mp.js` drives a host and a joiner as two tabs in one browser over `?signal=local` and
+  checks the fifteen things that separate real multiplayer from two people watching separate games — the room appears in
+  the other tab, quick play joins it instead of opening a rival, both rosters agree, figures move on both screens, the
+  host sees you walk, **a shot fired on one machine takes health off on the other**, a client applying damage locally
+  changes nothing anywhere, and leaving cleans up on both sides. `__test.openSpot(d)` exists because hand-picked
+  coordinates on this map put the two players behind the fountain.
+
+Not done yet: more Overwork jobs, spectating a full room, a host-side speed check on self-reported positions.
 Performance: Overwork's world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
 swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason). Pitty Striker is ~82.
 

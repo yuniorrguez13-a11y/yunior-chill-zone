@@ -612,15 +612,28 @@ export const LINES = {
   crashReal: 'pitty_striker.exe has stopped working. it does that. try again.', tryAgain: 'try again',
   streak: { 3: 'triple', 5: 'rampage', 8: 'unstoppable', 10: 'godlike' },
   firstBlood: 'first blood', ammo: 'ammo',
-  feed: { kill: '{a} killed {b}', unstick: '{n} reconnected' },
+  feed: { kill: '{a} killed {b}', unstick: '{n} reconnected', joined: '{n} connected', leftMatch: '{n} disconnected' },
+  net: {
+    hosting: 'opening a match\u2026', joining: 'knocking on {n}\u2026', noAnswer: 'nobody answered.',
+    badCode: 'five letters.', full: 'that match is full.', lost: 'lost the host.', noWire: 'this build has no wire.',
+  },
   botKill: ['gg', 'ez', '?', 'nice try', '1v1 me', 'sit', 'ok'],
   botDie: ['lag', 'nice shot', 'how', 'wall hacks', 'my mouse slipped', 'afk sorry'],
   launcher: {
     wordmark: 'PITTY STRIKER', version: 'v1.0',
-    tabs: ['play', 'cases', 'inventory', 'stats', 'settings', 'quit'],
+    tabs: ['play', 'online', 'cases', 'inventory', 'stats', 'settings', 'quit'],
     play: {
       title: 'deathmatch · sandstone', bots: 'bots', diff: 'difficulty', diffs: { easy: 'easy', normal: 'normal', hard: 'hard' },
       primary: 'primary', skin: 'skin', go: 'play', small: 'first to 20 or 5:00. glock and knife always come along.',
+    },
+    online: {
+      title: 'online \u00b7 deathmatch',
+      quick: 'quick play', quickSmall: 'drops you into the busiest match. opens one if there is none.',
+      host: 'open a match', join: 'join', full: 'full', codePh: 'code',
+      rooms: 'matches up right now', empty: 'nothing up. open one and it shows here for everybody else.',
+      person: 'person', people: 'people',
+      signed: 'signed in, so this can relay through TURN when a connection needs it.',
+      anon: 'sign in on the site for a relay when a direct connection will not form.',
     },
     cases: {
       title: 'cases', cash: '${n}', card: 'pitty case', open: 'open · ${p}', odds: 'odds', scrap: 'scrap {n}/8',

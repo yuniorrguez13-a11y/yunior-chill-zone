@@ -28,8 +28,8 @@ async function getIce(sb) {
 }
 
 /* ── signallers: same interface, two transports ── */
-function supabaseSignal(sb, code, myKey) {
-  const chan = sb.channel('ow:' + code, { config: { broadcast: { self: false } } });
+function supabaseSignal(sb, ns, code, myKey) {
+  const chan = sb.channel(ns + ':' + code, { config: { broadcast: { self: false } } });
   const s = { onmsg: null, ready: false, waiters: [] };
   chan.on('broadcast', { event: 'sig' }, ({ payload }) => { if (payload && (payload.to == null || payload.to === myKey) && payload.from !== myKey && s.onmsg) s.onmsg(payload); })
     .subscribe(st => { if (st === 'SUBSCRIBED') { s.ready = true; s.waiters.splice(0).forEach(f => f()); } if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') { s.waiters.splice(0).forEach(f => f(new Error('signalling failed'))); } });
@@ -38,8 +38,8 @@ function supabaseSignal(sb, code, myKey) {
   s.close = () => { try { sb.removeChannel(chan); } catch (e) {} };
   return s;
 }
-function localSignal(code, myKey) {
-  const bc = new BroadcastChannel('ow:' + code);
+function localSignal(ns, code, myKey) {
+  const bc = new BroadcastChannel(ns + ':' + code);
   const s = { onmsg: null, ready: true, whenReady: () => Promise.resolve() };
   bc.onmessage = e => { const p = e.data; if (p && (p.to == null || p.to === myKey) && p.from !== myKey && s.onmsg) s.onmsg(p); };
   s.send = msg => bc.postMessage(JSON.parse(JSON.stringify(msg)));     // RTCSessionDescription/RTCIceCandidate are not structured-cloneable; JSON them like the real wire does
@@ -48,22 +48,22 @@ function localSignal(code, myKey) {
 }
 
 /* ── the lobby: who is hosting right now. presence on Supabase, a chatty BroadcastChannel locally ── */
-function supabaseLobby(sb, myKey) {
+function supabaseLobby(sb, ns, myKey) {
   let chan = null, meta = null, subscribed = false; const listeners = [];
   const list = () => { if (!chan) return []; const st = chan.presenceState(); const out = []; for (const k in st) { const m = st[k][0]; if (m && m.code && k !== myKey) out.push(m); } return out; };
   return {
-    join() { if (chan) return; chan = sb.channel('ow:lobby', { config: { presence: { key: myKey } } }); chan.on('presence', { event: 'sync' }, () => listeners.forEach(f => f(list()))).subscribe(st => { if (st === 'SUBSCRIBED') { subscribed = true; if (meta) { try { chan.track(meta); } catch (e) {} } } }); },
+    join() { if (chan) return; chan = sb.channel(ns + ':lobby', { config: { presence: { key: myKey } } }); chan.on('presence', { event: 'sync' }, () => listeners.forEach(f => f(list()))).subscribe(st => { if (st === 'SUBSCRIBED') { subscribed = true; if (meta) { try { chan.track(meta); } catch (e) {} } } }); },
     track(m) { meta = m; if (chan && subscribed) { try { if (m) chan.track(m); else chan.untrack(); } catch (e) {} } },
     leave() { if (chan) { try { sb.removeChannel(chan); } catch (e) {} chan = null; subscribed = false; } },
     onChange(f) { listeners.push(f); }, list,
   };
 }
-function localLobby(myKey) {
+function localLobby(ns, myKey) {
   let bc = null, meta = null, timer = null; const rooms = new Map(), listeners = [];
   const list = () => { const now = Date.now(); for (const [k, v] of rooms) if (now - v.t > 5000) rooms.delete(k); return [...rooms.values()].map(v => v.m); };
   const announce = () => { if (bc && meta) bc.postMessage({ from: myKey, m: meta }); };
   return {
-    join() { if (bc) return; bc = new BroadcastChannel('ow:lobby'); bc.onmessage = e => { const p = e.data; if (!p || p.from === myKey) return; if (p.m) rooms.set(p.from, { t: Date.now(), m: p.m }); else rooms.delete(p.from); listeners.forEach(f => f(list())); }; timer = setInterval(() => { announce(); listeners.forEach(f => f(list())); }, 1500); },
+    join() { if (bc) return; bc = new BroadcastChannel(ns + ':lobby'); bc.onmessage = e => { const p = e.data; if (!p || p.from === myKey) return; if (p.m) rooms.set(p.from, { t: Date.now(), m: p.m }); else rooms.delete(p.from); listeners.forEach(f => f(list())); }; timer = setInterval(() => { announce(); listeners.forEach(f => f(list())); }, 1500); },
     track(m) { meta = m; if (bc) { if (m) announce(); else bc.postMessage({ from: myKey, m: null }); } },
     leave() { if (bc) { bc.postMessage({ from: myKey, m: null }); bc.close(); bc = null; } if (timer) clearInterval(timer); timer = null; },
     onChange(f) { listeners.push(f); }, list,
@@ -71,12 +71,13 @@ function localLobby(myKey) {
 }
 
 /* ── the net object the game talks to ── */
-export function createNet({ sb, local, myKey, log }) {
+export function createNet({ sb, local, myKey, log, ns }) {
   log = log || (() => {});
+  ns = ns || 'ow';                                    // the room and lobby channel prefix. Overwork is 'ow:', Pitty Striker is 'ps:' — two games on one Supabase project must not share a lobby
   const handlers = {}; const emit = (ev, ...a) => (handlers[ev] || []).forEach(f => { try { f(...a); } catch (e) { console.error('[ow-net]', ev, e); } });
   const net = {
     on: false, host: false, code: null, peers: new Map(), myKey,
-    lobby: local ? localLobby(myKey) : (sb ? supabaseLobby(sb, myKey) : null),
+    lobby: local ? localLobby(ns, myKey) : (sb ? supabaseLobby(sb, ns, myKey) : null),
     addListener(ev, f) { (handlers[ev] = handlers[ev] || []).push(f); },
   };
   let sig = null, ice = FALLBACK_ICE, joinTimer = null, nextId = 1;
@@ -132,7 +133,7 @@ export function createNet({ sb, local, myKey, log }) {
     net.on = true; net.host = asHost; net.code = code; nextId = 1;
     ice = local ? FALLBACK_ICE : await getIce(sb);
     if (!net.on) return;                                                            // left while fetching
-    sig = local ? localSignal(code, myKey) : supabaseSignal(sb, code, myKey);
+    sig = local ? localSignal(ns, code, myKey) : supabaseSignal(sb, ns, code, myKey);
     sig.onmsg = onSig;
     try { await sig.whenReady(); } catch (e) { emit('status', 'could not reach the signalling server'); net.leave(); return; }
     if (!asHost) {

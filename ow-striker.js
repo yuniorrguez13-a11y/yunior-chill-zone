@@ -68,6 +68,11 @@ const CSS = `
 #ps-launcher .pane{flex:1;overflow:auto;padding:12px 18px 16px;min-width:0;}
 #ps-launcher h2{font-size:18px;font-weight:600;margin:0 0 8px;color:#fff;} #ps-launcher .mut{color:#9a9aa3;font-size:12.5px;} #ps-launcher p{margin:0 0 8px;}
 #ps-launcher .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0;}
+#ps-launcher .rooms{display:flex;flex-direction:column;gap:6px;max-height:16em;overflow:auto;}
+#ps-launcher .room{display:flex;gap:10px;align-items:center;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(233,238,242,.12);}
+#ps-launcher .room b{min-width:8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#ps-launcher .room .mut{flex:1;font-size:.86em;}
+#ps-launcher #ps-code{background:rgba(0,0,0,.35);border:1px solid rgba(233,238,242,.22);color:var(--ink);padding:6px 8px;font:inherit;letter-spacing:.14em;}
 #ps-launcher .lbl{width:96px;color:#9a9aa3;flex:none;}
 #ps-launcher .seg{display:inline-flex;border:1px solid rgba(255,255,255,.18);border-radius:4px;overflow:hidden;}
 #ps-launcher .seg button{font:inherit;font-size:13px;padding:5px 12px;color:#ddd;background:rgba(255,255,255,.04);border:0;border-right:1px solid rgba(255,255,255,.12);cursor:pointer;} #ps-launcher .seg button:last-child{border-right:0;}
@@ -1169,18 +1174,7 @@ export function createStriker(api) {
     /* the shot you can see: a flash at the muzzle, a tracer down the line, sparks off whatever it lands on.
        The muzzle sits forward of the eye and, for the player, offset right and down so it leaves the barrel of the
        viewmodel rather than the middle of the screen. */
-    if (M.fx) {
-      // the muzzle is where this gun's barrel ends; the player's own flash is drawn at half size because it is
-      // 70 cm from the eye, and at full size it filled a quarter of the screen
-      const sn = Math.sin(h.yaw), cs = Math.cos(h.yaw), sz = (W.flash || 0.34) * (h.isPlayer ? 0.5 : 1);
-      const fwd = h.isPlayer ? ((W.glb && W.glb.len) || 0.6) * 1.08 : 0.5;                                       // just past the muzzle, or the quad clips through the barrel
-      const mx = eye.x + dir.x * fwd + (h.isPlayer ? cs * 0.13 : 0), my = eye.y + dir.y * fwd - (h.isPlayer ? 0.09 : 0), mz = eye.z + dir.z * fwd - (h.isPlayer ? sn * 0.13 : 0);
-      M.fx.muzzle(mx, my, mz, dir.x, dir.y, dir.z, sz, h.isPlayer);
-      // the tracer starts two metres out for your own gun: drawn from the muzzle it lies across the viewmodel as a
-      // white bar. Every shooter cheats this the same way — you never see the first stretch of your own tracer anyway.
-      const t = hit ? hit.t : 120, t0 = h.isPlayer ? Math.min(2.0, t * 0.5) : 0;
-      if (t - t0 > 0.2) M.fx.tracer(eye.x + dir.x * t0, eye.y + dir.y * t0, eye.z + dir.z * t0, eye.x + dir.x * t, eye.y + dir.y * t, eye.z + dir.z * t, 0.011 + sz * 0.012);
-    }
+    shotFx(h, W, eye, dir, hit ? hit.t : 120);
     if (hit && hit.body) { let dmg = W.dmg || 30; if (hit.head) dmg *= W.headMul || 2; if (W.falloff && hit.t > W.falloff.from) dmg *= W.falloff.mul; applyDamage(hit.body, dmg, h, { head: hit.head, weapon: h.cur }); if (M.fx) M.fx.spark(hit.point.x, hit.point.y, hit.point.z, -dir.x, -dir.y, -dir.z, 3); }
     else if (hit) worldImpact(hit.point, hit.col);
     if (!h.isPlayer) nearMiss(eye, dir, hit ? hit.t : 120);
@@ -1198,6 +1192,24 @@ export function createStriker(api) {
     casing(h, eye);
     heard(h);
     if (s.mag <= 0 && h.cur === 'glock') { s.lock = true; psfx('slideLock', h.isPlayer ? {} : { pos: h.pos }); }
+    // online, the flash you just drew is yours alone until somebody says so: the host announces every shot it
+    // owns, and a client sends its shot up as a request with how far behind the world it is looking
+    if (netOn()) { if (M.net.host) netFire(h, eye, dir, hit ? hit.t : 120); else if (h.isPlayer) netAsk({ t: 'shot', w: h.cur, e: [r2(eye.x), r2(eye.y), r2(eye.z)], d: [r3(dir.x), r3(dir.y), r3(dir.z)], lag: r3(M.net.lag) }); }
+  }
+  /* the shot you can see: a flash at the muzzle, a tracer down the line. Split out of shoot() because a
+     shot fired on somebody else's machine arrives as a `fire` event and has to draw exactly the same thing. */
+  function shotFx(h, W, eye, dir, t) {
+    if (!M.fx) return;
+    // the muzzle is where this gun's barrel ends; the player's own flash is drawn at half size because it is
+    // 70 cm from the eye, and at full size it filled a quarter of the screen
+    const sn = Math.sin(h.yaw), cs = Math.cos(h.yaw), sz = (W.flash || 0.34) * (h.isPlayer ? 0.5 : 1);
+    const fwd = h.isPlayer ? ((W.glb && W.glb.len) || 0.6) * 1.08 : 0.5;                                       // just past the muzzle, or the quad clips through the barrel
+    const mx = eye.x + dir.x * fwd + (h.isPlayer ? cs * 0.13 : 0), my = eye.y + dir.y * fwd - (h.isPlayer ? 0.09 : 0), mz = eye.z + dir.z * fwd - (h.isPlayer ? sn * 0.13 : 0);
+    M.fx.muzzle(mx, my, mz, dir.x, dir.y, dir.z, sz, h.isPlayer);
+    // the tracer starts two metres out for your own gun: drawn from the muzzle it lies across the viewmodel as a
+    // white bar. Every shooter cheats this the same way — you never see the first stretch of your own tracer anyway.
+    const t0 = h.isPlayer ? Math.min(2.0, t * 0.5) : 0;
+    if (t - t0 > 0.2) M.fx.tracer(eye.x + dir.x * t0, eye.y + dir.y * t0, eye.z + dir.z * t0, eye.x + dir.x * t, eye.y + dir.y * t, eye.z + dir.z * t, 0.011 + sz * 0.012);
   }
   function casing(h, eye) { const sn = Math.sin(h.yaw), cs = Math.cos(h.yaw), rx = cs, rz = -sn, x = eye.x - sn * 0.35 + rx * 0.18, z = eye.z - cs * 0.35 + rz * 0.18; M.world.casings.spawn(x, eye.y - 0.1, z, rx * 2.5 + M.rng() - 0.5, 2 + M.rng(), rz * 2.5 + M.rng() - 0.5, 1.2, floorAt(M.cols, x, z, eye.y, 0.05), 1); }
   function worldImpact(p, col) {
@@ -1219,7 +1231,7 @@ export function createStriker(api) {
     psfx('whiz', { pan: clamp((cx * Math.cos(P.yaw) - cz * Math.sin(P.yaw)) / dist, -0.8, 0.8) * -1 });
   }
   function heard(h) { const K = diffK(); const n = M.nav.nearest(h.pos); if (n) n.hot += 1; for (const b of M.bots) if (b !== h && !b.dead && b.pos.distanceTo(h.pos) <= K.hear) b.hear(h); }
-  function startReload(h) { const W = wep(h), s = gunOf(h); if (!W || W.melee || s.reload || s.mag >= (W.mag || 0) || s.reserve <= 0 || h.switching) return false; s.reload = { t: 0 }; if (h.isPlayer && h.scoped) setScope(false); return true; }
+  function startReload(h) { const W = wep(h), s = gunOf(h); if (!W || W.melee || s.reload || s.mag >= (W.mag || 0) || s.reserve <= 0 || h.switching) return false; s.reload = { t: 0 }; if (h.isPlayer && h.scoped) setScope(false); if (netOn() && h.isPlayer && !M.net.host) netAsk({ t: 'act', a: 'reload' }); return true; }
   function switchTo(h, id) {
     if (!h.guns[id] || id === h.cur || (h.switching && h.switching.to === id) || h.dead) return; const s = gunOf(h); if (s.reload) { s.reload = null; if (h.isPlayer) M.magT = 0; }
     if (h.isPlayer && h.scoped) setScope(false); h.melee = null; h.switching = { to: id, t: 0, dur: (WEAPONS[id] && WEAPONS[id].switchTime) || 0.4, done: false };
@@ -1250,6 +1262,8 @@ export function createStriker(api) {
     psfx((W.sfx && W.sfx.swing) || 'knife_swing', h.isPlayer ? {} : { pos: h.pos });
     if (h.prot > 0) h.prot = 0;
     if (h.isPlayer) { M.vm.rot.x.v -= kind === 'stab' ? 5 : 7; M.vm.pos.z.v -= kind === 'stab' ? 4 : 2.5; M.vm.pos.x.v -= kind === 'stab' ? 0 : 1.2; M.vm.pos.y.v -= 1; }
+    if (netOn() && h.isPlayer && !M.net.host) netAsk({ t: 'melee', kind, lag: r3(M.net.lag) });
+    else if (netOn() && M.net.host) netEv({ k: 'swing', nid: nidOf(h), kind }, h.peer || null);
   }
   function meleeImpact(h, m) {
     const W = WEAPONS.knife || {}, ml = W.melee || {}, reach = ml.reach || 1.6, half = (ml.arcDeg || 45) * DEG / 2, eye = eyeOf(h); let best = null, bd = 1e9;
@@ -1264,6 +1278,7 @@ export function createStriker(api) {
   }
   function applyDamage(t, dmg, from, info) {
     if (t.dead || t.prot > 0 || M.phase !== 'play') return;
+    if (!netAuth()) return;                                 // health is the host's to spend. A client only ever learns about damage.
     t.hp -= dmg; t.regenT = 4; t.lastHit = { by: from, t: M.time };
     if (from.isPlayer) { PS.stats.hits++; M.mHits++; hitMarker(!!info.head); psfx(info.head ? 'headshot' : 'hit'); }
     if (t.isPlayer) playerHurt(from, dmg); else t.onHurt(from, dmg);
@@ -1280,7 +1295,8 @@ export function createStriker(api) {
     if (!M.firstBlood) { M.firstBlood = true; if (k.isPlayer) centerToast(L('firstBlood', 'first blood')); }
     if (v.isPlayer) playerDied(k, info); else v.die(k);
     if (!k.isPlayer) k.onKill(v);
-    if (M.sudden || k.kills >= M.killCap) endMatch();
+    if (netOn() && M.net.host) netEv({ k: 'kill', a: nidOf(k), b: nidOf(v), head: !!info.head, w: info.weapon });
+    if (netAuth() && (M.sudden || k.kills >= M.killCap)) endMatch();
   }
 
   /* ── the player: a cylinder with an eye, moved by the shared solver; every camera and viewmodel motion is a spring ── */
@@ -1292,7 +1308,7 @@ export function createStriker(api) {
   }
   function stepPlayer(dt) {
     const P = M.P, I = M.input, W = wep(P);
-    if (P.dead) { P.deadT -= dt; if (P.deadT <= 0) respawn(P); return; }
+    if (P.dead) { P.deadT -= dt; if (P.deadT <= 0 && netAuth()) respawn(P); return; }
     P.prot -= dt; if (P.prot > 0 && Math.hypot(P.pos.x - P.spawnAt.x, P.pos.z - P.spawnAt.z) > 1.5) P.prot = 0;
     P.crouch = !!I.crouch; P.height = P.crouch ? 1.2 : 1.75; P.sprintBlock -= dt;
     P.sprint = !!I.sprint && !P.crouch && !P.scoped && P.sprintBlock <= 0 && I.f > 0.5; P.sprintT = clamp(P.sprintT + (P.sprint ? dt / 0.15 : -dt / 0.15), 0, 1);
@@ -1352,6 +1368,7 @@ export function createStriker(api) {
   }
   function respawn(P) {
     const sp = pickSpawn(P); P.pos.copy(sp); P.spawnAt.copy(sp); P.vel.set(0, 0, 0); P.yaw = Math.atan2(sp.x, sp.z); P.pitch = 0; P.hp = 100; P.dead = false; P.prot = 1; P.regenT = 0; P.crouch = false; P.streak = 0; P.onGround = true;
+    if (netOn() && M.net.host) netEv({ k: 'spawn', nid: M.net.id, p: [r2(sp.x), r2(sp.y), r2(sp.z)], yaw: r2(P.yaw) });
     giveLoadout(P, M.loadout); mountViewmodel();
     for (const s of [M.rec.pitch, M.rec.yaw, M.bob, M.kick.pitch, M.kick.roll, M.vm.pos.x, M.vm.pos.y, M.vm.pos.z, M.vm.rot.x, M.vm.rot.y, M.vm.rot.z, M.slump, M.roll]) { s.x = 0; s.v = 0; }
     M.slumpT = 0; M.rollT = 0; M.fov.x = PS.cfg.fov - 20; M.fovT = PS.cfg.fov; M.vm.pos.y.x = -0.5; M.vm.tgt.y = 0; M.hpShow.x = 0; M.hpShow.v = 0; M.vigS.x = 0;
@@ -1363,6 +1380,7 @@ export function createStriker(api) {
       for (const k in h.guns) { const W = WEAPONS[k]; if (W && !W.melee) h.guns[k].reserve = W.reserve || 0; }
       c.gone = 20; c.lidS.x += 0.15; psfx('crateLid', { pos: new THREE.Vector3(c.x, c.y, c.z) });
       if (h.isPlayer) { psfx('ammo'); centerToast(L('ammo', 'ammo')); }
+      else if (h.peer) NET.send(h.peer, { t: 'ev', k: 'ammo' }, false);              // a crate a person walked over refills the gun on their machine, not just the host's copy
     }
   }
   // -1.6, not -0.5: at -0.5 the top of a taken crate still poked through the floor
@@ -1373,14 +1391,17 @@ export function createStriker(api) {
   class Bot {
     constructor(spec, idx) {
       this.isPlayer = false; this.name = spec.name || ('bot' + idx); this.color = spec.color || '#4a6fa5'; this.idx = idx;
+      // `wire`: this figure is fed positions instead of making decisions — a remote player, or any bot seen
+      // from a client. `human` says there is a person behind it, which only changes whether it types in chat.
+      this.wire = !!spec.wire; this.human = !!spec.human; this.nid = spec.nid != null ? spec.nid : 100 + idx; this.peer = null; this.hist = null;
       this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3(); this.yaw = 0; this.pitch = 0; this.radius = 0.4; this.height = 1.75; this.crouch = false; this.onGround = true; this.coyote = 0;
       this.hp = 100; this.dead = false; this.deadT = 0; this.prot = 0; this.regenT = 0; this.kills = 0; this.deaths = 0; this.streak = 0; this.bestStreak = 0; this.wk = {}; this.red = 0; this.killedBy = null; this.lastHit = null;
       this.state = 'wander'; this.target = null; this.seen = new THREE.Vector3(); this.aimPos = new THREE.Vector3(); this.seenT = -9; this.lostT = 9; this.tTracked = 0; this.noticeT = 0; this.huntT = 0; this.holdT = 0; this.strafeT = 0; this.burst = 0; this.burstLen = 5; this.gap = 0; this.headIntent = false; this.jumpWant = 0;
       this.path = null; this.pathI = 0; this.thinkT = 0.1 * idx / 8; this.stuckT = 0; this.stuckN = 0; this.stuckPos = new THREE.Vector3(); this.unsticks = 0; this.moved = 0; this.wantMove = false; this.stepDist = 0; this.swingSign = 1; this.pvx = 0; this.pvz = 0;
       // the hand wanders on two springs kicked by every decision, not on a clock — a sine wave would be the one keyframed thing in the game
       this.errX = spring(9, 2.6); this.errY = spring(9, 2.6); this.holdSign = M.rng() < 0.5 ? -1 : 1; this.holdFlip = 0;
-      this.tiltT = 0; this.rootT = 0; this.sinkT = 0; this.nameRed = false;
-      giveLoadout(this, this.drawWeapon());
+      this.tiltT = 0; this.rootT = 0; this.sinkT = 0; this.nameRed = false; this.fireT = 0; this.dying = false;
+      giveLoadout(this, spec.w || this.drawWeapon());
       /* the figure is gear, not clay: a dark plate carrier over dark fatigues, a covered head, and the bot's colour used
          only as an accent (hood, sleeves, name) so twelve of them stay apart on a dark map without going pastel. */
       const F = figGeo(), MM = mats(), accent = this.mat = MM.body(this.color), gear = MM.gear, g = this.g = new THREE.Group(); M.scene.add(g);
@@ -1426,7 +1447,7 @@ export function createStriker(api) {
     }
     drawWeapon() { const w = diffK().weaponWeights || { ar: 0.45, ak: 0.3, awp: 0.25 }, r = M.rng() * ((w.ar || 0) + (w.ak || 0) + (w.awp || 0)); return r < (w.ar || 0) ? 'ar' : r < (w.ar || 0) + (w.ak || 0) ? 'ak' : 'awp'; }
     onSwitch() { disposeGun(this.gun); this.gun = buildGun(this.cur, null, true); this.gunG.add(this.gun.group); }
-    onShot() { this.headS.x.v += 1.2; this.gunKick.v += 1.5; }
+    onShot() { this.headS.x.v += 1.2; this.gunKick.v += 1.5; this.fireT = 0.7; }
     onHurt(from, dmg) {
       this.squash.v -= 4; const dx = from.pos.x - this.pos.x, dz = from.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, sn = Math.sin(this.yaw), cs = Math.cos(this.yaw);
       this.headS.x.v += (dx * sn + dz * cs) / d * 2.5; this.headS.z.v += (dx * cs - dz * sn) / d * 2.5;
@@ -1439,18 +1460,20 @@ export function createStriker(api) {
       const n = M.nav.nearest(shooter.pos); this.seen.set(n.x, n.y, n.z); this.seenT = M.time - 1;
       if (this.state === 'wander' || this.state === 'hunt') { this.state = 'hunt'; this.huntT = 5; this.target = shooter; this.pathTo(this.seen); }
     }
-    onKill(v) { this.armKick.v += 14; if (v.isPlayer) this.holdT = 0.8; if (M.rng() < 0.25) botChat(this.name, pick(LA('botKill', ['gg', 'ez', '?', 'nice try', '1v1 me', 'sit', 'ok']))); }
+    onKill(v) { this.armKick.v += 14; if (v.isPlayer) this.holdT = 0.8; if (!this.human && M.rng() < 0.25) botChat(this.name, pick(LA('botKill', ['gg', 'ez', '?', 'nice try', '1v1 me', 'sit', 'ok']))); }
     die() {
+      if (this.dying) return; this.dying = true;      // the kill event and the snapshot both say you died; whichever lands first is the one that plays it
       // no extra root drop on a soldier: the Death clip already puts him on the floor
       this.tilt.k = 30; this.tilt.d = 4; this.tiltT = (M.rng() < 0.5 ? -1 : 1) * 1.45; this.rootT = this.soldier ? 0 : -0.7;
       this.sinkT = 1.5; this.crouch = false; this.state = 'wander'; this.path = null; this.target = null; this.tTracked = 0; this.holdT = 0;
       for (let i = 0; i < 8; i++) M.world.crumbs.spawn(this.pos.x, this.pos.y + 1.0, this.pos.z, (M.rng() - 0.5) * 5, 2 + M.rng() * 3, (M.rng() - 0.5) * 5, 1.2, this.pos.y, 1);
-      psfx('botDie', { pos: this.pos }); if (M.rng() < 0.25) botChat(this.name, pick(LA('botDie', ['lag', 'nice shot', 'how', 'wall hacks', 'my mouse slipped', 'afk sorry'])));
+      psfx('botDie', { pos: this.pos }); if (!this.human && M.rng() < 0.25) botChat(this.name, pick(LA('botDie', ['lag', 'nice shot', 'how', 'wall hacks', 'my mouse slipped', 'afk sorry'])));
     }
     respawnNow() {
       const sp = pickSpawn(this); this.pos.copy(sp); (this.spawnAt || (this.spawnAt = new THREE.Vector3())).copy(sp); this.vel.set(0, 0, 0); this.yaw = Math.atan2(sp.x, sp.z); this.pitch = 0; this.hp = 100; this.dead = false; this.prot = 1; this.regenT = 0; this.onGround = true; this.streak = 0;
       this.tilt.k = 80; this.tilt.d = 9; this.tilt.x = 0; this.tilt.v = 0; this.tiltT = 0; this.rootT = 0; this.rootY.x = 0; this.rootY.v = 0; this.scaleS.x = 0; this.scaleS.v = 4;
-      giveLoadout(this, this.drawWeapon()); this.onSwitch(); this.state = 'wander'; this.path = null; this.target = null; this.lostT = 9; this.stuckN = 0; this.stuckPos.copy(this.pos);
+      this.dying = false; giveLoadout(this, this.human ? this.cur : this.drawWeapon()); this.onSwitch();
+      if (netOn() && M.net.host) netEv({ k: 'spawn', nid: this.nid, p: [r2(this.pos.x), r2(this.pos.y), r2(this.pos.z)], yaw: r2(this.yaw) }); this.state = 'wander'; this.path = null; this.target = null; this.lostT = 9; this.stuckN = 0; this.stuckPos.copy(this.pos);
     }
     canSee(o) {
       const dx = o.pos.x - this.pos.x, dz = o.pos.z - this.pos.z, d = Math.hypot(dx, dz); if (d > 40) return false;
@@ -1496,7 +1519,7 @@ export function createStriker(api) {
       const hidden = cands.filter(n => !M.nav.vis(n.i, tn.i)), far = n => Math.hypot(n.x - tn.x, n.z - tn.z), n = (hidden.length ? hidden : cands).reduce((a, b) => far(b) > far(a) ? b : a);
       this.path = [n.i]; this.pathI = 0;
     }
-    unstick() { const n = M.nav.nearest(this.pos, 9); this.pos.set(n.x, n.y + 0.05, n.z); this.vel.set(0, 0, 0); this.unsticks++; this.path = null; feedLine(fmt(L('feed.unstick', '{n} reconnected'), { n: this.name }), 'sys'); }
+    unstick() { const n = M.nav.nearest(this.pos, 9); this.pos.set(n.x, n.y + 0.05, n.z); this.vel.set(0, 0, 0); this.unsticks++; this.path = null; if (!this.human) feedLine(fmt(L('feed.unstick', '{n} reconnected'), { n: this.name }), 'sys'); }
     think() {
       const K = diffK(), P = M.P, s = gunOf(this), W = wep(this); let bestT = null, bd = 1e9; const vis = [];
       for (const o of M.all) { if (o === this || o.dead || !this.canSee(o)) continue; vis.push(o); const d = this.pos.distanceTo(o.pos) * (o.isPlayer ? 0.8 : 1); if (d < bd) { bd = d; bestT = o; } }
@@ -1529,6 +1552,23 @@ export function createStriker(api) {
       // the rigged soldier has no crouch clip, so a crouching one shrank its head sphere to 1.0 while
       // standing up straight on screen: an invisible helmet you could shoot through. He just stays up.
       this.crouch = !this.soldier && M.diff === 'hard' && !this.target && !!P && !P.dead && this.pos.distanceTo(P.pos) < 10;
+    }
+    /* the wire-driven twin of simulate(): no decisions, no solver, no gravity. Dead reckoning between
+       packets (carry the last velocity forward) and a pull towards wherever the host last said, because
+       snapping to each 15 Hz packet reads as a stutter. Only a big gap forces a snap. */
+    netStep(dt) {
+      if (this.dead) { this.deadT -= dt; if (this.deadT <= 0 && netAuth()) this.respawnNow(); this.red -= dt; return; }
+      this.prot -= dt; this.red -= dt;
+      const n = this.net; if (!n) return;
+      n.age += dt;
+      if (n.age < 0.6) n.pos.addScaledVector(n.vel, dt);                  // stop extrapolating once a peer has clearly gone quiet, or they walk off through a wall
+      const k = Math.min(1, 12 * dt);
+      if (this.pos.distanceTo(n.pos) > 3) this.pos.copy(n.pos); else this.pos.lerp(n.pos, k);
+      this.vel.copy(n.vel); this.height = this.crouch ? 1.2 : 1.75;
+      this.yaw += angleDelta(this.yaw, n.yaw) * k; this.pitch += (n.pitch - this.pitch) * k;
+      const sp = Math.hypot(this.vel.x, this.vel.z);
+      if (this.onGround && sp > 0.8) { this.stepDist += sp * dt; if (this.stepDist >= 0.7) { this.stepDist = 0; this.swingSign *= -1; this.bob.v -= 0.9; if (!this.crouch && M.P && this.pos.distanceTo(M.P.pos) < 10) psfx(this.pos.y > 0.05 ? 'stepStone' : 'step', { pos: this.pos, gain: 0.8 }); } }
+      if (netAuth()) { this.regenT -= dt; if (this.regenT <= 0 && this.hp < 100) this.hp = Math.min(100, this.hp + 30 * dt); stepGuns(this, dt); pickups(this); }
     }
     simulate(dt) {
       if (this.dead) { this.deadT -= dt; if (this.deadT <= 0) this.respawnNow(); return; }
@@ -1581,6 +1621,7 @@ export function createStriker(api) {
     }
     animate(dt) {
       const g = this.g, sn = Math.sin(this.yaw), cs = Math.cos(this.yaw);
+      if (this.fireT > 0) this.fireT -= dt;
       springTo(this.rootY, this.rootT, dt); g.position.set(this.pos.x, this.pos.y + this.rootY.x, this.pos.z); g.rotation.y = this.yaw + Math.PI;
       springTo(this.scaleS, 1, dt); springTo(this.squash, 0, dt); const sc = Math.max(0.001, this.scaleS.x), sq = this.squash.x; g.scale.set(sc * (1 - sq * 0.01), sc * (1 + sq * 0.02), sc * (1 - sq * 0.01));
       const ax = (this.vel.x - this.pvx) / dt, az = (this.vel.z - this.pvz) / dt; this.pvx = this.vel.x; this.pvz = this.vel.z;
@@ -1592,7 +1633,7 @@ export function createStriker(api) {
         const key = this.dead ? 'dead'
           : spd > 0.5 ? (melee ? 'moveKnife' : 'move')
           : melee ? 'idleKnife'
-          : (this.state === 'engage' ? 'aim' : 'idle');
+          : (this.state === 'engage' || this.fireT > 0 ? 'aim' : 'idle');
         this.playClip(key);
         // one carry-run clip covers every speed: slow it down for a walk rather than switching to a
         // second clip, which is what used to put him in the arms-swinging jog
@@ -1702,9 +1743,11 @@ export function createStriker(api) {
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, isTouch ? 1 : 1.5)); renderer.shadowMap.enabled = false;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;   // night, but a night you can play in: the lamps and the muzzle flash roll off instead of clipping to white
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(PS.cfg.fov || 80, 1, 0.03, 260); scene.add(camera);
+    if (!opts.online && NET && NET.on) NET.leave();                       // "again" from the end screen starts an offline match: do not keep advertising the old room
     const seed = opts.seed != null ? opts.seed : (Math.random() * 1e9) | 0;
     M = { el, cv, renderer, scene, camera, hud: {}, phase: 'load', paused: false, time: 0, limit: 300, killCap: 20, countT: 3, sudden: false, diff: DIFF[opts.diff] ? opts.diff : 'normal', nBots: clamp(opts.bots | 0 || 5, 3, 7), loadout: PRIMARIES.includes(opts.loadout) ? opts.loadout : 'ar', seed, rng: xorshift(seed),
-      world: null, cols: [], nav: null, P: null, bots: [], all: [], feedEls: [], input: { f: 0, b: 0, l: 0, r: 0, jump: 0, crouch: 0, sprint: 0, fire: 0, ads: 0, reload: 0, score: 0 }, locked: false, relockAt: 0, keysHeld: false, ctrlSaid: false, test: !!opts.test, mShots: 0, mHits: 0, firstBlood: false, ammoMsg: '', xhFlash: 0, arrowT: 0, arrowFrom: new THREE.Vector3(),
+      world: null, cols: [], nav: null, P: null, bots: [], all: [], feedEls: [], input: { f: 0, b: 0, l: 0, r: 0, jump: 0, crouch: 0, sprint: 0, fire: 0, ads: 0, reload: 0, score: 0 }, locked: false, relockAt: 0, keysHeld: false, ctrlSaid: false, test: !!opts.test,
+      net: Object.assign({ on: false, host: true, id: 0, code: null, acc: 0, accIn: 0, histT: 0, lag: 0 }, opts.online ? Object.assign({ on: true }, opts.online) : {}), mShots: 0, mHits: 0, firstBlood: false, ammoMsg: '', xhFlash: 0, arrowT: 0, arrowFrom: new THREE.Vector3(),
       rec: { pitch: spring(120, 12), yaw: spring(120, 12) }, kick: { pitch: spring(90, 10), roll: spring(90, 10) }, bob: spring(220, 20), eyeS: spring(120, 14), fov: spring(90, 14), fovT: PS.cfg.fov || 80, slump: spring(40, 6), slumpT: 0, roll: spring(40, 6), rollT: 0, vigS: spring(40, 8), hpWob: spring(120, 10), hpShow: spring(60, 8), hm: spring(200, 18), hmT: 0,
       vm: { root: new THREE.Group(), gun: null, pos: { x: spring(160, 16), y: spring(160, 16), z: spring(160, 16) }, rot: { x: spring(120, 14), y: spring(120, 14), z: spring(120, 14) }, tgt: { x: 0, y: -0.5, z: 0 }, nudgeT: 0 }, vmAlt: false, magS: spring(160, 14), magT: 0, slideS: spring(400, 22), boltS: spring(300, 18),
       raf: 0, lastT: 0, acc: 0, endT: 0, endShown: false, statsDone: false, place: 0, records: [], escT: 0, leaveArmed: false, stick: { id: -1, x: 0, y: 0, R: 44, full: 0 }, look: { id: -1, x: 0, y: 0, moved: 0, t0: 0 }, portrait: false, friction: false, centerT: 0, bigT: 0, boardT: 0, frameH: 800, onStone: false, tapFire: 0 };
@@ -1733,8 +1776,17 @@ export function createStriker(api) {
     H.tbs.ads.style.display = 'none';
     // people
     M.P = makePlayer(); M.all = [M.P]; respawn(M.P); M.P.prot = 0;
-    const names = BOTS.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(M.rng() * (i + 1)); [names[i], names[j]] = [names[j], names[i]]; }
-    for (let i = 0; i < M.nBots; i++) { const b = new Bot(names[i] || { name: 'bot' + (i + 1), color: '#4a6fa5' }, i); M.bots.push(b); M.all.push(b); b.respawnNow(); b.prot = 0; b.scaleS.x = 1; b.scaleS.v = 0; }
+    if (opts.join) {
+      // a joiner builds no roster of its own: every other figure in the match comes from the host's list,
+      // bots included, so the two machines can never disagree about who is even here
+      M.P.name = myName();
+      for (const r of opts.join.roster) { if (r.nid === M.net.id) continue; addWireBot(r); }
+      const p = opts.join.p; if (p) { M.P.pos.set(p[0], p[1], p[2]); M.P.spawnAt.copy(M.P.pos); M.P.yaw = Math.atan2(p[0], p[2]); }
+      M.phase = 'load'; M.time = opts.join.spec.time || 0; M.sudden = !!opts.join.spec.sudden;
+    } else {
+      const names = BOTS.slice(); for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(M.rng() * (i + 1)); [names[i], names[j]] = [names[j], names[i]]; }
+      for (let i = 0; i < M.nBots; i++) { const b = new Bot(names[i] || { name: 'bot' + (i + 1), color: '#4a6fa5' }, i); M.bots.push(b); M.all.push(b); b.respawnNow(); b.prot = 0; b.scaleS.x = 1; b.scaleS.v = 0; }
+    }
     sound.listener = { pos: M.P.pos, yaw: 0 };
     // events
     M.ro = new ResizeObserver(() => resizeMatch()); M.ro.observe(el); resizeMatch();   // el, not frame: fullscreen resizes the mount and leaves the frame alone
@@ -1743,7 +1795,7 @@ export function createStriker(api) {
     M.onMouseMove = e => { if (M && M.locked && !M.paused) look(e.movementX || 0, e.movementY || 0, 1); };
     M.onWheel = e => { if (M && M.locked && M.P && !M.P.dead) cycleWeapon(M.P, e.deltaY > 0 ? 1 : -1); };
     M.onClick = () => { if (!M || isTouch || M.phase === 'end') return; if (!M.locked && performance.now() >= M.relockAt) requestLock(); };
-    M.onLockChange = () => { if (!M) return; const locked = document.pointerLockElement === cv; M.locked = locked; if (locked) { H.prompt.classList.remove('on'); if (M.phase === 'load') beginCountdown(); else if (M.paused) resumeGame(); } else { if (M.phase === 'count' || M.phase === 'play') pauseGame(); M.relockAt = performance.now() + 1250; } };
+    M.onLockChange = () => { if (!M) return; const locked = document.pointerLockElement === cv; M.locked = locked; if (locked) { H.prompt.classList.remove('on'); if (M.phase === 'load') { if (netOn() && !M.net.host) { M.phase = 'play'; api.musicDuck(true); } else beginCountdown(); } else if (M.paused) resumeGame(); } else { if (M.phase === 'count' || M.phase === 'play') pauseGame(); M.relockAt = performance.now() + 1250; } };
     M.onLockError = () => { if (!M) return; H.prompt.querySelector('p').textContent = L('lockDenied', 'click again'); H.pause.querySelector('.pnote').textContent = L('lockDenied', 'click again'); };
     cv.addEventListener('mousedown', M.onMouseDown); addEventListener('mouseup', M.onMouseUp); addEventListener('mousemove', M.onMouseMove); cv.addEventListener('wheel', M.onWheel, { passive: true }); cv.addEventListener('click', M.onClick);
     document.addEventListener('pointerlockchange', M.onLockChange); document.addEventListener('pointerlockerror', M.onLockError); el.addEventListener('contextmenu', e => e.preventDefault());
@@ -1754,7 +1806,8 @@ export function createStriker(api) {
     H.end.querySelector('[data-a=launcher]').onclick = () => toLauncher();
     if (isTouch) bindTouch(el, cv);
     api.musicDuck(true); psfx('uiClick'); M.vm.tgt.y = -0.5;
-    if (M.test) beginCountdown(); else H.prompt.classList.add('on');
+    if (M.test) { if (netOn() && !M.net.host) { M.phase = 'play'; M.vm.tgt.y = 0; } else beginCountdown(); } else H.prompt.classList.add('on');
+    if (netOn() && M.net.host) { if (NET.lobby) NET.lobby.join(); lobbyTrack(); }
     if (!PS.seenTutorial) { PS.seenTutorial = true; if (isTouch) PS.seenTouch = true; api.persist(); }
     M.lastT = performance.now(); M.raf = requestAnimationFrame(loop);
   }
@@ -1837,28 +1890,31 @@ export function createStriker(api) {
   function resumeGame() { if (!M || !M.paused) return; if (M.portrait) return; M.paused = false; M.hud.pause.classList.remove('on'); M.leaveArmed = false; M.escT = 0; api.musicDuck(true); M.lastT = performance.now(); }
   function beginCountdown() { if (!M || M.phase !== 'load') return; M.phase = 'count'; M.countT = 3; M.hud.prompt.classList.remove('on'); centerBig(LA('countdown', ['3', '2', '1'])[0] || '3', 1.2); }
   function countTick(n) { const arr = LA('countdown', ['3', '2', '1']); if (n >= 1) { centerBig(arr[3 - n] || String(n), 1.2); if (n <= 2) psfx('count'); } }
-  function leaveMatch() { if (!M) return; finishStats(false); toLauncher(); }
+  function leaveMatch() { if (!M) return; finishStats(false); netLeave(); toLauncher(); }
   function toLauncher() { unmountMatch(); if (launcher) paintTab(); api.musicDuck(false); }
 
   /* the sim step: everything that moves, at 60 Hz */
   function simStep(dt) {
     if (!M) return;
     if (M.fx) M.fx.step(dt, M.camera);                                        // above the phase branches: a pause used to freeze a flash in the air with its light still on
-    if (M.phase === 'end') { M.endT += dt; if (!M.endShown && M.endT >= 1.2) showEnd(); for (const b of M.bots) b.animate(dt); stepCamera(dt); return; }
+    if (M.phase === 'end') { M.endT += dt; if (!M.endShown && M.endT >= 1.2) showEnd(); for (const b of M.bots) b.animate(dt); stepCamera(dt); netTick(dt); return; }
     if (M.paused || M.phase === 'load') { stepCamera(dt); return; }
     if (M.phase === 'count') {
       const before = Math.ceil(M.countT); M.countT -= dt; const after = Math.ceil(M.countT); if (after !== before && after >= 1) countTick(after);
       if (M.countT <= 0) { M.phase = 'play'; M.vm.tgt.y = 0; centerBig(L('go', 'go'), 0.8); psfx('start'); }
-      for (const b of M.bots) b.animate(dt); stepCamera(dt); return;
+      for (const b of M.bots) { if (b.wire) b.netStep(dt); } for (const b of M.bots) b.animate(dt); stepCamera(dt); netTick(dt); return;
     }
-    M.time += dt; M.nav.decay(dt);
-    if (M.time >= M.limit && !M.sudden) { const st = standings(); if (st.length > 1 && st[0].kills === st[1].kills) { M.sudden = true; centerBig(L('suddenDeath', 'sudden death'), 2.5); } else { endMatch(); return; } }
+    if (netAuth()) {
+      M.time += dt;
+      if (M.time >= M.limit && !M.sudden) { const st = standings(); if (st.length > 1 && st[0].kills === st[1].kills) { M.sudden = true; centerBig(L('suddenDeath', 'sudden death'), 2.5); } else { endMatch(); return; } }
+    }
+    M.nav.decay(dt);
     if (M.tapFire > 0) { M.input.fire = 1; if (--M.tapFire === 0) M.tapFireOff = true; } else if (M.tapFireOff) { M.input.fire = 0; M.tapFireOff = false; }
     if (isTouch) { const S = M.stick; if (S.id >= 0 && (M.input.f > 0.9 || Math.hypot(M.input.r - M.input.l, M.input.b - M.input.f) > 0.9)) { S.full += dt; M.input.sprint = S.full > 0.5 ? 1 : 0; } else { S.full = 0; M.input.sprint = 0; } }
     stepPlayer(dt); if (!M) return;
-    for (const b of M.bots) { b.simulate(dt); if (!M) return; }
+    for (const b of M.bots) { if (b.wire) b.netStep(dt); else b.simulate(dt); if (!M) return; }
     for (const b of M.bots) b.animate(dt);
-    stepCrates(dt); M.world.casings.step(dt); M.world.crumbs.step(dt); stepCamera(dt);
+    stepCrates(dt); M.world.casings.step(dt); M.world.crumbs.step(dt); stepCamera(dt); netTick(dt);
     if (isTouch) frictionCheck();
   }
   function stepCamera(dt) {
@@ -1920,7 +1976,9 @@ export function createStriker(api) {
     return `<table><tr><th>#</th><th>${c('name')}</th><th class="r">${c('kills')}</th><th class="r">${c('deaths')}</th><th class="r">${c('kd')}</th><th class="r">${c('streak')}</th><th>${c('weapon')}</th></tr>${rows}</table>`;
   }
   function endMatch() {
-    if (!M || M.phase === 'end') return; M.phase = 'end'; M.el.classList.remove('dead'); duck(false); M.vm.root.visible = true; M.endT = 0; M.endShown = false; M.vm.tgt.y = -0.5; M.hud.xh.classList.add('off'); M.hud.scope.classList.remove('on'); M.hud.death.classList.remove('on'); M.hud.board.classList.remove('on'); M.P.scoped = false; M.fovT = PS.cfg.fov || 80; clearInput();
+    if (!M || M.phase === 'end') return;
+    if (netOn() && M.net.host) { netEv({ k: 'over' }); lobbyTrack(); }
+    M.phase = 'end'; M.el.classList.remove('dead'); duck(false); M.vm.root.visible = true; M.endT = 0; M.endShown = false; M.vm.tgt.y = -0.5; M.hud.xh.classList.add('off'); M.hud.scope.classList.remove('on'); M.hud.death.classList.remove('on'); M.hud.board.classList.remove('on'); M.P.scoped = false; M.fovT = PS.cfg.fov || 80; clearInput();
     for (const b of M.bots) { b.vel.x = 0; b.vel.z = 0; b.wantMove = false; }   // otherwise they run on the spot through the whole end screen
     psfx('endWhistle'); if (M.locked) { try { document.exitPointerLock(); } catch (e) {} }
     const st = standings(); M.place = st.indexOf(M.P) + 1; const place = M.place, n = st.length;
@@ -1945,8 +2003,273 @@ export function createStriker(api) {
     if (M) renderFrame(dt);
   }
 
+  /* ═══ ONLINE ══════════════════════════════════════════════════════════════════════════════════════
+     Host-authoritative deathmatch over the wire Overwork already uses (ow-net.js), on its own `ps:`
+     namespace so a delivery shift and a deathmatch never show up in the same room list.
+
+     The host owns the clock, the phase, the bots, every spawn and every point of damage. Every player
+     simulates their OWN soldier and reports where it is 20 times a second; the host reports the whole
+     roster 15 times a second. Shots are requests: the client draws its own flash the instant you click
+     (anything else feels dead) and the host re-runs the hitscan — rewound to where everyone was when
+     the shooter actually saw them — and decides. Nothing a client says about damage is trusted.
+
+     Matches are always live. You join one in progress and spawn straight in, taking a bot's slot; when
+     you leave the bot does not come back. On a site this size, waiting in a lobby for four people is
+     how a mode dies before anyone plays it.
+     ═════════════════════════════════════════════════════════════════════════════════════════════════ */
+  const NET_CAP = 8, WKEYS = ['knife', 'glock', 'ar', 'ak', 'awp'];
+  // a joining person borrows the roster's accent colours: it is the only thing that tells eight soldiers apart at 30 m
+  const NET_COLORS = ['#4ad6c0', '#e8a33d', '#a06fe0', '#5fd45f', '#e06a8a', '#6f9ae8', '#d9d24a', '#e0724a'];
+  const r2 = n => Math.round(n * 100) / 100, r3 = n => Math.round(n * 1000) / 1000;
+  const netOn = () => !!(M && M.net && M.net.on);
+  const netAuth = () => !M || !M.net || !M.net.on || M.net.host;      // "am I allowed to decide this" — true offline, true as host
+  const nidOf = c => c.isPlayer ? (M.net ? M.net.id : 0) : c.nid;
+  const byNid = id => { if (!M) return null; if (M.net && id === M.net.id) return M.P; for (const b of M.bots) if (b.nid === id) return b; return null; };
+  let NET = null, lobbyRooms = [], netStatus = '', netTest = false, pendingWelcome = null;   // netTest: the harness drives matches with no mouse, so they must not wait on a pointer lock
+
+  function ensureNet() {
+    if (NET) return NET;
+    if (!api.net) return null;
+    try { NET = api.net(); } catch (e) { console.warn('[pitty] no wire', e); return null; }
+    NET.addListener('status', s => { netStatus = s; if (launcher && tab === 'online') paintTab(); if (M) centerToast(s); });
+    NET.addListener('left', () => { netStatus = ''; if (M && M.net) { M.net.on = false; if (!M.net.host) { centerToast(L('net.lost', 'lost the host.')); setTimeout(() => { if (M) leaveMatch(); }, 1200); } } if (launcher && tab === 'online') paintTab(); });
+    NET.addListener('open', peer => { if (!NET.host) NET.send(peer, { t: 'hello', name: myName() }, false); });
+    NET.addListener('gone', peer => hostDropPlayer(peer));
+    NET.addListener('msg', (peer, m) => onNetMsg(peer, m));
+    if (NET.lobby) NET.lobby.onChange(rooms => { lobbyRooms = rooms || []; if (launcher && tab === 'online') paintTab(); });
+    return NET;
+  }
+  const myName = () => { const n = ((api.name && api.name()) || '').trim(); return (n || 'new guy').slice(0, 12); };
+  function lobbyTrack() {
+    if (!NET || !NET.lobby) return;
+    const live = NET.on && NET.host && M && M.phase !== 'end';
+    NET.lobby.track(live ? { code: NET.code, n: M.all.length, human: 1 + M.bots.filter(b => b.human).length, name: myName(), diff: M.diff } : null);
+  }
+
+  /* ── the roster: one wire-driven figure per other combatant. A remote player and a bot on a client are
+        the same object — a Bot with `wire` set, fed positions instead of decisions. ── */
+  function addWireBot(spec) {
+    const b = new Bot({ name: spec.name, color: spec.color, wire: true, human: !!spec.human, nid: spec.nid, w: spec.w }, M.bots.length);
+    M.bots.push(b); M.all.push(b); b.hp = spec.hp != null ? spec.hp : 100; b.prot = 0; b.scaleS.x = 1; b.scaleS.v = 0;
+    b.pos.set(spec.p ? spec.p[0] : 0, spec.p ? spec.p[1] : 0, spec.p ? spec.p[2] : 0); b.net = null;
+    return b;
+  }
+  function removeCombatant(c) {
+    if (!c) return;
+    let i = M.bots.indexOf(c); if (i >= 0) M.bots.splice(i, 1);
+    i = M.all.indexOf(c); if (i >= 0) M.all.splice(i, 1);
+    for (const o of M.all) if (o.target === c) { o.target = null; o.state = 'wander'; }
+    c.dispose();
+  }
+  function rosterOut() {
+    return [{ nid: M.net.id, name: M.P.name, color: '#e10600', human: true, w: M.P.cur, hp: M.P.hp, p: [r2(M.P.pos.x), r2(M.P.pos.y), r2(M.P.pos.z)] }]
+      .concat(M.bots.map(b => ({ nid: b.nid, name: b.name, color: b.color, human: !!b.human, w: b.cur, hp: b.hp, p: [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z)] })));
+  }
+
+  /* ── host: somebody knocked ── */
+  function hostWelcome(peer, m) {
+    if (!M || !netAuth()) return;
+    if (M.all.length >= NET_CAP) {
+      const filler = M.bots.filter(b => !b.human).sort((a, c) => a.kills - c.kills)[0];      // a person takes a bot's slot, weakest bot first
+      if (!filler) { NET.send(peer, { t: 'ev', k: 'full' }, false); return; }
+      netEv({ k: 'drop', nid: filler.nid }); removeCombatant(filler);
+    }
+    const nid = 1000 + peer.id, name = String(m.name || 'someone').slice(0, 12);
+    const b = addWireBot({ nid, name, color: NET_COLORS[peer.id % NET_COLORS.length], human: true, w: 'ar', hp: 100 });
+    b.peer = peer; peer.combatant = b; peer.pname = name;
+    const sp = pickSpawn(b); b.pos.copy(sp); (b.spawnAt || (b.spawnAt = new THREE.Vector3())).copy(sp); b.dead = false; b.prot = 1;
+    NET.send(peer, { t: 'welcome', id: nid, spec: matchSpec(), roster: rosterOut(), p: [r2(sp.x), r2(sp.y), r2(sp.z)] }, false);
+    netEv({ k: 'join', nid, name: b.name, color: b.color, p: [r2(sp.x), r2(sp.y), r2(sp.z)] }, peer);
+    feedLine(fmt(L('feed.joined', '{n} connected'), { n: b.name }), 'sys'); psfx('uiClick'); lobbyTrack();
+  }
+  function hostDropPlayer(peer) {
+    if (!M || !peer || !peer.combatant) return;
+    const b = peer.combatant; peer.combatant = null;
+    feedLine(fmt(L('feed.leftMatch', '{n} disconnected'), { n: b.name }), 'sys');
+    netEv({ k: 'drop', nid: b.nid }); removeCombatant(b); lobbyTrack();
+  }
+  function matchSpec() { return { seed: M.seed, diff: M.diff, limit: M.limit, killCap: M.killCap, time: r2(M.time), phase: M.phase, sudden: !!M.sudden }; }
+
+  /* ── the snapshot: the whole roster, 15 times a second, on the lossy channel ── */
+  function packOne(c) {
+    const f = (c.dead ? 1 : 0) | (c.crouch ? 2 : 0) | (c.onGround ? 4 : 0) | (c.prot > 0 ? 8 : 0);
+    return [nidOf(c), r2(c.pos.x), r2(c.pos.y), r2(c.pos.z), r2(c.vel.x), r2(c.vel.y), r2(c.vel.z), r2(c.yaw), r2(c.pitch), f, Math.round(c.hp), c.kills, c.deaths, WKEYS.indexOf(c.cur)];
+  }
+  function snapshot() { return { t: 's', c: M.all.map(packOne), w: [PHASES.indexOf(M.phase), r2(M.time), M.sudden ? 1 : 0] }; }
+  const PHASES = ['load', 'count', 'play', 'end'];
+  function applySnapshot(m) {
+    for (const row of m.c) {
+      const c = byNid(row[0]); if (!c) continue;
+      const dead = !!(row[9] & 1);
+      if (c === M.P) {                                                    // your own line: the host owns your health and your score, you own where you are
+        M.P.hp = row[10]; M.P.kills = row[11]; M.P.deaths = row[12];
+        if (dead !== M.P.dead && dead) { M.P.dead = true; M.P.deadT = 3; }
+        M.P.prot = (row[9] & 8) ? Math.max(M.P.prot, 0.2) : 0;
+        continue;
+      }
+      if (!c.net) c.net = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: c.yaw, pitch: 0, age: 0 };
+      c.net.pos.set(row[1], row[2], row[3]); c.net.vel.set(row[4], row[5], row[6]); c.net.yaw = row[7]; c.net.pitch = row[8]; c.net.age = 0;
+      c.crouch = !!(row[9] & 2); c.onGround = !!(row[9] & 4); c.prot = (row[9] & 8) ? 0.2 : 0;
+      c.hp = row[10]; c.kills = row[11]; c.deaths = row[12];
+      const w = WKEYS[row[13]]; if (w && w !== c.cur) { c.cur = w; c.onSwitch(); }
+      if (dead !== c.dead) { c.dead = dead; if (dead) { c.deadT = 3; c.die(); } else { c.pos.set(row[1], row[2], row[3]); c.rootT = 0; c.tiltT = 0; c.tilt.x = 0; c.tilt.v = 0; c.scaleS.x = 1; } }
+    }
+    const ph = PHASES[m.w[0]] || 'play';
+    M.time = m.w[1]; M.sudden = !!m.w[2];
+    if (ph !== M.phase) { if (ph === 'end') { M.phase = 'play'; endMatch(); } else if (M.phase !== 'load') M.phase = ph; }
+  }
+
+  /* ── sending ── */
+  function netEv(ev, except) { if (netOn() && M.net.host) NET.broadcast(Object.assign({ t: 'ev' }, ev), false, except); }
+  function netAsk(msg) { if (!netOn() || M.net.host) return; const h = NET.hostPeer(); if (h) NET.send(h, msg, false); }
+  function netFire(h, eye, dir, t) {
+    if (!netOn() || !M.net.host) return;
+    netEv({ k: 'fire', nid: nidOf(h), w: h.cur, e: [r2(eye.x), r2(eye.y), r2(eye.z)], d: [r3(dir.x), r3(dir.y), r3(dir.z)], t: r2(t) }, h.peer || null);
+  }
+  function netTick(dt) {
+    if (!netOn()) return;
+    const N = M.net; N.acc += dt; N.accIn += dt;
+    if (N.host) { if (N.acc >= 1 / 15) { N.acc = 0; if (NET.peers.size) NET.broadcast(snapshot(), true); } }
+    else if (N.accIn >= 1 / 20) {
+      N.accIn = 0; const h = NET.hostPeer(); if (!h) return;
+      N.pingT = (N.pingT || 0) + 1 / 20;
+      if (N.pingT >= 1) { N.pingT = 0; NET.send(h, { t: 'ping', s: Math.round(performance.now()) }, false); }
+      const P = M.P;
+      NET.send(h, { t: 'in', p: [r2(P.pos.x), r2(P.pos.y), r2(P.pos.z)], v: [r2(P.vel.x), r2(P.vel.y), r2(P.vel.z)], y: r2(P.yaw), pi: r2(P.pitch), f: (P.crouch ? 2 : 0) | (P.onGround ? 4 : 0), w: WKEYS.indexOf(P.cur) }, true);
+    }
+    // the position history the host rewinds through when it judges a client's shot
+    if (N.host) { N.histT += dt; if (N.histT >= 0.05) { N.histT = 0; for (const c of M.all) pushHist(c); } }
+  }
+  function pushHist(c) {
+    const h = c.hist || (c.hist = []);
+    h.push({ t: M.time, x: c.pos.x, y: c.pos.y, z: c.pos.z, crouch: c.crouch });
+    while (h.length > 16) h.shift();                                       // 16 × 50 ms = 800 ms, more than any playable ping
+  }
+  /* Rewind everyone but the shooter to where they were `lag` seconds ago, run the shot, put them back.
+     Without this you have to lead a target by your own ping, which reads as "my bullets go through people". */
+  function rewound(shooter, lag, fn) {
+    lag = clamp(lag || 0, 0, 0.4);
+    if (lag < 0.02) return fn();
+    const when = M.time - lag, saved = [];
+    for (const c of M.all) {
+      if (c === shooter || !c.hist || c.hist.length < 2) continue;
+      const h = c.hist; let i = h.length - 1; while (i > 0 && h[i - 1].t > when) i--;
+      const b = h[i], a = h[i - 1] || b, span = b.t - a.t, u = span > 1e-4 ? clamp((when - a.t) / span, 0, 1) : 1;
+      saved.push([c, c.pos.clone(), c.crouch]);
+      c.pos.set(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, a.z + (b.z - a.z) * u); c.crouch = u > 0.5 ? b.crouch : a.crouch;
+    }
+    try { return fn(); } finally { for (const [c, p, cr] of saved) { c.pos.copy(p); c.crouch = cr; } }
+  }
+
+  /* ── receiving ── */
+  function onNetMsg(peer, m) {
+    if (!m) return;
+    // the welcome arrives BEFORE there is a match to put it in — it is what decides what gets built
+    if (m.t === 'welcome') { const f = pendingWelcome; pendingWelcome = null; if (f) f(m); return; }
+    if (!M) return;
+    if (M.net.host) {
+      if (m.t === 'hello') { hostWelcome(peer, m); return; }
+      const c = peer.combatant; if (!c) return;
+      if (m.t === 'in') {
+        if (!c.net) c.net = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: 0, age: 0 };
+        c.net.pos.set(m.p[0], m.p[1], m.p[2]); c.net.vel.set(m.v[0], m.v[1], m.v[2]); c.net.yaw = m.y; c.net.pitch = m.pi; c.net.age = 0;
+        c.crouch = !!(m.f & 2); c.onGround = !!(m.f & 4); c.height = c.crouch ? 1.2 : 1.75;
+        const w = WKEYS[m.w]; if (w && w !== c.cur && !c.dead) { c.cur = w; c.onSwitch(); }
+      } else if (m.t === 'shot') hostShot(c, m);
+      else if (m.t === 'melee') hostMelee(c, m);
+      else if (m.t === 'act' && m.a === 'reload') { const s = gunOf(c); if (s && !s.reload) startReload(c); }
+      else if (m.t === 'ping') NET.send(peer, { t: 'pong', s: m.s }, false);
+      else if (m.t === 'chat') { const line = String(m.text || '').slice(0, 80); if (line) { botChat(c.name, line); netEv({ k: 'chat', name: c.name, text: line }, peer); } }
+      return;
+    }
+    // client
+    if (m.t === 's') { applySnapshot(m); return; }
+    // half a round trip is how far behind the host's world you are looking. It rides on every shot so the
+    // host can rewind exactly that far, and it is clamped there too — a client cannot buy itself a second.
+    if (m.t === 'pong') { const rtt = (performance.now() - m.s) / 1000; M.net.lag = M.net.lag ? M.net.lag * 0.7 + (rtt / 2) * 0.3 : rtt / 2; M.net.ping = Math.round(rtt * 1000); return; }
+    if (m.t !== 'ev') return;
+    if (m.k === 'join') { const b = addWireBot({ nid: m.nid, name: m.name, color: m.color, human: true, w: 'ar', p: m.p }); b.dead = false; feedLine(fmt(L('feed.joined', '{n} connected'), { n: b.name }), 'sys'); }
+    else if (m.k === 'drop') { const c = byNid(m.nid); if (c) { feedLine(fmt(L('feed.leftMatch', '{n} disconnected'), { n: c.name }), 'sys'); removeCombatant(c); } }
+    else if (m.k === 'fire') { const c = byNid(m.nid); if (c && c !== M.P) replayShot(c, m); }
+    else if (m.k === 'kill') { const a = byNid(m.a), v = byNid(m.b); if (a && v) { v.hp = 0; kill(v, a, { head: !!m.head, weapon: m.w }); } }
+    else if (m.k === 'spawn') { const c = byNid(m.nid); if (c) netSpawn(c, m.p, m.yaw); }
+    else if (m.k === 'ammo') { for (const k in M.P.guns) { const W = WEAPONS[k]; if (W && !W.melee) M.P.guns[k].reserve = W.reserve || 0; } psfx('ammo'); centerToast(L('ammo', 'ammo')); }
+    else if (m.k === 'swing') { const c = byNid(m.nid); if (c && c !== M.P) psfx((WEAPONS.knife && WEAPONS.knife.sfx && WEAPONS.knife.sfx.swing) || 'knife_swing', { pos: c.pos }); }
+    else if (m.k === 'chat') botChat(m.name, m.text);
+    else if (m.k === 'full') { centerToast(L('net.full', 'that match is full.')); setTimeout(() => { if (M) leaveMatch(); }, 1200); }
+    else if (m.k === 'over') { if (M.phase !== 'end') { M.phase = 'play'; endMatch(); } }
+  }
+  function netSpawn(c, p, yaw) {
+    c.dead = false; c.hp = 100; c.prot = 1; c.deadT = 0; c.vel.set(0, 0, 0);
+    c.pos.set(p[0], p[1], p[2]); if (c.spawnAt) c.spawnAt.copy(c.pos); else c.spawnAt = c.pos.clone();
+    if (yaw != null) c.yaw = yaw;
+    c.dying = false;
+    if (c === M.P) { M.P.scoped = false; M.hud.death.classList.remove('on'); M.el.classList.remove('dead'); M.hud.xh.classList.remove('off'); M.vm.root.visible = true; M.slumpT = 0; M.rollT = 0; giveLoadout(M.P, M.loadout); mountViewmodel(); M.P.regenT = 0; }
+    else { c.net = null; c.rootT = 0; c.tiltT = 0; c.tilt.x = 0; c.tilt.v = 0; c.scaleS.x = 1; }
+  }
+  /* a shot somebody else fired: the flash, the tracer and the sound, at their gun. No damage — that
+     already happened on the host and arrives as a kill event or a health drop in the snapshot. */
+  function replayShot(c, m) {
+    const W = WEAPONS[m.w] || wep(c), eye = new THREE.Vector3(m.e[0], m.e[1], m.e[2]), dir = new THREE.Vector3(m.d[0], m.d[1], m.d[2]);
+    shotFx(c, W, eye, dir, m.t); psfx((W.sfx && W.sfx.shot) || (m.w + '_shot'), { pos: c.pos }); casing(c, eye); c.onShot();
+  }
+  function hostShot(c, m) {
+    if (!M || M.phase !== 'play' || c.dead) return;
+    const W = WEAPONS[m.w]; if (!W || W.melee) return;
+    const s = c.guns[m.w]; if (!s) return;
+    if (s.cd > 0.004) return;                                              // the one thing the host must not take on trust: the rate of fire
+    if (c.cur !== m.w) { c.cur = m.w; c.onSwitch(); }
+    s.cd = W.bolt ? W.bolt : 60 / (W.rpm || 600); s.mag = Math.max(0, s.mag - 1); s.shots++;
+    if (c.prot > 0) c.prot = 0;
+    const eye = new THREE.Vector3(m.e[0], m.e[1], m.e[2]), dir = new THREE.Vector3(m.d[0], m.d[1], m.d[2]).normalize();
+    if (eye.distanceTo(c.pos) > 3.5) eye.set(c.pos.x, c.pos.y + (c.crouch ? 1.05 : 1.6), c.pos.z);   // the eye you claim has to be on the body the host is tracking
+    const hit = rewound(c, m.lag, () => hitscan(eye, dir, c, 120));
+    shotFx(c, W, eye, dir, hit ? hit.t : 120); psfx((W.sfx && W.sfx.shot) || (m.w + '_shot'), { pos: c.pos }); casing(c, eye); c.onShot();
+    netEv({ k: 'fire', nid: c.nid, w: m.w, e: [r2(eye.x), r2(eye.y), r2(eye.z)], d: [r3(dir.x), r3(dir.y), r3(dir.z)], t: r2(hit ? hit.t : 120) }, c.peer);
+    if (hit && hit.body) { let dmg = W.dmg || 30; if (hit.head) dmg *= W.headMul || 2; if (W.falloff && hit.t > W.falloff.from) dmg *= W.falloff.mul; applyDamage(hit.body, dmg, c, { head: hit.head, weapon: m.w }); }
+    else if (hit) worldImpact(hit.point, hit.col);
+    heard(c);
+  }
+  function hostMelee(c, m) {
+    if (!M || M.phase !== 'play' || c.dead) return;
+    const s = c.guns.knife; if (!s || s.cd > 0.004) return;
+    const W = WEAPONS.knife || {}, mm = (W.melee && W.melee[m.kind]) || { dmg: 40, time: 0.45 };
+    s.cd = mm.time; if (c.prot > 0) c.prot = 0;
+    rewound(c, m.lag, () => meleeImpact(c, mm));
+    netEv({ k: 'swing', nid: c.nid, kind: m.kind }, c.peer);
+  }
+
+  /* ── joining and hosting from the launcher ── */
+  async function netHost(o) {
+    o = o || {};
+    const n = ensureNet(); if (!n) { netStatus = L('net.noWire', 'this build has no wire.'); return; }
+    netStatus = L('net.hosting', 'opening a match…'); if (launcher) paintTab();
+    const code = await n.host_();
+    startMatch({ diff: o.diff || PS.diff, bots: Math.max(o.bots != null ? o.bots : PS.bots, 3), loadout: o.loadout || PS.loadout, test: netTest, online: { host: true, id: 0, code } });
+  }
+  async function netJoin(code) {
+    const n = ensureNet(); if (!n) { netStatus = L('net.noWire', 'this build has no wire.'); return; }
+    code = String(code || '').toUpperCase().trim(); if (code.length < 4) { netStatus = L('net.badCode', 'five letters.'); if (launcher) paintTab(); return; }
+    netStatus = fmt(L('net.joining', 'knocking on {n}…'), { n: code }); if (launcher) paintTab();
+    // the welcome decides everything about the match, so the mount waits for it. One slot, not a fresh
+    // listener per attempt: ow-net's listener list has no remove, and a rejoin loop would grow it forever.
+    const welcome = await new Promise(res => {
+      let done = false; const finish = v => { if (done) return; done = true; pendingWelcome = null; clearTimeout(stop); res(v); };
+      const stop = setTimeout(() => finish(null), 12000);
+      pendingWelcome = finish; n.join(code);
+    });
+    if (!welcome) { netStatus = L('net.noAnswer', 'nobody answered.'); n.leave(); if (launcher) paintTab(); return; }
+    startMatch({ diff: welcome.spec.diff, bots: 0, loadout: PS.loadout, seed: welcome.spec.seed, test: netTest, online: { host: false, id: welcome.id, code }, join: welcome });
+  }
+  function netQuick() {
+    const n = ensureNet(); if (!n) { netStatus = L('net.noWire', 'this build has no wire.'); return; }
+    const open = lobbyRooms.filter(r => r && r.code && (r.n | 0) < NET_CAP).sort((a, b) => (b.human | 0) - (a.human | 0));
+    if (open.length) netJoin(open[0].code); else netHost();               // nobody to play with is not an error, it is an invitation
+  }
+  function netLeave() { if (NET) { if (NET.lobby) NET.lobby.track(null); NET.leave(); } if (M) M.net = { on: false, host: true, id: 0, acc: 0, accIn: 0, histT: 0, lag: 0 }; }
+
   /* ── the launcher: a 2009 game launcher in a 2009 window. left nav, right pane; the match takes the whole bezel over it ── */
-  const TABS = ['play', 'cases', 'inventory', 'stats', 'settings', 'quit'];
+  const TABS = ['play', 'online', 'cases', 'inventory', 'stats', 'settings', 'quit'];
   const tabLabel = (i, k) => { const arr = LA('launcher.tabs', null); return (arr && arr[i]) || k; };
   function paintLauncher() {
     if (!win) return; ensureStyle(); const body = win.body; body.innerHTML = ''; launcher = document.createElement('div'); launcher.id = 'ps-launcher';
@@ -1958,7 +2281,28 @@ export function createStriker(api) {
   function paintTab() {
     if (!launcher) return; launcher.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab)); launcher.querySelector('.cash').textContent = '$' + api.cash();
     const pane = launcher.querySelector('.pane'); stopPreview(); REEL = null;
-    if (tab === 'play') paintPlay(pane); else if (tab === 'cases') paintCases(pane); else if (tab === 'inventory') paintInventory(pane); else if (tab === 'stats') paintStats(pane); else if (tab === 'settings') paintSettings(pane);
+    if (tab === 'play') paintPlay(pane); else if (tab === 'online') paintOnline(pane); else if (tab === 'cases') paintCases(pane); else if (tab === 'inventory') paintInventory(pane); else if (tab === 'stats') paintStats(pane); else if (tab === 'settings') paintSettings(pane);
+    if (tab !== 'online' && NET && NET.lobby && !(NET.on && NET.host)) NET.lobby.leave();     // stop listening to the room list the moment nobody is reading it
+  }
+  /* the server browser. No queue and no lobby: the rooms in the list are matches being played right now,
+     and "quick play" means "put me in the busiest one". Hosting is what happens when there is nobody yet. */
+  function paintOnline(pane) {
+    const LO = 'launcher.online.', n = ensureNet();
+    if (n && n.lobby) n.lobby.join();
+    const rooms = lobbyRooms.filter(r => r && r.code);
+    pane.innerHTML = `<h2>${esc(L(LO + 'title', 'online · deathmatch'))}</h2>
+      <div class="row"><button class="pc-btn go pbig" id="ps-quick">${esc(L(LO + 'quick', 'quick play'))}</button><span class="mut">${esc(L(LO + 'quickSmall', 'drops you into the busiest match. opens one if there is none.'))}</span></div>
+      <div class="row"><button class="pc-btn" id="ps-hostbtn">${esc(L(LO + 'host', 'open a match'))}</button><input id="ps-code" maxlength="5" placeholder="${esc(L(LO + 'codePh', 'code'))}" style="width:7em;text-transform:uppercase"><button class="pc-btn" id="ps-joinbtn">${esc(L(LO + 'join', 'join'))}</button></div>
+      <h3 class="mut" style="margin:14px 0 6px">${esc(L(LO + 'rooms', 'matches up right now'))}</h3>
+      <div class="rooms">${rooms.length ? rooms.map(r => `<div class="room"><b>${esc(String(r.name || 'someone'))}</b><span class="mut">${esc(String(r.code))} · ${(r.human | 0) || 1} ${esc((r.human | 0) === 1 ? L(LO + 'person', 'person') : L(LO + 'people', 'people'))} · ${esc(String(r.diff || 'normal'))}</span><button class="pc-btn" data-code="${esc(String(r.code))}"${(r.n | 0) >= NET_CAP ? ' disabled' : ''}>${esc((r.n | 0) >= NET_CAP ? L(LO + 'full', 'full') : L(LO + 'join', 'join'))}</button></div>`).join('')
+        : `<p class="mut">${esc(L(LO + 'empty', 'nothing up. open one and it shows here for everybody else.'))}</p>`}</div>
+      <p class="mut" style="margin-top:12px">${esc(netStatus || (api.signedIn && api.signedIn() ? L(LO + 'signed', 'signed in, so this can relay through TURN when a connection needs it.') : L(LO + 'anon', 'sign in on the site for a relay when a direct connection will not form.')))}</p>`;
+    pane.querySelector('#ps-quick').onclick = () => { psfx('uiClick'); netQuick(); };
+    pane.querySelector('#ps-hostbtn').onclick = () => { psfx('uiClick'); netHost(); };
+    const code = pane.querySelector('#ps-code');
+    pane.querySelector('#ps-joinbtn').onclick = () => { psfx('uiClick'); netJoin(code.value); };
+    code.onkeydown = e => { if (e.code === 'Enter') { e.preventDefault(); netJoin(code.value); } };
+    pane.querySelectorAll('.room button[data-code]').forEach(b => { b.onclick = () => { psfx('uiClick'); netJoin(b.dataset.code); }; });
   }
   function paintPlay(pane) {
     const LP = 'launcher.play.', sk = equipped(PS.loadout);
@@ -2110,6 +2454,7 @@ export function createStriker(api) {
     stopPreview(); REEL = null; if (uiRaf) { cancelAnimationFrame(uiRaf); uiRaf = 0; }
     if (launcher) { launcher.remove(); launcher = null; }
     removeEventListener('keydown', onKeyDown); removeEventListener('keyup', onKeyUp); removeEventListener('blur', onBlur); document.removeEventListener('visibilitychange', onVis);
+    netLeave(); if (NET && NET.lobby) NET.lobby.leave();
     disposeFig(); disposeMats(); if (PS) api.persist();
     const W = win; active = false; win = null; api.musicDuck(false); api.onActive(false);
     if (W) { if (W.body) W.body.innerHTML = ''; if (W.close) W.close(); }                                    // re-entrant: the window's onclose calls back in and returns at !active
@@ -2143,6 +2488,28 @@ export function createStriker(api) {
     skinCfg: () => SOLDIER.skin,
     fx: () => (M && M.fx) ? { flash: M.fx.flashes.filter(q => q.life > 0).length, tracer: M.fx.tracers.filter(q => q.life > 0).length, spark: M.fx.sparks.filter(q => q.life > 0).length, light: M.fx.light.visible } : null,
     lights: () => (M && M.world) ? M.world.lights.length : 0,
+    // online: everything the two-tab harness needs to drive a host and a joiner without a mouse
+    host: o => { netTest = true; return netHost(Object.assign({}, o || {})); },
+    join: code => { netTest = true; return netJoin(code); }, quick: () => { netTest = true; netQuick(); }, leave: () => { if (M) leaveMatch(); else netLeave(); },
+    lobby: () => { const n = ensureNet(); if (n && n.lobby) n.lobby.join(); },
+    rooms: () => lobbyRooms.map(r => ({ code: r.code, n: r.n, human: r.human, name: r.name })),
+    net: () => (M && M.net) ? { on: M.net.on, host: M.net.host, id: M.net.id, code: M.net.code, ping: M.net.ping | 0, lag: r3(M.net.lag || 0), roster: M.all.map(c => ({ nid: nidOf(c), name: c.name, human: c.isPlayer || !!c.human, hp: Math.round(c.hp), dead: !!c.dead, kills: c.kills, p: [r2(c.pos.x), r2(c.pos.y), r2(c.pos.z)] })) } : null,
+    byNid: id => { const c = byNid(id); return c ? { nid: id, hp: c.hp, dead: !!c.dead } : null; },
+    hurt: (id, dmg) => { const c = byNid(id); if (c && M.P) applyDamage(c, dmg, M.P, { weapon: 'ar' }); },
+    park: (id, x, y, z) => { const c = byNid(id); if (!c) return; c.pos.set(x, y, z); c.vel.set(0, 0, 0); if (c.net) { c.net.pos.set(x, y, z); c.net.vel.set(0, 0, 0); } if (c.spawnAt) c.spawnAt.set(x, y, z); c.prot = 0; },
+    // a point `dist` away with a clear line from the player's eye: the harness needs somewhere it can
+    // actually shoot across, and guessing coordinates on this map lands you behind the fountain
+    openSpot: dist => {
+      const P = M && M.P; if (!P) return null; const d = dist || 6, eye = eyeOf(P);
+      for (let i = 0; i < 16; i++) {
+        const a = i * Math.PI / 8, x = P.pos.x + Math.sin(a) * d, z = P.pos.z + Math.cos(a) * d;
+        if (Math.abs(x) > 18 || Math.abs(z) > 12) continue;
+        const to = new THREE.Vector3(x, P.pos.y + 1.2, z);
+        if (segmentClear(M.cols, eye, to) && segmentClear(M.cols, new THREE.Vector3(x, P.pos.y + 0.3, z), to)) return [r2(x), r2(P.pos.y), r2(z)];
+      }
+      return null;
+    },
+    aimAt: id => { const c = byNid(id), P = M && M.P; if (!c || !P || c === P) return; const dx = c.pos.x - P.pos.x, dy = (c.pos.y + 1.2) - (P.pos.y + 1.6), dz = c.pos.z - P.pos.z; P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(dy, Math.hypot(dx, dz)); },
     keys: () => M ? { held: !!M.keysHeld, ctrlSaid: !!M.ctrlSaid, crouch: M.input.crouch, fs: document.fullscreenElement === M.el, w: M.el.clientWidth, h: M.el.clientHeight, cw: M.cv.width, ch: M.cv.height, dpr: M.renderer.getPixelRatio() } : null,
     fullscreen: () => toggleFullscreen(),
     city: () => (M && M.city) ? { meshes: M.city.meshes.length, tris: M.city.geos.reduce((a, g) => a + (g.index ? g.index.count : 0) / 3, 0) } : null,

@@ -2976,6 +2976,10 @@ const strikerApi = {
   cash: () => save.cash, addCash: n => bank.add(n), name: myName, isTouch: IS_TOUCH, cfg: () => cfg,
   audio: { ctx: () => audioCtx(), master: () => (audioCtx(), master), buffer: p => (audioCtx(), loadBuffer(p)), piano: () => (audioCtx(), piano) },
   musicDuck, toast, onActive: on => { world.psOpen = !!on; if (!on) clearInput(); },
+  // the shooter gets its OWN wire on the 'ps:' namespace. Same module, same Supabase project, same TURN
+  // credentials — but a separate lobby, or a delivery shift and a deathmatch would advertise into one list.
+  net: () => createNet({ sb, local: LOCAL_SIG, myKey, ns: 'ps', log: (...a) => console.log('[ps-net]', ...a) }),
+  signedIn: () => !!sbUser,
   scores: { tally: (id, n) => window.yczTally && yczTally(id, n), score: (id, n) => window.yczScore && yczScore(id, n), play: (id, ms) => window.yczPlay && yczPlay(id, ms) },
   debug: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname),
 };
