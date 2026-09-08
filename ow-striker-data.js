@@ -597,7 +597,8 @@ export const DIFF = {
 export const LINES = {
   countdown: ['3', '2', '1'], go: 'go', suddenDeath: 'sudden death', loading: 'loading sandstone.',
   lockPrompt: 'click to play', touchPrompt: 'tap to play', lockDenied: 'click again', lockCooldown: 'one second',
-  training: 'wasd moves. mouse aims. left click fires. r reloads. 1 2 3 switch weapons.',
+  training: 'wasd moves. mouse aims. left click fires. r reloads. c crouches, shift sprints. f for fullscreen.',
+  ctrlHint: 'ctrl belongs to the browser out here. crouch is c. f for fullscreen.',
   touchTraining: 'left thumb moves. right thumb aims. red button shoots.',
   touchFriction: 'aim sticks a little near targets. it does that for everyone.',
   portrait: 'rotate your phone',

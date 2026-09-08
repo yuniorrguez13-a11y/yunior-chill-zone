@@ -1659,7 +1659,14 @@ export function createStriker(api) {
 <div class="ps-card" id="ps-end"><h3></h3><p class="placed"></p><div class="tbl"></div><div class="recs"></div><p class="mut foot"></p><div><button class="ps-btn primary" data-a="again"></button><button class="ps-btn" data-a="launcher"></button></div></div>
 <div class="ps-card" id="ps-portrait" style="pointer-events:none"><p></p></div>
 <div class="touch"><div id="ps-stick"><i></i></div><div class="tb fire" data-b="fire">fire</div><div class="tb jump" data-b="jump">jump</div><div class="tb reload" data-b="reload">reload</div><div class="tb ads" data-b="ads">scope</div><div class="tb swap" data-b="swap">swap</div><div class="tb crouch" data-b="crouch">crouch</div><div class="tb score" data-b="score">score</div><div class="tb menu" data-b="menu">menu</div></div>`;
-  const KEYMAP = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r', Space: 'jump', ShiftLeft: 'sprint', ShiftRight: 'sprint', ControlLeft: 'crouch', ControlRight: 'crouch', KeyC: 'crouch', KeyR: 'reload', Tab: 'score' };
+  /* Ctrl is NOT bound to crouch here on purpose. Crouch + forward is ctrl+W, which the browser reads as
+     "close this tab" before the page ever sees it — and preventDefault does not save you: Chrome reserves
+     ctrl+W / ctrl+T / ctrl+N and hands the page nothing to cancel. So crouch is C, and ctrl only crouches
+     once we genuinely hold the keyboard, which is what KEY_GRAB below is for. */
+  const KEYMAP = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r', Space: 'jump', ShiftLeft: 'sprint', ShiftRight: 'sprint', KeyC: 'crouch', KeyR: 'reload', Tab: 'score' };
+  // the keys the browser would otherwise eat out from under a ctrl chord: close tab, new tab, reload,
+  // bookmark, save, print, find, select all, and the digits that jump between tabs
+  const KEY_GRAB = ['KeyW', 'KeyT', 'KeyN', 'KeyR', 'KeyD', 'KeyS', 'KeyP', 'KeyF', 'KeyA', 'KeyL', 'Tab', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'];
   const typing = e => { const t = e.target; return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); };
   function clearInput() { if (!M) return; const I = M.input; for (const k in I) I[k] = 0; M.crouchLatch = false;
     if (M.el) M.el.querySelectorAll('.tb.on, .tb.down').forEach(e => e.classList.remove('on', 'down')); }   // a paused or blurred game must not leave a button looking held
@@ -1667,12 +1674,24 @@ export function createStriker(api) {
     if (!active || typing(e)) return;
     if (e.code === 'Escape') { if (M || win) { escape(); e.preventDefault(); } return; }
     if (!M) return;
+    if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+      // fullscreen means we hold the keyboard, so ctrl is ours and crouches like it does in any shooter.
+      // Windowed it belongs to the browser, and the honest thing is to say so once rather than eat a tab.
+      if (M.keysHeld) M.input.crouch = 1;
+      else if (!e.repeat && !M.ctrlSaid) { M.ctrlSaid = true; centerToast(L('ctrlHint', 'ctrl belongs to the browser out here. crouch is c. f for fullscreen.')); }
+      return;
+    }
+    if (e.code === 'KeyF' && !e.repeat && !e.ctrlKey && !e.metaKey) { toggleFullscreen(); e.preventDefault(); return; }
     if (e.code === 'Tab' || e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
-    const k = KEYMAP[e.code]; if (k) { M.input[k] = 1; return; }
+    const k = KEYMAP[e.code]; if (k) { M.input[k] = 1; if (e.ctrlKey || e.metaKey) e.preventDefault(); return; }   // Firefox honours this on ctrl chords; Chrome does not, which is why ctrl is unbound above
     if (e.repeat || !M.P || M.P.dead) return;
     if (e.code === 'Digit1') switchTo(M.P, M.P.primary); else if (e.code === 'Digit2') switchTo(M.P, 'glock'); else if (e.code === 'Digit3') switchTo(M.P, 'knife'); else if (e.code === 'KeyQ') switchTo(M.P, M.P.last);
   }
-  function onKeyUp(e) { if (!active || !M) return; const k = KEYMAP[e.code]; if (k) M.input[k] = 0; if (e.code === 'Tab') e.preventDefault(); }
+  function onKeyUp(e) {
+    if (!active || !M) return;
+    if (e.code === 'ControlLeft' || e.code === 'ControlRight') { M.input.crouch = 0; return; }
+    const k = KEYMAP[e.code]; if (k) M.input[k] = 0; if (e.code === 'Tab') e.preventDefault();
+  }
   function onBlur() { clearInput(); }
   function onVis() { if (document.hidden) clearInput(); }
 
@@ -1685,7 +1704,7 @@ export function createStriker(api) {
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(PS.cfg.fov || 80, 1, 0.03, 260); scene.add(camera);
     const seed = opts.seed != null ? opts.seed : (Math.random() * 1e9) | 0;
     M = { el, cv, renderer, scene, camera, hud: {}, phase: 'load', paused: false, time: 0, limit: 300, killCap: 20, countT: 3, sudden: false, diff: DIFF[opts.diff] ? opts.diff : 'normal', nBots: clamp(opts.bots | 0 || 5, 3, 7), loadout: PRIMARIES.includes(opts.loadout) ? opts.loadout : 'ar', seed, rng: xorshift(seed),
-      world: null, cols: [], nav: null, P: null, bots: [], all: [], feedEls: [], input: { f: 0, b: 0, l: 0, r: 0, jump: 0, crouch: 0, sprint: 0, fire: 0, ads: 0, reload: 0, score: 0 }, locked: false, relockAt: 0, test: !!opts.test, mShots: 0, mHits: 0, firstBlood: false, ammoMsg: '', xhFlash: 0, arrowT: 0, arrowFrom: new THREE.Vector3(),
+      world: null, cols: [], nav: null, P: null, bots: [], all: [], feedEls: [], input: { f: 0, b: 0, l: 0, r: 0, jump: 0, crouch: 0, sprint: 0, fire: 0, ads: 0, reload: 0, score: 0 }, locked: false, relockAt: 0, keysHeld: false, ctrlSaid: false, test: !!opts.test, mShots: 0, mHits: 0, firstBlood: false, ammoMsg: '', xhFlash: 0, arrowT: 0, arrowFrom: new THREE.Vector3(),
       rec: { pitch: spring(120, 12), yaw: spring(120, 12) }, kick: { pitch: spring(90, 10), roll: spring(90, 10) }, bob: spring(220, 20), eyeS: spring(120, 14), fov: spring(90, 14), fovT: PS.cfg.fov || 80, slump: spring(40, 6), slumpT: 0, roll: spring(40, 6), rollT: 0, vigS: spring(40, 8), hpWob: spring(120, 10), hpShow: spring(60, 8), hm: spring(200, 18), hmT: 0,
       vm: { root: new THREE.Group(), gun: null, pos: { x: spring(160, 16), y: spring(160, 16), z: spring(160, 16) }, rot: { x: spring(120, 14), y: spring(120, 14), z: spring(120, 14) }, tgt: { x: 0, y: -0.5, z: 0 }, nudgeT: 0 }, vmAlt: false, magS: spring(160, 14), magT: 0, slideS: spring(400, 22), boltS: spring(300, 18),
       raf: 0, lastT: 0, acc: 0, endT: 0, endShown: false, statsDone: false, place: 0, records: [], escT: 0, leaveArmed: false, stick: { id: -1, x: 0, y: 0, R: 44, full: 0 }, look: { id: -1, x: 0, y: 0, moved: 0, t0: 0 }, portrait: false, friction: false, centerT: 0, bigT: 0, boardT: 0, frameH: 800, onStone: false, tapFire: 0 };
@@ -1705,7 +1724,7 @@ export function createStriker(api) {
     el.querySelectorAll('.tb').forEach(b => { H.tbs[b.dataset.b] = b; });
     H.xh.style.setProperty('--xc', ({ red: '#e10600', white: '#f3ecdc', green: '#3ad86a', cyan: '#3ad8e8' })[PS.cfg.xhair] || '#e10600'); H.xh.style.setProperty('--l', Math.round(9 * (PS.cfg.xsize || 1)) + 'px');
     H.prompt.querySelector('h3').textContent = isTouch ? L('touchPrompt', 'tap to play') : L('lockPrompt', 'click to play');
-    H.prompt.querySelector('p').textContent = PS.seenTutorial ? '' : (isTouch ? L('touchTraining', 'left thumb moves. right thumb aims. red button shoots.') : L('training', 'wasd moves. mouse aims. left click fires. r reloads. 1 2 3 pick a gun.'));
+    H.prompt.querySelector('p').textContent = PS.seenTutorial ? '' : (isTouch ? L('touchTraining', 'left thumb moves. right thumb aims. red button shoots.') : L('training', 'wasd moves. mouse aims. left click fires. r reloads. c crouches, shift sprints. f for fullscreen.'));
     H.pause.querySelector('h3').textContent = L('pause', 'paused'); H.pause.querySelector('.psub').textContent = isTouch ? '' : L('pauseSub', 'click to resume');
     H.pause.querySelector('[data-a=resume]').textContent = L('resume', 'resume'); H.pause.querySelector('[data-a=leave]').textContent = L('leave', 'leave');
     H.board.querySelector('h3').textContent = L('hud.scoreboard', 'scoreboard'); H.portrait.querySelector('p').textContent = L('portrait', 'rotate your phone');
@@ -1718,7 +1737,7 @@ export function createStriker(api) {
     for (let i = 0; i < M.nBots; i++) { const b = new Bot(names[i] || { name: 'bot' + (i + 1), color: '#4a6fa5' }, i); M.bots.push(b); M.all.push(b); b.respawnNow(); b.prot = 0; b.scaleS.x = 1; b.scaleS.v = 0; }
     sound.listener = { pos: M.P.pos, yaw: 0 };
     // events
-    M.ro = new ResizeObserver(() => resizeMatch()); M.ro.observe(frame); resizeMatch();
+    M.ro = new ResizeObserver(() => resizeMatch()); M.ro.observe(el); resizeMatch();   // el, not frame: fullscreen resizes the mount and leaves the frame alone
     M.onMouseDown = e => { if (!M || isTouch) return; if (!M.locked) return; if (e.button === 0) M.input.fire = 1; else if (e.button === 2) M.input.ads = 1; };
     M.onMouseUp = e => { if (!M) return; if (e.button === 0) M.input.fire = 0; else if (e.button === 2) M.input.ads = 0; };
     M.onMouseMove = e => { if (M && M.locked && !M.paused) look(e.movementX || 0, e.movementY || 0, 1); };
@@ -1728,6 +1747,7 @@ export function createStriker(api) {
     M.onLockError = () => { if (!M) return; H.prompt.querySelector('p').textContent = L('lockDenied', 'click again'); H.pause.querySelector('.pnote').textContent = L('lockDenied', 'click again'); };
     cv.addEventListener('mousedown', M.onMouseDown); addEventListener('mouseup', M.onMouseUp); addEventListener('mousemove', M.onMouseMove); cv.addEventListener('wheel', M.onWheel, { passive: true }); cv.addEventListener('click', M.onClick);
     document.addEventListener('pointerlockchange', M.onLockChange); document.addEventListener('pointerlockerror', M.onLockError); el.addEventListener('contextmenu', e => e.preventDefault());
+    M.onFsChange = onFsChange; document.addEventListener('fullscreenchange', M.onFsChange);
     H.pause.querySelector('[data-a=resume]').onclick = () => { if (!M) return; if (isTouch) resumeGame(); else if (performance.now() >= M.relockAt) requestLock(); else H.pause.querySelector('.pnote').textContent = L('lockCooldown', 'one second'); };
     H.pause.querySelector('[data-a=leave]').onclick = () => { if (!M) return; if (!M.leaveArmed) { M.leaveArmed = true; H.pause.querySelector('.pnote').textContent = L('leaveConfirm', 'leave match? it counts as a loss.'); return; } leaveMatch(); };
     H.end.querySelector('[data-a=again]').onclick = () => { const o = { diff: M.diff, bots: M.nBots, loadout: M.loadout }; unmountMatch(); startMatch(o); };
@@ -1738,17 +1758,44 @@ export function createStriker(api) {
     if (!PS.seenTutorial) { PS.seenTutorial = true; if (isTouch) PS.seenTouch = true; api.persist(); }
     M.lastT = performance.now(); M.raf = requestAnimationFrame(loop);
   }
-  function resizeMatch() { if (!M) return; const f = api.frame(), w = Math.max(2, f.clientWidth), h = Math.max(2, f.clientHeight); M.renderer.setSize(w, h, false); M.camera.aspect = w / h; M.camera.updateProjectionMatrix(); M.frameH = h; const por = isTouch && h > w; if (por !== M.portrait) { M.portrait = por; M.hud.portrait.classList.toggle('on', por); if (por && (M.phase === 'count' || M.phase === 'play') && !M.paused) { pauseGame(); M.portraitPaused = true; } else if (!por && M.portraitPaused) { M.portraitPaused = false; resumeGame(); }
+  // measure the mount, not the MirrorOS frame: fullscreen takes #ps out to screen size and leaves the
+  // frame behind it at window size, and rendering the frame's dimensions into a screen-sized canvas
+  // stretches the whole match
+  function resizeMatch() { if (!M) return; const f = M.el, w = Math.max(2, f.clientWidth), h = Math.max(2, f.clientHeight); M.renderer.setSize(w, h, false); M.camera.aspect = w / h; M.camera.updateProjectionMatrix(); M.frameH = h; const por = isTouch && h > w; if (por !== M.portrait) { M.portrait = por; M.hud.portrait.classList.toggle('on', por); if (por && (M.phase === 'count' || M.phase === 'play') && !M.paused) { pauseGame(); M.portraitPaused = true; } else if (!por && M.portraitPaused) { M.portraitPaused = false; resumeGame(); }
     // last, not first: turning the phone upright calls pauseGame(), which puts the pause card back on
     // — hiding it before that ran left the two cards stacked on top of each other
     M.hud.pause.classList.toggle('on', M.paused && !por); } }
   function requestLock() { const cv = M.cv; try { const p = cv.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => { try { cv.requestPointerLock(); } catch (e) {} }); } catch (e) { try { cv.requestPointerLock(); } catch (_) {} } }
+  /* Fullscreen, and with it the keyboard. `navigator.keyboard.lock()` only holds while the document is
+     fullscreen, and it is the ONLY way a page keeps ctrl+W: the browser reserves that chord and a page
+     never gets to cancel it. Escape is deliberately NOT in the grab list — locking it would make leaving
+     the game a press-and-hold, and Esc is the way out of every layer of this thing. */
+  function toggleFullscreen() {
+    const el = M && M.el; if (!el) return;
+    if (document.fullscreenElement === el) { try { document.exitFullscreen(); } catch (e) {} return; }
+    try { const p = el.requestFullscreen && el.requestFullscreen({ navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+  function onFsChange() {
+    if (!M) return;
+    const on = document.fullscreenElement === M.el;
+    if (on && navigator.keyboard && navigator.keyboard.lock) {
+      navigator.keyboard.lock(KEY_GRAB).then(() => { if (M) M.keysHeld = true; }, () => { if (M) M.keysHeld = false; });
+    } else {
+      if (!on) { M.keysHeld = false; M.input.crouch = 0; }        // ctrl stops crouching the moment the browser takes its keys back
+      if (navigator.keyboard && navigator.keyboard.unlock && !on) { try { navigator.keyboard.unlock(); } catch (e) {} }
+    }
+    resizeMatch();
+  }
   function unmountMatch() {
     if (!M) return; const m = M; M = null;
     cancelAnimationFrame(m.raf); if (m.ro) m.ro.disconnect();
     m.cv.removeEventListener('mousedown', m.onMouseDown); removeEventListener('mouseup', m.onMouseUp); removeEventListener('mousemove', m.onMouseMove); m.cv.removeEventListener('wheel', m.onWheel); m.cv.removeEventListener('click', m.onClick);
     document.removeEventListener('pointerlockchange', m.onLockChange); document.removeEventListener('pointerlockerror', m.onLockError);
+    document.removeEventListener('fullscreenchange', m.onFsChange);
     if (document.pointerLockElement === m.cv) { try { document.exitPointerLock(); } catch (e) {} }
+    // hand the keyboard and the screen back, or the taskbar and the courier stay under a fullscreen canvas
+    if (navigator.keyboard && navigator.keyboard.unlock) { try { navigator.keyboard.unlock(); } catch (e) {} }
+    if (document.fullscreenElement === m.el) { try { document.exitFullscreen(); } catch (e) {} }
     for (const b of m.bots) b.dispose(); disposeGun(m.vm.gun); if (m.fx) m.fx.dispose(); if (m.city) m.city.dispose(); m.world.dispose(); disposeFig();
     m.renderer.dispose(); try { m.renderer.forceContextLoss(); } catch (e) {} m.el.remove(); sound.listener = null; duck(false); api.musicDuck(false);
   }
@@ -2096,6 +2143,8 @@ export function createStriker(api) {
     skinCfg: () => SOLDIER.skin,
     fx: () => (M && M.fx) ? { flash: M.fx.flashes.filter(q => q.life > 0).length, tracer: M.fx.tracers.filter(q => q.life > 0).length, spark: M.fx.sparks.filter(q => q.life > 0).length, light: M.fx.light.visible } : null,
     lights: () => (M && M.world) ? M.world.lights.length : 0,
+    keys: () => M ? { held: !!M.keysHeld, ctrlSaid: !!M.ctrlSaid, crouch: M.input.crouch, fs: document.fullscreenElement === M.el, w: M.el.clientWidth, h: M.el.clientHeight, cw: M.cv.width, ch: M.cv.height, dpr: M.renderer.getPixelRatio() } : null,
+    fullscreen: () => toggleFullscreen(),
     city: () => (M && M.city) ? { meshes: M.city.meshes.length, tris: M.city.geos.reduce((a, g) => a + (g.index ? g.index.count : 0) / 3, 0) } : null,
     lines: () => flattenLines(LINES), sfxLog: sound.log, paintTab: () => paintTab(), setTab: t => { tab = t; paintTab(); },
     get match() { return M; }, get ps() { return PS; }, draws: () => M ? M.renderer.info.render.calls : 0,

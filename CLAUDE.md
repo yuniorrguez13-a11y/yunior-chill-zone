@@ -1034,6 +1034,20 @@ Snake's Authentic Gun Sounds packs and an Announcer Pack).**
   swallowed the rest of two statements, once silently (the `MAT` literal lost four materials and `disposeMats()` threw inside
   `close()`, leaving the shooter holding the keyboard with its window gone).
 
+- **Ctrl is not a key a web game gets to have.** The owner: *"cuando crouch y camino cierra mis tabs"* — crouch was Ctrl,
+  forward is W, and **ctrl+W is close-tab**. `preventDefault()` does not save you: Chrome reserves ctrl+W / ctrl+T / ctrl+N
+  and never hands the page an event to cancel (Firefox does, which is why the handler still calls it on ctrl chords — it
+  costs nothing and helps there). So **crouch is `C`**, Ctrl is out of `KEYMAP` entirely, and Ctrl only crouches once the
+  game genuinely holds the keyboard. That is what `F` is for: it toggles fullscreen on `#ps` and, in fullscreen,
+  `navigator.keyboard.lock(KEY_GRAB)` takes the chord keys (W T N R D S P F A L Tab and the digits) away from the browser —
+  **`Escape` is deliberately NOT in that list**, because locking it turns leaving the game into a press-and-hold and Esc is
+  the way out of every layer of this thing. Pressing Ctrl windowed says so once instead of eating a tab. Two knock-ons:
+  `resizeMatch()` measures **`M.el`, not `api.frame()`** (fullscreen resizes the mount and leaves the MirrorOS frame at
+  window size, so the old measurement stretched the whole match), the ResizeObserver watches the mount for the same reason,
+  and `unmountMatch()` unlocks the keyboard and exits fullscreen or the taskbar stays buried under a fullscreen canvas.
+  The Gaming Zone iframe already carried `allow="fullscreen;pointer-lock"`, so this works embedded too. `scratchpad/ps-keys.js`
+  drives the real chord through CDP with a second tab open and checks the tab is still there afterwards.
+
 Not done yet: Pitty Striker multiplayer (the WebRTC wire exists), more Overwork jobs, spectating a full room, a host-side speed
 check on self-reported positions.
 Performance: Overwork's world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
