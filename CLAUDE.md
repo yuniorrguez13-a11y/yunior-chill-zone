@@ -1098,6 +1098,107 @@ Snake's Authentic Gun Sounds packs and an Announcer Pack).**
   changes nothing anywhere, and leaving cleans up on both sides. `__test.openSpot(d)` exists because hand-picked
   coordinates on this map put the two players behind the fountain.
 
+## Server scripts and raid tools (`index.html`, Sep 2026)
+
+The owner: *"anade una manera de crear un servidor con una manera de script (que puede
+personalizar todo) tambien anade mas opciones a los servidores como reportar que hay una
+raid etc."* Both shipped with **zero new SQL** — the whole point of the design pass was
+finding the version that needed none.
+
+### Server scripts — a server written down as a list
+A plain-text format, one thing per line, in a third tab of `#sv-ov` ("From a script"):
+
+    server: Study Hall
+    icon: SH
+
+    text: general
+    text: rules, locked
+    text: homework, slow 30
+    voice: Study Room
+
+`#` starts a note. `scParse()` returns `{spec, errs}` and is the only thing that reads it —
+nothing is ever evaluated. Validation runs on every keystroke and **Continue stays disabled
+while anything is wrong**, so there is no Check button to forget. Each error carries its line
+number, and the plan underneath previews the name that will *actually* exist next to what was
+typed (`late-night-talk`, you typed "Late Night Talk") — that mismatch is the surprise the
+ordinary Create Channel dialog produces most often.
+
+**Create-only is the security model.** There is no directive that touches a server that
+already exists, so the worst a pasted stranger's script can do is build you a server you did
+not want, which you can delete. Four things are deliberately absent, and `SC_NOPE` refuses
+each **by name with its own sentence** rather than a generic "unknown key" — a rejection that
+explains the data model teaches the format better than anything else:
+- `members:` / `admins:` — `server_members` INSERT requires `user_id = auth.uid()`, so a
+  script cannot add anybody at all. Send the invite code.
+- `roles:` — `server_members.role` is free text with no CHECK, so a typo'd role inserts
+  cleanly and is then invisible to both the client's `['owner','admin'].includes()` checks
+  and RLS's hardcoded lists: a silent demotion to no permissions. Roles stay in the member card.
+- `token:` / `bot:` — the `bot-post` edge function has JWT verification off and authenticates
+  bots by token, so a token in a shared file is a permanent backdoor poster.
+- `iconurl:` / `banner:` — `paintRail()` puts `icon_url` straight into `<img src>` for every
+  member, so a URL in a shared file is an IP log for everyone in the server.
+The invite code is in the format in **neither** direction: always minted, never exported.
+An unrecognised word is a blocking **error, never a warning** — a mistyped `slowmode` that
+quietly does nothing leaves you believing a channel is protected when it is not.
+
+**Export is the other half.** "Copy this server as a script" in server settings prints the
+open server in the same format, so whatever export emits is exactly what the parser accepts.
+That is the round-trip rule that stops the grammar drifting, and it is how anyone learns the
+format without reading documentation.
+
+Three existing bugs fixed on the way through, all in the create path:
+- `invite_code` is UNIQUE and six random base-36 characters, and the original create button
+  had **no collision retry** — a clash surfaced as a raw Postgres error. `scNewServer()`
+  retries five times on 23xxx and both paths use it.
+- A failed `server_members` insert used to leave a `servers` row behind. `loadServers()`
+  builds the rail from `server_members` only, so that is an **invisible server nobody can
+  reach or delete**. Both paths now delete the server row if the member row fails.
+- The Create Channel dialog's `slug(raw)||raw.slice(0,30)` fallback kept the raw text when the
+  slug came out empty, so a name of nothing but emoji became a channel with an emoji in the
+  sidebar. `chSlug()` (spaces to hyphens, then strip) replaces it and an empty result is
+  refused. `slug()` is untouched — it is for handles, where spaces should vanish.
+
+### Raid tools
+**A report is a `notifications` row.** The table is already type-agnostic: the renderer falls
+back to a bell icon plus `data.text` for any unknown type, so `raid_report` badges, toasts,
+pings and pops a desktop notification with no client change. `ycz_can_notify` allows notifying
+anyone who shares a server with you, which is exactly the member-to-staff direction needed.
+Two rules that look like details and are not:
+1. **A raid alert never carries `data.room_key`.** `clearRoomNotifs()` marks read every unread
+   row whose `room_key` matches on *every* `openChannel`, so the alert would vanish the first
+   time a mod opened that channel — and the realtime handler swallows the toast and the ping
+   entirely for someone already sitting in that room, i.e. the one person who needed waking.
+2. **Nothing the reporter typed is ever the headline.** `ycz_guard_notification` stamps
+   `from_id` and `from_username` server-side and leaves every other key alone, so `data.text`
+   is attacker-written — "Yunior reported a raid" is a string anyone can send. The panel builds
+   its own line from the stamped username and shows the typed note underneath, as a quote.
+
+**The panel (`#rd-ov`) is gated on `canModerate()`, not `canManage()`** — mods are the people
+awake at 3am, and `#sm-edit` is hidden from them. The report button sits outside `#sm-edit` for
+the same reason, the trick the invite row already uses.
+
+**Three levels, in plain words**: Normal / Cautious (10s slowmode everywhere) / Lockdown (every
+text channel locked). State is derived from the newest `raid_on` / `raid_off` row in
+`server_audit_log` — no column to add — and expires after 6 hours so a forgotten lockdown heals
+itself. The previous per-channel state is snapshotted into `audit(...detail)` before writing, and
+**re-validated on the way out** (`rdReadSnap`): parsed in try/catch, `locked` coerced with `!!`,
+`slowmode` clamped to a member of `SLOW_STEPS`, ids matched against live channels. A slowmode
+outside that array makes the cycle button's `indexOf` return −1 and silently reset the channel
+to 0 on the next press. Channel writes stop at admin in RLS, so a mod sees the level buttons
+**disabled with a reason** rather than pressing one that silently updates zero rows.
+
+No member-wide broadcast on lockdown or all-clear: every `notifications` INSERT fires the
+push-notify webhook, so one toggle would be hundreds of outbound requests and phone pushes.
+The lock is already visible to every member in the composer.
+
+### `window.__ycz` — the test handle
+The whole of `index.html` is one IIFE, so nothing is reachable from the console and no harness
+could call a single function. It now exposes a handle **only when `location.hostname` is
+localhost / 127.0.0.1 / [::1]**, the same rule Overwork's `window.__ow` uses — verified by
+loading the page under the real domain name via `--host-resolver-rules` and confirming the
+handle and every internal are `undefined`. Keep that gate: this closure holds the session.
+`scratchpad/sv-script.js` drives 49 checks through it against a recording Supabase fake.
+
 Not done yet: more Overwork jobs, spectating a full room, a host-side speed check on self-reported positions.
 Performance: Overwork's world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
 swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason). Pitty Striker is ~82.
@@ -1116,12 +1217,12 @@ swiftshader (the harnesses poll for conditions instead of sleeping fixed times f
   Don't propose it again.
 - SFFG: Truck's sprite is drawn much larger than his hurtbox (`scale:1.85` against
   `w:68`); training mode's hitbox overlay makes the mismatch obvious.
-- **Both Aug 2026 migrations must each be run once** in the Supabase SQL editor — the
-  features migration (pinned messages + `user_profiles.bio`) is done; the **admin-tools
-  migration** (audit log, slowmode/lock columns, timeouts, rebuilt RLS) lives in chat
-  with the owner, not in the repo (owner rule: SQL is never committed). The app degrades
-  gracefully until it's run: no audit entries, lock/slowmode/timeout invisible,
-  role-change buttons error for admins, bans stay client-side-only.
+- ~~Both Aug 2026 migrations must each be run once~~ — **both are run.** Verified against
+  the live database on 13 Sep 2026: `channels.locked` / `channels.slowmode`,
+  `server_members.muted_until` and `server_audit_log` all exist, as do `ycz_sv_role`,
+  `ycz_can_post`, `ycz_is_banned` and `ycz_site_owner`. The client's retry-without-column
+  fallbacks (`loadMembers`, `saveProfile`, the script builder) are belt-and-braces now, not
+  load-bearing — keep them anyway, they cost nothing and a fresh database starts bare.
 - Emoji still in the interface: landing-page feature cards (`💬 🔊 🎮 …`, arguably
   content), the `🌙`/`☀️` theme buttons on VideoZone/Qmages, and misc toast checkmarks.
   The chat-app chrome (`🏠`, `🟢`, `👤`, `📷`, `🔇`, `📣`, notification icons) is now SVG.

@@ -555,6 +555,33 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 .sm-ch .sv{font-size:9.5px;font-weight:700;color:var(--red);flex:none;}
 .mem-mgr{cursor:pointer;}
 .mem-mgr:hover{border-color:var(--border-2);}
+/* server scripts */
+#sv-ov .card.wide{max-width:560px;}
+#sv-code-in{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-height:190px;resize:vertical;line-height:1.5;}
+.sc-rep{margin-top:9px;font-size:12.5px;line-height:1.5;}
+.sc-bad{display:flex;gap:7px;padding:6px 9px;background:rgba(237,66,69,.09);border:1px solid rgba(237,66,69,.32);
+  border-radius:8px;margin-bottom:5px;color:#ffb9bb;overflow-wrap:anywhere;}
+.sc-bad b{color:#ff9aa0;font-weight:700;flex:none;}
+.sc-plan{display:flex;align-items:center;gap:7px;padding:5px 9px;background:#0a0a10;border:1px solid var(--border);
+  border-radius:8px;margin-bottom:4px;overflow-wrap:anywhere;}
+.sc-plan .ic{color:var(--txt3);flex:none;display:flex;}
+.sc-plan .nm{font-weight:600;color:var(--txt);}
+.sc-plan .was{color:var(--txt3);font-size:11.5px;}
+.sc-plan .tag{margin-left:auto;font-size:9.5px;font-weight:700;color:var(--red);flex:none;}
+.sc-ok{color:var(--txt3);}
+/* raid tools */
+.rd-lv{display:flex;gap:7px;margin-bottom:8px;}
+.rd-lv button{flex:1;padding:9px 6px;background:#0a0a10;border:1px solid var(--border);border-radius:9px;
+  color:var(--txt2);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;}
+.rd-lv button.on{border-color:var(--red);color:var(--red);}
+.rd-lv button[disabled]{opacity:.45;cursor:not-allowed;}
+.rd-row{display:flex;gap:8px;padding:7px 9px;background:#0a0a10;border:1px solid var(--border);
+  border-radius:9px;margin-bottom:5px;align-items:flex-start;}
+.rd-row .ic{color:var(--txt3);flex:none;margin-top:1px;display:flex;}
+.rd-b{flex:1;min-width:0;font-size:12.5px;color:var(--txt2);line-height:1.45;overflow-wrap:anywhere;}
+.rd-b b{color:var(--txt);font-weight:600;}
+.rd-ago{color:var(--txt3);font-size:11px;margin-left:6px;}
+.rd-note{font-size:12px;color:var(--txt3);line-height:1.5;margin:2px 0 10px;}
 .aud-row{display:flex;gap:8px;padding:7px 9px;background:#0a0a10;border:1px solid var(--border);
   border-radius:9px;margin-bottom:6px;align-items:flex-start;}
 .aud-row .ic{color:var(--txt3);flex:none;margin-top:1px;display:flex;}
@@ -751,7 +778,10 @@ body.light .m-tx code{background:rgba(0,0,0,.07);}
 body.light #me-bar{background:rgba(0,0,0,.045);}
 body.light #vhud{background:rgba(0,0,0,.05);}
 body.light .fi,body.light .tabs,body.light .seg button,body.light .sm-ch,body.light .bot-row,
-body.light .uprev,body.light .upb,body.light .m-edit,body.light .ac-av,body.light .aud-row{background:#f0f0f4;}
+body.light .uprev,body.light .upb,body.light .m-edit,body.light .ac-av,body.light .aud-row,
+body.light .sc-plan,body.light .rd-row,body.light .rd-lv button{background:#f0f0f4;}
+body.light .sc-bad{background:rgba(237,66,69,.08);color:#8d2226;}
+body.light .sc-bad b{color:#a32328;}
 body.light .tdrop .fi{background:#f0f0f4;}
 body.light .tok-v{background:#fff;}
 body.light .rail-item::before{background:#191922;}
@@ -962,8 +992,9 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
     <div class="card-b">
       <div class="err" id="sv-err"></div>
       <div class="seg" id="sv-seg">
-        <button class="on" data-m="new"><span class="e"><i data-ic="plus" data-ic-size="20"></i></span>Create my own</button>
-        <button data-m="join"><span class="e"><i data-ic="link" data-ic-size="20"></i></span>Join with code</button>
+        <button class="on" data-m="new"><span class="e"><i data-ic="plus" data-ic-size="20"></i></span><span data-i18n="svModeNew">Create my own</span></button>
+        <button data-m="join"><span class="e"><i data-ic="link" data-ic-size="20"></i></span><span data-i18n="svModeJoin">Join with code</span></button>
+        <button data-m="script"><span class="e"><i data-ic="scroll" data-ic-size="20"></i></span><span data-i18n="svModeScript">From a script</span></button>
       </div>
       <div id="sv-new">
         <div class="fg"><label class="fl" data-i18n="serverName">Server name</label><input type="text" class="fi" id="sv-nm" placeholder="My Chill Server" maxlength="40"></div>
@@ -971,6 +1002,13 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
       </div>
       <div id="sv-join" style="display:none;">
         <div class="fg"><label class="fl">Invite code</label><input type="text" class="fi mono" id="sv-code" placeholder="abc123" autocapitalize="off"></div>
+      </div>
+      <div id="sv-script" style="display:none;">
+        <div class="fg"><label class="fl" data-i18n="scLabel">Write the server down</label>
+          <textarea class="fi" id="sv-code-in" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+          <div class="hint" data-i18n="scHint">One thing per line. A line starting with # is a note to yourself.</div>
+        </div>
+        <div class="sc-rep" id="sv-rep"></div>
       </div>
     </div>
     <div class="card-f"><button class="btn" id="sv-x" data-i18n="cancel">Cancel</button><button class="btn pri" id="sv-go" data-i18n="continue">Continue</button></div>
@@ -1005,6 +1043,18 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
           <button class="upb" id="sm-regen" style="display:none;flex:none;" data-i18n-title="regenInvite" title="New code"><i data-ic="refresh" data-ic-size="15"></i></button>
         </div></div>
 
+      <!-- OUTSIDE #sm-edit on purpose: #sm-edit is hidden unless canManage(), and the two
+           people who most need these are an ordinary member watching a raid start and a mod
+           who is not an admin. The invite row above uses the same trick. -->
+      <div class="fg" id="sm-safety">
+        <label class="fl" data-i18n="rdSafety">Safety</label>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <button class="upb dngb" id="sm-raid"><i data-ic="shield" data-ic-size="15"></i> <span data-i18n="rdReport">Report a raid</span></button>
+          <button class="upb" id="sm-raidtools" style="display:none;"><i data-ic="scroll" data-ic-size="15"></i> <span data-i18n="rdPanel">Raid tools</span></button>
+        </div>
+        <div class="hint" id="sm-raid-hint" data-i18n="rdReportHint">Tells this server's owner, admins and mods that something is happening right now.</div>
+      </div>
+
       <div id="sm-edit" style="display:none;">
         <div class="fg"><label class="fl">Server name</label>
           <input type="text" class="fi" id="sm-name" maxlength="40"></div>
@@ -1035,6 +1085,10 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
             <button class="upb" id="sm-new-v"><i data-ic="volume" data-ic-size="14"></i> <span data-i18n="newVoice">New voice channel</span></button>
           </div>
         </div>
+        <div class="fg"><label class="fl" data-i18n="scExportLabel">This server, as a script</label>
+          <div class="hint" data-i18n="scExportHint">Copy it to build the same server again, or send it to someone.</div>
+          <button class="upb" id="sm-export" style="width:100%;margin-top:7px;"><i data-ic="copy" data-ic-size="15"></i> <span data-i18n="scExport">Copy this server as a script</span></button>
+        </div>
         <div class="fg"><label class="fl" data-i18n="auditLog">Audit log</label><div id="sm-audit" class="sm-scroll"></div></div>
         <div class="fg" id="sm-danger" style="display:none;"><label class="fl" data-i18n="dangerZone">Danger zone</label>
           <div style="display:flex;gap:7px;">
@@ -1050,6 +1104,41 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
       <button class="btn dng" id="sm-leave" data-i18n="leaveServer">Leave server</button>
       <button class="btn" id="sm-x" data-i18n="close">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- REPORT A RAID -->
+<div class="ov" id="rr-ov">
+  <div class="card" style="max-width:400px;">
+    <div class="card-h"><h3 data-i18n="rdReport">Report a raid</h3><p data-i18n="rdReportSub">This wakes the people who can actually do something.</p></div>
+    <div class="card-b">
+      <div class="err" id="rr-err"></div>
+      <div class="fg"><label class="fl" data-i18n="rdWhat">What's happening? (optional)</label>
+        <input type="text" class="fi" id="rr-what" maxlength="80" data-i18n-ph="rdWhatPh" placeholder="ten new accounts spamming #general"></div>
+      <div class="hint" data-i18n="rdReportNote">Staff see who reported it. Don't use this to get someone in trouble — it is logged.</div>
+    </div>
+    <div class="card-f"><button class="btn" id="rr-x" data-i18n="cancel">Cancel</button><button class="btn pri" id="rr-go" data-i18n="rdSend">Send the alert</button></div>
+  </div>
+</div>
+
+<!-- RAID TOOLS -->
+<div class="ov" id="rd-ov">
+  <div class="card" style="max-width:440px;">
+    <div class="card-h"><h3 data-i18n="rdPanel">Raid tools</h3><p id="rd-sub">—</p></div>
+    <div class="card-b">
+      <div class="err" id="rd-err"></div>
+      <div class="fg"><label class="fl" data-i18n="rdState">Right now</label>
+        <div class="rd-lv" id="rd-lv">
+          <button data-lv="normal" data-i18n="rdNormal">Normal</button>
+          <button data-lv="cautious" data-i18n="rdCautious">Cautious</button>
+          <button data-lv="lockdown" data-i18n="rdLockdown">Lockdown</button>
+        </div>
+        <div class="rd-note" id="rd-what">—</div>
+      </div>
+      <div class="fg"><label class="fl" data-i18n="rdReports">Reports in the last 6 hours</label><div id="rd-reports" class="sm-scroll"></div></div>
+      <div class="fg"><label class="fl" data-i18n="rdJoins">Joined in the last 10 minutes</label><div id="rd-joins" class="sm-scroll"></div></div>
+    </div>
+    <div class="card-f"><button class="btn" id="rd-x" data-i18n="close">Close</button></div>
   </div>
 </div>
 
@@ -1257,6 +1346,12 @@ const ini=s=>((s||'?').trim()[0]||'?').toUpperCase();
 /* "Yuniors Chill Zone" → "YC" — a proper monogram, like Discord */
 const initials=n=>(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
 const slug=v=>(v||'').toLowerCase().replace(/^@/,'').replace(/[^a-z0-9_-]/g,'').slice(0,24);
+/* A channel name is not a handle: slug() drops spaces, which turns "Late Night Talk" into
+   "latenighttalk". Channels hyphenate, the way every chat app writes them. */
+const chSlug=v=>String(v||'').toLowerCase().trim().replace(/[\s_]+/g,'-')
+  .replace(/[^a-z0-9-]/g,'').replace(/-{2,}/g,'-').replace(/^-+|-+$/g,'').slice(0,30);
+/* {placeholder} filling for i18n lines. Output always goes through textContent or esc(). */
+const fmt=(s,o)=>String(s==null?'':s).replace(/\{(\w+)\}/g,(m,k)=>(o&&o[k]!=null)?String(o[k]):m);
 function ago(d){if(!d)return'';const t=new Date(d);if(isNaN(t))return'';const s=(Date.now()-t)/1000;
   if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';
   if(s<604800)return Math.floor(s/86400)+'d ago';return t.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
@@ -1803,21 +1898,71 @@ $('frm-x').onclick=()=>{$('frm-ov').classList.remove('open');$('frm').src='';};
 
 document.querySelectorAll('#sv-seg button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#sv-seg button').forEach(x=>x.classList.toggle('on',x===b));
-  const m=b.dataset.m;$('sv-new').style.display=m==='new'?'block':'none';$('sv-join').style.display=m==='join'?'block':'none';
+  const m=b.dataset.m;
+  $('sv-new').style.display=m==='new'?'block':'none';
+  $('sv-join').style.display=m==='join'?'block':'none';
+  $('sv-script').style.display=m==='script'?'block':'none';
+  $('sv-ov').querySelector('.card').classList.toggle('wide',m==='script');
+  $('sv-err').className='err';
+  if(m==='script'){
+    if(!$('sv-code-in').value.trim())$('sv-code-in').value=t('scExample');
+    scPaint();
+  }else $('sv-go').disabled=false;
 });
+/* live while typing: Continue stays disabled until the whole list is clean, so there is no
+   Check button to forget and no way to run something half-understood */
+let scSpec=null;
+function scPaint(){
+  const box=$('sv-rep'),{spec,errs}=scParse($('sv-code-in').value);
+  scSpec=errs.length?null:spec;
+  $('sv-go').disabled=!!errs.length;
+  if(errs.length){
+    box.innerHTML=errs.map(e=>`<div class="sc-bad">${e.line?`<b>${t('scLine')} ${e.line}</b>`:''}<span>${esc(e.msg)}</span></div>`).join('');
+    return;
+  }
+  const head=`<div class="sc-ok" style="margin-bottom:6px">${esc(fmt(t('scPlan'),{s:spec.name,n:spec.chs.length}))}</div>`;
+  box.innerHTML=head+spec.chs.map(c=>{
+    const tags=[];
+    if(c.locked)tags.push(t('scTagLocked'));   // the tag says what the channel IS, not what the button DOES
+    if(c.slowmode)tags.push(c.slowmode+'s');
+    // the slug is shown next to what was typed: "why is my channel called that" is the
+    // surprise the ordinary Create Channel dialog produces most often
+    const was=c.type==='text'&&c.typed.toLowerCase()!==c.name?`<span class="was">${esc(fmt(t('scYouTyped'),{w:c.typed}))}</span>`:'';
+    return `<div class="sc-plan"><span class="ic">${c.type==='voice'?icon('volume',14):icon('hash',14)}</span>
+      <span class="nm">${esc(c.name)}</span>${was}${tags.length?`<span class="tag">${esc(tags.join(' · '))}</span>`:''}</div>`;
+  }).join('');
+}
+$('sv-code-in').oninput=scPaint;
 $('sv-x').onclick=()=>shut('sv-ov');
 $('sv-go').onclick=async()=>{
   const mode=document.querySelector('#sv-seg button.on').dataset.m;
   const err=m=>{const e=$('sv-err');e.textContent=m;e.className='err on';};
   $('sv-go').disabled=true;
   try{
+    if(mode==='script'){
+      const{spec,errs}=scParse($('sv-code-in').value);
+      if(errs.length){scPaint();return err(t('scFixFirst'));}
+      const r=await scApply(spec);
+      if(r.error){
+        // a partial build leaves a real server behind: say so plainly rather than pretending
+        if(r.sv){await loadServers();const half=servers.find(x=>x.id===r.sv.id);if(half)goServer(half);shut('sv-ov');
+          return toast(fmt(t('scPartial'),{n:r.made}),'err');}
+        return err(r.error);
+      }
+      shut('sv-ov');await loadServers();
+      const fresh=servers.find(x=>x.id===r.sv.id);if(fresh)goServer(fresh);
+      // audit() reads curSv from module state, so it has to come AFTER goServer or the row
+      // lands on whichever server was open before
+      audit('server_script',spec.name,String(r.made));
+      toast(fmt(t(r.degraded?'scDoneDegraded':'scDone'),{n:r.made}),r.degraded?'':'ok');
+      return;
+    }
     if(mode==='new'){
       const name=$('sv-nm').value.trim();if(!name)return err('Give your server a name.');
-      const code=Math.random().toString(36).slice(2,8);
-      const{data:sv,error}=await sb.from('servers').insert({name,icon:$('sv-ic').value.trim()||name[0].toUpperCase(),
-        owner_id:user.id,invite_code:code}).select().single();
-      if(error)return err(error.message);
-      await sb.from('server_members').insert({server_id:sv.id,user_id:user.id,role:'owner'});
+      const{sv,error}=await scNewServer(name,$('sv-ic').value.trim()||name[0].toUpperCase());
+      if(error||!sv)return err((error&&error.message)||'could not create the server');
+      const{error:memErr}=await sb.from('server_members').insert({server_id:sv.id,user_id:user.id,role:'owner'});
+      if(memErr){try{await sb.from('servers').delete().eq('id',sv.id);}catch(e){}return err(memErr.message);}
       for(const c of [{n:'general',t:'text'},{n:'random',t:'text'},{n:'General Voice',t:'voice'}]){
         await sb.from('channels').insert({server_id:sv.id,name:c.n,type:c.t,room_key:uid()});
       }
@@ -1845,6 +1990,160 @@ $('sv-go').onclick=async()=>{
   }finally{$('sv-go').disabled=false;}
 };
 
+/* ══════ SERVER SCRIPTS ══════
+   A server written down as a list, one thing per line. It is not code and nothing in it
+   is ever evaluated — the parser only ever fills in {name, icon, channels[]}.
+
+   CREATE-ONLY, and that is the whole security model. A script builds a NEW server; there
+   is no directive that touches a server that already exists. The worst a hostile script
+   can do is make you a server you did not ask for, and you can delete that.
+
+   Deliberately NOT in the format, each for its own reason:
+     members / admins / roles — server_members INSERT requires user_id = auth.uid(), so a
+       script cannot add anybody at all. Roles are granted from the member card.
+     invite code — always minted here. A shared script that pre-decides the code would be
+       handing its author a key to every server built from it.
+     bot / token — the bot-post edge function has JWT verification off and authenticates
+       bots by their token, so a token sitting in a shared file is a permanent poster.
+     icon url / banner — paintRail() puts icon_url straight into <img src> for every
+       member, so a URL in a shared file is a view log for everyone in the server.
+   An unrecognised word is an ERROR, never a warning. A mistyped `slowmode` that quietly
+   does nothing leaves you believing a channel is protected when it is not. */
+const SC_MAX_CH=40, SC_MAX_LEN=8000;
+const SC_ALIAS={name:'server',title:'server',servername:'server',servidor:'server',nombre:'server',
+  emoji:'icon',ic:'icon',
+  chat:'text',channel:'text',texto:'text',canal:'text',
+  voz:'voice',vc:'voice',voicechannel:'voice'};
+/* refused by name, each with its own sentence: a rejection that explains the data model
+   teaches the format far better than a generic "unknown key" ever does */
+const SC_NOPE={members:'scNopeMembers',member:'scNopeMembers',admins:'scNopeMembers',invitemembers:'scNopeMembers',
+  role:'scNopeRoles',roles:'scNopeRoles',admin:'scNopeRoles',mod:'scNopeRoles',mods:'scNopeRoles',
+  category:'scNopeCategory',categories:'scNopeCategory',categoria:'scNopeCategory',group:'scNopeCategory',
+  topic:'scNopeTopic',description:'scNopeTopic',desc:'scNopeTopic',about:'scNopeTopic',rules:'scNopeTopic',
+  permissions:'scNopePerms',perms:'scNopePerms',private:'scNopePerms',public:'scNopePerms',nsfw:'scNopePerms',
+  invite:'scNopeInvite',code:'scNopeInvite',invitecode:'scNopeInvite',link:'scNopeInvite',
+  bot:'scNopeBot',bots:'scNopeBot',token:'scNopeBot',webhook:'scNopeBot',
+  iconurl:'scNopeIconUrl',image:'scNopeIconUrl',banner:'scNopeIconUrl',avatar:'scNopeIconUrl',logo:'scNopeIconUrl',
+  'delete':'scNopeDelete',remove:'scNopeDelete',rename:'scNopeDelete',clear:'scNopeDelete',
+  roomkey:'scNopeRoomKey',position:'scNopeRoomKey',order:'scNopeRoomKey'};
+/* control characters and bidi overrides: voice names are not slugged, so without this a
+   name can reorder or hide the rest of the sidebar row it sits in */
+const scClean=v=>String(v||'').replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g,'').trim();
+function scParse(src){
+  const spec={name:'',icon:'',chs:[]},errs=[],seen=new Set();
+  const text=String(src||'');
+  if(text.length>SC_MAX_LEN)return{spec,errs:[{line:0,msg:t('scTooLong')}]};
+  const bad=(i,msg)=>{if(errs.length<12)errs.push({line:i+1,msg});};
+  text.split(/\r?\n/).forEach((raw,i)=>{
+    const line=scClean(raw);
+    if(!line||line[0]==='#')return;
+    const m=line.match(/^([^:]{1,40}):\s*(.*)$/);
+    if(!m)return bad(i,t('scNoColon'));
+    let key=m[1].trim().toLowerCase().replace(/[\s_-]+/g,''),val=m[2].trim();
+    if(SC_ALIAS[key])key=SC_ALIAS[key];
+    if(SC_NOPE[key])return bad(i,t(SC_NOPE[key]));
+    if(key==='server'){
+      if(!val)return bad(i,t('scNeedName'));
+      if(spec.name)return bad(i,t('scTwoServers'));
+      spec.name=val.slice(0,40);return;
+    }
+    if(key==='icon'){
+      if(!val)return;
+      spec.icon=[...val].slice(0,2).join('');return;
+    }
+    if(key==='text'||key==='voice'){
+      const parts=val.split(',').map(s=>s.trim()).filter((s,k)=>k===0||s);
+      const rawName=parts.shift()||'';
+      if(!rawName)return bad(i,t('scNeedChName'));
+      // show the name that will ACTUALLY exist: the create dialog slugs text channels, and
+      // "why is my channel called that" is the surprise it produces most often
+      const nm=key==='text'?chSlug(rawName):rawName.slice(0,30);
+      if(!nm)return bad(i,t('scEmptyName'));
+      let locked=false,slow=0;
+      for(const p of parts){
+        const w=p.toLowerCase();
+        if(w==='locked'||w==='lock'){locked=true;continue;}
+        const sm=w.match(/^(?:slow|slowmode)\s*(\d+)s?$/);
+        if(sm){
+          const n=+sm[1];
+          if(!SLOW_STEPS.includes(n))return bad(i,fmt(t('scSlowBad'),{n:SLOW_STEPS.join(', ')}));
+          slow=n;continue;
+        }
+        return bad(i,fmt(t('scUnknownOpt'),{w:p}));
+      }
+      if(key==='voice'&&(locked||slow))return bad(i,t('scVoiceOpt'));
+      const dupKey=key+':'+nm.toLowerCase();
+      if(seen.has(dupKey))return bad(i,fmt(t('scDupCh'),{n:nm}));
+      seen.add(dupKey);
+      if(spec.chs.length>=SC_MAX_CH)return bad(i,fmt(t('scTooMany'),{n:SC_MAX_CH}));
+      spec.chs.push({name:nm,typed:rawName,type:key,locked,slowmode:slow});return;
+    }
+    bad(i,fmt(t('scUnknownWord'),{w:m[1].trim()}));
+  });
+  if(!errs.length&&!spec.name)errs.push({line:0,msg:t('scNeedServerLine')});
+  if(!errs.length&&!spec.chs.length)errs.push({line:0,msg:t('scNeedOneCh')});
+  return{spec,errs};
+}
+/* invite_code is UNIQUE and six random base-36 characters; the original create button has
+   no retry at all, so a collision surfaces as a raw Postgres error. Both paths use this. */
+async function scNewServer(name,icon){
+  let last=null;
+  for(let i=0;i<5;i++){
+    const code=Math.random().toString(36).slice(2,8);
+    const{data,error}=await sb.from('servers').insert({name,icon,owner_id:user.id,invite_code:code}).select().single();
+    if(!error)return{sv:data};
+    last=error;
+    if(!String(error.code||'').startsWith('23'))break;   // 23505 unique_violation is the only one worth another roll
+  }
+  return{error:last};
+}
+async function scApply(spec){
+  const icon=spec.icon||(spec.name[0]||'S').toUpperCase();
+  const{sv,error}=await scNewServer(spec.name,icon);
+  if(error||!sv)return{error:(error&&error.message)||'could not create the server'};
+  // the rail is built from server_members only, so a servers row without its member row is
+  // a server nobody can ever reach or delete. If this fails, take the server back out.
+  const{error:memErr}=await sb.from('server_members').insert({server_id:sv.id,user_id:user.id,role:'owner'});
+  if(memErr){
+    try{await sb.from('servers').delete().eq('id',sv.id);}catch(e){}
+    return{error:memErr.message};
+  }
+  // one at a time, in order: loadChannels() sorts by type then created_at, so sequential
+  // inserts are what makes the written order the order you see
+  let made=0,degraded=false;
+  for(const c of spec.chs){
+    const row={server_id:sv.id,name:c.name,type:c.type,room_key:uid(),position:made};
+    if(c.type==='text'){row.locked=!!c.locked;row.slowmode=c.slowmode|0;}
+    let{error:chErr}=await sb.from('channels').insert(row);
+    if(chErr&&c.type==='text'&&(c.locked||c.slowmode)){
+      // same shape as loadMembers(): a database without the admin-tools columns still gets
+      // its channels, and says so, instead of failing the whole build
+      delete row.locked;delete row.slowmode;
+      ({error:chErr}=await sb.from('channels').insert(row));
+      if(!chErr)degraded=true;
+    }
+    if(chErr)return{error:chErr.message,made,sv};
+    made++;
+  }
+  return{sv,made,degraded};
+}
+/* the export is the other half of the format: whatever this prints is exactly what the
+   parser accepts, which is how anyone learns it without reading a page of documentation */
+function scExport(){
+  if(!curSv)return'';
+  const out=['server: '+curSv.name];
+  if(curSv.icon&&!curSv.icon_url)out.push('icon: '+curSv.icon);
+  out.push('');
+  for(const c of channels){
+    if(c.type==='voice'){out.push('voice: '+c.name);continue;}
+    const bits=['text: '+c.name];
+    if(c.locked)bits.push('locked');
+    if(c.slowmode)bits.push('slow '+c.slowmode);
+    out.push(bits.join(', '));
+  }
+  return out.join('\n')+'\n';
+}
+
 /* server menu */
 let svIconUrl='';
 function openServerMenu(){
@@ -1858,6 +2157,10 @@ function openServerMenu(){
   $('sm-save').style.display=can?'block':'none';
   $('sm-leave').style.display=curSv.owner_id===user?.id?'none':'block';
   $('sm-regen').style.display=can?'flex':'none';
+  // reporting is for everyone; the tools are for anyone who can moderate, mods included
+  $('sm-raid').style.display=canModerate()?'none':'inline-flex';
+  $('sm-raidtools').style.display=canModerate()?'inline-flex':'none';
+  $('sm-raid-hint').textContent=canModerate()?t('rdPanelHint'):t('rdReportHint');
   if(can){
     $('sm-name').value=curSv.name||'';
     $('sm-icon').value=curSv.icon||'';
@@ -1870,6 +2173,174 @@ function openServerMenu(){
   }
   open('sm-ov');
 }
+/* ══════ RAID TOOLS ══════
+   Zero new SQL: a report is a notifications row, the lockdown is the channels.locked and
+   channels.slowmode columns the admin-tools update already added, and the current state is
+   read back out of the newest raid_on / raid_off row in server_audit_log.
+
+   Two rules that look like details and are not:
+   1. A raid alert NEVER carries data.room_key. clearRoomNotifs() marks read every unread
+      row whose room_key matches, on every openChannel — so the alert would vanish the first
+      time a mod opened that channel. Worse, the realtime handler skips the toast and the
+      ping entirely for someone already sitting in that room, i.e. exactly the person who
+      needed waking.
+   2. Nothing the reporter typed is ever the headline. ycz_guard_notification stamps
+      from_id and from_username server-side and leaves every other key alone, so data.text
+      is attacker-written — "Yunior reported a raid" is a string anyone can send. The panel
+      builds its own line out of the stamped username and shows the typed note underneath,
+      clearly as a quote. */
+const RD_LOCK_HOURS=6;
+function rdStaff(){return members.filter(m=>['owner','admin','mod'].includes(m.role)&&m.user_id!==user.id);}
+async function rdReport(note){
+  if(!curSv||!user)return{error:'no server'};
+  const staff=rdStaff();
+  if(!staff.length)return{none:true};
+  const rows=staff.map(m=>({user_id:m.user_id,type:'raid_report',data:{
+    server_id:curSv.id,server_name:curSv.name,note:String(note||'').slice(0,80),
+    text:fmt(t('rdNotif'),{s:curSv.name})}}));
+  const{error}=await sb.from('notifications').insert(rows);
+  if(error)return{error:error.message};
+  audit('raid_report',null,String(staff.length));
+  return{sent:staff.length};
+}
+/* the newest raid_on / raid_off row IS the state — no column to add, and it is already
+   unforgeable enough for this (audit rows are insert-only and the actor must be you) */
+let rdState={level:'normal',by:'',at:null,snap:null};
+async function rdLoadState(){
+  rdState={level:'normal',by:'',at:null,snap:null};
+  if(!curSv)return;
+  try{
+    const{data}=await sb.from('server_audit_log').select('*').eq('server_id',String(curSv.id))
+      .in('action',['raid_on','raid_off']).order('created_at',{ascending:false}).limit(1);
+    const r=(data||[])[0];if(!r||r.action!=='raid_off'){
+      if(r&&r.action==='raid_on'){
+        const age=(Date.now()-new Date(r.created_at))/36e5;
+        if(age<RD_LOCK_HOURS){
+          rdState={level:(r.target==='cautious'?'cautious':'lockdown'),by:r.actor_name||'',at:r.created_at,snap:r.detail||null};
+        }
+      }
+    }
+  }catch(e){}
+}
+/* The snapshot came out of a free-text column a mod could have written by hand, so every
+   value is re-checked here: a slowmode outside SLOW_STEPS makes the cycle button's
+   indexOf() return -1 and silently reset that channel to 0 on the next press. */
+function rdReadSnap(raw){
+  let arr=null;
+  try{arr=JSON.parse(raw||'[]');}catch(e){return null;}
+  if(!Array.isArray(arr))return null;
+  const out=new Map();
+  for(const it of arr){
+    if(!it||typeof it.id!=='string')continue;
+    if(!channels.some(c=>c.id===it.id))continue;      // only ids that are still real channels of this server
+    const s=SLOW_STEPS.includes(it.s|0)?(it.s|0):0;
+    out.set(it.id,{locked:!!it.l,slowmode:s});
+  }
+  return out;
+}
+async function rdSetLevel(lv){
+  if(!curSv||!canManage())return{error:t('rdOnlyAdmins')};
+  const text=channels.filter(c=>c.type==='text');
+  if(!text.length)return{error:t('rdNoChannels')};
+  if(lv==='normal'){
+    const snap=rdReadSnap(rdState.snap);
+    for(const c of text){
+      const was=snap?snap.get(c.id):null;
+      const locked=was?was.locked:false,slowmode=was?was.slowmode:0;
+      const{error}=await sb.from('channels').update({locked,slowmode}).eq('id',c.id);
+      if(error)return{error:error.message};
+      c.locked=locked;c.slowmode=slowmode;
+    }
+    audit('raid_off',null,null);
+  }else{
+    // snapshot BEFORE writing, so all-clear puts back the slowmode a channel already had
+    const snap=JSON.stringify(text.map(c=>({id:c.id,l:!!c.locked,s:c.slowmode|0})));
+    const locked=lv==='lockdown',slowmode=lv==='lockdown'?30:10;
+    for(const c of text){
+      const{error}=await sb.from('channels').update({locked,slowmode}).eq('id',c.id);
+      if(error)return{error:error.message};
+      c.locked=locked;c.slowmode=slowmode;
+    }
+    audit('raid_on',lv,snap);
+  }
+  await rdLoadState();
+  paintChanList();paintSide();
+  if(curCh){const f=channels.find(x=>x.id===curCh.id);if(f){curCh.locked=f.locked;curCh.slowmode=f.slowmode;refreshComposer();}}
+  return{ok:true};
+}
+async function openRaidPanel(){
+  if(!curSv||!canModerate())return;
+  $('rd-err').className='err';
+  $('rd-sub').textContent=curSv.name;
+  open('rd-ov');
+  await rdLoadState();
+  paintRaid();
+  // reports are read straight from the table: loadNotifs() caps at 40 rows across every
+  // type, so a busy night would push the older reports out of the in-memory list
+  let reps=[];
+  try{
+    const since=new Date(Date.now()-6*36e5).toISOString();
+    const{data}=await sb.from('notifications').select('*').eq('user_id',user.id).eq('type','raid_report')
+      .gte('created_at',since).order('created_at',{ascending:false}).limit(20);
+    reps=(data||[]).filter(n=>n.data&&n.data.server_id===curSv.id);
+  }catch(e){}
+  $('rd-reports').innerHTML=reps.map(n=>{
+    const who=esc(n.data.from_username||'someone');     // guard-stamped; never n.data.text
+    const note=String(n.data.note||'').slice(0,80);
+    return `<div class="rd-row"><span class="ic">${icon('shield',14)}</span><div class="rd-b">
+      <b>${who}</b> ${esc(t('rdSaidRaid'))}<span class="rd-ago">${esc(ago(n.created_at))}</span>
+      ${note?`<div style="color:var(--txt3)">“${esc(note)}”</div>`:''}</div></div>`;
+  }).join('')||`<div class="hint">${esc(t('rdNoReports'))}</div>`;
+  const cut=Date.now()-10*60000;
+  const fresh=members.filter(m=>m.joined_at&&new Date(m.joined_at).getTime()>cut&&m.user_id!==user.id);
+  $('rd-joins').innerHTML=fresh.map(m=>`<div class="rd-row" data-uc="${esc(m.user_id)}" style="cursor:pointer">
+    <span class="ic">${icon('user',14)}</span><div class="rd-b"><b>${esc(m.username||'—')}</b>
+    <span class="rd-ago">${esc(ago(m.joined_at))}</span></div></div>`).join('')
+    ||`<div class="hint">${esc(t('rdNoJoins'))}</div>`;
+}
+function paintRaid(){
+  const can=canManage();
+  document.querySelectorAll('#rd-lv button').forEach(b=>{
+    b.classList.toggle('on',b.dataset.lv===rdState.level);
+    // shown disabled with a reason, not hidden: channels INSERT/UPDATE stops at admin, so a
+    // mod pressing Lock would silently update zero rows, which is worse than a grey button
+    b.disabled=!can;
+  });
+  const key={normal:'rdNormalWhat',cautious:'rdCautiousWhat',lockdown:'rdLockdownWhat'}[rdState.level];
+  let line=t(key);
+  if(rdState.level!=='normal'&&rdState.by)line+=' '+fmt(t('rdSetBy'),{a:rdState.by,t:ago(rdState.at)});
+  if(!can)line+=' '+t('rdOnlyAdmins');
+  $('rd-what').textContent=line;
+}
+$('rd-lv').onclick=async e=>{
+  const b=e.target.closest('[data-lv]');if(!b||b.disabled)return;
+  if(b.dataset.lv===rdState.level)return;
+  b.disabled=true;
+  const r=await rdSetLevel(b.dataset.lv);
+  if(r.error){const el=$('rd-err');el.textContent=r.error;el.className='err on';}
+  else toast(t('rdChanged'),'ok');
+  paintRaid();
+};
+$('rd-joins').onclick=e=>{const r=e.target.closest('[data-uc]');if(r){shut('rd-ov');userCard(r.dataset.uc);}};
+$('rd-x').onclick=()=>shut('rd-ov');
+$('sm-raidtools').onclick=()=>{shut('sm-ov');openRaidPanel();};
+$('sm-raid').onclick=()=>{$('rr-err').className='err';$('rr-what').value='';open('rr-ov');};
+$('rr-x').onclick=()=>shut('rr-ov');
+$('rr-go').onclick=async()=>{
+  const err=m=>{const e=$('rr-err');e.textContent=m;e.className='err on';};
+  // politeness for honest users, not a limit: ycz_can_notify has no rate limit of its own
+  const k='ycz-raid-'+(curSv?curSv.id:'');
+  try{if(Date.now()-(+localStorage.getItem(k)||0)<120000)return err(t('rdCooldown'));}catch(e){}
+  $('rr-go').disabled=true;
+  try{
+    const r=await rdReport($('rr-what').value.trim());
+    if(r.error)return err(r.error);
+    if(r.none)return err(t('rdNoStaff'));
+    try{localStorage.setItem(k,String(Date.now()));}catch(e){}
+    shut('rr-ov');toast(fmt(t('rdSent'),{n:r.sent}),'ok');
+  }finally{$('rr-go').disabled=false;}
+};
+
 /* ── AUDIT LOG ──
    Written client-side on every mod action; RLS makes entries
    unforgeable (actor must be you) and immutable (no update policy). */
@@ -1879,6 +2350,7 @@ async function audit(action,target,detail){
     actor_name:uname,action,target:target||null,detail:detail||null});}catch(e){}
 }
 const AUD_IC={role:'shield',kick:'logout',ban:'ban',unban:'reply',timeout:'timer',untimeout:'timer',
+  raid_report:'shield',raid_on:'lock',raid_off:'unlock',server_script:'scroll',
   purge:'trash',lock:'lock',unlock:'unlock',slowmode:'timer',channel_create:'plus',
   channel_rename:'pencil',channel_delete:'trash',invite:'refresh',transfer:'crown',
   server_update:'pencil',bot_create:'bot',bot_delete:'bot'};
@@ -1916,6 +2388,17 @@ function paintMemPanel(){
     </div>`;}).join('')||`<div class="hint">${t('noResults')}</div>`;
 }
 $('sm-mems').onclick=e=>{const r=e.target.closest('[data-mu]');if(r)userCard(r.dataset.mu);};
+$('sm-export').onclick=async()=>{
+  const txt=scExport();if(!txt)return;
+  try{await navigator.clipboard.writeText(txt);toast(t('scCopied'),'ok');}
+  catch(e){
+    // clipboard needs a secure context and permission; fall back to a selectable box
+    const ta=document.createElement('textarea');ta.value=txt;ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);
+    ta.select();try{document.execCommand('copy');toast(t('scCopied'),'ok');}catch(e2){prompt(t('scExport'),txt);}
+    ta.remove();
+  }
+};
 $('sm-msearch').oninput=()=>paintMemPanel();
 /* ── INVITE / DANGER ZONE ── */
 $('sm-regen').onclick=async()=>{
@@ -2213,8 +2696,11 @@ $('ch-go').onclick=async()=>{
   const type=document.querySelector('#ch-seg button.on').dataset.t;
   const raw=$('ch-nm').value.trim();
   if(!raw)return err('Give the channel a name.');
-  /* text channels get discord-style slugs, voice channels keep real names */
-  const name=type==='text'?(slug(raw.replace(/\s+/g,'-'))||raw.slice(0,30)):raw.slice(0,30);
+  /* text channels get discord-style slugs, voice channels keep real names. The old fallback
+     here kept the raw text when the slug came out empty, so a name of nothing but emoji became
+     a channel with an emoji in the sidebar — which the project forbids. Refuse instead. */
+  const name=type==='text'?chSlug(raw):raw.slice(0,30);
+  if(!name)return err(t('scEmptyName'));
   $('ch-go').disabled=true;
   try{
     const{data,error}=await sb.from('channels')
@@ -3008,8 +3494,11 @@ async function loadMembers(){
   if(!curSv){$('mem').classList.add('hide');refreshComposer();return;}
   try{
     let rows=[];
-    /* muted_until arrives with the admin-tools migration — retry without it until then */
-    let r=await sb.from('server_members').select('role,user_id,muted_until').eq('server_id',curSv.id);
+    /* muted_until arrives with the admin-tools migration — retry without it until then.
+       joined_at is what the raid panel's join watch counts, and it costs nothing here: the
+       rows are being fetched anyway. */
+    let r=await sb.from('server_members').select('role,user_id,muted_until,joined_at').eq('server_id',curSv.id);
+    if(r.error)r=await sb.from('server_members').select('role,user_id,joined_at').eq('server_id',curSv.id);
     if(r.error)r=await sb.from('server_members').select('role,user_id').eq('server_id',curSv.id);
     rows=r.data||[];
     const ids=rows.map(m=>m.user_id);
@@ -3240,7 +3729,7 @@ function paintModTools(uid,svRole){
   };
 }
 $('uc-ov').onclick=e=>{if(e.target===$('uc-ov'))shut('uc-ov');};
-['auth-ov','sv-ov','ch-ov','sm-ov','ap-ov','set-ov'].forEach(id=>
+['auth-ov','sv-ov','ch-ov','sm-ov','ap-ov','set-ov','rr-ov','rd-ov'].forEach(id=>
   $(id).onclick=e=>{if(e.target===$(id))shut(id);});
 
 /* ══════ VOICE CHANNELS (WebRTC mesh) ══════ */
@@ -3744,6 +4233,25 @@ window.addEventListener('online',()=>{
 
 /* keep "last seen" fresh */
 setInterval(()=>{if(user)saveProfile();},4*60*1000);
+
+/* ── test handle, localhost only ──
+   Everything in this file lives inside one IIFE, so nothing is reachable from the console
+   and a harness cannot call a single function. Overwork solves this the same way (window.__ow):
+   the handle exists ONLY when the page is served from a local address, so on the live site
+   there is nothing to grab. Keep it that way — this closure holds the session. */
+if(['localhost','127.0.0.1','[::1]',''].includes(location.hostname)){
+  window.__ycz={
+    scParse,scApply,scExport,scPaint,
+    rdReport,rdSetLevel,rdReadSnap,rdLoadState,paintRaid,openRaidPanel,
+    get rdState(){return rdState;},
+    canManage,canModerate,
+    set(o){ if('user'in o)user=o.user; if('uname'in o)uname=o.uname;
+      if('curSv'in o)curSv=o.curSv; if('channels'in o)channels=o.channels;
+      if('members'in o)members=o.members; if('gRole'in o)gRole=o.gRole;
+      if('curCh'in o)curCh=o.curCh; },
+    get(){return{curSv,channels,members,user:user&&user.id,gRole};},
+  };
+}
 })();
 </script>
 <script>
