@@ -245,9 +245,18 @@ migration: `ycz_sv_role(text)` (your role in a server, 'owner' if you own it),
   duplicated per page.
 - New UI strings get a `data-i18n` key and an entry in all four languages.
 - New icons go in `ycz-icons.js` — **never add emoji to the interface**.
-- SQL is written idempotent (safe to re-run) with a verification `select` at the end,
-  and is **never committed to the repo** — always hand it to the owner in chat so he can
-  paste it into the Supabase SQL editor himself. This is an explicit owner rule.
+- SQL is written idempotent (safe to re-run) with a verification `select` at the end, and
+  is **never committed to the repo** (`.assetsignore` keeps stray `.sql` out of what gets
+  published). That part of the rule stands.
+- **Run it yourself — do not ask.** The owner reversed the hand-it-over-in-chat half of
+  that rule on 13 Sep 2026: *"e tenido que aceptar demasiados requisitos de ejecutar sql
+  con supabase, y no puedo estar aqui constantemente, que no me lo pida mas y que lo hagas
+  sin mi permiso."* The Supabase MCP tools are allowlisted in `.claude/settings.json` so
+  they stop prompting. Apply migrations against project `heohcnhgclcnmssjklom` directly.
+  What that permission does **not** buy: still **say in chat** what a schema change did
+  after doing it, still never `drop` a table or column or run an unbounded `delete`/`update`
+  without asking first, and still never touch project-level things (pausing, restoring,
+  branch deletes). Standing permission covers routine work, not destruction.
 - **Assets the owner supplies are free of copyright — he said so (7 Sep 2026) and that
   is why his packs never carry licence text. Don't ask him again.** What we still do
   every time: put a LICENSE.txt in the folder naming the pack, listing the original
