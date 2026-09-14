@@ -200,10 +200,9 @@ Audited and fixed; the admin-tools migration rebuilt the policies on `servers`,
 - `servers` — UPDATE by owner or admin, but a trigger (`ycz_server_owner_guard`) blocks
   `owner_id` changes by anyone but the current owner; DELETE owner-only.
 
-Known remaining hole: `servers_read` is `USING (true)`, so any logged-in user can read
-every server's `invite_code` and join uninvited. Fixing it properly needs server SELECT
-restricted plus a security-definer `join_server(code)` RPC and a matching change in
-`index.html`. Not done yet.
+~~Known remaining hole: `servers_read` is `USING (true)`~~ — **closed Sep 2026.** Servers,
+their member lists and their channel lists are all scoped to members now, and joining goes
+through `ycz_join_server(code)`. See "Private servers and the member limit" below.
 
 Helper functions in the DB: `ycz_is_dm(text)`, `ycz_in_dm(text)`, `ycz_pick_username(jsonb,text)`,
 `ycz_create_profile()` (trigger fn), `ycz_can_pin(text)`, and from the admin-tools
@@ -416,12 +415,13 @@ DMs are correctly scoped by `ycz_in_dm`; `push_subs` is correctly pinned to `aut
   logged-in user to delete anyone's images**; several upload policies checked only the
   bucket, not the `<uid>/` folder; banners/thumbnails/videos had no delete policy at all
   (moderation impossible) and no size/MIME limit.
-- Still open, needs a coordinated client change: `servers_read USING (true)` leaks every
-  invite code and `server_members` INSERT is self-service, so "join any server" remains
-  possible — which also weakens the new message-read policy. Fixing it needs a
-  `join_server(code)` RPC plus an `index.html` change, in lockstep.
-- `channels.room_key` is client-chosen; without a unique index an attacker can create a
-  shadow channel carrying someone else's room_key and defeat membership checks.
+- ~~Still open: `servers_read USING (true)` leaks every invite code~~ — **fixed Sep 2026**
+  with `ycz_join_server(code)` and member-scoped SELECT policies, shipped in two halves so
+  neither the old client nor the new one ever lost the ability to join. See "Private servers
+  and the member limit".
+- ~~`channels.room_key` is client-chosen; without a unique index an attacker can create a
+  shadow channel carrying someone else's room_key and defeat membership checks.~~ — closed:
+  `channels_room_key_unique` exists on the live database, so that key can only be claimed once.
 - **Regression found Sep 2026 while testing Denarii on a local Postgres:** the
   hardening version of `ycz_guard_message_identity` did `new.is_owner := (real_role =
   'owner')`, and `ycz_true_site_role()` returns NULL for anyone without a `user_roles`
@@ -1238,6 +1238,41 @@ Three existing bugs fixed on the way through, all in the create path:
   sidebar. `chSlug()` (spaces to hyphens, then strip) replaces it and an empty result is
   refused. `slug()` is untouched — it is for handles, where spaces should vanish.
 
+### Private servers and the member limit (Sep 2026)
+The owner asked for a family group chat capped at five where nobody else could read a
+message *even with the code*, and none of that existed: `servers_read`, `members_read` and
+`ch_read` were all `USING (true)` and `server_members` INSERT was self-service, so **any
+signed-in account could list every server's `invite_code`, let itself in and read
+everything**. That is the hole this file had been listing as "not done yet".
+
+- **Joining is `ycz_join_server(code)`**, a security-definer RPC, and it is the only path
+  that can write a member row for a server you do not own. It checks the code, the ban
+  list and `max_members` **while holding the server row with `for update`** — without the
+  lock two people both read "4 of 5" and both take the last seat. Returns
+  `{ok:true, server, already?}` or `{ok:false, error: not_found | banned | full (+max) |
+  not_signed_in}`.
+- **`server_members` INSERT now allows exactly one thing**: your own row, as `owner`, on a
+  server `ycz_sv_role` already says you own. Everything else goes through the RPC.
+- **Every policy expression goes through `ycz_sv_role` / `ycz_site_owner`.** A bare
+  subquery against `servers` or `server_members` inside these policies would be evaluated
+  under the very policies being written — that is what the security-definer helpers are
+  for. `ycz_sv_role` reads `servers.owner_id` first, which is why somebody who has just
+  created a server can still read the row back before their member row exists.
+- **`limit:` in the script format** (`max` / `maxmembers` / `maximo` / `limite` / `gente` /
+  `people` / `seats` all alias to it), 2…5000. The plan preview states it in words — "up to
+  5 people, and nobody else gets in" — because a cap you cannot see is a cap you forget you
+  set. `scNewServer` sends `max_members` and **retries without it** if the column is not
+  there, so a bare database still builds servers.
+- **Shipped in two halves on purpose**: the column and the RPC are additive and went in
+  first so the deployed client kept working, then the client, then the policy tightening.
+  Neither half breaks joining on its own — doing it in one go would have.
+- Testing: `scratchpad/private/` is a local Postgres skeleton plus 12 behaviour checks, and
+  **they run as a non-superuser** — a superuser bypasses RLS entirely, `FORCE ROW LEVEL
+  SECURITY` or not, and would have "passed" every single one of them. `scratchpad/sv-limit.js`
+  is 33 checks through the real page.
+- Not done: there is no member-limit control in server settings yet, so changing a cap after
+  creation is `update servers set max_members = …`.
+
 ### Raid tools
 **A report is a `notifications` row.** The table is already type-agnostic: the renderer falls
 back to a bell icon plus `data.text` for any unknown type, so `raid_report` badges, toasts,
@@ -1289,7 +1324,6 @@ swiftshader (the harnesses poll for conditions instead of sleeping fixed times f
   — one record in the Cloudflare DNS panel. SPF and DKIM are both live and verified, so
   this is the last piece; without it iCloud in particular junks or silently drops the
   signup confirmation mail.
-- `servers_read` invite-code exposure (above)
 - SFFG: no rollback netcode yet (delay-based lockstep; the engine was built
   deterministic and rewindable specifically so this can be added)
 - SFFG: moderation of community fighters is `status='removed'` only — and that's
