@@ -312,6 +312,41 @@ netplay works and rollback stays possible later. Floats live only in the rendere
   its own baseline); attack strips keep shared-canvas alignment so hit geometry
   stays true.
 
+### Matchmaking (Sep 2026)
+One button on the online screen — **quick match** — reading the same `fight:lobby` presence
+channel the room list below it already uses. There is no queue and no server: join the best
+open room, and open one yourself when there is nothing to join, then keep watching. A room
+opened this way advertises `q:true` and is listed as "is looking for anyone" instead of
+"has an open room".
+
+**The whole design is the collision.** Two people pressing the button at the same moment
+would otherwise sit in two empty rooms forever, so a searcher that already has a room gives
+it up when it sees another: unconditionally for a hand-made room (whose owner is waiting on
+a friend's code and will never yield back), and for another quick-match room only when that
+room's **user id sorts lower**. The comparison is on ids, never on clocks — every client's
+`Date.now()` is its own, so a timestamp is not something the other side can verify, while an
+id comparison always lands the same way on both machines and yields exactly one of the two.
+
+Three bugs the harness found, all of them the kind that only appear under a race:
+- **`netTeardown` re-entered itself.** Dropping our presence makes the lobby resync, the
+  lobby drives the search, so the next search step ran *half way through* the teardown,
+  opened a room, and then had `MM.hosting` wiped by the lines at the bottom of the same
+  function — leaving a live room the search believed it did not have, and a search that
+  never opened another. `MM.busy` is set for the length of a teardown the search owns.
+- **A torn-down room's callbacks kept firing.** `joinChannel` wrote `net.chan` and then
+  closed over it implicitly; a `SUBSCRIBED` callback arriving after a cancel called
+  `net.chan.track()` on null. Every handler now holds `const ch` and returns unless
+  `net.chan === ch`.
+- **Two joiners knocking together both bailed** ("that room is full"), leaving the host
+  alone. Host and joiners now both rank the joiners by id and take the lowest, so they
+  agree on who got in and only the losers leave. A host whose peer vanishes before the
+  connection forms goes back to waiting instead of sitting on a dead `peerId`.
+
+`scratchpad/sffg-mm.js`, 28 checks against a Supabase fake over `BroadcastChannel`. It
+deliberately does **not** exercise WebRTC: headless Chromium here cannot reliably form a
+peer connection without reachable STUN, and the handshake is unchanged code — driving it
+made the suite flaky for no coverage.
+
 ### Community fighters (the Mods Update → the Freedom Update)
 A community fighter is **pure data** — that is the sandbox, no mod code is ever
 executed. `sffg-mods.js` whitelists every field, strips markup and unknown keys, and
@@ -1097,6 +1132,51 @@ Snake's Authentic Gun Sounds packs and an Announcer Pack).**
   host sees you walk, **a shot fired on one machine takes health off on the other**, a client applying damage locally
   changes nothing anywhere, and leaving cleans up on both sides. `__test.openSpot(d)` exists because hand-picked
   coordinates on this map put the two players behind the fountain.
+
+## Chat render performance (`index.html`, Sep 2026)
+
+The site went sluggish the week it got real users, and **none of it was the database** —
+16 MB, indexed, `messages_room_idx (room_id, id)` in place, every `ycz_*` helper already
+`stable` + `security definer`, and the REST layer under 100 requests a minute at its
+busiest. Check that before optimising anything: `pg_stat_user_tables`, the edge logs and
+`get_advisors` took ten minutes and ruled out the entire server side.
+
+What it actually was, and the rule that comes out of it — **never rebuild a list to change
+one row of it**:
+- Every arriving message ran `paintMsgs()`, which writes the whole `#msgs` innerHTML. That
+  throws away every avatar and every posted image in the room, and the browser fetches and
+  decodes them all again — per message, for everyone in the channel. `msgRow(m, prev, …)`
+  renders one row from its predecessor (grouping and the day divider are the only things a
+  row needs from its neighbour, which is exactly what makes appending possible) and
+  `appendMsg()` adds just that row.
+- A reaction did the same; `repaintRow(id)` replaces the single message, found through the
+  `data-mid` attribute on every row.
+- `paintMembers()` ran on **every presence event** — and presence fires whenever anybody's
+  tab gains or loses focus. It now moves the existing rows with `appendChild` (which moves
+  a node rather than recreating it, so the `<img>` keeps its decoded bitmap) whenever the
+  membership itself has not changed. **Its signature must be order-independent**: the sort
+  puts whoever is online on top, so a signature built from the sorted order calls every
+  presence event a membership change and rebuilds anyway — that bug was caught by the
+  harness, not by reading the code. Presence repaints are coalesced over 150 ms.
+
+Switching channels was slow for a different reason: `loadMsgs` awaited the messages, then
+awaited the reactions, and painted only after both. It paints as soon as the messages land
+and fills the chips in afterwards, guarded by `msgGen` so a slow fetch belonging to the
+channel you just left cannot repaint the one you are in; `loadPins` does the same. **20 ms
+to first paint instead of 1500 ms** in the harness.
+
+`scratchpad/chat-perf.js`, 18 checks. It asserts *node identity* — that the `<img>`
+elements on screen before a message arrives are the same objects afterwards — because that
+is the property that actually costs money, not the render time.
+
+**Reading Supabase's "CORS" errors.** A 500/502/504 from the gateway carries no
+`Access-Control-Allow-Origin` header, so Chrome reports a server outage as
+`blocked by CORS policy`. Never chase the CORS; group `edge_logs` by status first. In the
+Sep 2026 episode that was 126 errors in a 17-minute window across *every* endpoint at once,
+at 44 requests/minute — while the same project had served 99/minute with zero errors
+twenty minutes earlier. Not load, not the code: the free plan's shared REST layer. The same
+logs also showed `429`s on `/auth/v1/signup`, i.e. people being turned away while the site
+was being promoted — worth checking whenever signups are the point.
 
 ## Server scripts and raid tools (`index.html`, Sep 2026)
 

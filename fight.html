@@ -204,6 +204,8 @@ input.code-in:focus{border-color:rgba(232,22,42,.5);}
 .lb-row .st.live{color:var(--grn);}
 .lb-row .btn{padding:7px 15px;font-size:13px;flex:none;}
 #lobby-empty{color:var(--text3);font-size:13px;}
+#mm-state{display:none;align-items:center;gap:9px;color:var(--text2);font-size:13px;line-height:1.45;}
+#mm-state.on{display:flex;}
 #on-status{min-height:22px;color:var(--text2);font-size:13.5px;display:flex;align-items:center;gap:9px;}
 #on-status.ok{color:var(--grn);}
 #on-status.bad{color:#ff5f6d;}
@@ -456,6 +458,15 @@ body.has-touch #s-game.active #touch-ui{display:block;}
   <div class="page-head">
     <h2>Online match</h2>
     <button class="btn" id="on-back"><i data-ic="arrowLeft" data-ic-size="16"></i> Back</button>
+  </div>
+  <div class="card">
+    <h3><i data-ic="swords" data-ic-size="18"></i> Quick match</h3>
+    <p>Puts you against whoever is waiting. If nobody is, it opens a room for you and keeps looking until somebody shows up.</p>
+    <div class="code-row">
+      <button class="btn primary" id="btn-quick" style="flex:1;">Find a match</button>
+      <button class="btn" id="btn-quick-x" style="display:none;">Cancel</button>
+    </div>
+    <div id="mm-state"></div>
   </div>
   <div class="card">
     <h3><i data-ic="plus" data-ic-size="18"></i> Create a room</h3>
@@ -3676,7 +3687,7 @@ function renderLobby(){
   for(const id in state){
     const m=state[id][0];
     if(!m||!m.s)continue;
-    if(m.s==='wait'&&m.code&&id!==(user&&user.id))waiting.push(m);
+    if(m.s==='wait'&&m.code&&id!==(user&&user.id))waiting.push({...m,id});
     if(m.s==='play'&&m.vs){
       const key=[m.name,m.vs].sort().join('~');   // both players report the match; show it once
       if(!seen.has(key)){seen.add(key);playing.push(m);}
@@ -3689,9 +3700,9 @@ function renderLobby(){
   }
   for(const m of waiting){
     const row=document.createElement('div');row.className='lb-row';
-    row.innerHTML='<span class="who"><b>'+esc(m.name||'Player')+'</b> has an open room</span>'+
-      '<span class="st">waiting</span><button class="btn primary">Join</button>';
-    row.querySelector('button').addEventListener('click',()=>{$('join-in').value=m.code;joinRoom();});
+    row.innerHTML='<span class="who"><b>'+esc(m.name||'Player')+'</b> '+(m.q?'is looking for anyone':'has an open room')+'</span>'+
+      '<span class="st">'+(m.q?'searching':'waiting')+'</span><button class="btn primary">Join</button>';
+    row.querySelector('button').addEventListener('click',()=>joinRoom(m.code));
     box.appendChild(row);
   }
   for(const m of playing){
@@ -3701,13 +3712,14 @@ function renderLobby(){
     box.appendChild(row);
   }
   paintNav();
+  if(MM.on)mmStep();      // a room just appeared, or the one I was about to take is gone
 }
 
 const net={
   on:false,host:false,code:'',chan:null,pc:null,ctl:null,game:null,
   peerId:null,peerName:'',delay:4,capF:0,localIn:{},remoteIn:{},stall:0,
   lastPkt:null,lastSend:0,ping:0,cks:{},peerCks:{},polite:false,making:false,
-  rematch:[false,false],started:false,
+  rematch:[false,false],started:false,mmAttempt:null,
   /* peer's select-screen state, kept here so a pick/ready that arrives
      before our select screen opens is never lost */
   peerPick:null,peerReady:false
@@ -3729,8 +3741,9 @@ function onStatus(msg,cls,spin){
 }
 
 async function createRoom(){
+  mmCancel();
   if(!netPrereqs())return;
-  net.host=true;net.code=roomCode();
+  net.host=true;net.code=roomCode();net.mmAttempt=null;
   $('create-row').style.display='none';
   $('code-row').style.display='flex';
   $('code-box').textContent=net.code;
@@ -3738,13 +3751,117 @@ async function createRoom(){
   joinChannel();
   lobbySet('wait',{code:net.code});     // the room is now visible in everyone's lobby
 }
-async function joinRoom(){
+async function joinRoom(code){
+  const want=String(code||$('join-in').value||'').trim().toUpperCase();
+  mmCancel();                                  // clears the input, so read it first
   if(!netPrereqs())return;
-  const code=$('join-in').value.trim().toUpperCase();
-  if(code.length!==5){toast('Codes are 5 characters','err');return;}
-  net.host=false;net.code=code;
+  if(want.length!==5){toast('Codes are 5 characters','err');return;}
+  net.host=false;net.code=want;net.mmAttempt=null;
   onStatus('Looking for the room…','',true);
   joinChannel();
+}
+
+/* ── matchmaking ────────────────────────────────────────────────────────
+   One button that finds somebody. It reads the same lobby the list below
+   does: join the best open room, and open one yourself when there is
+   nothing to join — then keep watching, because two people pressing this at
+   the same moment would otherwise sit in two empty rooms forever. When two
+   quick-match rooms see each other, the one with the higher user id gives up
+   its room and joins the other. The comparison is on ids, never on clocks:
+   both sides then always reach the same answer without trusting a timestamp
+   they cannot verify, and exactly one of the two yields. ── */
+const MM={on:false,tried:new Set(),hosting:false,t0:0,tick:null,guard:null,next:null,vis:0,busy:false};
+
+function mmRooms(){
+  if(!LOBBY.chan)return [];
+  let st;try{st=LOBBY.chan.presenceState();}catch(e){return [];}
+  const out=[];
+  for(const id in st){
+    const m=st[id]&&st[id][0];
+    if(!m||m.s!=='wait'||!m.code)continue;
+    if(id===(user&&user.id)||MM.tried.has(m.code))continue;
+    out.push({id,code:m.code,name:m.name||'Player',q:!!m.q});
+  }
+  /* another quick-matcher first: they are here for anyone, a hand-made room
+     may be somebody holding a seat for a friend they sent the code to */
+  out.sort((a,b)=>(b.q?1:0)-(a.q?1:0)||(a.id<b.id?-1:1));
+  return out;
+}
+function mmStart(){
+  if(MM.on)return;
+  if(!netPrereqs())return;
+  MM.on=true;MM.hosting=false;MM.tried.clear();MM.t0=Date.now();
+  if(!MM.tick)MM.tick=setInterval(()=>mmPaint(),1000);
+  mmPaint();mmStep();
+}
+function mmStop(){
+  MM.on=false;MM.hosting=false;
+  if(MM.tick){clearInterval(MM.tick);MM.tick=null;}
+  clearTimeout(MM.guard);MM.guard=null;
+  clearTimeout(MM.next);MM.next=null;
+  mmPaint();
+}
+/* leaving the search on purpose: stop first, so the teardown takes the
+   ordinary path and puts the two cards back the way they were */
+function mmCancel(){
+  if(!MM.on)return;
+  mmStop();
+  netTeardown();
+}
+function mmStep(){
+  if(!MM.on||MM.busy)return;
+  clearTimeout(MM.next);MM.next=null;
+  if(net.chan&&!MM.hosting)return;             // an attempt is already in flight
+  const rooms=mmRooms();
+  if(MM.hosting){
+    /* only leave my own room for somebody who will not leave theirs for me */
+    if(!rooms.some(r=>!r.q||r.id<user.id))return;
+    MM.hosting=false;
+    netTeardown();                             // schedules the next step itself
+    return;
+  }
+  if(rooms.length)mmJoin(rooms[0]);
+  else mmHost();
+}
+function mmHost(){
+  if(net.chan)return;
+  net.host=true;net.code=roomCode();net.mmAttempt='host';
+  MM.hosting=true;
+  $('create-row').style.display='none';
+  $('code-row').style.display='flex';
+  $('code-box').textContent=net.code;
+  joinChannel();
+  lobbySet('wait',{code:net.code,q:true});     // listed as looking for anyone
+  mmPaint();
+}
+function mmJoin(room){
+  if(net.chan)return;
+  net.host=false;net.code=room.code;net.mmAttempt='join';
+  lobbySet('browse');
+  joinChannel();
+  /* a room that never becomes a select screen is a dead room, not a match */
+  clearTimeout(MM.guard);
+  MM.guard=setTimeout(()=>{MM.guard=null;if(MM.on&&net.mmAttempt==='join')netTeardown();},20000);
+  mmPaint(room.name);
+}
+function mmPaint(foundName){
+  const box=$('mm-state'),btn=$('btn-quick'),x=$('btn-quick-x');
+  if(!box||!btn||!x)return;
+  if(!MM.on){
+    box.classList.remove('on');box.innerHTML='';
+    btn.disabled=false;btn.textContent='Find a match';x.style.display='none';
+  }else{
+    const secs=Math.max(0,Math.round((Date.now()-MM.t0)/1000));
+    const txt=net.peerId?'Opponent found — connecting…':
+      foundName?'Knocking on '+foundName+'’s room…':
+      MM.hosting?'Nobody waiting yet. Your room is open and the first person to show up fights you.':
+      'Looking for somebody…';
+    box.classList.add('on');
+    box.innerHTML='<span class="spin"></span><span>'+esc(txt)+' · '+secs+'s</span>';
+    btn.disabled=true;btn.textContent='Searching…';x.style.display='';
+  }
+  const vis=MM.on?1:0;
+  if(MM.vis!==vis){MM.vis=vis;paintNav();}
 }
 function netPrereqs(){
   if(!sb){toast('No connection to the Chill Zone servers','err');return false;}
@@ -3753,35 +3870,58 @@ function netPrereqs(){
   return true;
 }
 
+function netPair(id,state){
+  net.peerId=id;
+  net.peerName=(state[id][0]&&state[id][0].name)||'Opponent';
+  onStatus('Opponent found — connecting…','',true);
+  if(MM.on)mmPaint();
+  startWebRTC();
+}
 function joinChannel(){
   net.on=true;
-  net.chan=sb.channel('fight:'+net.code,{config:{presence:{key:user.id}}});
+  /* Every handler below holds its own reference and checks it is still the live
+     one. The search opens and drops rooms quickly, and a callback from a room
+     that has already been torn down used to run against a null net.chan. */
+  const ch=sb.channel('fight:'+net.code,{config:{presence:{key:user.id}}});
+  net.chan=ch;
   let joined=false;
-  net.chan
+  ch
     .on('presence',{event:'sync'},()=>{
+      if(net.chan!==ch)return;
       const state=net.chan.presenceState();
-      const others=Object.keys(state).filter(id=>id!==user.id);
-      /* a third wheel sees a full room and leaves — the paired two ignore them */
-      if(others.length>1&&!net.peerId){netTeardown('That room is full');return;}
-      if(!net.peerId){
-        /* only pair host with joiner — two joiners on a wrong code must not latch on */
-        const match=others.find(id=>{const meta=state[id][0];return meta&&meta.host===!net.host;});
-        if(match){
-          net.peerId=match;
-          net.peerName=state[match][0]?.name||'Opponent';
-          onStatus('Opponent found — connecting…','',true);
-          startWebRTC();
-        }
+      const others=Object.keys(state).filter(id=>id!==user.id&&state[id]&&state[id][0]);
+      const connected=net.ctl&&net.ctl.readyState==='open';
+      if(net.peerId){
+        /* they knocked and walked away before the connection formed — a host
+           goes back to waiting, a joiner has nothing left to wait for */
+        if(state[net.peerId]||connected)return;
+        if(!net.host){netTeardown('The room closed');return;}
+        net.peerId=null;net.peerName='';
+        try{net.pc&&net.pc.close();}catch(e){}
+        net.pc=null;net.ctl=null;net.game=null;
+        onStatus('Waiting for an opponent… send them the code','',true);
       }
+      /* two people can knock at the same moment. Both sides rank the joiners
+         by id and take the lowest, so host and joiner always agree on who got
+         in and the rest leave instead of all three latching on. */
+      const joiners=others.filter(id=>state[id][0].host===false).sort();
+      if(net.host){
+        if(joiners.length)netPair(joiners[0],state);
+        return;
+      }
+      if(joiners.length&&joiners[0]<user.id){netTeardown('That room filled up');return;}
+      const host=others.find(id=>state[id][0].host===true);
+      if(host)netPair(host,state);
     })
-    .on('broadcast',{event:'sig'},({payload})=>onSig(payload))
+    .on('broadcast',{event:'sig'},({payload})=>{if(net.chan===ch)onSig(payload);})
     .subscribe(async st=>{
+      if(net.chan!==ch)return;
       if(st==='SUBSCRIBED'&&!joined){
         joined=true;
-        await net.chan.track({uid:user.id,name:myName,host:net.host});
+        try{await ch.track({uid:user.id,name:myName,host:net.host});}catch(e){}
         if(!net.host){
           /* joiner: if no host shows up quickly, the code is probably wrong */
-          setTimeout(()=>{if(net.chan&&!net.peerId)netTeardown('Nobody in that room — check the code');},4000);
+          setTimeout(()=>{if(net.chan===ch&&!net.peerId)netTeardown('Nobody in that room — check the code');},4000);
         }
       }
       if(st==='CHANNEL_ERROR')netTeardown('Signaling failed — try again');
@@ -3872,6 +4012,7 @@ function checkChannelsReady(){
       net.delay=Math.max(3,Math.min(10,frames+2));
       ctlSend({t:'delay',d:net.delay,rtt});
     }
+    mmStop();                 // found somebody — the search is over
     openSelect('online');
     onStatus('','',false);
   });
@@ -4024,7 +4165,13 @@ function resetOnlineSelect(){
   $('sel-go-txt').textContent='Ready';$('sel-go').disabled=picks[0]===null;
 }
 function netTeardown(msg){
-  const was=net.on;
+  const was=net.on,mmWas=net.mmAttempt,mmCode=net.code,mine=MM.on&&!!mmWas;
+  net.mmAttempt=null;
+  /* Dropping our presence below makes the lobby resync, and the lobby drives
+     the search — so without this the next step ran half way through this
+     teardown, opened a room, and then had its state wiped by the lines at the
+     bottom of this very function. The search waits until the room is gone. */
+  if(mine)MM.busy=true;
   net.on=false;net.started=false;
   try{net.ctl&&net.ctl.close();}catch(e){}
   try{net.game&&net.game.close();}catch(e){}
@@ -4034,7 +4181,7 @@ function netTeardown(msg){
   net.localIn={};net.remoteIn={};net.lastPkt=null;net.peerPick=null;net.peerReady=false;
   $('create-row').style.display='flex';$('code-row').style.display='none';
   $('join-in').value='';
-  if(was&&msg){toast(msg);}
+  if(was&&msg&&!(MM.on&&mmWas))toast(msg);   // a dead room mid-search is not news, it is the next room
   onStatus('');
   /* if the online flow was live anywhere (select, game or result), fall back to the lobby */
   const inOnlineFlow=
@@ -4043,6 +4190,16 @@ function netTeardown(msg){
   if(inOnlineFlow){S=null;show('s-online');}
   if($('s-online').classList.contains('active')){lobbyJoin();lobbySet('browse');}
   updateNetPill();
+  if(mine){
+    MM.busy=false;
+    clearTimeout(MM.guard);MM.guard=null;
+    /* whatever it was, the room is gone — say so, or the search sits there
+       believing it still has one and never opens another */
+    MM.hosting=false;
+    if(mmWas==='join'&&mmCode)MM.tried.add(mmCode);   // do not walk back into the same dead room
+    mmPaint();
+    clearTimeout(MM.next);MM.next=setTimeout(mmStep,250);
+  }
 }
 
 /* record online results — table may not exist yet; degrade silently */
@@ -4116,9 +4273,11 @@ $('pad-reset').addEventListener('click',()=>{
   try{localStorage.removeItem('sffg-pad');}catch(e){}
   stopPadListen();
 });
-$('on-back').addEventListener('click',()=>{netTeardown();lobbyLeave();show('s-menu');});
-$('btn-create').addEventListener('click',createRoom);
-$('btn-join').addEventListener('click',joinRoom);
+$('on-back').addEventListener('click',()=>{mmStop();netTeardown();lobbyLeave();show('s-menu');});
+$('btn-create').addEventListener('click',()=>createRoom());
+$('btn-join').addEventListener('click',()=>joinRoom());
+$('btn-quick').addEventListener('click',mmStart);
+$('btn-quick-x').addEventListener('click',mmCancel);
 $('join-in').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom();});
 $('btn-copy').addEventListener('click',async()=>{
   try{await navigator.clipboard.writeText(net.code);toast('Code copied');}
