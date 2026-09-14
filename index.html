@@ -1922,7 +1922,8 @@ function scPaint(){
     box.innerHTML=errs.map(e=>`<div class="sc-bad">${e.line?`<b>${t('scLine')} ${e.line}</b>`:''}<span>${esc(e.msg)}</span></div>`).join('');
     return;
   }
-  const head=`<div class="sc-ok" style="margin-bottom:6px">${esc(fmt(t('scPlan'),{s:spec.name,n:spec.chs.length}))}</div>`;
+  const head=`<div class="sc-ok" style="margin-bottom:6px">${esc(fmt(t('scPlan'),{s:spec.name,n:spec.chs.length}))}`
+    +(spec.max?`<div class="was" style="margin-top:3px">${esc(fmt(t('scPlanLimit'),{n:spec.max}))}</div>`:'')+`</div>`;
   box.innerHTML=head+spec.chs.map(c=>{
     const tags=[];
     if(c.locked)tags.push(t('scTagLocked'));   // the tag says what the channel IS, not what the button DOES
@@ -1973,21 +1974,24 @@ $('sv-go').onclick=async()=>{
       toast('Server created ✓','ok');
     }else{
       const code=$('sv-code').value.trim().toLowerCase();if(!code)return err('Paste an invite code.');
-      const{data:sv}=await sb.from('servers').select('*').eq('invite_code',code).maybeSingle();
-      if(!sv)return err('No server with that code.');
-      if(servers.some(x=>x.id===sv.id)){  /* already in — just open it */
-        shut('sv-ov');const fresh=servers.find(x=>x.id===sv.id);if(fresh)goServer(fresh);return;
+      /* Joining is one server-side call now. It used to be "read the server, then insert
+         yourself" — but reading servers was open to everybody, so anybody could list every
+         invite code and walk in. The RPC is the only door: it checks the code, the ban list
+         and the member limit while holding the row, so two people cannot take one last seat. */
+      const{data:res,error}=await sb.rpc('ycz_join_server',{p_code:code});
+      if(error)return err(error.message);
+      if(!res||!res.ok){
+        const why=res&&res.error;
+        return err(why==='not_found'?t('svJoinNoCode')
+          :why==='banned'?t('svJoinBanned')
+          :why==='full'?fmt(t('svJoinFull'),{n:res.max})
+          :why==='not_signed_in'?t('svJoinSignIn')
+          :t('svJoinFailed'));
       }
-      const{error}=await sb.from('server_members').insert({server_id:sv.id,user_id:user.id,role:'member'});
-      if(error){
-        try{const{data:b}=await sb.from('server_bans').select('user_id')
-          .eq('server_id',sv.id).eq('user_id',user.id).maybeSingle();
-          if(b)return err('You are banned from this server.');}catch(e2){}
-        return err(error.message);
-      }
+      const sv=res.server||{};
       shut('sv-ov');await loadServers();
-      const fresh=servers.find(x=>x.id===sv.id);if(fresh)goServer(fresh);
-      toast('Joined '+sv.name+' ✓','ok');
+      const fresh=servers.find(x=>String(x.id)===String(sv.id));if(fresh)goServer(fresh);
+      if(!res.already)toast('Joined '+(sv.name||'')+' ✓','ok');
     }
   }finally{$('sv-go').disabled=false;}
 };
@@ -2011,10 +2015,11 @@ $('sv-go').onclick=async()=>{
        member, so a URL in a shared file is a view log for everyone in the server.
    An unrecognised word is an ERROR, never a warning. A mistyped `slowmode` that quietly
    does nothing leaves you believing a channel is protected when it is not. */
-const SC_MAX_CH=40, SC_MAX_LEN=8000;
+const SC_MAX_CH=40, SC_MAX_LEN=8000, SC_MAX_MEMBERS=5000;
 const SC_ALIAS={name:'server',title:'server',servername:'server',servidor:'server',nombre:'server',
   emoji:'icon',ic:'icon',
   chat:'text',channel:'text',texto:'text',canal:'text',
+  max:'limit',maxmembers:'limit',people:'limit',seats:'limit',maximo:'limit',limite:'limit',gente:'limit',
   voz:'voice',vc:'voice',voicechannel:'voice'};
 /* refused by name, each with its own sentence: a rejection that explains the data model
    teaches the format far better than a generic "unknown key" ever does */
@@ -2032,7 +2037,7 @@ const SC_NOPE={members:'scNopeMembers',member:'scNopeMembers',admins:'scNopeMemb
    name can reorder or hide the rest of the sidebar row it sits in */
 const scClean=v=>String(v||'').replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g,'').trim();
 function scParse(src){
-  const spec={name:'',icon:'',chs:[]},errs=[],seen=new Set();
+  const spec={name:'',icon:'',max:null,chs:[]},errs=[],seen=new Set();
   const text=String(src||'');
   if(text.length>SC_MAX_LEN)return{spec,errs:[{line:0,msg:t('scTooLong')}]};
   const bad=(i,msg)=>{if(errs.length<12)errs.push({line:i+1,msg});};
@@ -2052,6 +2057,13 @@ function scParse(src){
     if(key==='icon'){
       if(!val)return;
       spec.icon=[...val].slice(0,2).join('');return;
+    }
+    /* the one thing in this format that is not decoration: a server with a limit
+       turns everybody past it away at the door, code or no code */
+    if(key==='limit'){
+      const n=+String(val).replace(/[^0-9]/g,'');
+      if(!n||n<2||n>SC_MAX_MEMBERS)return bad(i,fmt(t('scLimitBad'),{n:SC_MAX_MEMBERS}));
+      spec.max=n;return;
     }
     if(key==='text'||key==='voice'){
       const parts=val.split(',').map(s=>s.trim()).filter((s,k)=>k===0||s);
@@ -2088,11 +2100,19 @@ function scParse(src){
 }
 /* invite_code is UNIQUE and six random base-36 characters; the original create button has
    no retry at all, so a collision surfaces as a raw Postgres error. Both paths use this. */
-async function scNewServer(name,icon){
+async function scNewServer(name,icon,max){
   let last=null;
   for(let i=0;i<5;i++){
     const code=Math.random().toString(36).slice(2,8);
-    const{data,error}=await sb.from('servers').insert({name,icon,owner_id:user.id,invite_code:code}).select().single();
+    const row={name,icon,owner_id:user.id,invite_code:code};
+    if(max)row.max_members=max;
+    let{data,error}=await sb.from('servers').insert(row).select().single();
+    // max_members arrived with the private-servers migration; a database without it yet
+    // should still make the server, just without the limit
+    if(error&&max&&/max_members/.test(error.message||'')){
+      delete row.max_members;
+      ({data,error}=await sb.from('servers').insert(row).select().single());
+    }
     if(!error)return{sv:data};
     last=error;
     if(!String(error.code||'').startsWith('23'))break;   // 23505 unique_violation is the only one worth another roll
@@ -2101,7 +2121,7 @@ async function scNewServer(name,icon){
 }
 async function scApply(spec){
   const icon=spec.icon||(spec.name[0]||'S').toUpperCase();
-  const{sv,error}=await scNewServer(spec.name,icon);
+  const{sv,error}=await scNewServer(spec.name,icon,spec.max);
   if(error||!sv)return{error:(error&&error.message)||'could not create the server'};
   // the rail is built from server_members only, so a servers row without its member row is
   // a server nobody can ever reach or delete. If this fails, take the server back out.
