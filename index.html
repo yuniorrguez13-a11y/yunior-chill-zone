@@ -1327,6 +1327,8 @@ let dmList=[],unread=JSON.parse(localStorage.getItem('ycz-unread')||'{}');
 let pending=[];
 let reactions={},replyTo=null,editing=null,online=new Set(),typers={},sitePresence=null,moreOlder=true;
 let pins=[],pinRes=[],searchRes=[],myBio='',newCount=0,jumpedBack=false;
+let msgGen=0;                /* bumped on every load, so a slow reaction fetch from the channel you just left never repaints the one you are in */
+let presencePaint=0;         /* coalesces a burst of presence events into one repaint */
 /* Denarii — the site currency. The server owns every number; the client
    only displays what ycz_wallet() returns and calls the buy/equip RPCs. */
 let SHOP=[],WALLET=null,ownedItems=new Set(),myTitleId=null,myColorId=null,LEADER=null,trTab='overview';
@@ -2767,8 +2769,13 @@ async function loadMsgs(quiet){
   if(error){if(!quiet)box.innerHTML=`<div class="sys">⚠ ${esc(error.message)}</div>`;return;}
   msgs=(data||[]).reverse();
   moreOlder=(data||[]).length===PAGE;
-  await loadReactions();
+  /* Paint what we have. Reactions and pins are a second and a third round trip,
+     and waiting for them before drawing anything is what made switching from a
+     DM to #global feel like the app had hung — the messages were already here. */
+  const gen=++msgGen,room=curCh.room_key;
   paintMsgs(!quiet);
+  await loadReactions();
+  if(gen===msgGen&&curCh&&curCh.room_key===room)paintMsgs(!quiet);
 }
 async function loadOlder(){
   if(!curCh||!msgs.length)return;
@@ -2796,22 +2803,19 @@ async function loadReactions(){
     });
   }catch(e){}
 }
-function paintMsgs(jump){
-  const box=$('msgs');
-  const near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
-  const pinnedSet=new Set(pins.map(p=>String(p.message_id)));
-  const pinOK=canPin();
-  let h=moreOlder&&msgs.length?`<div id="older"><button id="older-btn">↑ ${t('loadOlder')}</button></div>`:'';
-  h+=`<div class="hero"><div class="ic">${curCh.kind==='dm'?'@':icon('hash',30)}</div>
-    <h2>${curCh.kind==='dm'?'':'#'}${esc(curCh.name)}</h2>
-    <p>${curCh.kind==='dm'?t('dmStart'):t('channelStart')}</p></div>`;
-  let lastDay='',lastUid='',lastAt=0;
-  msgs.forEach(m=>{
+/* One message row, plus the day divider above it when the day changes.
+   Everything a row needs from the one above it is in `prev` — that is what
+   lets a new message be appended instead of the whole list being thrown away
+   and rebuilt, which is what made a busy channel stutter: every avatar and
+   every posted image in the room was discarded and fetched again, per
+   message, for everybody in it. */
+function msgRow(m,prev,pinnedSet,pinOK){
     const dk=dayKey(m.created_at);
-    if(dk!==lastDay){h+=`<div class="day"><span>${esc(dayLabel(dk))}</span></div>`;lastDay=dk;lastUid='';}
+    const sameDay=!!prev&&dayKey(prev.created_at)===dk;
+    let h=sameDay?'':`<div class="day"><span>${esc(dayLabel(dk))}</span></div>`;
     const ts=new Date(m.created_at).getTime();
-    const grouped=m.user_id===lastUid&&(ts-lastAt)<5*60*1000;
-    lastUid=m.user_id;lastAt=ts;
+    const grouped=sameDay&&m.user_id!=null&&m.user_id===prev.user_id&&
+                  (ts-new Date(prev.created_at).getTime())<5*60*1000;
     const cls=m.is_owner?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':'';
     let tags='';
     if(m.is_bot)tags+='<span class="tag bot">Bot</span>';
@@ -2859,14 +2863,25 @@ function paintMsgs(jump){
     </div>`:'';
     const ping=pingsMe(m.text)?' pinged':'';
     if(grouped){
-      h+=`<div class="m${ping}"><div class="m-gut">${clock(m.created_at)}</div>${body}${acts}</div>`;
+      h+=`<div class="m${ping}" data-mid="${esc(m.id)}"><div class="m-gut">${clock(m.created_at)}</div>${body}${acts}</div>`;
     }else{
       const av=m.pfp_url&&isUrl(m.pfp_url)
         ?`<img class="a" src="${esc(m.pfp_url)}" alt="" onerror="this.remove()">${m.pfp_frame&&isUrl(m.pfp_frame)?`<img class="f" src="${esc(m.pfp_frame)}" alt="" onerror="this.remove()">`:''}`
         :esc(ini(m.username));
-      h+=`<div class="m grp${ping}"><div class="m-av" data-uc="${esc(m.user_id||'')}">${av}</div>${body}${acts}</div>`;
+      h+=`<div class="m grp${ping}" data-mid="${esc(m.id)}"><div class="m-av" data-uc="${esc(m.user_id||'')}">${av}</div>${body}${acts}</div>`;
     }
-  });
+  return h;
+}
+function paintMsgs(jump){
+  const box=$('msgs');
+  const near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
+  const pinnedSet=new Set(pins.map(p=>String(p.message_id)));
+  const pinOK=canPin();
+  let h=moreOlder&&msgs.length?`<div id="older"><button id="older-btn">↑ ${t('loadOlder')}</button></div>`:'';
+  h+=`<div class="hero"><div class="ic">${curCh.kind==='dm'?'@':icon('hash',30)}</div>
+    <h2>${curCh.kind==='dm'?'':'#'}${esc(curCh.name)}</h2>
+    <p>${curCh.kind==='dm'?t('dmStart'):t('channelStart')}</p></div>`;
+  msgs.forEach((m,i)=>{h+=msgRow(m,i?msgs[i-1]:null,pinnedSet,pinOK);});
   if(!msgs.length)h+=`<div class="sys">${t('noMessages')}</div>`;
   h+='<div id="msg-end"></div>';
   box.innerHTML=h;
@@ -2875,6 +2890,28 @@ function paintMsgs(jump){
   if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);
     ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,220)+'px';}
   if(jump||near)box.scrollTop=box.scrollHeight;
+}
+/* Redraw one message and leave the rest of the room alone. A reaction is the
+   common case: one chip changing used to rebuild every row in the channel. */
+function repaintRow(id){
+  const el=$('msgs').querySelector(`.m[data-mid="${CSS.escape(String(id))}"]`);
+  if(!el){paintMsgs();return;}
+  const i=msgs.findIndex(m=>String(m.id)===String(id));
+  if(i<0){paintMsgs();return;}
+  const html=msgRow(msgs[i],i?msgs[i-1]:null,new Set(pins.map(p=>String(p.message_id))),canPin());
+  /* msgRow can lead with a day divider; this row already has one above it */
+  el.outerHTML=html.replace(/^<div class="day">.*?<\/div>/,'');
+}
+/* the hot path: one more message at the bottom. `msgs` already has it. */
+function appendMsg(force){
+  const box=$('msgs'),end=$('msg-end');
+  /* no painted list to append to (first paint, or a repaint is owed) — draw it all */
+  if(!end||!box.contains(end)||msgs.length<2&&box.querySelector('.sys')){paintMsgs(force);return;}
+  const near=box.scrollHeight-box.scrollTop-box.clientHeight<140;
+  const m=msgs[msgs.length-1],prev=msgs.length>1?msgs[msgs.length-2]:null;
+  end.insertAdjacentHTML('beforebegin',
+    msgRow(m,prev,new Set(pins.map(p=>String(p.message_id))),canPin()));
+  if(force||near)box.scrollTop=box.scrollHeight;
 }
 $('msgs').addEventListener('click',async e=>{
   const lb=e.target.closest('[data-lb]');
@@ -2962,7 +2999,7 @@ async function toggleRx(mid,emoji){
   reactions[mid]=reactions[mid]||{};
   reactions[mid][emoji]=mine?cur.filter(u=>u!==user.id):[...cur,user.id];
   if(!reactions[mid][emoji].length)delete reactions[mid][emoji];
-  paintMsgs();
+  repaintRow(mid);
   const q=mine
     ? sb.from('reactions').delete().eq('message_id',mid).eq('user_id',user.id).eq('emoji',emoji)
     : sb.from('reactions').insert({message_id:mid,user_id:user.id,emoji});
@@ -3099,9 +3136,13 @@ $('s-res').onclick=e=>{
 async function loadPins(){
   pins=[];
   if(!curCh)return;
+  const room=curCh.room_key;
   try{
-    const{data}=await sb.from('pinned_messages').select('*').eq('room_id',curCh.room_key);
+    const{data}=await sb.from('pinned_messages').select('*').eq('room_id',room);
+    if(!curCh||curCh.room_key!==room)return;          // switched away while it was in flight
     pins=data||[];
+    /* pins arrive after the first paint; only redraw if there is a mark to add */
+    if(pins.length&&msgs.length)paintMsgs();
   }catch(e){}
 }
 async function togglePin(mid){
@@ -3195,7 +3236,7 @@ function subscribeMsgs(){
         if(!msgs.some(m=>m.id===p.new.id)){
           const box=$('msgs');
           const away=box.scrollHeight-box.scrollTop-box.clientHeight;
-          msgs.push(p.new);paintMsgs();
+          msgs.push(p.new);appendMsg();
           /* scrolled up in history? count what they're missing */
           if((away>140||jumpedBack)&&p.new.user_id!==user?.id){newCount++;paintJump(true);}
         }
@@ -3203,7 +3244,7 @@ function subscribeMsgs(){
       })
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'room_id=eq.'+curCh.room_key},
       p=>{const i=msgs.findIndex(m=>m.id===p.new.id);
-        if(i>=0&&String(editing)!==String(p.new.id)){msgs[i]=p.new;paintMsgs();}})
+        if(i>=0&&String(editing)!==String(p.new.id)){msgs[i]=p.new;repaintRow(p.new.id);}})
     .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},
       p=>{const before=msgs.length;msgs=msgs.filter(m=>m.id!==p.old.id);if(msgs.length!==before)paintMsgs();})
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'reactions'},
@@ -3227,7 +3268,7 @@ function applyRx(r,add){
     const next=list.filter(u=>u!==r.user_id);
     if(next.length)set[r.emoji]=next;else delete set[r.emoji];
   }
-  paintMsgs();
+  repaintRow(r.message_id);
 }
 
 /* ══════ TYPING INDICATORS ══════ */
@@ -3395,7 +3436,7 @@ async function postMessage(text){
     room_id:curCh.room_key,user_id:user.id,is_owner:gRole==='owner',
     role:['admin','mod'].includes(gRole)?gRole:null,created_at:new Date().toISOString()};
   const{data}=await sb.from('messages').insert(row).select().single();
-  if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);paintMsgs(true);}
+  if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);appendMsg(true);}
 }
 async function send(){
   if(!user||!curCh)return;
@@ -3436,7 +3477,7 @@ async function send(){
   if(error){toast(error.message,'err');$('txt').value=text;return;}
   lastSent[curCh.room_key]=Date.now();
   refreshComposer();
-  if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);paintMsgs(true);}
+  if(data&&!msgs.some(m=>m.id===data.id)){msgs.push(data);appendMsg(true);}
   if(text)notifyMentions(text);
   /* tell them someone replied */
   if(wasReplyTo&&wasReplyTo.user_id&&wasReplyTo.user_id!==user.id){
@@ -3515,6 +3556,8 @@ async function loadMembers(){
   refreshComposer();
   if($('sm-ov').classList.contains('open'))paintMemPanel();
 }
+const memRowClass=m=>`mem-row ${online.has(m.user_id)?'on-now st-'+statusOf(m.user_id)+' ':''}${m.role==='owner'?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':''}`;
+let memSig='';
 function paintMembers(){
   const rank={owner:0,admin:1,mod:2,member:3};
   members.sort((a,b)=>{
@@ -3522,8 +3565,31 @@ function paintMembers(){
     return ao-bo||(rank[a.role]??9)-(rank[b.role]??9)||(a.username||'').localeCompare(b.username||'');
   });
   const up=members.filter(m=>online.has(m.user_id)).length;
-  $('mem').innerHTML=`<div class="mem-cat">${t('members')} — ${up} / ${members.length}</div>`+members.map(m=>`
-    <div class="mem-row ${online.has(m.user_id)?'on-now st-'+statusOf(m.user_id)+' ':''}${m.role==='owner'?'own':m.role==='admin'?'adm':m.role==='mod'?'mod':''}" data-uc="${esc(m.user_id)}">
+  const box=$('mem'),cat=box.querySelector('.mem-cat');
+  /* who is in the list, never in what order — the sort above puts whoever is
+     online on top, so an order-sensitive signature would call every presence
+     event a membership change and rebuild the column anyway */
+  const sig=members.map(m=>[m.user_id,m.pfp_url,m.username,m.role,m.color_id,m.title_id].join('|')).sort().join(',');
+  /* The same people, only who is online changed — which is what a presence
+     event almost always means. Move the rows that already exist instead of
+     writing innerHTML: a rebuild throws away every <img> in the column and the
+     browser fetches every avatar again, several times a minute. */
+  if(cat&&sig===memSig){
+    const have=new Map([...box.querySelectorAll('.mem-row')].map(el=>[el.dataset.uc,el]));
+    if(have.size===members.length){
+      cat.textContent=`${t('members')} — ${up} / ${members.length}`;
+      for(const m of members){
+        const el=have.get(String(m.user_id));
+        if(!el)break;
+        el.className=memRowClass(m);
+        box.appendChild(el);                 /* appendChild on an existing child moves it, keeping the image */
+      }
+      return;
+    }
+  }
+  memSig=sig;
+  box.innerHTML=`<div class="mem-cat">${t('members')} — ${up} / ${members.length}</div>`+members.map(m=>`
+    <div class="${memRowClass(m)}" data-uc="${esc(m.user_id)}">
       <div class="mem-av">${m.pfp_url&&isUrl(m.pfp_url)?`<img src="${esc(m.pfp_url)}" alt="">`:esc(ini(m.username))}</div>
       <div class="mem-nm${NAME_COLORS[m.color_id]?' nc':''}"${ncAttr(m.color_id)}>${esc(m.username||'Unknown')}${m.title_id&&titleName(m.title_id)?`<div class="mem-ttl">${esc(titleName(m.title_id))}</div>`:''}</div>
     </div>`).join('');
@@ -4140,7 +4206,10 @@ function watchPresence(){
       online=new Set(Object.keys(state));
       statuses={};
       Object.keys(state).forEach(k=>{statuses[k]=state[k][0]?.status||'online';});
-      paintMembers();paintDMSide();
+      /* presence fires on every tab focus of every person here, and arrives in
+         bursts — coalesce them into one repaint instead of one each */
+      clearTimeout(presencePaint);
+      presencePaint=setTimeout(()=>{paintMembers();paintDMSide();},150);
     })
     .subscribe(async st=>{
       if(st==='SUBSCRIBED')await sitePresence.track({uid:user.id,status:myStatus,at:Date.now()});
@@ -4245,11 +4314,14 @@ if(['localhost','127.0.0.1','[::1]',''].includes(location.hostname)){
     rdReport,rdSetLevel,rdReadSnap,rdLoadState,paintRaid,openRaidPanel,
     get rdState(){return rdState;},
     canManage,canModerate,
+    paintMsgs,appendMsg,repaintRow,msgRow,paintMembers,loadMsgs,loadPins,
     set(o){ if('user'in o)user=o.user; if('uname'in o)uname=o.uname;
       if('curSv'in o)curSv=o.curSv; if('channels'in o)channels=o.channels;
       if('members'in o)members=o.members; if('gRole'in o)gRole=o.gRole;
-      if('curCh'in o)curCh=o.curCh; },
-    get(){return{curSv,channels,members,user:user&&user.id,gRole};},
+      if('curCh'in o)curCh=o.curCh; if('msgs'in o)msgs=o.msgs;
+      if('pins'in o)pins=o.pins; if('reactions'in o)reactions=o.reactions;
+      if('online'in o)online=new Set(o.online); if('moreOlder'in o)moreOlder=o.moreOlder; },
+    get(){return{curSv,channels,members,user:user&&user.id,gRole,msgs,pins};},
   };
 }
 })();
