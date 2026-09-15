@@ -39,10 +39,14 @@ export default {
     let res = await cache.match(key);
     if (!res) {
       const up = await fetch(`https://nekos.best/api/v2/${m[1]}/${m[2]}.${m[3]}`, {
-        headers: { "User-Agent": "yuniorschillzone.xyz gif relay" },
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; yuniorschillzone.xyz gif relay)", "Accept": "image/gif,image/png,image/*;q=0.8,*/*;q=0.5" },
         cf: { cacheTtl: WEEK, cacheEverything: true },
       });
-      if (!up.ok) return new Response("gone", { status: 404, headers: { "Cache-Control": "public, max-age=300" } });
+      if (!up.ok) {
+        // say what nekos.best answered, so a block on their side is visible from ours
+        const why = (await up.text()).slice(0, 200);
+        return new Response(`gone: upstream ${up.status} ${why}`, { status: 404, headers: { "Cache-Control": "no-store", "X-Upstream-Status": String(up.status) } });
+      }
       const h = new Headers();
       h.set("Content-Type", m[3] === "png" ? "image/png" : "image/gif");
       h.set("Cache-Control", `public, max-age=${WEEK}, immutable`);
