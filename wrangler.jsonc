@@ -10,8 +10,16 @@
   // ═══════════════════════════════════════════════════════════════════
   "name": "yunior-chill-zone",
   "compatibility_date": "2026-08-17",
+
+  // Una sola excepción a "sirve la carpeta": /gif/... pasa por worker.js, que
+  // trae los GIFs de anime de los bots desde nekos.best y los entrega bajo
+  // nuestro dominio (nekos.best no deja que el navegador los incruste directo).
+  // Todo lo demás sigue saliendo de la carpeta tal cual.
+  "main": "worker.js",
   "assets": {
-    "directory": "./"
+    "directory": "./",
+    "binding": "ASSETS",
+    "run_worker_first": ["/gif/*"]
   },
 
   // El sitio se sirve solo desde yuniorschillzone.xyz. Esto apaga las

@@ -16,6 +16,8 @@ promo
 # configuración del hosting, no hace falta servirla
 wrangler.jsonc
 .assetsignore
+# el script del Worker (solo la ruta /gif/…); corre en Cloudflare, no se sirve como archivo
+worker.js
 
 # por si alguna vez cae un .sql en la carpeta
 **/*.sql
