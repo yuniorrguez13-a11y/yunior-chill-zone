@@ -1273,6 +1273,59 @@ everything**. That is the hole this file had been listing as "not done yet".
 - Not done: there is no member-limit control in server settings yet, so changing a cap after
   creation is `update servers set max_members = …`.
 
+### Bot scripts (Sep 2026) — bots people write themselves, run by the database
+The owner ran a "ping me today and get 400 denarii" event by hand, then asked for a way to
+automate that kind of thing with chill. Jr, let people script bots themselves, and have an
+**anime** voice ("palabras cute") and a **normal** one. Same shape as server scripts:
+**plain text, one rule per line, and it is data — nothing is ever executed.**
+
+    persona: anime
+
+    when hello: hi {name}-chan~ (｡•̀ᴗ-)✧
+    command roll: {name}-senpai rolled {roll}!! sugoi~
+    on join: {name}-chan joined {server}~ welcome!!
+    event ping @yunior: 400 denarii until 2026-09-30
+
+- **The database runs it.** `ycz_bot_on_message()` (AFTER INSERT on `messages`) and
+  `ycz_bot_on_join()` (AFTER INSERT on `server_members`) load the server's enabled scripts,
+  match rules in order, and post the reply through `ycz_bot_say()` — which swaps
+  `request.jwt.claims` to `service_role` for one insert so the identity guard leaves the bot
+  alone (the triggering message is the *member's* signed-in request), and which also blanks
+  `auth.uid()` so the Denarii trigger never pays anybody for a bot talking. So a scripted bot
+  answers while its owner is asleep, which is what "automate this" meant.
+- **Rule kinds**: `when <words>:` (contains, case-insensitive), `command <word>:` (`!word` or
+  `/word`), `on join:`, `event ping @handle: [N denarii] [until YYYY-MM-DD]`. Blanks:
+  `{name}`, `{server}`, `{roll}` (1–100), and in events `{target}` / `{amount}`. One reply
+  per bot per message, first match wins; a bot never answers a bot (`is_bot` short-circuits
+  the trigger, so no loops); DMs have no bots.
+- **Payouts are staff-only, enforced twice.** `ycz_guard_bot_script` (BEFORE INSERT/UPDATE)
+  stamps `created_by := auth.uid()`, takes `server_id` from the bot row (never the client's
+  word), and rebuilds `rules` through `ycz_bot_rules_clean()` — a whitelist that drops
+  unknown kinds, clips strings, clamps amounts to 1…5000 and `until` to 30 days out, and
+  **strips the amount unless the saver is in `user_roles`**. The runner checks staff again at
+  fire time against `created_by`. A non-staff event still works, it just says "noted."
+  Each person is paid once per rule: the ledger row is `reason='event'`, `ref='bot:<bot>:<i>'`,
+  and a 0-delta row is written for the no-payout case so "you already got that one" holds
+  there too. The client parser refuses the amount for non-staff **up front with its own
+  sentence** — a rule that silently paid nothing would be worse than an error.
+- **Persona** is the bot's *own* words only: joins and event confirmations when a rule gives
+  none (`ycz_bot_line`). Rules are always said exactly as written. The voice buttons in the
+  editor rewrite the `persona:` line **in the text**, so the text stays the single source of
+  truth and reopening shows what was saved (`source` column, ≤ 8000 chars). Kaomoji, never
+  emoji.
+- Editor: the scroll button on every row of the bots panel → `#bs-ov`, live plan in words
+  ("whoever pings @yunior gets 400 denarii, once each, until …"), "Load an example" per
+  voice (plus the event line for staff), Save = upsert on `bot_scripts`. Audit action
+  `bot_script`. `rEvent` labels the ledger reason.
+- Tested: `scratchpad/botscript/` — skeleton with the live message guard and `ycz_award`
+  verbatim, 14 behaviour checks run as a non-superuser, including one that **plants a
+  malformed rule past the guard** (the guard would heal it otherwise, which is the point of
+  the guard) to prove the runner's own `exception` block lets the message land.
+  `scratchpad/bot-script.js`: 35 checks through the editor. **Bug the tests caught:** a
+  plpgsql variable named `ref` shadowed `denarii_ledger.ref` inside `where l.ref = ref` —
+  "column reference is ambiguous" — and every event silently fell into the exception handler.
+  Do not name a plpgsql variable after a column it is compared against.
+
 ### Raid tools
 **A report is a `notifications` row.** The table is already type-agnostic: the renderer falls
 back to a bell icon plus `data.text` for any unknown type, so `raid_report` badges, toasts,

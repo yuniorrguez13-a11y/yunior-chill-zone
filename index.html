@@ -557,7 +557,9 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 .mem-mgr:hover{border-color:var(--border-2);}
 /* server scripts */
 #sv-ov .card.wide{max-width:560px;}
-#sv-code-in{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-height:190px;resize:vertical;line-height:1.5;}
+#sv-code-in,#bs-code-in{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-height:190px;resize:vertical;line-height:1.5;}
+.seg.small{margin-bottom:6px;}.seg.small button{padding:8px 10px;font-size:13px;}
+#bs-hint{white-space:pre-line;}
 .sc-rep{margin-top:9px;font-size:12.5px;line-height:1.5;}
 .sc-bad{display:flex;gap:7px;padding:6px 9px;background:rgba(237,66,69,.09);border:1px solid rgba(237,66,69,.32);
   border-radius:8px;margin-bottom:5px;color:#ffb9bb;overflow-wrap:anywhere;}
@@ -1012,6 +1014,34 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
       </div>
     </div>
     <div class="card-f"><button class="btn" id="sv-x" data-i18n="cancel">Cancel</button><button class="btn pri" id="sv-go" data-i18n="continue">Continue</button></div>
+  </div>
+</div>
+
+<!-- BOT SCRIPT: a bot written down as rules. Data, never code. -->
+<div class="ov" id="bs-ov">
+  <div class="card wide">
+    <div class="card-h"><h3 id="bs-title" data-i18n="bsTitle">Script this bot</h3><p data-i18n="bsSub">One rule per line. The site runs them for you, even while you are away.</p></div>
+    <div class="card-b">
+      <div class="err" id="bs-err"></div>
+      <div class="fg"><label class="fl" data-i18n="bsPersona">Voice</label>
+        <div class="seg small" id="bs-seg">
+          <button class="on" data-p="normal"><span data-i18n="bsNormal">Normal</span></button>
+          <button data-p="anime"><span data-i18n="bsAnime">Anime</span></button>
+        </div>
+        <div class="hint" data-i18n="bsPersonaHint">The voice picks the bot's own words for joins and events. Your rules are always said exactly as you wrote them.</div>
+      </div>
+      <div class="fg"><label class="fl" data-i18n="bsLabel">Rules</label>
+        <textarea class="fi" id="bs-code-in" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+        <div class="hint" id="bs-hint"></div>
+      </div>
+      <div class="sc-rep" id="bs-rep"></div>
+    </div>
+    <div class="card-f">
+      <button class="btn" id="bs-example" data-i18n="bsExample">Load an example</button>
+      <span style="flex:1"></span>
+      <button class="btn" id="bs-x" data-i18n="cancel">Cancel</button>
+      <button class="btn pri" id="bs-go" data-i18n="bsSave">Save</button>
+    </div>
   </div>
 </div>
 
@@ -2375,7 +2405,7 @@ const AUD_IC={role:'shield',kick:'logout',ban:'ban',unban:'reply',timeout:'timer
   raid_report:'shield',raid_on:'lock',raid_off:'unlock',server_script:'scroll',
   purge:'trash',lock:'lock',unlock:'unlock',slowmode:'timer',channel_create:'plus',
   channel_rename:'pencil',channel_delete:'trash',invite:'refresh',transfer:'crown',
-  server_update:'pencil',bot_create:'bot',bot_delete:'bot'};
+  server_update:'pencil',bot_create:'bot',bot_delete:'bot',bot_script:'scroll'};
 async function paintAuditLog(){
   const box=$('sm-audit');if(!box||!curSv)return;
   let list=[];
@@ -2536,11 +2566,142 @@ async function paintBots(){
       <div class="bot-av">${b.avatar_url&&isUrl(b.avatar_url)?`<img src="${esc(b.avatar_url)}">`:icon('bot',16)}</div>
       <div class="bot-i"><div class="bot-n">${esc(b.name)}</div>
         <div class="bot-m">${b.enabled?'active':'disabled'}${b.last_used_at?' · last posted '+esc(ago(b.last_used_at)):' · never used'}</div></div>
+      <button data-script="${esc(b.id)}" data-name="${esc(b.name)}" title="${esc(t('bsTitle'))}">${icon('scroll',13)}</button>
       <button data-toggle="${esc(b.id)}" title="${b.enabled?'Disable':'Enable'}">${b.enabled?icon('pause',13):icon('play',13)}</button>
       <button class="d" data-delbot="${esc(b.id)}" title="Delete">${icon('trash',14)}</button>
     </div>`).join('')||'<div class="hint">No bots yet.</div>';
 }
+/* ══════ BOT SCRIPTS ══════
+   A bot written down as rules, one per line. It is data: the database reads it and
+   answers on the bot's behalf, so a scripted bot works while its owner is asleep.
+   Nothing here is ever executed — bsParse() only fills in {spec, errs}, and the
+   database rebuilds every rule from its own whitelist before storing it.
+
+   Denarii payouts ("event ping @yunior: 400 denarii …") are only honoured when the
+   person saving the script is site staff. The parser refuses the amount for anybody
+   else up front — a rule that silently pays nothing would be worse than an error. */
+const BS_MAX_RULES=30, BS_MAX_LEN=8000, BS_STAFF=()=>['owner','admin','mod'].includes(gRole);
+const BS_EXAMPLE={
+  normal:"persona: normal\n\nwhen hello: hi {name}.\nwhen good night: night, {name}.\ncommand roll: {name} rolled {roll}\ncommand hug: {name} gets a hug.\non join: welcome, {name}.\n",
+  anime:"persona: anime\n\nwhen hello: hi {name}-chan~ (｡•̀ᴗ-)✧\nwhen good night: oyasumi {name}~ sleep well ♡\ncommand roll: {name}-senpai rolled {roll}!! sugoi~\ncommand hug: *hugs {name}* (っ´ω`)っ\non join: {name}-chan joined {server}~ welcome!!\n"
+};
+const BS_EVENT_LINE="\n# staff only: whoever pings you gets paid, once each, while it lasts\nevent ping @yunior: 400 denarii until ";
+let bsBot=null,bsPersona='normal';
+function bsParse(src){
+  const spec={persona:'normal',rules:[]},errs=[];
+  const text=String(src||'');
+  if(text.length>BS_MAX_LEN)return{spec,errs:[{line:0,msg:t('bsTooLong')}]};
+  const bad=(i,msg)=>{if(errs.length<12)errs.push({line:i+1,msg});};
+  text.split(/\r?\n/).forEach((raw,i)=>{
+    const line=scClean(raw);
+    if(!line||line[0]==='#')return;
+    const m=line.match(/^([^:]{1,60}):\s*(.*)$/);
+    if(!m)return bad(i,t('bsNoColon'));
+    const key=m[1].trim().toLowerCase().replace(/\s+/g,' '),val=m[2].trim();
+    if(key==='persona'||key==='voice'||key==='voz'){
+      const v=val.toLowerCase();
+      if(v!=='normal'&&v!=='anime')return bad(i,t('bsBadPersona'));
+      spec.persona=v;return;
+    }
+    if(spec.rules.length>=BS_MAX_RULES)return bad(i,fmt(t('bsTooMany'),{n:BS_MAX_RULES}));
+    let w;
+    if((w=key.match(/^(?:when|cuando|si)\s+(.+)$/))){
+      if(!val)return bad(i,t('bsNeedReply'));
+      spec.rules.push({k:'say',on:w[1].slice(0,40),reply:val.slice(0,300)});return;
+    }
+    if((w=key.match(/^(?:command|cmd|comando)\s+[!/]?([a-z0-9_-]{1,24})$/))){
+      if(!val)return bad(i,t('bsNeedReply'));
+      spec.rules.push({k:'cmd',on:w[1],reply:val.slice(0,300)});return;
+    }
+    if(/^(?:on join|join|welcome|al entrar|bienvenida)$/.test(key)){
+      if(!val)return bad(i,t('bsNeedReply'));
+      spec.rules.push({k:'join',reply:val.slice(0,300)});return;
+    }
+    if((w=key.match(/^(?:event|evento)\s+ping\s+@?([a-z0-9_-]{2,24})$/))){
+      const r={k:'ping',target:w[1]};
+      let rest=val.toLowerCase();
+      const am=rest.match(/(\d{1,5})\s*denari(?:i|us|os)?/);
+      if(am){r.amount=+am[1];rest=rest.replace(am[0],'');}
+      const un=rest.match(/(?:until|hasta)\s+(\d{4}-\d{2}-\d{2})/);
+      if(un){r.until=un[1];rest=rest.replace(un[0],'');}
+      rest=rest.replace(/[,\s]+/g,'');
+      if(rest)return bad(i,fmt(t('bsUnknownOpt'),{w:rest}));
+      if(r.amount!=null){
+        if(!BS_STAFF())return bad(i,t('bsStaffOnly'));
+        if(r.amount<1||r.amount>5000)return bad(i,t('bsBadAmount'));
+      }
+      if(r.until&&isNaN(Date.parse(r.until)))return bad(i,t('bsBadDate'));
+      spec.rules.push(r);return;
+    }
+    bad(i,fmt(t('bsUnknownWord'),{w:m[1].trim()}));
+  });
+  if(!errs.length&&!spec.rules.length)errs.push({line:0,msg:t('bsNeedOne')});
+  return{spec,errs};
+}
+function bsPaint(){
+  const box=$('bs-rep'),{spec,errs}=bsParse($('bs-code-in').value);
+  $('bs-go').disabled=!!errs.length;
+  if(spec.persona!==bsPersona){bsPersona=spec.persona;bsPaintSeg();}
+  if(errs.length){
+    box.innerHTML=errs.map(e=>`<div class="sc-bad">${e.line?`<b>${t('scLine')} ${e.line}</b>`:''}<span>${esc(e.msg)}</span></div>`).join('');
+    return;
+  }
+  const what=r=>r.k==='say'?fmt(t('bsPlanSay'),{w:r.on}):r.k==='cmd'?fmt(t('bsPlanCmd'),{w:r.on})
+    :r.k==='join'?t('bsPlanJoin')
+    :fmt(t(r.amount?'bsPlanPing':'bsPlanPingFree'),{w:r.target,n:r.amount||0,d:r.until||t('bsPlanMonth')});
+  box.innerHTML=`<div class="sc-ok" style="margin-bottom:6px">${esc(fmt(t('bsPlan'),{n:spec.rules.length,p:t(spec.persona==='anime'?'bsAnime':'bsNormal')}))}</div>`
+    +spec.rules.map(r=>`<div class="sc-plan"><span class="ic">${icon(r.k==='ping'?'coin':r.k==='join'?'users':r.k==='cmd'?'bolt':'chat',14)}</span>
+      <span class="nm">${esc(what(r))}</span>${r.reply?`<span class="was">${esc(r.reply.slice(0,60))}</span>`:''}</div>`).join('');
+}
+function bsPaintSeg(){$('bs-seg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.p===bsPersona));}
+/* the voice buttons rewrite the persona line in place, so the text stays the one source of truth */
+function bsSetPersona(p){
+  bsPersona=p;bsPaintSeg();
+  const ta=$('bs-code-in');
+  if(/^\s*(persona|voice|voz)\s*:/im.test(ta.value))ta.value=ta.value.replace(/^(\s*(?:persona|voice|voz)\s*:\s*)[^\n]*/im,'$1'+p);
+  else ta.value='persona: '+p+'\n'+ta.value;
+  bsPaint();
+}
+async function openBotScript(botId,name){
+  if(!curSv||!canManage())return toast(t('bsOwnersOnly'),'err');
+  bsBot=botId;bsPersona='normal';
+  $('bs-title').textContent=fmt(t('bsTitleFor'),{n:name||'bot'});
+  $('bs-err').className='err';
+  $('bs-hint').textContent=t('bsHelp')+(BS_STAFF()?'\n'+t('bsHelpStaff'):'');
+  $('bs-code-in').value='';
+  try{
+    const{data}=await sb.from('bot_scripts').select('persona,source,rules').eq('bot_id',botId).maybeSingle();
+    if(data){bsPersona=data.persona||'normal';$('bs-code-in').value=data.source||'';}
+  }catch(e){}
+  bsPaintSeg();bsPaint();open('bs-ov');
+  $('bs-code-in').focus();
+}
+$('bs-code-in').oninput=bsPaint;
+$('bs-seg').onclick=e=>{const b=e.target.closest('[data-p]');if(b)bsSetPersona(b.dataset.p);};
+$('bs-example').onclick=()=>{
+  let ex=BS_EXAMPLE[bsPersona]||BS_EXAMPLE.normal;
+  if(BS_STAFF()){const d=new Date(Date.now()+7*864e5);ex+=BS_EVENT_LINE+d.toISOString().slice(0,10)+'\n';}
+  $('bs-code-in').value=ex;bsPaint();
+};
+$('bs-x').onclick=()=>shut('bs-ov');
+$('bs-go').onclick=async()=>{
+  const err=m=>{const e=$('bs-err');e.textContent=m;e.className='err on';};
+  const{spec,errs}=bsParse($('bs-code-in').value);
+  if(errs.length){bsPaint();return err(t('scFixFirst'));}
+  if(!bsBot)return;
+  $('bs-go').disabled=true;
+  try{
+    const{error}=await sb.from('bot_scripts').upsert({bot_id:bsBot,persona:spec.persona,rules:spec.rules,
+      source:$('bs-code-in').value.slice(0,BS_MAX_LEN),enabled:true},{onConflict:'bot_id'});
+    if(error)return err(error.message);
+    shut('bs-ov');toast(t('bsSaved'),'ok');
+    try{audit('bot_script',$('bs-title').textContent);}catch(e){}
+  }finally{$('bs-go').disabled=false;}
+};
+
 $('sm-bots').onclick=async e=>{
+  const sc=e.target.closest('[data-script]');
+  if(sc){openBotScript(sc.dataset.script,sc.dataset.name);return;}
   const t=e.target.closest('[data-toggle]'),d=e.target.closest('[data-delbot]');
   if(t){
     const{data}=await sb.from('bots').select('enabled').eq('id',t.dataset.toggle).maybeSingle();
@@ -3815,7 +3976,7 @@ function paintModTools(uid,svRole){
   };
 }
 $('uc-ov').onclick=e=>{if(e.target===$('uc-ov'))shut('uc-ov');};
-['auth-ov','sv-ov','ch-ov','sm-ov','ap-ov','set-ov','rr-ov','rd-ov'].forEach(id=>
+['auth-ov','sv-ov','ch-ov','sm-ov','ap-ov','set-ov','rr-ov','rd-ov','bs-ov'].forEach(id=>
   $(id).onclick=e=>{if(e.target===$(id))shut(id);});
 
 /* ══════ VOICE CHANNELS (WebRTC mesh) ══════ */
@@ -4335,6 +4496,7 @@ if(['localhost','127.0.0.1','[::1]',''].includes(location.hostname)){
     get rdState(){return rdState;},
     canManage,canModerate,
     paintMsgs,appendMsg,repaintRow,msgRow,paintMembers,loadMsgs,loadPins,
+    bsParse,bsPaint,bsSetPersona,openBotScript,get bsPersona(){return bsPersona;},
     set(o){ if('user'in o)user=o.user; if('uname'in o)uname=o.uname;
       if('curSv'in o)curSv=o.curSv; if('channels'in o)channels=o.channels;
       if('members'in o)members=o.members; if('gRole'in o)gRole=o.gRole;
