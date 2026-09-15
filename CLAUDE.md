@@ -1399,6 +1399,29 @@ message trigger (pg_net is fire-and-forget; there is no callback), so the shape 
   `GIF_ACTIONS` set is the third copy. **waifu.pics does not resolve from Supabase's
   network** (`Couldn't resolve host name` through pg_net); nekos.best does — that is why
   there is no fallback provider. The chat CSP already allows `img-src https:`.
+- **The GIFs are our own copies, served through our own domain.** Two things nekos.best
+  does, found one after the other on launch day: it answers *browsers* with a header that
+  forbids embedding its files elsewhere (`ERR_BLOCKED_BY_RESPONSE.NotSameOrigin`, a broken
+  picture in chat — pg_net never sees that header, it depends on the browser's
+  `Sec-Fetch-*`, don't try to reproduce it from the database), and it **blocks Cloudflare
+  Workers by IP range** ("Your IP address or IP range has been blocked by NEKOSBEST"), so a
+  plain relay Worker got 403 on every file. The Supabase edge runtime *is* allowed, so the
+  edge function downloads each GIF once (≤ 8 MB) into the `avatars` bucket at
+  `bot-gifs/<id>.gif` (service role, `upsert`), and the message points at
+  `https://yuniorschillzone.xyz/gif/<id>.gif`. **The site now has a Worker script** for
+  that one route: `wrangler.jsonc` gained `main: worker.js`, `assets.binding: ASSETS` and
+  `run_worker_first: ["/gif/*"]`; everything else is still served straight from the folder
+  (`env.ASSETS.fetch(req)` is the fall-through). The route accepts only a UUID filename,
+  fetches the copy from our public bucket and caches it at the edge for a week
+  (`caches.default` + `cf.cacheEverything`), so Supabase's metered egress is paid once per
+  GIF per PoP and viewers get Cloudflare's unmetered kind. `worker.js` is in
+  `.assetsignore`. **Storage is pruned**: after every successful job the function removes
+  copies older than 21 days (`KEEP_DAYS`), so the free-plan gigabyte never fills; a message
+  older than that keeps its caption and shows a broken picture, which is the accepted
+  trade. `npx wrangler deploy --dry-run` validates the config offline (it works through
+  the sandbox proxy); the relay logic was unit-tested with a stubbed `fetch`/`caches`
+  (asset passthrough, cached second hit, missing file 404, POST 405). Rejected: proxying
+  through the edge function (Supabase's 5 GB/month egress would go on GIF views).
 - **The owner's "animegifs (NPM)"**: every npm package of that kind is a thin wrapper over
   one of these public APIs, so the function calls the API directly rather than importing a
   package that would go stale. `npm:` imports do work in edge functions if one is ever
