@@ -558,6 +558,29 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 /* server scripts */
 #sv-ov .card.wide{max-width:560px;}
 #sv-code-in,#bs-code-in{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;min-height:190px;resize:vertical;line-height:1.5;}
+.bs-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin:-4px 0 14px;}
+.bs-tabs button{padding:9px 12px;font-size:12.5px;font-weight:600;color:var(--txt3);border-bottom:2px solid transparent;margin-bottom:-1px;}
+.bs-tabs button.on{color:var(--txt);border-bottom-color:var(--red);}
+.feat-row{display:flex;align-items:center;gap:11px;padding:10px 4px;border-bottom:1px solid var(--border);}
+.feat-row:last-child{border-bottom:0;}
+.feat-i{flex:1;min-width:0;}
+.feat-n{font-size:13.5px;font-weight:600;}
+.feat-d{font-size:11.5px;color:var(--txt3);margin-top:1px;}
+.feat-ex{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--txt3);flex:none;}
+.feat-sub{padding:0 4px 10px 47px;}
+.sw{position:relative;width:38px;height:22px;flex:none;cursor:pointer;}
+.sw input{opacity:0;width:0;height:0;position:absolute;}
+.sw span{position:absolute;inset:0;border-radius:11px;background:#2a2a35;border:1px solid var(--border);transition:background .15s;}
+.sw span::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s;}
+.sw input:checked+span{background:var(--red);border-color:var(--red);}
+.sw input:checked+span::after{transform:translateX(16px);}
+.bs-row{display:flex;gap:6px;align-items:center;margin-bottom:7px;}
+.bs-row .fi{padding:8px 10px;font-size:13px;}
+.bs-row .arrow{color:var(--txt3);flex:none;font-size:12px;}
+.bs-row .del{width:28px;height:28px;border-radius:7px;color:var(--txt3);flex:none;}
+.bs-row .del:hover{background:var(--hover);color:#ff5f6d;}
+.ac-cmd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:600;flex:none;}
+.ac-d{font-size:12px;color:var(--txt3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .seg.small{margin-bottom:6px;}.seg.small button{padding:8px 10px;font-size:13px;}
 #bs-hint{white-space:pre-line;}
 .sc-rep{margin-top:9px;font-size:12.5px;line-height:1.5;}
@@ -1017,31 +1040,65 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
   </div>
 </div>
 
-<!-- BOT SCRIPT: a bot written down as rules. Data, never code. -->
+<!-- BOT DASHBOARD: switches and forms over the same rules a script would write. Data, never code. -->
 <div class="ov" id="bs-ov">
   <div class="card wide">
-    <div class="card-h"><h3 id="bs-title" data-i18n="bsTitle">Script this bot</h3><p data-i18n="bsSub">One rule per line. The site runs them for you, even while you are away.</p></div>
+    <div class="card-h"><h3 id="bs-title" data-i18n="bsTitle">Bot</h3><p data-i18n="bsSub">Switch on what it does. The site runs it for you, even while you are away.</p></div>
     <div class="card-b">
       <div class="err" id="bs-err"></div>
-      <div class="fg"><label class="fl" data-i18n="bsPersona">Voice</label>
-        <div class="seg small" id="bs-seg">
-          <button class="on" data-p="normal"><span data-i18n="bsNormal">Normal</span></button>
-          <button data-p="anime"><span data-i18n="bsAnime">Anime</span></button>
+      <div class="bs-tabs" id="bs-tabs">
+        <button class="on" data-tab="features" data-i18n="bsTabFeatures">Features</button>
+        <button data-tab="replies" data-i18n="bsTabReplies">Replies</button>
+        <button data-tab="events" data-i18n="bsTabEvents">Events</button>
+        <button data-tab="advanced" data-i18n="bsTabAdvanced">Advanced</button>
+      </div>
+      <div class="bs-pane" id="bs-features">
+        <div class="fg"><label class="fl" data-i18n="bsPersona">Voice</label>
+          <div class="seg small" id="bs-seg">
+            <button class="on" data-p="normal"><span data-i18n="bsNormal">Normal</span></button>
+            <button data-p="anime"><span data-i18n="bsAnime">Anime</span></button>
+          </div>
+          <div class="hint" data-i18n="bsPersonaHint">The voice picks the bot’s own words. Anything you type yourself is said exactly as you wrote it.</div>
         </div>
-        <div class="hint" data-i18n="bsPersonaHint">The voice picks the bot's own words for joins and events. Your rules are always said exactly as you wrote them.</div>
+        <div id="bs-feat-list"></div>
       </div>
-      <div class="fg"><label class="fl" data-i18n="bsLabel">Rules</label>
-        <textarea class="fi" id="bs-code-in" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
-        <div class="hint" id="bs-hint"></div>
+      <div class="bs-pane" id="bs-replies" hidden>
+        <div class="fg"><label class="fl" data-i18n="bsRepliesLabel">Auto-replies</label>
+          <div class="hint" data-i18n="bsRepliesHint">When somebody’s message contains the words on the left, the bot answers with the right. {name} becomes their name.</div>
+          <div id="bs-reply-list"></div>
+          <button class="upb" id="bs-add-reply" style="width:100%;margin-top:6px;"><i data-ic="plus" data-ic-size="14"></i> <span data-i18n="bsAddReply">Add a reply</span></button>
+        </div>
+        <div class="fg"><label class="fl" data-i18n="bsCmdsLabel">Custom commands</label>
+          <div class="hint" data-i18n="bsCmdsHint">Typing !word (or /word) makes the bot say the text. {roll} becomes a number from 1 to 100.</div>
+          <div id="bs-cmd-list"></div>
+          <button class="upb" id="bs-add-cmd" style="width:100%;margin-top:6px;"><i data-ic="plus" data-ic-size="14"></i> <span data-i18n="bsAddCmd">Add a command</span></button>
+        </div>
       </div>
-      <div class="sc-rep" id="bs-rep"></div>
+      <div class="bs-pane" id="bs-events" hidden>
+        <div class="feat-row">
+          <label class="sw"><input type="checkbox" id="bs-ev-on"><span></span></label>
+          <div class="feat-i"><div class="feat-n" data-i18n="bsEvTitle">Ping event</div><div class="feat-d" data-i18n="bsEvDesc">Whoever pings a person gets something, once each, until a date. The way the “ping me today” giveaway worked.</div></div>
+        </div>
+        <div id="bs-ev-form">
+          <div class="fg"><label class="fl" data-i18n="bsEvTarget">Who has to be pinged</label>
+            <div style="display:flex;align-items:center;gap:6px;"><span class="mono" style="color:var(--txt3)">@</span><input type="text" class="fi mono" id="bs-ev-target" placeholder="yunior" maxlength="24" autocapitalize="off"></div></div>
+          <div class="fg" id="bs-ev-amount-row"><label class="fl" data-i18n="bsEvAmount">Denarii per person</label>
+            <input type="number" class="fi" id="bs-ev-amount" min="1" max="5000" placeholder="400"></div>
+          <div class="fg"><label class="fl" data-i18n="bsEvUntil">Until</label>
+            <input type="date" class="fi" id="bs-ev-until"></div>
+          <div class="hint" id="bs-ev-note"></div>
+        </div>
+      </div>
+      <div class="bs-pane" id="bs-advanced" hidden>
+        <div class="fg"><label class="fl" data-i18n="bsAdvancedLabel">The same thing, as text</label>
+          <textarea class="fi" id="bs-code-in" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+          <div class="hint" id="bs-hint"></div>
+        </div>
+        <div class="sc-rep" id="bs-rep"></div>
+        <button class="upb" id="bs-example" style="width:100%;margin-top:8px;" data-i18n="bsExample">Load an example</button>
+      </div>
     </div>
-    <div class="card-f">
-      <button class="btn" id="bs-example" data-i18n="bsExample">Load an example</button>
-      <span style="flex:1"></span>
-      <button class="btn" id="bs-x" data-i18n="cancel">Cancel</button>
-      <button class="btn pri" id="bs-go" data-i18n="bsSave">Save</button>
-    </div>
+    <div class="card-f"><button class="btn" id="bs-x" data-i18n="cancel">Cancel</button><span style="flex:1"></span><button class="btn pri" id="bs-go" data-i18n="bsSave">Save</button></div>
   </div>
 </div>
 
@@ -2571,27 +2628,62 @@ async function paintBots(){
       <button class="d" data-delbot="${esc(b.id)}" title="Delete">${icon('trash',14)}</button>
     </div>`).join('')||'<div class="hint">No bots yet.</div>';
 }
-/* ══════ BOT SCRIPTS ══════
-   A bot written down as rules, one per line. It is data: the database reads it and
-   answers on the bot's behalf, so a scripted bot works while its owner is asleep.
-   Nothing here is ever executed — bsParse() only fills in {spec, errs}, and the
-   database rebuilds every rule from its own whitelist before storing it.
+/* ══════ BOT DASHBOARD ══════
+   A bot is a list of rules the database runs: switches and small forms here, and the
+   same thing written out as text under "Advanced". Nothing is ever executed — the form
+   builds {k, on, reply} rules, the database rebuilds every one from its own whitelist
+   before storing it, and a trigger on messages does the talking. So a bot works while
+   its owner is asleep.
 
-   Denarii payouts ("event ping @yunior: 400 denarii …") are only honoured when the
-   person saving the script is site staff. The parser refuses the amount for anybody
-   else up front — a rule that silently pays nothing would be worse than an error. */
-const BS_MAX_RULES=30, BS_MAX_LEN=8000, BS_STAFF=()=>['owner','admin','mod'].includes(gRole);
+   One validator. The form is turned into text (bsToText) and parsed back (bsParse)
+   before saving, so the switches and the text can never disagree about what is legal.
+
+   Denarii payouts ("ping event") are only honoured when the person saving is site
+   staff. The form hides the amount for everybody else and the parser refuses it up
+   front — a rule that silently paid nothing would be worse than an error. */
+const BS_MAX_RULES=40, BS_MAX_LEN=8000, BS_STAFF=()=>['owner','admin','mod'].includes(gRole);
+const BS_BUILT=['help','roll','flip','8ball','rps','choose','hug','pat'];
+const BS_FEATS=[  /* order on screen; ex = what somebody types */
+  {id:'welcome',ex:''},{id:'help',ex:'!help'},{id:'roll',ex:'!roll 2d6'},{id:'flip',ex:'!flip'},
+  {id:'8ball',ex:'!8ball will it rain'},{id:'rps',ex:'!rps rock'},{id:'choose',ex:'!choose tea, coffee'},
+  {id:'hug',ex:'!hug @ridge'},{id:'pat',ex:'!pat'}];
 const BS_EXAMPLE={
-  normal:"persona: normal\n\nwhen hello: hi {name}.\nwhen good night: night, {name}.\ncommand roll: {name} rolled {roll}\ncommand hug: {name} gets a hug.\non join: welcome, {name}.\n",
-  anime:"persona: anime\n\nwhen hello: hi {name}-chan~ (｡•̀ᴗ-)✧\nwhen good night: oyasumi {name}~ sleep well ♡\ncommand roll: {name}-senpai rolled {roll}!! sugoi~\ncommand hug: *hugs {name}* (っ´ω`)っ\non join: {name}-chan joined {server}~ welcome!!\n"
+  normal:"persona: normal\nfeatures: help, roll, flip, 8ball, rps, choose, hug, pat\n\non join: welcome, {name}.\nwhen hello: hi {name}.\ncommand cake: the cake is a lie\n",
+  anime:"persona: anime\nfeatures: help, roll, flip, 8ball, rps, choose, hug, pat\n\non join:\nwhen hello: hi {name}~ (｡•̀ᴗ-)✧\nwhen good night: oyasumi {name}~ sleep well ♡\ncommand cake: the cake is a lie~ (￣▽￣)\n"
 };
-const BS_EVENT_LINE="\n# staff only: whoever pings you gets paid, once each, while it lasts\nevent ping @yunior: 400 denarii until ";
-let bsBot=null,bsPersona='normal';
+let bsBot=null,bsBotName='',bsSpec=null,bsTab='features',bsPersona='normal';
+
+const bsBlank=()=>({persona:'normal',feats:{},welcome:'',replies:[],cmds:[],event:{on:false,target:'',amount:'',until:''}});
+function bsFromRules(persona,rules){
+  const sp=bsBlank();sp.persona=persona==='anime'?'anime':'normal';
+  for(const r of rules||[]){
+    if(!r||typeof r!=='object')continue;
+    if(r.k==='built'&&BS_BUILT.includes(r.on))sp.feats[r.on]=true;
+    else if(r.k==='join'){sp.feats.welcome=true;sp.welcome=String(r.reply||'');}
+    else if(r.k==='say')sp.replies.push({on:String(r.on||''),reply:String(r.reply||'')});
+    else if(r.k==='cmd')sp.cmds.push({on:String(r.on||''),reply:String(r.reply||'')});
+    else if(r.k==='ping')sp.event={on:true,target:String(r.target||''),amount:r.amount!=null?String(r.amount):'',until:String(r.until||'')};
+  }
+  return sp;
+}
+/* the text is the storage format the parser understands, so the form is written out as text */
+function bsToText(sp){
+  const L=['persona: '+sp.persona];
+  const feats=BS_BUILT.filter(f=>sp.feats[f]);
+  if(feats.length)L.push('features: '+feats.join(', '));
+  L.push('');
+  if(sp.feats.welcome)L.push('on join: '+(sp.welcome||'').trim());
+  for(const r of sp.replies)if((r.on||'').trim()||(r.reply||'').trim())L.push('when '+r.on.trim()+': '+r.reply.trim());
+  for(const c of sp.cmds)if((c.on||'').trim()||(c.reply||'').trim())L.push('command '+c.on.trim()+': '+c.reply.trim());
+  if(sp.event.on)L.push('event ping @'+(sp.event.target||'').trim()+':'+(sp.event.amount?' '+String(sp.event.amount).trim()+' denarii':'')+(sp.event.until?' until '+sp.event.until:''));
+  return L.join('\n')+'\n';
+}
 function bsParse(src){
   const spec={persona:'normal',rules:[]},errs=[];
   const text=String(src||'');
   if(text.length>BS_MAX_LEN)return{spec,errs:[{line:0,msg:t('bsTooLong')}]};
   const bad=(i,msg)=>{if(errs.length<12)errs.push({line:i+1,msg});};
+  const seenBuilt=new Set();
   text.split(/\r?\n/).forEach((raw,i)=>{
     const line=scClean(raw);
     if(!line||line[0]==='#')return;
@@ -2603,6 +2695,14 @@ function bsParse(src){
       if(v!=='normal'&&v!=='anime')return bad(i,t('bsBadPersona'));
       spec.persona=v;return;
     }
+    if(key==='features'||key==='feature'||key==='funciones'){
+      for(const w of val.split(',').map(x=>x.trim().toLowerCase().replace(/^[!/]/,'')).filter(Boolean)){
+        if(!BS_BUILT.includes(w))return bad(i,fmt(t('bsBadFeature'),{w,list:BS_BUILT.join(', ')}));
+        if(seenBuilt.has(w))continue;
+        seenBuilt.add(w);spec.rules.push({k:'built',on:w});
+      }
+      return;
+    }
     if(spec.rules.length>=BS_MAX_RULES)return bad(i,fmt(t('bsTooMany'),{n:BS_MAX_RULES}));
     let w;
     if((w=key.match(/^(?:when|cuando|si)\s+(.+)$/))){
@@ -2611,11 +2711,12 @@ function bsParse(src){
     }
     if((w=key.match(/^(?:command|cmd|comando)\s+[!/]?([a-z0-9_-]{1,24})$/))){
       if(!val)return bad(i,t('bsNeedReply'));
+      if(BS_BUILT.includes(w[1]))return bad(i,fmt(t('bsCmdTaken'),{w:w[1]}));
       spec.rules.push({k:'cmd',on:w[1],reply:val.slice(0,300)});return;
     }
+    if(key.match(/^(?:command|cmd|comando)\s+/))return bad(i,t('bsBadCmdName'));
     if(/^(?:on join|join|welcome|al entrar|bienvenida)$/.test(key)){
-      if(!val)return bad(i,t('bsNeedReply'));
-      spec.rules.push({k:'join',reply:val.slice(0,300)});return;
+      spec.rules.push(val?{k:'join',reply:val.slice(0,300)}:{k:'join'});return;   // empty = the voice's own line
     }
     if((w=key.match(/^(?:event|evento)\s+ping\s+@?([a-z0-9_-]{2,24})$/))){
       const r={k:'ping',target:w[1]};
@@ -2633,71 +2734,157 @@ function bsParse(src){
       if(r.until&&isNaN(Date.parse(r.until)))return bad(i,t('bsBadDate'));
       spec.rules.push(r);return;
     }
+    if(key.match(/^(?:event|evento)\s+ping\s*@?/))return bad(i,t('bsBadTarget'));
     bad(i,fmt(t('bsUnknownWord'),{w:m[1].trim()}));
   });
   if(!errs.length&&!spec.rules.length)errs.push({line:0,msg:t('bsNeedOne')});
   return{spec,errs};
 }
-function bsPaint(){
-  const box=$('bs-rep'),{spec,errs}=bsParse($('bs-code-in').value);
-  $('bs-go').disabled=!!errs.length;
-  if(spec.persona!==bsPersona){bsPersona=spec.persona;bsPaintSeg();}
-  if(errs.length){
-    box.innerHTML=errs.map(e=>`<div class="sc-bad">${e.line?`<b>${t('scLine')} ${e.line}</b>`:''}<span>${esc(e.msg)}</span></div>`).join('');
-    return;
+
+/* ── painting ── */
+function bsShowTab(tab){
+  if(bsTab==='advanced'&&tab!=='advanced'){          // leaving the text: it wins if it parses
+    const{spec,errs}=bsParse($('bs-code-in').value);
+    if(!errs.length)bsSpec=bsFromRules(spec.persona,spec.rules);
   }
-  const what=r=>r.k==='say'?fmt(t('bsPlanSay'),{w:r.on}):r.k==='cmd'?fmt(t('bsPlanCmd'),{w:r.on})
-    :r.k==='join'?t('bsPlanJoin')
-    :fmt(t(r.amount?'bsPlanPing':'bsPlanPingFree'),{w:r.target,n:r.amount||0,d:r.until||t('bsPlanMonth')});
-  box.innerHTML=`<div class="sc-ok" style="margin-bottom:6px">${esc(fmt(t('bsPlan'),{n:spec.rules.length,p:t(spec.persona==='anime'?'bsAnime':'bsNormal')}))}</div>`
-    +spec.rules.map(r=>`<div class="sc-plan"><span class="ic">${icon(r.k==='ping'?'coin':r.k==='join'?'users':r.k==='cmd'?'bolt':'chat',14)}</span>
-      <span class="nm">${esc(what(r))}</span>${r.reply?`<span class="was">${esc(r.reply.slice(0,60))}</span>`:''}</div>`).join('');
+  bsTab=tab;
+  $('bs-tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  for(const id of ['features','replies','events','advanced'])$('bs-'+id).hidden=id!==tab;
+  bsRender();
+}
+function bsRender(){
+  const sp=bsSpec;
+  bsPersona=sp.persona;bsPaintSeg();
+  if(bsTab==='features'){
+    $('bs-feat-list').innerHTML=BS_FEATS.map(f=>`
+      <div class="feat-row"><label class="sw"><input type="checkbox" data-feat="${f.id}"${sp.feats[f.id]?' checked':''}><span></span></label>
+        <div class="feat-i"><div class="feat-n">${esc(t('bsFeat_'+f.id))}</div><div class="feat-d">${esc(t('bsFeatD_'+f.id))}</div></div>
+        ${f.ex?`<span class="feat-ex">${esc(f.ex)}</span>`:''}</div>
+      ${f.id==='welcome'&&sp.feats.welcome?`<div class="feat-sub"><input type="text" class="fi" data-welcome maxlength="300" value="${esc(sp.welcome)}" placeholder="${esc(t('bsWelcomePh'))}"><div class="hint">${esc(t('bsWelcomeHint'))}</div></div>`:''}`).join('');
+  }else if(bsTab==='replies'){
+    const row=(kind,i,r,ph1,ph2)=>`<div class="bs-row" data-kind="${kind}" data-i="${i}">
+      <input type="text" class="fi mono" data-f="on" maxlength="${kind==='cmd'?24:40}" value="${esc(r.on)}" placeholder="${esc(ph1)}" style="flex:0 0 34%;">
+      <span class="arrow">→</span>
+      <input type="text" class="fi" data-f="reply" maxlength="300" value="${esc(r.reply)}" placeholder="${esc(ph2)}">
+      <button class="del" data-del title="${esc(t('delete'))}">${icon('x',13)}</button></div>`;
+    $('bs-reply-list').innerHTML=sp.replies.map((r,i)=>row('say',i,r,t('bsReplyWhen'),t('bsReplySay'))).join('')
+      ||`<div class="hint">${esc(t('bsNoReplies'))}</div>`;
+    $('bs-cmd-list').innerHTML=sp.cmds.map((r,i)=>row('cmd',i,r,t('bsCmdName'),t('bsReplySay'))).join('')
+      ||`<div class="hint">${esc(t('bsNoCmds'))}</div>`;
+  }else if(bsTab==='events'){
+    $('bs-ev-on').checked=!!sp.event.on;
+    $('bs-ev-form').style.display=sp.event.on?'':'none';
+    $('bs-ev-target').value=sp.event.target||'';
+    $('bs-ev-amount').value=sp.event.amount||'';
+    $('bs-ev-until').value=sp.event.until||'';
+    $('bs-ev-amount-row').style.display=BS_STAFF()?'':'none';
+    $('bs-ev-note').textContent=BS_STAFF()?t('bsEvStaffNote'):t('bsEvFreeNote');
+  }else{
+    $('bs-code-in').value=bsToText(sp);
+    $('bs-hint').textContent=t('bsHelp')+(BS_STAFF()?'\n'+t('bsHelpStaff'):'');
+  }
+  bsCheck();
 }
 function bsPaintSeg(){$('bs-seg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.p===bsPersona));}
-/* the voice buttons rewrite the persona line in place, so the text stays the one source of truth */
-function bsSetPersona(p){
-  bsPersona=p;bsPaintSeg();
-  const ta=$('bs-code-in');
-  if(/^\s*(persona|voice|voz)\s*:/im.test(ta.value))ta.value=ta.value.replace(/^(\s*(?:persona|voice|voz)\s*:\s*)[^\n]*/im,'$1'+p);
-  else ta.value='persona: '+p+'\n'+ta.value;
-  bsPaint();
+/* one validator for every tab: the form as text, parsed */
+function bsCheck(){
+  const text=bsTab==='advanced'?$('bs-code-in').value:bsToText(bsSpec);
+  const{spec,errs}=bsParse(text);
+  $('bs-go').disabled=!!errs.length;
+  const box=$('bs-rep');
+  if(bsTab==='advanced'){
+    box.innerHTML=errs.length
+      ?errs.map(e=>`<div class="sc-bad">${e.line?`<b>${t('scLine')} ${e.line}</b>`:''}<span>${esc(e.msg)}</span></div>`).join('')
+      :`<div class="sc-ok">${esc(fmt(t('bsPlan'),{n:spec.rules.length,p:t(spec.persona==='anime'?'bsAnime':'bsNormal')}))}</div>`;
+  }
+  const e=$('bs-err');
+  if(errs.length&&bsTab!=='advanced'){e.textContent=errs[0].msg;e.className='err on';}
+  else{e.textContent='';e.className='err';}
+  return errs;
 }
-async function openBotScript(botId,name){
-  if(!curSv||!canManage())return toast(t('bsOwnersOnly'),'err');
-  bsBot=botId;bsPersona='normal';
-  $('bs-title').textContent=fmt(t('bsTitleFor'),{n:name||'bot'});
-  $('bs-err').className='err';
-  $('bs-hint').textContent=t('bsHelp')+(BS_STAFF()?'\n'+t('bsHelpStaff'):'');
-  $('bs-code-in').value='';
-  try{
-    const{data}=await sb.from('bot_scripts').select('persona,source,rules').eq('bot_id',botId).maybeSingle();
-    if(data){bsPersona=data.persona||'normal';$('bs-code-in').value=data.source||'';}
-  }catch(e){}
-  bsPaintSeg();bsPaint();open('bs-ov');
-  $('bs-code-in').focus();
-}
-$('bs-code-in').oninput=bsPaint;
-$('bs-seg').onclick=e=>{const b=e.target.closest('[data-p]');if(b)bsSetPersona(b.dataset.p);};
+/* the form writes into the spec; every change re-checks */
+$('bs-feat-list').addEventListener('change',e=>{
+  const f=e.target.closest('[data-feat]');
+  if(f){bsSpec.feats[f.dataset.feat]=f.checked;if(f.dataset.feat==='welcome')bsRender();else bsCheck();}
+});
+$('bs-feat-list').addEventListener('input',e=>{if(e.target.matches('[data-welcome]')){bsSpec.welcome=e.target.value;bsCheck();}});
+$('bs-replies').addEventListener('input',e=>{
+  const row=e.target.closest('.bs-row');if(!row)return;
+  const list=row.dataset.kind==='cmd'?bsSpec.cmds:bsSpec.replies;
+  const r=list[+row.dataset.i];if(r)r[e.target.dataset.f]=e.target.value;
+  bsCheck();
+});
+$('bs-replies').addEventListener('click',e=>{
+  const d=e.target.closest('[data-del]');if(!d)return;
+  const row=d.closest('.bs-row');
+  (row.dataset.kind==='cmd'?bsSpec.cmds:bsSpec.replies).splice(+row.dataset.i,1);
+  bsRender();
+});
+$('bs-add-reply').onclick=()=>{bsSpec.replies.push({on:'',reply:''});bsRender();$('bs-reply-list').querySelector('.bs-row:last-child [data-f="on"]')?.focus();};
+$('bs-add-cmd').onclick=()=>{bsSpec.cmds.push({on:'',reply:''});bsRender();$('bs-cmd-list').querySelector('.bs-row:last-child [data-f="on"]')?.focus();};
+$('bs-ev-on').onchange=e=>{bsSpec.event.on=e.target.checked;bsRender();};
+$('bs-ev-target').oninput=e=>{bsSpec.event.target=e.target.value.replace(/^@/,'').toLowerCase();bsCheck();};
+$('bs-ev-amount').oninput=e=>{bsSpec.event.amount=e.target.value;bsCheck();};
+$('bs-ev-until').oninput=e=>{bsSpec.event.until=e.target.value;bsCheck();};
+$('bs-code-in').oninput=bsCheck;
+$('bs-tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(b)bsShowTab(b.dataset.tab);};
+$('bs-seg').onclick=e=>{const b=e.target.closest('[data-p]');if(b){bsSpec.persona=b.dataset.p;bsRender();}};
 $('bs-example').onclick=()=>{
-  let ex=BS_EXAMPLE[bsPersona]||BS_EXAMPLE.normal;
-  if(BS_STAFF()){const d=new Date(Date.now()+7*864e5);ex+=BS_EVENT_LINE+d.toISOString().slice(0,10)+'\n';}
-  $('bs-code-in').value=ex;bsPaint();
+  let ex=BS_EXAMPLE[bsSpec.persona]||BS_EXAMPLE.normal;
+  if(BS_STAFF()){const d=new Date(Date.now()+7*864e5);ex+='\n# staff only: whoever pings you gets paid, once each, while it lasts\nevent ping @'+(myHandle||'yunior')+': 400 denarii until '+d.toISOString().slice(0,10)+'\n';}
+  $('bs-code-in').value=ex;bsCheck();
 };
 $('bs-x').onclick=()=>shut('bs-ov');
+
+async function openBotScript(botId,name){
+  if(!curSv||!canManage())return toast(t('bsOwnersOnly'),'err');
+  bsBot=botId;bsBotName=name||'bot';bsSpec=bsBlank();bsTab='features';
+  $('bs-title').textContent=bsBotName;
+  try{
+    const{data}=await sb.from('bot_scripts').select('persona,rules').eq('bot_id',botId).maybeSingle();
+    if(data)bsSpec=bsFromRules(data.persona,data.rules);
+  }catch(e){}
+  if(!bsSpec.event.until){const d=new Date(Date.now()+7*864e5);bsSpec.event.until=d.toISOString().slice(0,10);}
+  bsShowTab('features');open('bs-ov');
+}
 $('bs-go').onclick=async()=>{
   const err=m=>{const e=$('bs-err');e.textContent=m;e.className='err on';};
-  const{spec,errs}=bsParse($('bs-code-in').value);
-  if(errs.length){bsPaint();return err(t('scFixFirst'));}
+  if(bsTab==='advanced'){const{spec,errs}=bsParse($('bs-code-in').value);if(errs.length)return err(t('scFixFirst'));bsSpec=bsFromRules(spec.persona,spec.rules);}
+  const text=bsToText(bsSpec),{spec,errs}=bsParse(text);
+  if(errs.length)return err(errs[0].msg);
   if(!bsBot)return;
   $('bs-go').disabled=true;
   try{
     const{error}=await sb.from('bot_scripts').upsert({bot_id:bsBot,persona:spec.persona,rules:spec.rules,
-      source:$('bs-code-in').value.slice(0,BS_MAX_LEN),enabled:true},{onConflict:'bot_id'});
+      source:text.slice(0,BS_MAX_LEN),enabled:true},{onConflict:'bot_id'});
     if(error)return err(error.message);
     shut('bs-ov');toast(t('bsSaved'),'ok');
-    try{audit('bot_script',$('bs-title').textContent);}catch(e){}
+    try{audit('bot_script',bsBotName);}catch(e){}
+    loadBotCmds();
   }finally{$('bs-go').disabled=false;}
 };
+
+/* ── what the composer offers when somebody types / or ! ── */
+let botCmds=[];
+async function loadBotCmds(){
+  botCmds=[];
+  if(!curSv||!sb)return;
+  try{const{data}=await sb.rpc('ycz_bot_commands',{p_server:curSv.id});botCmds=Array.isArray(data)?data:[];}catch(e){}
+}
+const CLIENT_CMDS=[
+  {name:'help',d:'acHelpD'},{name:'me',d:'acMeD'},{name:'shrug',d:'acShrugD'},{name:'roll',d:'acRollD'},
+  {name:'tableflip',d:'acFlipD'},{name:'unflip',d:'acUnflipD'},{name:'denarii',d:'acDenariiD'}];
+function commandList(prefix,q,max){
+  const out=[];
+  if(prefix==='/')for(const c of CLIENT_CMDS)if(c.name.startsWith(q))out.push({cmd:true,pre:'/',name:c.name,desc:t(c.d)});
+  for(const c of botCmds){
+    const name=String(c.cmd||'');
+    if(!name.startsWith(q)||out.some(o=>o.name===name))continue;
+    out.push({cmd:true,pre:prefix,name,desc:(c.kind==='built'?t('bsFeatD_'+name):t('acBotCmdD'))+' · '+String(c.bot||'')});
+  }
+  out.sort((a,b)=>(a.name==='help'?-1:0)-(b.name==='help'?-1:0));   // help first, the rest keep their order
+  return out.slice(0,max||9);
+}
 
 $('sm-bots').onclick=async e=>{
   const sc=e.target.closest('[data-script]');
@@ -2818,6 +3005,7 @@ async function goServer(s){
   $('side-head').querySelector('.cv').style.display='inline';
   await loadChannels();
   await loadMembers();
+  loadBotCmds();
   const first=channels.find(c=>c.type==='text');
   if(first)openChannel(first);else paintSide();
 }
@@ -3498,6 +3686,9 @@ $('txt').addEventListener('input',function(){
   this.style.height='auto';this.style.height=Math.min(this.scrollHeight,180)+'px';
   if(this.value.trim()&&!this.value.startsWith('/'))sendTyping();
   const caret=this.selectionStart,before=this.value.slice(0,caret);
+  /* a / or ! at the very start lists the commands, like @ lists the members */
+  const cm=before.match(/^([/!])([a-z0-9_-]{0,24})$/i);
+  if(cm){clearTimeout(this._ac);acStart=0;acList=commandList(cm[1],cm[2].toLowerCase());acIdx=0;paintAC();return;}
   const m=before.match(/(?:^|\s)@([a-zA-Z0-9_-]{0,24})$/);
   if(!m){closeAC();return;}
   acStart=caret-m[1].length-1;
@@ -3523,7 +3714,15 @@ async function acSearch(q){
 function paintAC(){
   const ac=$('ac');
   if(!acList.length){closeAC();return;}
-  ac.innerHTML='<div class="ac-h">Members</div>'+acList.map((u,i)=>`
+  if(acList[0].cmd){
+    ac.innerHTML=`<div class="ac-h">${esc(t('acCommands'))}</div>`+acList.map((c,i)=>`
+      <div class="ac-i${i===acIdx?' on':''}" data-i="${i}">
+        <span class="ac-cmd">${esc(c.pre+c.name)}</span>
+        <span class="ac-d">${esc(c.desc)}</span>
+      </div>`).join('');
+    ac.classList.add('on');return;
+  }
+  ac.innerHTML=`<div class="ac-h">${esc(t('acMembers'))}</div>`+acList.map((u,i)=>`
     <div class="ac-i${i===acIdx?' on':''}" data-i="${i}">
       <div class="ac-av">${u.all?icon('megaphone',14):(u.pfp_url&&isUrl(u.pfp_url)?`<img src="${esc(u.pfp_url)}" alt="">`:esc(ini(u.username)))}</div>
       <span class="ac-n">${esc(u.username||'Unknown')}</span>
@@ -3535,8 +3734,9 @@ function closeAC(){acList=[];acStart=-1;$('ac').classList.remove('on');$('ac').i
 function pickAC(i){
   const u=acList[i];if(!u)return;
   const t=$('txt'),caret=t.selectionStart;
-  t.value=t.value.slice(0,acStart)+'@'+(u.handle||'')+' '+t.value.slice(caret);
-  const pos=acStart+(u.handle||'').length+2;
+  const ins=u.cmd?u.pre+u.name+' ':'@'+(u.handle||'')+' ';
+  t.value=t.value.slice(0,acStart)+ins+t.value.slice(caret);
+  const pos=acStart+ins.length;
   closeAC();t.focus();t.setSelectionRange(pos,pos);
 }
 $('ac').onclick=e=>{const it=e.target.closest('[data-i]');if(it)pickAC(+it.dataset.i);};
@@ -3591,7 +3791,10 @@ async function runSlash(raw){
   const args=rest.join(' ');
   const c=cmd.toLowerCase();
   if(c==='help'){
-    toast('Commands: /me /shrug /roll 2d20 /tableflip /denarii — plus any your bots add');
+    /* the same list the / popup shows, all of it, so nobody has to guess */
+    acList=commandList('/','',99);
+    acStart=0;acIdx=0;paintAC();$('txt').focus();
+    if(!acList.length)toast(t('acNoCommands'));
     return true;
   }
   if(c==='denarii'||c==='wallet'||c==='treasury'||c==='shop'){
@@ -3605,7 +3808,9 @@ async function runSlash(raw){
   }
   if(BUILTIN[c]){await postMessage(BUILTIN[c](args));return true;}
   /* not built in — hand it to whatever bots are listening */
-  if(!curSv){toast('Bot commands only work inside a server');return true;}
+  if(!curSv){toast(t('acServerOnly'));return true;}
+  /* a scripted bot answers the message itself (the database runs the rules), so post it as one */
+  if(botCmds.some(b=>b.cmd===c)){await postMessage('!'+c+(args?' '+args:''));return true;}
   const{error}=await sb.from('bot_commands').insert({server_id:curSv.id,room_key:curCh.room_key,
     user_id:user.id,username:uname,command:c,args:args||null});
   if(error)toast('Could not send that command','err');
@@ -4496,14 +4701,16 @@ if(['localhost','127.0.0.1','[::1]',''].includes(location.hostname)){
     get rdState(){return rdState;},
     canManage,canModerate,
     paintMsgs,appendMsg,repaintRow,msgRow,paintMembers,loadMsgs,loadPins,
-    bsParse,bsPaint,bsSetPersona,openBotScript,get bsPersona(){return bsPersona;},
+    bsParse,bsRender,bsShowTab,bsToText,bsFromRules,bsCheck,openBotScript,commandList,loadBotCmds,runSlash,
+    get bsSpec(){return bsSpec;},set bsSpec(v){bsSpec=v;},get acList(){return acList;},
     set(o){ if('user'in o)user=o.user; if('uname'in o)uname=o.uname;
       if('curSv'in o)curSv=o.curSv; if('channels'in o)channels=o.channels;
       if('members'in o)members=o.members; if('gRole'in o)gRole=o.gRole;
       if('curCh'in o)curCh=o.curCh; if('msgs'in o)msgs=o.msgs;
       if('pins'in o)pins=o.pins; if('reactions'in o)reactions=o.reactions;
+      if('botCmds'in o)botCmds=o.botCmds;
       if('online'in o)online=new Set(o.online); if('moreOlder'in o)moreOlder=o.moreOlder; },
-    get(){return{curSv,channels,members,user:user&&user.id,gRole,msgs,pins};},
+    get(){return{curSv,channels,members,user:user&&user.id,gRole,msgs,pins,botCmds};},
   };
 }
 })();

@@ -1308,23 +1308,62 @@ automate that kind of thing with chill. Jr, let people script bots themselves, a
   and a 0-delta row is written for the no-payout case so "you already got that one" holds
   there too. The client parser refuses the amount for non-staff **up front with its own
   sentence** — a rule that silently paid nothing would be worse than an error.
-- **Persona** is the bot's *own* words only: joins and event confirmations when a rule gives
-  none (`ycz_bot_line`). Rules are always said exactly as written. The voice buttons in the
-  editor rewrite the `persona:` line **in the text**, so the text stays the single source of
-  truth and reopening shows what was saved (`source` column, ≤ 8000 chars). Kaomoji, never
-  emoji.
-- Editor: the scroll button on every row of the bots panel → `#bs-ov`, live plan in words
-  ("whoever pings @yunior gets 400 denarii, once each, until …"), "Load an example" per
-  voice (plus the event line for staff), Save = upsert on `bot_scripts`. Audit action
-  `bot_script`. `rEvent` labels the ledger reason.
+- **Persona** is the bot's *own* words only: joins, event confirmations and the built-ins'
+  lines (`ycz_bot_lines(persona, key)` → `text[]`, `ycz_bot_pick` draws one at random so the
+  bot doesn't repeat itself verbatim). Rules are always said exactly as written. **The voice
+  never renames the bot** — the owner was furious at a test transcript that looked like a bot
+  called "Mama-chan"; it was a local test *user* named Mama, but the lesson stands: the
+  persona changes how the bot talks, nothing else. Kaomoji, never emoji.
 - Tested: `scratchpad/botscript/` — skeleton with the live message guard and `ycz_award`
-  verbatim, 14 behaviour checks run as a non-superuser, including one that **plants a
+  verbatim, 14 + 22 behaviour checks run as a non-superuser, including one that **plants a
   malformed rule past the guard** (the guard would heal it otherwise, which is the point of
   the guard) to prove the runner's own `exception` block lets the message land.
-  `scratchpad/bot-script.js`: 35 checks through the editor. **Bug the tests caught:** a
-  plpgsql variable named `ref` shadowed `denarii_ledger.ref` inside `where l.ref = ref` —
-  "column reference is ambiguous" — and every event silently fell into the exception handler.
-  Do not name a plpgsql variable after a column it is compared against.
+  **Bug the tests caught:** a plpgsql variable named `ref` shadowed `denarii_ledger.ref`
+  inside `where l.ref = ref` — "column reference is ambiguous" — and every event silently
+  fell into the exception handler. Do not name a plpgsql variable after a column it is
+  compared against.
+
+**v2 — the dashboard (Sep 2026).** v1 shipped as a text box and the owner's reaction was the
+right one: *"idk the damn commands, they're supposed to automatically appear … also I need a UI
+where you can activate different things and edit the bot instead of writing lines of code."*
+So:
+- **`#bs-ov` is a Discord-style settings card with four tabs.** *Features*: the voice and a
+  switch per built-in (welcome, `!help`, dice, coin flip, 8-ball, rock-paper-scissors, choose,
+  hug, pat — `BS_FEATS`, i18n `bsFeat_*` / `bsFeatD_*`, the example command on the right).
+  *Replies*: rows of "when the message contains → the bot says" and "word → the bot says".
+  *Events*: the ping event as a form (target, amount — hidden unless site staff — and a date
+  that defaults a week out). *Advanced*: **the same thing as text**, which is the storage
+  format. The form is a spec object (`bsSpec`: persona, feats, welcome, replies, cmds, event);
+  `bsToText()` writes it out and `bsParse()` reads it back, so **there is exactly one
+  validator** (`bsCheck()` parses the text on every change, on every tab) and the Advanced tab
+  is a round-trip, not a second editor. Leaving Advanced keeps the text only if it parses;
+  otherwise the last good form stays. Save is disabled while anything is wrong and `#bs-err`
+  says what, in the words of the parser.
+- **Built-ins are a rule kind**, `{k:'built', on:'flip'}`, listed with `features: help, roll,
+  flip` in the text. `ycz_bot_builtins()` is the whitelist on both sides; a custom command may
+  not take a built-in's name (`bsCmdTaken` — "switch it on under Features instead"). The
+  runner parses `^[!/]([a-z0-9_-]+)` once and dispatches: `!help` lists everything that bot
+  has (`!8ball, !choose, …` in the voice's own words), `!roll [NdM|N]`, `!flip`, `!8ball`,
+  `!rps rock|paper|scissors` (Spanish spellings accepted), `!choose a, b, c`, `!hug @x`,
+  `!pat @x`. Neither `/` nor `!` matters to the database — the client's `runSlash` posts a
+  known bot command as a `!word` message, so `/flip` and `!flip` land the same way.
+- **The command popup.** Typing `/` or `!` as the first character of the composer opens the
+  same `#ac` list the `@` mention uses (`commandList(prefix, q)` → `{cmd:true, pre, name,
+  desc}` items; `paintAC` branches on `acList[0].cmd`; `pickAC` inserts `pre+name+' '`).
+  `/` lists the seven client commands (`CLIENT_CMDS`) and then the server's bot commands,
+  deduplicated by name and `help` first; `!` lists only the bot's. The bot list comes from
+  `ycz_bot_commands(p_server)` — security definer, members only, returns
+  `[{bot, cmd, kind}]` — fetched into `botCmds` by `goServer()` and again after a save.
+  `/help` opens the full list instead of a toast. `acNoCommands`/`acServerOnly` are the two
+  empty states.
+- **chill. Jr has every built-in switched on** in the official server (seeded by SQL, normal
+  voice, no welcome line — the DM welcome from the earlier SQL already covers joins). Owners
+  edit it from the bots panel like any other bot.
+- Tested: `scratchpad/bot-script.js`, 54 checks through the dashboard and the popup
+  (switches, rows, the staff-only amount, the text round-trip both ways, save/reopen,
+  `/`/`!` typing, arrows + Tab, `/help`, `/cake` → `!cake`). The `.sw` switch hides its
+  checkbox (`opacity:0; width:0`), so Playwright has to click the `label.sw`, not the input;
+  and the composer is `disabled` until `openChannel` runs, so the harness enables it by hand.
 
 ### Raid tools
 **A report is a `notifications` row.** The table is already type-agnostic: the renderer falls
