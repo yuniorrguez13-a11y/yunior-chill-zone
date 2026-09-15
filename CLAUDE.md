@@ -1359,11 +1359,57 @@ So:
 - **chill. Jr has every built-in switched on** in the official server (seeded by SQL, normal
   voice, no welcome line — the DM welcome from the earlier SQL already covers joins). Owners
   edit it from the bots panel like any other bot.
-- Tested: `scratchpad/bot-script.js`, 54 checks through the dashboard and the popup
+- Tested: `scratchpad/bot-script.js`, 62 checks through the dashboard and the popup
   (switches, rows, the staff-only amount, the text round-trip both ways, save/reopen,
-  `/`/`!` typing, arrows + Tab, `/help`, `/cake` → `!cake`). The `.sw` switch hides its
-  checkbox (`opacity:0; width:0`), so Playwright has to click the `label.sw`, not the input;
-  and the composer is `disabled` until `openChannel` runs, so the harness enables it by hand.
+  `/`/`!` typing, arrows + Tab, `/help`, `/cake` → `!cake`, the tools switch). The `.sw`
+  switch hides its checkbox (`opacity:0; width:0`), so Playwright has to click the
+  `label.sw`, not the input; and the composer is `disabled` until `openChannel` runs, so
+  the harness enables it by hand.
+
+**v3 — tools (Sep 2026; owner: "haz que puedas usar tools con bots como animegifs (NPM)").**
+A *tool* is something the bot fetches from outside the site. That cannot happen inside the
+message trigger (pg_net is fire-and-forget; there is no callback), so the shape is:
+- **`ycz_bot_on_message` → `ycz_bot_tool_job()`**: writes a row in `bot_tool_jobs` (bot, room,
+  tool, action, the caption already written in the voice) and pokes the **`bot-tools` edge
+  function** with `net.http_post(url, {job: <uuid>})`. The function (Deno, service role,
+  `verify_jwt` off like `bot-post`) *claims* the job (`pending → running`, so a replayed
+  request is a no-op), fetches, inserts the message as the bot with `image_url`, and marks
+  the job `done`/`failed`. Nothing in the request is trusted beyond the id: everything the
+  function does comes from the row, which only the database can write (`bot_tool_jobs` has
+  RLS on and **no policies**, and `revoke all` from anon/authenticated). Jobs older than two
+  minutes are dropped as stale; the queue is trimmed to a week on every insert. Live smoke
+  test on 15 Sep 2026: job to done in 2.2 s, the message carried a nekos.best GIF.
+- **If the poke throws, the caption is posted as plain text** (`ycz_bot_say`) and the job is
+  marked `failed` with `poke: …` — a tool that cannot run still says its line. That is also
+  how the local Postgres test works without pg_net: `skeleton3.sql` fakes `net.http_post`
+  into a `net.calls` table and one check drops the fake to see the fallback.
+- **The first tool is anime GIFs from nekos.best** (`tools: gifs` in the text, the switch
+  under *Tools* at the bottom of the Features tab, `{k:'tool', on:'gifs'}` in the rules).
+  `ycz_bot_gif_actions()` is the table of 32 actions with the verb for the caption and
+  whether it takes somebody: *with* (`hug`, `pat`, `cuddle`, `kiss`, `slap`, `poke`,
+  `highfive`, `tickle`, `bonk`, `bite`, `handhold`, `feed` — "{name} hugs {r}", `everyone`
+  when nobody is named), *at* (`wave`, `wink`, `stare`, `blowkiss` — the target is optional),
+  *none* (`dance`, `cry`, `blush`, `smile`, `laugh`, `happy`, `yawn`, `facepalm`, `sleep`,
+  `pout`, `nod`, `shocked`, `think`, `thumbsup`, `clap`, `angry`). Captions come from the
+  voice (`gif` / `gif_solo` keys in `ycz_bot_lines`, `{verb}` filled in). **The tool answers
+  before the rules**, so with it on `!hug` is a GIF even if the plain built-in is also on,
+  and a custom command with an action's name is refused by the client parser (`bsCmdGif`).
+  `!help` and `ycz_bot_commands` list the actions (kind `gif`, `acGifD` in the popup);
+  `BS_GIF` in `index.html` mirrors the SQL table and must move with it. The edge function's
+  `GIF_ACTIONS` set is the third copy. **waifu.pics does not resolve from Supabase's
+  network** (`Couldn't resolve host name` through pg_net); nekos.best does — that is why
+  there is no fallback provider. The chat CSP already allows `img-src https:`.
+- **The owner's "animegifs (NPM)"**: every npm package of that kind is a thin wrapper over
+  one of these public APIs, so the function calls the API directly rather than importing a
+  package that would go stale. `npm:` imports do work in edge functions if one is ever
+  needed (supabase-js is loaded that way).
+- chill. Jr has the tool on in the official server (anime voice, set by the owner from the
+  panel; the tool rule was appended by SQL).
+- Tested: `scratchpad/botscript/behaviour3.sql`, 10 groups as `apptest` — the tool kind
+  survives the sanitiser, a job + poke and no direct message, the three caption shapes, the
+  anime voice, `!help`, the command list (hug once, as `gif`), the queue closed to the client,
+  the text fallback, and the tool switched off again. `scratchpad/bot-shots.js` has the
+  screenshots.
 
 ### Raid tools
 **A report is a `notifications` row.** The table is already type-agnostic: the renderer falls

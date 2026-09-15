@@ -2643,22 +2643,29 @@ async function paintBots(){
    front — a rule that silently paid nothing would be worse than an error. */
 const BS_MAX_RULES=40, BS_MAX_LEN=8000, BS_STAFF=()=>['owner','admin','mod'].includes(gRole);
 const BS_BUILT=['help','roll','flip','8ball','rps','choose','hug','pat'];
+/* tools reach outside the site (the edge function fetches, the database posts); the
+   GIF list mirrors public.ycz_bot_gif_actions() — a custom command may not take one of
+   these names while the tool is on, because the tool answers first */
+const BS_TOOLS=[{id:'gifs',ex:'!hug @ridge'}];
+const BS_GIF=['hug','pat','cuddle','kiss','slap','poke','highfive','tickle','bonk','bite','handhold','feed','wave','wink','stare','blowkiss',
+  'dance','cry','blush','smile','laugh','happy','yawn','facepalm','sleep','pout','nod','shocked','think','thumbsup','clap','angry'];
 const BS_FEATS=[  /* order on screen; ex = what somebody types */
   {id:'welcome',ex:''},{id:'help',ex:'!help'},{id:'roll',ex:'!roll 2d6'},{id:'flip',ex:'!flip'},
   {id:'8ball',ex:'!8ball will it rain'},{id:'rps',ex:'!rps rock'},{id:'choose',ex:'!choose tea, coffee'},
   {id:'hug',ex:'!hug @ridge'},{id:'pat',ex:'!pat'}];
 const BS_EXAMPLE={
-  normal:"persona: normal\nfeatures: help, roll, flip, 8ball, rps, choose, hug, pat\n\non join: welcome, {name}.\nwhen hello: hi {name}.\ncommand cake: the cake is a lie\n",
-  anime:"persona: anime\nfeatures: help, roll, flip, 8ball, rps, choose, hug, pat\n\non join:\nwhen hello: hi {name}~ (｡•̀ᴗ-)✧\nwhen good night: oyasumi {name}~ sleep well ♡\ncommand cake: the cake is a lie~ (￣▽￣)\n"
+  normal:"persona: normal\nfeatures: help, roll, flip, 8ball, rps, choose, hug, pat\ntools: gifs\n\non join: welcome, {name}.\nwhen hello: hi {name}.\ncommand cake: the cake is a lie\n",
+  anime:"persona: anime\nfeatures: help, roll, flip, 8ball, rps, choose, hug, pat\ntools: gifs\n\non join:\nwhen hello: hi {name}~ (｡•̀ᴗ-)✧\nwhen good night: oyasumi {name}~ sleep well ♡\ncommand cake: the cake is a lie~ (￣▽￣)\n"
 };
 let bsBot=null,bsBotName='',bsSpec=null,bsTab='features',bsPersona='normal';
 
-const bsBlank=()=>({persona:'normal',feats:{},welcome:'',replies:[],cmds:[],event:{on:false,target:'',amount:'',until:''}});
+const bsBlank=()=>({persona:'normal',feats:{},tools:{},welcome:'',replies:[],cmds:[],event:{on:false,target:'',amount:'',until:''}});
 function bsFromRules(persona,rules){
   const sp=bsBlank();sp.persona=persona==='anime'?'anime':'normal';
   for(const r of rules||[]){
     if(!r||typeof r!=='object')continue;
     if(r.k==='built'&&BS_BUILT.includes(r.on))sp.feats[r.on]=true;
+    else if(r.k==='tool'&&BS_TOOLS.some(x=>x.id===r.on))sp.tools[r.on]=true;
     else if(r.k==='join'){sp.feats.welcome=true;sp.welcome=String(r.reply||'');}
     else if(r.k==='say')sp.replies.push({on:String(r.on||''),reply:String(r.reply||'')});
     else if(r.k==='cmd')sp.cmds.push({on:String(r.on||''),reply:String(r.reply||'')});
@@ -2671,6 +2678,8 @@ function bsToText(sp){
   const L=['persona: '+sp.persona];
   const feats=BS_BUILT.filter(f=>sp.feats[f]);
   if(feats.length)L.push('features: '+feats.join(', '));
+  const tools=BS_TOOLS.map(x=>x.id).filter(x=>sp.tools[x]);
+  if(tools.length)L.push('tools: '+tools.join(', '));
   L.push('');
   if(sp.feats.welcome)L.push('on join: '+(sp.welcome||'').trim());
   for(const r of sp.replies)if((r.on||'').trim()||(r.reply||'').trim())L.push('when '+r.on.trim()+': '+r.reply.trim());
@@ -2683,7 +2692,7 @@ function bsParse(src){
   const text=String(src||'');
   if(text.length>BS_MAX_LEN)return{spec,errs:[{line:0,msg:t('bsTooLong')}]};
   const bad=(i,msg)=>{if(errs.length<12)errs.push({line:i+1,msg});};
-  const seenBuilt=new Set();
+  const seenBuilt=new Set(),seenTool=new Set(),cmdAt={};
   text.split(/\r?\n/).forEach((raw,i)=>{
     const line=scClean(raw);
     if(!line||line[0]==='#')return;
@@ -2703,6 +2712,14 @@ function bsParse(src){
       }
       return;
     }
+    if(key==='tools'||key==='tool'||key==='herramientas'){
+      for(const w of val.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean)){
+        if(!BS_TOOLS.some(x=>x.id===w))return bad(i,fmt(t('bsBadTool'),{w,list:BS_TOOLS.map(x=>x.id).join(', ')}));
+        if(seenTool.has(w))continue;
+        seenTool.add(w);spec.rules.push({k:'tool',on:w});
+      }
+      return;
+    }
     if(spec.rules.length>=BS_MAX_RULES)return bad(i,fmt(t('bsTooMany'),{n:BS_MAX_RULES}));
     let w;
     if((w=key.match(/^(?:when|cuando|si)\s+(.+)$/))){
@@ -2712,6 +2729,7 @@ function bsParse(src){
     if((w=key.match(/^(?:command|cmd|comando)\s+[!/]?([a-z0-9_-]{1,24})$/))){
       if(!val)return bad(i,t('bsNeedReply'));
       if(BS_BUILT.includes(w[1]))return bad(i,fmt(t('bsCmdTaken'),{w:w[1]}));
+      cmdAt[w[1]]=i;
       spec.rules.push({k:'cmd',on:w[1],reply:val.slice(0,300)});return;
     }
     if(key.match(/^(?:command|cmd|comando)\s+/))return bad(i,t('bsBadCmdName'));
@@ -2737,7 +2755,10 @@ function bsParse(src){
     if(key.match(/^(?:event|evento)\s+ping\s*@?/))return bad(i,t('bsBadTarget'));
     bad(i,fmt(t('bsUnknownWord'),{w:m[1].trim()}));
   });
+  /* with the GIF tool on, its action words belong to the tool — a custom command with the same name would never be reached */
+  if(seenTool.has('gifs'))for(const n in cmdAt)if(BS_GIF.includes(n))bad(cmdAt[n],fmt(t('bsCmdGif'),{w:n}));
   if(!errs.length&&!spec.rules.length)errs.push({line:0,msg:t('bsNeedOne')});
+  errs.sort((a,b)=>a.line-b.line);
   return{spec,errs};
 }
 
@@ -2760,7 +2781,12 @@ function bsRender(){
       <div class="feat-row"><label class="sw"><input type="checkbox" data-feat="${f.id}"${sp.feats[f.id]?' checked':''}><span></span></label>
         <div class="feat-i"><div class="feat-n">${esc(t('bsFeat_'+f.id))}</div><div class="feat-d">${esc(t('bsFeatD_'+f.id))}</div></div>
         ${f.ex?`<span class="feat-ex">${esc(f.ex)}</span>`:''}</div>
-      ${f.id==='welcome'&&sp.feats.welcome?`<div class="feat-sub"><input type="text" class="fi" data-welcome maxlength="300" value="${esc(sp.welcome)}" placeholder="${esc(t('bsWelcomePh'))}"><div class="hint">${esc(t('bsWelcomeHint'))}</div></div>`:''}`).join('');
+      ${f.id==='welcome'&&sp.feats.welcome?`<div class="feat-sub"><input type="text" class="fi" data-welcome maxlength="300" value="${esc(sp.welcome)}" placeholder="${esc(t('bsWelcomePh'))}"><div class="hint">${esc(t('bsWelcomeHint'))}</div></div>`:''}`).join('')
+      +`<label class="fl" style="margin-top:16px;">${esc(t('bsToolsLabel'))}</label><div class="hint" style="margin-bottom:6px;">${esc(t('bsToolsHint'))}</div>`
+      +BS_TOOLS.map(x=>`
+      <div class="feat-row"><label class="sw"><input type="checkbox" data-tool="${x.id}"${sp.tools[x.id]?' checked':''}><span></span></label>
+        <div class="feat-i"><div class="feat-n">${esc(t('bsTool_'+x.id))}</div><div class="feat-d">${esc(t('bsToolD_'+x.id))}</div></div>
+        <span class="feat-ex">${esc(x.ex)}</span></div>`).join('');
   }else if(bsTab==='replies'){
     const row=(kind,i,r,ph1,ph2)=>`<div class="bs-row" data-kind="${kind}" data-i="${i}">
       <input type="text" class="fi mono" data-f="on" maxlength="${kind==='cmd'?24:40}" value="${esc(r.on)}" placeholder="${esc(ph1)}" style="flex:0 0 34%;">
@@ -2804,8 +2830,9 @@ function bsCheck(){
 }
 /* the form writes into the spec; every change re-checks */
 $('bs-feat-list').addEventListener('change',e=>{
-  const f=e.target.closest('[data-feat]');
+  const f=e.target.closest('[data-feat]'),tl=e.target.closest('[data-tool]');
   if(f){bsSpec.feats[f.dataset.feat]=f.checked;if(f.dataset.feat==='welcome')bsRender();else bsCheck();}
+  if(tl){bsSpec.tools[tl.dataset.tool]=tl.checked;bsCheck();}
 });
 $('bs-feat-list').addEventListener('input',e=>{if(e.target.matches('[data-welcome]')){bsSpec.welcome=e.target.value;bsCheck();}});
 $('bs-replies').addEventListener('input',e=>{
@@ -2880,7 +2907,7 @@ function commandList(prefix,q,max){
   for(const c of botCmds){
     const name=String(c.cmd||'');
     if(!name.startsWith(q)||out.some(o=>o.name===name))continue;
-    out.push({cmd:true,pre:prefix,name,desc:(c.kind==='built'?t('bsFeatD_'+name):t('acBotCmdD'))+' · '+String(c.bot||'')});
+    out.push({cmd:true,pre:prefix,name,desc:(c.kind==='built'?t('bsFeatD_'+name):c.kind==='gif'?t('acGifD'):t('acBotCmdD'))+' · '+String(c.bot||'')});
   }
   out.sort((a,b)=>(a.name==='help'?-1:0)-(b.name==='help'?-1:0));   // help first, the rest keep their order
   return out.slice(0,max||9);
