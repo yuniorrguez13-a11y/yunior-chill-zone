@@ -2895,8 +2895,9 @@ $('bs-go').onclick=async()=>{
 let botCmds=[];
 async function loadBotCmds(){
   botCmds=[];
-  if(!curSv||!sb)return;
-  try{const{data}=await sb.rpc('ycz_bot_commands',{p_server:curSv.id});botCmds=Array.isArray(data)?data:[];}catch(e){}
+  if(!sb||!user)return;
+  /* a server lists its own bots; a DM (or a server with no bot) gets the site mascot's commands */
+  try{const{data}=await sb.rpc('ycz_bot_commands',{p_server:curSv?curSv.id:null});botCmds=Array.isArray(data)?data:[];}catch(e){}
 }
 const CLIENT_CMDS=[
   {name:'help',d:'acHelpD'},{name:'me',d:'acMeD'},{name:'shrug',d:'acShrugD'},{name:'roll',d:'acRollD'},
@@ -3024,6 +3025,7 @@ async function goHome(){
   $('side-head').querySelector('.nm').textContent='Direct Messages';
   $('side-head').querySelector('.cv').style.display='none';
   await loadDMs();
+  loadBotCmds();   // the mascot's commands, for the DMs
   if(!curCh||curCh.kind!=='dm')pickFirstDM();
 }
 async function goServer(s){
@@ -3834,10 +3836,11 @@ async function runSlash(raw){
     return true;
   }
   if(BUILTIN[c]){await postMessage(BUILTIN[c](args));return true;}
-  /* not built in — hand it to whatever bots are listening */
-  if(!curSv){toast(t('acServerOnly'));return true;}
-  /* a scripted bot answers the message itself (the database runs the rules), so post it as one */
+  /* a scripted bot (or the site mascot, in DMs) answers the message itself — the database runs
+     the rules — so post it as one */
   if(botCmds.some(b=>b.cmd===c)){await postMessage('!'+c+(args?' '+args:''));return true;}
+  /* not built in — hand it to whatever token bots are listening */
+  if(!curSv){toast(t('acServerOnly'));return true;}
   const{error}=await sb.from('bot_commands').insert({server_id:curSv.id,room_key:curCh.room_key,
     user_id:user.id,username:uname,command:c,args:args||null});
   if(error)toast('Could not send that command','err');

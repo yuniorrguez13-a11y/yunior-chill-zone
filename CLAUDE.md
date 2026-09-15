@@ -1427,7 +1427,33 @@ message trigger (pg_net is fire-and-forget; there is no callback), so the shape 
   package that would go stale. `npm:` imports do work in edge functions if one is ever
   needed (supabase-js is loaded that way).
 - chill. Jr has the tool on in the official server (anime voice, set by the owner from the
-  panel; the tool rule was appended by SQL).
+  panel; the tool rule was appended by SQL). His avatar is the official server's icon
+  (`bots.avatar_url` = `servers.icon_url`, set by SQL at the owner's request — "es nuestra
+  mascota").
+
+**v4 — the mascot (Sep 2026; owner: "porque no hacemos que puedas hacer los comandos de chill
+jr en chats? es nuestra mascota de igual manera no solo es un bot").**
+- **`ycz_site_bot()`** names the mascot (chill. Jr's id, an immutable function rather than a
+  column so no server owner can promote their own bot into everyone's DMs by editing a row).
+- **Where he answers**: his own server as before (everything: replies, welcome, events,
+  commands); **DMs** (`ycz_is_dm(room_id)` — the trigger used to return on any room without
+  a channel) and **any server with no enabled bot script of its own**. A server that has its
+  own scripted bot is that bot's turf and the mascot stays out, so nothing ever answers
+  twice. Standing in, he is **commands only**: `say`/`ping`/`join` rules are skipped, and a
+  message without a `!`/`/` command returns before the loop — he never butts into a private
+  conversation and the ping giveaway never pays outside home. `{server}` is blank in a DM.
+- **`ycz_bot_commands(p_server)`** is plpgsql now: `null` = a DM, any signed-in person gets
+  the mascot's list; a server id returns that server's own bots, or the mascot's list when
+  the server has none; not a member / signed out → `[]`. The client calls it from `goHome()`
+  as well as `goServer()` (`p_server: curSv ? curSv.id : null`), and `runSlash` checks
+  `botCmds` **before** the "only inside a server" toast, so `/hug` in a DM posts `!hug` into
+  the DM.
+- Tested: `scratchpad/botscript/behaviour4.sql`, 7 groups (`skeleton4.sql` adds the live
+  `ycz_is_dm` and a third server with no bot): the DM answers `!flip`/`!cake`/`!hug`(job)/
+  `!help`, ignores "hello" and a `@ridge` ping with zero ledger rows, the botless server gets
+  the mascot, Prima's server gets Prima Bot only, home still honours say rules, the three
+  shapes of the command list, a room that is neither channel nor DM is ignored. Plus three
+  checks in `bot-script.js` (65 total).
 - Tested: `scratchpad/botscript/behaviour3.sql`, 10 groups as `apptest` — the tool kind
   survives the sanitiser, a job + poke and no direct message, the three caption shapes, the
   anime voice, `!help`, the command list (hug once, as `gif`), the queue closed to the client,
