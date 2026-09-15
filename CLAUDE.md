@@ -1256,8 +1256,18 @@ everything**. That is the hole this file had been listing as "not done yet".
 - **Every policy expression goes through `ycz_sv_role` / `ycz_site_owner`.** A bare
   subquery against `servers` or `server_members` inside these policies would be evaluated
   under the very policies being written — that is what the security-definer helpers are
-  for. `ycz_sv_role` reads `servers.owner_id` first, which is why somebody who has just
-  created a server can still read the row back before their member row exists.
+  for. `ycz_sv_role` reads `servers.owner_id` first — **but that is not enough for the
+  creator's own INSERT, and it broke server creation for everyone but the site owner
+  (15 Sep 2026, "new row violates row-level security policy for table servers").** The
+  INSERT policy passed; PostgREST's `RETURNING` then checked the new row against the
+  SELECT policy, and `ycz_sv_role` is a STABLE function whose inner SELECT runs on the
+  *statement's* snapshot, in which the row being inserted does not exist yet. So the
+  creator could not see their own server for the length of that statement and the insert
+  was refused. `servers_read` now checks `owner_id = auth.uid()` **directly** before
+  calling the helper — a plain column comparison sees the new row. Rule: any SELECT policy
+  that has to admit a row the same statement is inserting must test the row's own columns,
+  not a function that re-reads the table. (The reason the local test suite passed: it
+  inserted without `RETURNING`.)
 - **`limit:` in the script format** (`max` / `maxmembers` / `maximo` / `limite` / `gente` /
   `people` / `seats` all alias to it), 2…5000. The plan preview states it in words — "up to
   5 people, and nobody else gets in" — because a cap you cannot see is a cap you forget you
