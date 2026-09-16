@@ -44,6 +44,7 @@
     online_match: ['rOnlineMatch', 'Online matches'],
     upload_video: ['rUploadVideo', 'Uploading a video'],
     post_image: ['rPostImage', 'Posting an image'],
+    jam_entry: ['rJamEntry', 'Entering Coding September'],
     purchase: ['rPurchase', 'Purchase'],
     grant: ['rGrant', 'Staff grant'],
     event: ['rEvent', 'Bot event']

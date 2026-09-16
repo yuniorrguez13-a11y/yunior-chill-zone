@@ -48,6 +48,11 @@
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://cloudflareinsights.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'
 /overwork.html
   Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://cloudflareinsights.com https://heohcnhgclcnmssjklom.supabase.co wss://heohcnhgclcnmssjklom.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'
+# jam.html corre los juegos de la gente en un <iframe srcdoc> sin allow-same-origin;
+# un srcdoc hereda ESTA política, así que un juego solo puede cargar scripts inline
+# o de jsdelivr, imágenes de https y nada más — sin cookies, sin sesión, sin salidas.
+/jam.html
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://cloudflareinsights.com; frame-src 'self' about: blob:; child-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'
 /denarii.html
   Content-Security-Policy: default-src 'self'; script-src https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:; connect-src https://cloudflareinsights.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'
 

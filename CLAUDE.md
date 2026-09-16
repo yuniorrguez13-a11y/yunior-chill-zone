@@ -63,6 +63,7 @@ time, and don't dump large amounts of technical material at once. He tests on
 | `wrangler.jsonc` · `_headers` · `.assetsignore` | Cloudflare hosting config, cache rules, and what stays unpublished. |
 | `ycz-denarii.js` | Shared Denarii client: `YCZDenarii.plural(n)`, the live **coin pill** (`mount(sb,{into,onOpen})`, `setUser(user)`), a realtime subscription to the user's own `denarii_ledger` rows that bumps the pill, floats a `+N` and toasts the reason, `on('award'|'wallet')`, `reasonLabel()`, and `NAME_COLORS` (the id → hex whitelist for bought name colours). Loaded by `index.html`, `fight.html`, `video.html`, `qmages.html`; injects its own CSS. |
 | `denarii.html` | The public guide to **Denarii**, the site currency: where it lives, the plural rule, how you earn, streaks, the leaderboard, the catalog, troubleshooting, FAQ. Static, no scripts (its CSP has `script-src 'none'`). Linked from the Treasury, the settings row and the landing card. |
+| `jam.html` | **Coding September**, the game jam (Sep 2026): countdown, rules, the submit form (one self-contained `.html` ≤ 1.5 MB, stored as text in `jam_entries`), the gallery, a sandboxed player and community votes. See its own section below. |
 | `overwork.html` | **Overwork**, the delivery game (Sep 2026): 3D, Three.js from `vendor/`, hand-rolled physics, clay characters, an apartment with a PC, a casino, host-authoritative multiplayer. See its own section below. |
 | `ow-net.js` | The wire, shared by Overwork **and** Pitty Striker: signalling over Supabase realtime broadcast (or a `BroadcastChannel` with `?signal=local` for two tabs on one machine) and one WebRTC connection per peer with two data channels (`rel` ordered for events, `fast` lossy for snapshots). `ns` picks the channel prefix — `ow:` for the delivery game, `ps:` for the shooter, so the two never share a room list. Knows nothing about either game. |
 | `ow-os.js` | **MirrorOS**, the operating system on the PC in the courier's apartment: a 2009-glass-look desktop (own name, own icons, no trademarks) with draggable windows, taskbar, start orb, and the apps: Overwork Online (host/join/rooms/chat), Lucky Loaf Casino (slots + 21 + roulette, the flat edition of the real tables — same state objects, handed over in `api.games`), notes, locker shortcut, a Pitty Striker shortcut that crashes on purpose, a recycle bin. Takes an `api` object from the game; touches only its own DOM. **All of its CSS is scoped under `#s-pc`** — a bare `.card` rule in here once shrank the game's work-order card to a playing card. Desktop icons open on a single click. |
@@ -1514,6 +1515,60 @@ handle and every internal are `undefined`. Keep that gate: this closure holds th
 Not done yet: more Overwork jobs, spectating a full room, a host-side speed check on self-reported positions.
 Performance: Overwork's world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
 swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason). Pitty Striker is ~82.
+
+## Coding September — the game jam (`jam.html`, Sep 2026)
+
+The owner: *"por que no hacemos coding september, tienen que hacer un juego en lo que queda del
+mes en html, subirlo y entonces tu checkeas cual es el mejor"*. One game per person, a single
+HTML file, submitted before the end of the month; the community votes; at the end the entries
+are read and played from here and a winner is picked.
+
+- **Deadlines live in the database**: `ycz_jam_deadline()` = 2026-10-01 12:00 UTC (the end of
+  30 September anywhere on Earth) and `ycz_jam_vote_deadline()` = 2026-10-05 12:00 UTC. Both are
+  immutable SQL functions; extending the jam is a `create or replace` of one of them, nothing in the
+  client knows the date. The page computes the phase (open / voting / judging) from the timestamps
+  the board RPC returns, with the server's `now` used to correct the visitor's clock.
+- **The file is stored as text**, in `jam_entries.html` (CHECK 200 B … 1.5 MB), not in storage:
+  the `avatars` bucket only allows image MIME types, and a column is what lets the judge read every
+  entry with one `select` and run it in headless Chromium. The gallery RPC (`ycz_jam_board`) never
+  returns `html` — only its byte count — and the page fetches it on Play. Anyone can read it (rule
+  6: your code is public).
+- **Games run in `<iframe sandbox="allow-scripts allow-pointer-lock" srcdoc=…>`** — no
+  `allow-same-origin`, so the game has an opaque origin: `localStorage` (where `ycz-auth` lives),
+  cookies, `parent.document` and `top.location` all throw `SecurityError`, `alert()` is ignored, no
+  popups, no forms, no top navigation. A srcdoc frame **inherits the parent's CSP**, which is why
+  `_headers` gives `/jam.html` its own rule: a game can run inline scripts and scripts from
+  cdn.jsdelivr.net, load `https:` images and `data:`/`blob:` media, and connect to nothing but our
+  own endpoints. The harness proves each of those from inside a game (`scratchpad/jam/jam-test.js`,
+  51 checks; the probe game posts back what it could reach). "Try it" runs a draft in exactly the
+  same frame before submitting.
+- **The database owns the rules** (`ycz_guard_jam_entry`, BEFORE INSERT/UPDATE): `user_id`,
+  `username` and `pfp_url` are stamped from `auth.uid()` and `user_profiles`; `plays` and `status`
+  are not the client's to set; one **live** entry per person (`jam_entries_one_live_per_user`,
+  a partial unique index); insert/update/delete only before the deadline (RLS); staff may change
+  `status` at any time and nothing else (the guard reverts their edits to someone else's
+  title/description/html). `plays` move only through `ycz_jam_played()`, which raises a
+  transaction-local `ycz.jam_plays` flag the guard checks — the first local run had the guard
+  silently reverting the RPC's own update. Votes: `jam_votes` has one row per voter (the entry it
+  points at changes), no write policy at all, `ycz_jam_vote(p_entry)` (null = retract) refuses
+  your own entry, a removed entry and anything after the vote deadline. Control characters are
+  stripped from title/description; everything is `esc()`-ed on the page and avatars go through
+  `safeUrl()`.
+- **Denarii**: `jam_entry` pays 30, **once ever** (the trigger checks the ledger for a previous
+  `jam_entry` row, not the daily cap — delete + resubmit pays nothing). `ycz_wallet` lists it so
+  the Treasury's bars show it; `REASON_ORDER` in `index.html` and `REASON_KEYS` in
+  `ycz-denarii.js` know it; `rJamEntry` is the label.
+- **Prizes, to be handed out after 5 October by hand**: the judge's pick gets an exclusive title +
+  name colour + 1,000 denarii, the most-voted entry an exclusive title + 500. Titles/colours are
+  new `shop_items` rows with `active=false` (so nobody can buy them) inserted into `user_items`
+  directly, denarii through `ycz_grant`. Judging: `select id, username, title, html from
+  jam_entries where status='live'`, run each in headless Chromium, play it, write it up.
+- Tested locally on the Postgres skeleton as `apptest` (`scratchpad/jam/behaviour.sql`, 11 groups,
+  plus `deadline.sql` with the deadline functions moved into the past) and live with a
+  smoke insert under the owner's claims (stamped, paid, listed, then deleted).
+- Not done: no jam link inside the chat rail or the console — it is reached from the landing card
+  (`.lc-jam`), the announcement, and `jam.html` directly. No "report this entry" button; moderation
+  is `update jam_entries set status='removed'` by staff.
 
 ## Known gaps / next up
 

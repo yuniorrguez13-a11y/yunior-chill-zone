@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Coding September — Yuniors Chill Zone</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="art/icons/icon-192.png">
+<meta name="theme-color" content="#0a0a12">
+<meta name="description" content="Coding September: build a game in a single HTML file before the month ends, upload it, play everyone else's, vote.">
+<script>
+/* the theme the chat picked, before the first paint */
+try{var th=localStorage.getItem('ycz-theme');if(th==='light'||th==='dark')document.documentElement.setAttribute('data-theme',th);}catch(e){}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{min-height:100%;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;}
+a{color:var(--cyan);}
+button{font:inherit;cursor:pointer;}
+.wrap{width:min(1080px,94vw);margin:0 auto;padding:22px 0 90px;}
+/* topbar */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px;}
+.top h1{font-family:'Syne',sans-serif;font-size:clamp(24px,4.4vw,38px);line-height:1.1;
+  background:linear-gradient(135deg,#fff 40%,#7fdfff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+:root[data-theme="light"] .top h1{background:linear-gradient(135deg,#14141c 40%,#0090b8);-webkit-background-clip:text;background-clip:text;}
+.top .sub{width:100%;color:var(--text3);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;}
+.top .sp{flex:1;}
+.top select{background:var(--field);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:6px 8px;font-size:13px;}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 5px;border-radius:999px;border:1px solid var(--border);background:var(--card);font-size:13px;color:var(--text2);max-width:220px;}
+.chip img,.chip .av{width:22px;height:22px;border-radius:50%;object-fit:cover;background:var(--bg3);flex:none;}
+.chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* hero */
+.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:14px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
+.card h2{font-family:'Syne',sans-serif;font-size:19px;margin-bottom:8px;}
+.card p{color:var(--text2);font-size:14px;margin-bottom:8px;}
+.card ul{color:var(--text2);font-size:14px;padding-left:18px;margin:4px 0 8px;}
+.card li{margin:3px 0;}
+.card b{color:var(--text);}
+.phase{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--text2);margin-bottom:8px;}
+.phase i{width:8px;height:8px;border-radius:50%;background:var(--grn);display:inline-block;}
+.phase.voting i{background:#ffb020;}
+.phase.judging i{background:var(--cyan);}
+.count{display:flex;gap:14px;margin:8px 0 10px;flex-wrap:wrap;}
+.count div{min-width:64px;text-align:center;}
+.count .n{font-family:'Syne',sans-serif;font-size:clamp(26px,4vw,38px);font-weight:800;line-height:1;}
+.count .l{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-top:3px;}
+.until{font-size:13px;color:var(--text3);}
+.prizes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+.prize{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:var(--bg2);}
+.prize b{display:flex;align-items:center;gap:6px;font-size:13.5px;}
+.prize span{display:block;font-size:12.5px;color:var(--text2);margin-top:2px;}
+/* form */
+.form{display:grid;gap:10px;}
+.field label{display:block;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:4px;}
+.field input[type=text],.field textarea{width:100%;background:var(--field);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:9px 11px;font:inherit;font-size:14px;}
+.field textarea{min-height:70px;resize:vertical;}
+.field textarea.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;min-height:120px;white-space:pre;}
+.cnt{float:right;font-size:11px;color:var(--text3);font-weight:500;letter-spacing:0;text-transform:none;}
+.drop{border:1.5px dashed var(--edge);border-radius:11px;padding:16px;text-align:center;color:var(--text2);font-size:13.5px;background:var(--field);cursor:pointer;}
+.drop.on{border-color:var(--cyan);color:var(--text);}
+.drop input{display:none;}
+.drop b{color:var(--cyan);}
+.szl{font-size:12.5px;color:var(--text3);margin-top:4px;}
+.szl.bad{color:var(--accent2);}
+.err{font-size:13px;color:var(--accent2);min-height:16px;}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.btn{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;padding:9px 15px;border-radius:10px;
+  border:1px solid var(--border);background:var(--bg2);color:var(--text);text-decoration:none;}
+.btn:hover{border-color:var(--edge);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn.ghost{background:transparent;}
+.btn.danger{color:var(--accent2);}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:9px;}
+.btn.voted{border-color:#ffb020;color:#ffb020;background:rgba(255,176,32,.10);}
+.note{border-left:3px solid var(--cyan);background:rgba(0,212,255,.06);padding:9px 13px;border-radius:0 10px 10px 0;font-size:13.5px;color:var(--text2);}
+.note.warn{border-left-color:#ffb020;background:rgba(255,176,32,.07);}
+/* gallery */
+.gh{display:flex;align-items:center;gap:10px;margin:24px 0 10px;flex-wrap:wrap;}
+.gh h2{font-family:'Syne',sans-serif;font-size:21px;}
+.gh .n{color:var(--text3);font-size:13px;}
+.gh .sp{flex:1;}
+.gh select{background:var(--field);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:6px 8px;font-size:13px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;}
+.g{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 15px;display:flex;flex-direction:column;gap:8px;position:relative;}
+.g.mine{border-color:rgba(0,212,255,.4);}
+.g .t{font-family:'Syne',sans-serif;font-size:16px;line-height:1.25;overflow-wrap:anywhere;padding-right:52px;}
+.g .by{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);}
+.g .by img,.g .by .av{width:20px;height:20px;border-radius:50%;object-fit:cover;background:var(--bg3);flex:none;}
+.g .by span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.g .d{font-size:13px;color:var(--text2);white-space:pre-line;overflow-wrap:anywhere;max-height:80px;overflow:hidden;flex:1;}
+.g .m{display:flex;gap:12px;font-size:12px;color:var(--text3);}
+.g .m span{display:inline-flex;align-items:center;gap:4px;}
+.g .acts{display:flex;gap:7px;margin-top:2px;}
+.g .tag{position:absolute;top:12px;right:12px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--cyan);
+  border:1px solid rgba(0,212,255,.4);border-radius:999px;padding:2px 7px;}
+.empty{grid-column:1/-1;text-align:center;color:var(--text3);padding:40px 10px;font-size:14px;border:1px dashed var(--border);border-radius:14px;}
+/* play overlay */
+#play{position:fixed;inset:0;background:#000;z-index:60;display:none;flex-direction:column;}
+#play.open{display:flex;}
+#play .bar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#0d0c11;color:#eceef3;border-bottom:1px solid rgba(255,255,255,.08);
+  padding-top:max(8px,env(safe-area-inset-top));}
+#play .bar b{font-family:'Syne',sans-serif;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#play .bar small{color:#9a9aae;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#play .bar .sp{flex:1;min-width:0;display:flex;flex-direction:column;}
+#play .bar .btn{background:#171722;border-color:rgba(255,255,255,.1);color:#eceef3;}
+#stage{flex:1;position:relative;background:#000;}
+#stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;}
+#stage .ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9a9aae;font-size:14px;}
+/* toast */
+#toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;transition:.2s;
+  background:var(--panel-bg);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:10px;font-size:13.5px;z-index:70;pointer-events:none;max-width:92vw;}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+@media(max-width:760px){
+  .hero,.prizes{grid-template-columns:1fr;}
+  .wrap{padding-top:58px;}
+  .field input[type=text],.field textarea,.top select,.gh select{font-size:16px;}
+  .g .t{padding-right:0;}
+  .g .tag{position:static;align-self:flex-start;}
+}
+</style>
+<link rel="stylesheet" href="ycz-theme.css">
+<script src="ycz-icons.js"></script>
+<script src="ycz-i18n.js"></script>
+<script src="ycz-denarii.js"></script>
+<script src="vendor/supabase-2.115.0.min.js"></script>
+</head>
+<body>
+<a class="ycz-back" href="index.html" title="Back to the Chill Zone"><i data-ic="arrowLeft" data-ic-size="15"></i> <span data-i18n="backToChat">Chill Zone</span></a>
+
+<div class="wrap">
+  <div class="top">
+    <h1 data-i18n="jamTitle">Coding September</h1>
+    <div class="sp"></div>
+    <span id="coin-slot"></span>
+    <span id="me" class="chip" hidden><span class="av"></span><span id="me-n"></span></span>
+    <select id="lang-pick" aria-label="Language"></select>
+    <div class="sub" data-i18n="jamSub">The Chill Zone game jam · one HTML file · the whole month</div>
+  </div>
+
+  <div class="hero">
+    <div class="card">
+      <span class="phase" id="phase"><i></i><span id="phase-t" data-i18n="jamPhaseOpen">Submissions open</span></span>
+      <div class="count" id="count">
+        <div><div class="n" id="c-d">–</div><div class="l" data-i18n="jamDays">days</div></div>
+        <div><div class="n" id="c-h">–</div><div class="l" data-i18n="jamHours">hours</div></div>
+        <div><div class="n" id="c-m">–</div><div class="l" data-i18n="jamMinutes">min</div></div>
+        <div><div class="n" id="c-s">–</div><div class="l" data-i18n="jamSeconds">sec</div></div>
+      </div>
+      <div class="until" id="until"></div>
+      <p style="margin-top:12px" data-i18n="jamPitch">Make a game. Any game. It has to fit in one HTML file and it has to be yours. Upload it here before the month runs out, then play everyone else's and vote. At the end, the site's AI plays every entry and picks the winner, and the community picks its own.</p>
+      <div class="prizes">
+        <div class="prize"><b><i data-ic="b:medal1" data-ic-size="15"></i> <span data-i18n="jamPrizeJudge">Best game</span></b><span data-i18n="jamPrizeJudgeD">Judged on fun, polish and originality. An exclusive title, name colour and 1,000 denarii.</span></div>
+        <div class="prize"><b><i data-ic="b:like" data-ic-size="15"></i> <span data-i18n="jamPrizePeople">People's choice</span></b><span data-i18n="jamPrizePeopleD">The entry with the most community votes. An exclusive title and 500 denarii.</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 data-i18n="jamRules">The rules</h2>
+      <ul>
+        <li data-i18n="jamRule1">One file. A single .html with the CSS and JavaScript inside it, up to 1.5 MB. Images and sounds go inline (data: URLs) or come from cdn.jsdelivr.net.</li>
+        <li data-i18n="jamRule2">Made by you, this month. Libraries are fine; someone else's game with a new title is not.</li>
+        <li data-i18n="jamRule3">One entry per person. You can update it as often as you like until the deadline.</li>
+        <li data-i18n="jamRule4">It runs in a sandbox: no localStorage, no cookies, no popups, no requests to other sites. Keep your save data in memory.</li>
+        <li data-i18n="jamRule5">Keep it chill. Nothing hateful, nothing stolen. Staff can remove an entry.</li>
+        <li data-i18n="jamRule6">Your code is public. Anyone can read it. That is part of the fun.</li>
+      </ul>
+      <p data-i18n="jamTip">Tip: press "Try it" before you submit. It runs your file in exactly the frame everyone else will see.</p>
+    </div>
+  </div>
+
+  <div class="card" id="submit">
+    <h2 id="submit-h" data-i18n="jamSubmit">Your entry</h2>
+    <div id="submit-body"></div>
+  </div>
+
+  <div class="gh">
+    <h2 data-i18n="jamGallery">The games</h2>
+    <span class="n" id="gcount"></span>
+    <div class="sp"></div>
+    <select id="sort" aria-label="Sort">
+      <option value="new" data-i18n="jamSortNew">Newest</option>
+      <option value="plays" data-i18n="jamSortPlays">Most played</option>
+      <option value="votes" data-i18n="jamSortVotes">Most voted</option>
+    </select>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div id="play" role="dialog" aria-modal="true">
+  <div class="bar">
+    <div class="sp"><b id="p-t"></b><small id="p-by"></small></div>
+    <button class="btn sm" id="p-full" type="button"><i data-ic="expand" data-ic-size="14"></i> <span data-i18n="jamFullscreen">Fullscreen</span></button>
+    <button class="btn sm" id="p-close" type="button"><i data-ic="x" data-ic-size="14"></i> <span data-i18n="jamClose">Close</span></button>
+  </div>
+  <div id="stage"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function safeUrl(u){return /^https?:\/\//i.test(String(u||''))?String(u):'';}
+var toastT;function toast(m){var e=$('toast');e.textContent=m;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(function(){e.classList.remove('on');},2600);}
+function T(k,f){return (window.t?window.t(k,f):null)||f||k;}
+
+/* limits, mirrored from the database CHECK constraints */
+var MIN_BYTES=200, MAX_BYTES=1500000, MAX_TITLE=60, MAX_DESC=500;
+
+/* storageKey must match every other YCZ page — one login covers the site */
+window.supabase=window.supabase||{createClient:function(){var stub=new Proxy(function(){},{get:function(t,k){if(k==='then')return function(res){if(res)res({data:{session:null},error:{message:'offline'}});return stub;};return stub;},apply:function(){return stub;}});return stub;}};
+var sb=supabase.createClient('https://heohcnhgclcnmssjklom.supabase.co','sb_publishable_yin3csqaWiHWi5kUbfdeiA_0LE6OSiq',
+  {auth:{persistSession:true,storageKey:'ycz-auth',storage:window.localStorage,autoRefreshToken:true,detectSessionInUrl:true}});
+
+var user=null, board={entries:[],my_vote:null,deadline:null,vote_deadline:null,now:null}, clockSkew=0;
+var draft={html:'',fromFile:''}, sortBy='new', busy=false;
+
+/* ── phase + countdown ── */
+function phase(){
+  var now=Date.now()+clockSkew, d=Date.parse(board.deadline||0), v=Date.parse(board.vote_deadline||0);
+  if(!board.deadline) return 'open';
+  return now<d?'open':(now<v?'voting':'judging');
+}
+function tick(){
+  var ph=phase(), el=$('phase'), target=ph==='open'?board.deadline:(ph==='voting'?board.vote_deadline:null);
+  el.className='phase '+ph;
+  $('phase-t').textContent=T(ph==='open'?'jamPhaseOpen':ph==='voting'?'jamPhaseVoting':'jamPhaseJudging');
+  var ms=target?Math.max(0,Date.parse(target)-(Date.now()+clockSkew)):0, s=Math.floor(ms/1000);
+  $('c-d').textContent=target?Math.floor(s/86400):'–';$('c-h').textContent=target?Math.floor(s%86400/3600):'–';
+  $('c-m').textContent=target?Math.floor(s%3600/60):'–';$('c-s').textContent=target?s%60:'–';
+  var when=target?new Date(target).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'';
+  $('until').textContent=ph==='open'?T('jamUntilDeadline').replace('{when}',when):ph==='voting'?T('jamUntilVotes').replace('{when}',when):T('jamJudgingNow');
+}
+setInterval(tick,1000);
+
+/* ── data ── */
+function load(){
+  return sb.rpc('ycz_jam_board').then(function(r){
+    if(r.error||!r.data){toast(T('jamLoadFail'));return;}
+    board=r.data; board.entries=board.entries||[];
+    if(board.now) clockSkew=Date.parse(board.now)-Date.now();
+    tick(); renderSubmit(); renderGrid();
+  });
+}
+function mine(){for(var i=0;i<board.entries.length;i++)if(board.entries[i].mine)return board.entries[i];return null;}
+
+/* ── submit card ── */
+function bytesOf(s){try{return new TextEncoder().encode(s).length;}catch(e){return unescape(encodeURIComponent(s)).length;}}
+function fmtKB(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(2)+' MB';}
+function checkDraft(){
+  var title=($('f-title')||{}).value||'', desc=($('f-desc')||{}).value||'', errs=[];
+  title=title.trim();
+  if(!title) errs.push(T('jamErrTitle'));
+  if(title.length>MAX_TITLE) errs.push(T('jamErrTitleLong'));
+  if(desc.length>MAX_DESC) errs.push(T('jamErrDescLong'));
+  var n=bytesOf(draft.html), keep=!!mine()&&!draft.html.trim();   // an update without a new file keeps the old one
+  if(!keep){
+    if(!draft.html.trim()) errs.push(T('jamErrNoFile'));
+    else if(n<MIN_BYTES) errs.push(T('jamErrTiny'));
+    else if(n>MAX_BYTES) errs.push(T('jamErrBig'));
+    else if(!/<\s*(html|body|canvas|script|!doctype)/i.test(draft.html)) errs.push(T('jamErrNotHtml'));
+  }
+  return {ok:!errs.length,errs:errs,title:title,desc:desc,bytes:n,keep:keep};
+}
+function paintCheck(){
+  var c=checkDraft(), sz=$('f-sz'), b=$('f-go'), e=$('f-err');
+  if(!sz) return c;
+  sz.textContent=draft.html?(draft.fromFile?draft.fromFile+' · ':'')+fmtKB(c.bytes)+' / '+fmtKB(MAX_BYTES):'';
+  sz.className='szl'+(c.bytes>MAX_BYTES?' bad':'');
+  e.textContent=c.errs[0]||'';
+  b.disabled=!c.ok||busy; $('f-try').disabled=!draft.html.trim();
+  $('t-cnt').textContent=c.title.length+'/'+MAX_TITLE; $('d-cnt').textContent=c.desc.length+'/'+MAX_DESC;
+  return c;
+}
+function renderSubmit(){
+  var box=$('submit-body'), ph=phase(), me=mine();
+  if(ph!=='open'){
+    box.innerHTML='<div class="note warn">'+esc(T(ph==='voting'?'jamClosedVoting':'jamClosedJudging'))+'</div>';
+    $('submit-h').textContent=T('jamSubmit');return;
+  }
+  if(!user){
+    box.innerHTML='<div class="note">'+esc(T('jamSignIn'))+' <a href="index.html">'+esc(T('jamSignInLink'))+'</a></div>';
+    $('submit-h').textContent=T('jamSubmit');return;
+  }
+  $('submit-h').textContent=me?T('jamYourEntry'):T('jamSubmit');
+  var keep=me&&!draft.html;   // updating without a new file keeps the old one
+  box.innerHTML=
+    (me?'<div class="note" style="margin-bottom:10px">'+esc(T('jamHaveEntry').replace('{title}',me.title))+'</div>':'')+
+    '<div class="form">'+
+    '<div class="field"><label>'+esc(T('jamFTitle'))+' <span class="cnt" id="t-cnt"></span></label><input type="text" id="f-title" maxlength="'+MAX_TITLE+'" value="'+esc(me?me.title:'')+'" placeholder="'+esc(T('jamFTitlePh'))+'"></div>'+
+    '<div class="field"><label>'+esc(T('jamFDesc'))+' <span class="cnt" id="d-cnt"></span></label><textarea id="f-desc" maxlength="'+MAX_DESC+'" placeholder="'+esc(T('jamFDescPh'))+'">'+esc(me?me.description:'')+'</textarea></div>'+
+    '<div class="field"><label>'+esc(T('jamFFile'))+'</label>'+
+      '<label class="drop" id="f-drop"><input type="file" id="f-file" accept=".html,.htm,text/html"><span>'+esc(T('jamDrop'))+' <b>'+esc(T('jamDropPick'))+'</b></span></label>'+
+      '<div class="szl" id="f-sz"></div>'+
+      '<details style="margin-top:6px"><summary style="font-size:12.5px;color:var(--text3);cursor:pointer">'+esc(T('jamPasteInstead'))+'</summary>'+
+      '<textarea class="code" id="f-paste" spellcheck="false" placeholder="<!doctype html> …"></textarea></details></div>'+
+    '<div class="err" id="f-err"></div>'+
+    '<div class="row">'+
+      '<button class="btn primary" id="f-go" type="button" disabled>'+icon('upload',14)+' '+esc(T(me?'jamUpdate':'jamSend'))+'</button>'+
+      '<button class="btn" id="f-try" type="button" disabled>'+icon('play',14)+' '+esc(T('jamTry'))+'</button>'+
+      (me?'<span style="flex:1"></span><button class="btn ghost danger" id="f-del" type="button">'+icon('trash',14)+' '+esc(T('jamDelete'))+'</button>':'')+
+    '</div>'+
+    (keep?'<div class="szl">'+esc(T('jamKeepFile'))+'</div>':'')+
+    '</div>';
+  function icon(n,s){return window.icon?window.icon(n,s):'';}
+  $('f-title').addEventListener('input',paintCheck);$('f-desc').addEventListener('input',paintCheck);
+  $('f-file').addEventListener('change',function(){var f=this.files&&this.files[0];if(f)readFile(f);});
+  var drop=$('f-drop');
+  drop.addEventListener('dragover',function(e){e.preventDefault();drop.classList.add('on');});
+  drop.addEventListener('dragleave',function(){drop.classList.remove('on');});
+  drop.addEventListener('drop',function(e){e.preventDefault();drop.classList.remove('on');var f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)readFile(f);});
+  $('f-paste').addEventListener('input',function(){draft.html=this.value;draft.fromFile='';paintCheck();});
+  $('f-go').addEventListener('click',submit);
+  $('f-try').addEventListener('click',function(){if(draft.html.trim())openPlay({title:$('f-title').value||T('jamTry'),username:T('jamYou')},draft.html);});
+  if(me)$('f-del').addEventListener('click',removeMine);
+  paintCheck();
+}
+function readFile(f){
+  if(f.size>MAX_BYTES*1.2){toast(T('jamErrBig'));return;}
+  var r=new FileReader();
+  r.onload=function(){draft.html=String(r.result||'');draft.fromFile=f.name;var p=$('f-paste');if(p)p.value='';paintCheck();};
+  r.readAsText(f);
+}
+function submit(){
+  if(busy) return;
+  var me=mine(), c=checkDraft();
+  if(!c.ok){$('f-err').textContent=c.errs[0];return;}
+  busy=true; $('f-go').disabled=true;
+  var row={title:c.title,description:c.desc}; if(!c.keep) row.html=draft.html;
+  var q=me?sb.from('jam_entries').update(row).eq('id',me.id).select('id'):sb.from('jam_entries').insert(Object.assign({user_id:user.id,html:draft.html},row)).select('id');
+  q.then(function(r){
+    busy=false;
+    if(r.error){
+      var m=r.error.message||'';
+      $('f-err').textContent=/row-level security/i.test(m)?T('jamClosedVoting'):/one_live_per_user/i.test(m)?T('jamErrTwice'):/html_chk/i.test(m)?T('jamErrBig'):T('jamSaveFail')+' '+m;
+      $('f-go').disabled=false;return;
+    }
+    toast(T(me?'jamUpdated':'jamSent'));
+    draft={html:'',fromFile:''};
+    load();
+  });
+}
+function removeMine(){
+  var me=mine(); if(!me||busy) return;
+  if(!confirm(T('jamDeleteConfirm').replace('{title}',me.title))) return;
+  busy=true;
+  sb.from('jam_entries').delete().eq('id',me.id).then(function(r){
+    busy=false; if(r.error){toast(T('jamSaveFail'));return;}
+    toast(T('jamDeleted')); draft={html:'',fromFile:''}; load();
+  });
+}
+
+/* ── gallery ── */
+function sorted(){
+  var a=board.entries.slice();
+  if(sortBy==='plays') a.sort(function(x,y){return (y.plays|0)-(x.plays|0);});
+  else if(sortBy==='votes') a.sort(function(x,y){return (y.votes|0)-(x.votes|0)||(y.plays|0)-(x.plays|0);});
+  else a.sort(function(x,y){return Date.parse(y.created_at)-Date.parse(x.created_at);});
+  return a;
+}
+function renderGrid(){
+  var g=$('grid'), ph=phase(), list=sorted(), canVote=ph!=='judging';
+  $('gcount').textContent=list.length?T('jamCount').replace('{n}',list.length):'';
+  if(!list.length){g.innerHTML='<div class="empty">'+esc(T('jamEmpty'))+'</div>';return;}
+  g.innerHTML=list.map(function(e){
+    var av=safeUrl(e.pfp_url), voted=board.my_vote===e.id;
+    return '<div class="g'+(e.mine?' mine':'')+'" data-id="'+esc(e.id)+'">'+
+      (e.mine?'<span class="tag">'+esc(T('jamYours'))+'</span>':'')+
+      '<div class="t">'+esc(e.title)+'</div>'+
+      '<div class="by">'+(av?'<img src="'+esc(av)+'" alt="">':'<span class="av"></span>')+'<span>'+esc(e.username)+'</span></div>'+
+      '<div class="d">'+esc(e.description)+'</div>'+
+      '<div class="m"><span>'+window.icon('play',12)+' '+(e.plays|0)+'</span><span>'+window.icon('heart',12)+' '+(e.votes|0)+'</span><span>'+fmtKB(e.bytes|0)+'</span></div>'+
+      '<div class="acts"><button class="btn sm primary" data-play type="button">'+window.icon('play',13)+' '+esc(T('jamPlay'))+'</button>'+
+      (e.mine||!canVote?'':'<button class="btn sm'+(voted?' voted':'')+'" data-vote type="button">'+window.icon('heart',13)+' '+esc(T(voted?'jamVoted':'jamVote'))+'</button>')+
+      '</div></div>';
+  }).join('');
+}
+$('grid').addEventListener('click',function(e){
+  var b=e.target.closest('button'), card=e.target.closest('.g'); if(!b||!card) return;
+  var id=card.dataset.id, entry=null;
+  for(var i=0;i<board.entries.length;i++)if(board.entries[i].id===id)entry=board.entries[i];
+  if(!entry) return;
+  if(b.hasAttribute('data-play')) playEntry(entry);
+  else if(b.hasAttribute('data-vote')) vote(entry);
+});
+$('sort').addEventListener('change',function(){sortBy=this.value;renderGrid();});
+
+function vote(entry){
+  if(!user){toast(T('jamVoteSignIn'));return;}
+  var retract=board.my_vote===entry.id;
+  sb.rpc('ycz_jam_vote',{p_entry:retract?null:entry.id}).then(function(r){
+    var d=r.data||{};
+    if(r.error||!d.ok){
+      var k={not_signed_in:'jamVoteSignIn',closed:'jamVoteClosed',own_entry:'jamVoteOwn',not_found:'jamVoteGone'}[d.error]||'jamSaveFail';
+      toast(T(k));return;
+    }
+    toast(T(retract?'jamVoteRemoved':'jamVoteOk').replace('{title}',entry.title));
+    load();
+  });
+}
+
+/* ── playing: the game runs in a frame with an opaque origin and no way out ── */
+function playEntry(entry){
+  openPlay(entry,null);
+  sb.from('jam_entries').select('html').eq('id',entry.id).single().then(function(r){
+    if(r.error||!r.data){closePlay();toast(T('jamLoadFail'));return;}
+    if(!$('play').classList.contains('open')) return;
+    mountGame(r.data.html);
+    sb.rpc('ycz_jam_played',{p_entry:entry.id}).then(function(){});
+  });
+}
+function openPlay(entry,html){
+  $('p-t').textContent=entry.title||'';
+  $('p-by').textContent=T('jamBy').replace('{name}',entry.username||'');
+  $('stage').innerHTML='<div class="ld">'+esc(T('jamLoading'))+'</div>';
+  $('play').classList.add('open'); document.body.style.overflow='hidden';
+  if(html!=null) mountGame(html);
+}
+function mountGame(html){
+  var st=$('stage'); st.innerHTML='';
+  var f=document.createElement('iframe');
+  // allow-scripts only: no same-origin (so no session, no storage of ours), no top navigation,
+  // no popups, no forms, no modals. allow-pointer-lock for mouse-look games.
+  f.setAttribute('sandbox','allow-scripts allow-pointer-lock');
+  f.setAttribute('allow','fullscreen; gamepad; autoplay');
+  f.setAttribute('referrerpolicy','no-referrer');
+  f.setAttribute('title','game');
+  f.srcdoc=html;
+  st.appendChild(f);
+  try{f.focus();}catch(e){}
+}
+function closePlay(){
+  $('stage').innerHTML=''; $('play').classList.remove('open'); document.body.style.overflow='';
+  if(document.fullscreenElement){try{document.exitFullscreen();}catch(e){}}
+}
+$('p-close').addEventListener('click',closePlay);
+$('p-full').addEventListener('click',function(){var s=$('stage');if(document.fullscreenElement){document.exitFullscreen();}else if(s.requestFullscreen){s.requestFullscreen().catch(function(){});}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&$('play').classList.contains('open')&&!document.fullscreenElement)closePlay();});
+
+/* ── auth ── */
+function applyUser(u){
+  var same=(u&&u.id)===(user&&user.id); user=u||null;
+  var chip=$('me'); chip.hidden=!user;
+  if(user){
+    var name=(user.user_metadata&&(user.user_metadata.username||user.user_metadata.name))||(user.email||'').split('@')[0]||'you';
+    $('me-n').textContent=name;
+    sb.from('user_profiles').select('username,pfp_url').eq('user_id',user.id).maybeSingle().then(function(r){
+      if(r.data){ if(r.data.username)$('me-n').textContent=r.data.username;
+        var av=safeUrl(r.data.pfp_url), old=chip.querySelector('img,.av');
+        if(av){var im=document.createElement('img');im.src=av;im.alt='';old.replaceWith(im);} }
+    });
+  }
+  if(window.YCZDenarii)YCZDenarii.setUser(user);
+  if(!same||!booted){booted=true;load();} else renderSubmit();
+}
+var booted=false;
+if(window.YCZDenarii)YCZDenarii.mount(sb,{into:$('coin-slot')});
+sb.auth.getSession().then(function(r){applyUser(r.data&&r.data.session?r.data.session.user:null);});
+sb.auth.onAuthStateChange(function(ev,s){if(ev==='TOKEN_REFRESHED'||ev==='USER_UPDATED')return;var u=s&&s.user?s.user:null;if((u&&u.id)!==(user&&user.id))applyUser(u);});
+document.addEventListener('ycz-lang-changed',function(){tick();renderSubmit();renderGrid();});
+if(window.self!==window.top){var b=document.querySelector('.ycz-back');if(b)b.remove();}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+
+/* the test handle exists only on localhost (same rule as the chat and Overwork) */
+if(/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)){
+  window.__jam={get:function(){return {user:user,board:board,draft:draft,phase:phase()};},set:function(o){if(o.board){board=o.board;tick();renderSubmit();renderGrid();}if('html' in o){draft.html=o.html;draft.fromFile=o.fromFile||'';paintCheck();}},
+    checkDraft:checkDraft,openPlay:openPlay,closePlay:closePlay,mountGame:mountGame,renderGrid:renderGrid,renderSubmit:renderSubmit,load:load,applyUser:applyUser,sb:sb};
+}
+})();
+</script>
+</body>
+</html>

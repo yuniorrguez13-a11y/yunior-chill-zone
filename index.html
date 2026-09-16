@@ -227,6 +227,8 @@ img{display:block;}
 .rail-item.coin .rail-btn{background:linear-gradient(140deg,#3a2a08,#1c1608);color:#ffb020;}
 .rail-item.coin:hover .rail-btn{background:#ffb020;color:#1c1608;}
 /* landing card */
+.lc-jam{border-color:rgba(0,212,255,.35);}
+.lc-jam b{color:var(--cyan);}
 .lc-coin{border-color:rgba(255,176,32,.35);}
 .lc-coin b{color:#ffb020;}
 .lc-coin b .ic-svg{vertical-align:-3px;}
@@ -947,6 +949,7 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
           <div class="lc"><b><i data-ic="b:music" data-ic-size="17"></i> <span data-i18n="fMusic">Music room</span></b><span data-i18n="fMusicD">Shared playlists, plus a piano you can play with other people at the same time.</span></div>
           <div class="lc"><b><i data-ic="b:video" data-ic-size="17"></i> <span data-i18n="fVideo">VideoZone</span></b><span data-i18n="fVideoD">Upload and watch videos with the community.</span></div>
           <div class="lc"><b><i data-ic="b:camera" data-ic-size="17"></i> <span data-i18n="fImages">Qmages</span></b><span data-i18n="fImagesD">An image board for saving and sharing pictures onto boards.</span></div>
+          <div class="lc lc-jam"><b><i data-ic="b:monitor" data-ic-size="17"></i> <span data-i18n="fJam">Coding September</span></b><span data-i18n="fJamD">The game jam. Build a game in one HTML file before the month ends, upload it, play everyone else's and vote.</span><a href="jam.html" class="lc-link" data-i18n="jamOpen">Enter the jam</a></div>
           <div class="lc lc-coin"><b><i data-ic="b:money" data-ic-size="17"></i> <span data-i18n="fDenarii">Denarii</span></b><span data-i18n="fDenariiD">The site's own currency. Chat, play and create to earn it, then spend it on titles and name colors. Not real money — better.</span><a href="denarii.html" class="lc-link" data-i18n="denariiHow">How it works</a></div>
         </div>
         <p class="landing-cta" data-i18n="landingCta">Free to join — make an account to start chatting.</p>
@@ -1656,7 +1659,7 @@ function paintWalletRow(){
 }
 $('w-open').onclick=()=>{shut('set-ov');openTreasury();};
 
-const REASON_ORDER=['daily_active','message','streak_bonus','publish_fighter','fighter_played','online_match','upload_video','post_image'];
+const REASON_ORDER=['daily_active','message','streak_bonus','publish_fighter','fighter_played','online_match','upload_video','post_image','jam_entry'];
 const reasonLabel=r=>window.YCZDenarii?YCZDenarii.reasonLabel(r):r;
 const itemName=id=>(SHOP.find(s=>s.id===id)||{}).name||id;
 let HISTORY=[],trLoading=null;
