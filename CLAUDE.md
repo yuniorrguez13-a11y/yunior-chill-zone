@@ -1505,6 +1505,19 @@ No member-wide broadcast on lockdown or all-clear: every `notifications` INSERT 
 push-notify webhook, so one toggle would be hundreds of outbound requests and phone pushes.
 The lock is already visible to every member in the composer.
 
+### The notification sound (Sep 2026)
+The owner: *"cuando me sale una notificación no hay un sonido ni nada"*. There never was one,
+for anybody: `ping()` created its `AudioContext` at the moment the notification arrived, and
+**browsers only let a page start audio on a click, tap or key press** — a context created
+outside a gesture is born `suspended`, `resume()` is refused, and the oscillator plays into
+silence. So `audioUnlock()` creates and resumes the context on the first `pointerdown` /
+`keydown` (capture, passive) and again when the tab becomes visible (phones suspend it in the
+background), and `ping()` schedules the tone only on a running context — otherwise it awaits
+`resume()` and plays after. Rule for any future sound on this page: **unlock on a gesture,
+play later**; never create the context in the event that wants the sound. `scratchpad/notif-sound.js`
+checks the branches on a recording stub (headless Chromium has no autoplay gate, so the real
+browser's "suspended" state can only be asserted as "suspended or running" there).
+
 ### `window.__ycz` — the test handle
 The whole of `index.html` is one IIFE, so nothing is reachable from the console and no harness
 could call a single function. It now exposes a handle **only when `location.hostname` is

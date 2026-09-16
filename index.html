@@ -1635,20 +1635,41 @@ function statusOf(id){const s=statuses[id];return ST_OK[s]?s:'online';}
    A tiny two-tone blip made with WebAudio — no audio file needed. */
 let audioCtx=null;
 function soundsOn(){return localStorage.getItem('ycz-sounds')!=='0';}
+/* Browsers only let a page start audio after a click, tap or key press. A
+   notification arrives with no gesture behind it, so a context created right
+   then is born "suspended" and the blip plays into silence — which is why
+   "there is no sound" was true for everyone. The context is created and
+   resumed on the first gesture instead, kept warm when the tab comes back
+   (phones suspend it in the background), and ping() only schedules the tone
+   once the context is actually running. */
+function audioUnlock(){
+  try{
+    audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  }catch(e){}
+}
+document.addEventListener('pointerdown',audioUnlock,{capture:true,passive:true});
+document.addEventListener('keydown',audioUnlock,{capture:true,passive:true});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&audioCtx)audioUnlock();});
 function ping(){
   if(!soundsOn()||myStatus==='dnd')return;
   try{
     audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();
-    if(audioCtx.state==='suspended')audioCtx.resume();
-    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-    o.connect(g);g.connect(audioCtx.destination);
-    o.type='sine';
-    o.frequency.setValueAtTime(880,audioCtx.currentTime);
-    o.frequency.setValueAtTime(660,audioCtx.currentTime+.09);
-    g.gain.setValueAtTime(.001,audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(.12,audioCtx.currentTime+.02);
-    g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+.24);
-    o.start();o.stop(audioCtx.currentTime+.26);
+    const play=()=>{
+      try{
+        const t0=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();
+        o.connect(g);g.connect(audioCtx.destination);
+        o.type='sine';
+        o.frequency.setValueAtTime(880,t0);
+        o.frequency.setValueAtTime(660,t0+.09);
+        g.gain.setValueAtTime(.001,t0);
+        g.gain.exponentialRampToValueAtTime(.16,t0+.02);
+        g.gain.exponentialRampToValueAtTime(.0001,t0+.28);
+        o.start(t0);o.stop(t0+.3);
+      }catch(e){}
+    };
+    if(audioCtx.state==='running')play();
+    else audioCtx.resume().then(play,()=>{});
   }catch(e){}
 }
 
@@ -5018,13 +5039,14 @@ if(['localhost','127.0.0.1','[::1]',''].includes(location.hostname)){
     bsParse,bsRender,bsShowTab,bsToText,bsFromRules,bsCheck,openBotScript,commandList,loadBotCmds,runSlash,
     get bsSpec(){return bsSpec;},set bsSpec(v){bsSpec=v;},get acList(){return acList;},
     cleanCard,applyCard,paintCardEditor,cpCommit,userCard,openSettings,saveProfile,
+    ping,get audioCtx(){return audioCtx;},
     get myCard(){return myCard;},set myCard(v){myCard=v;},get cpDraft(){return cpDraft;},set cpDraft(v){cpDraft=v;},
     set(o){ if('user'in o)user=o.user; if('uname'in o)uname=o.uname;
       if('curSv'in o)curSv=o.curSv; if('channels'in o)channels=o.channels;
       if('members'in o)members=o.members; if('gRole'in o)gRole=o.gRole;
       if('curCh'in o)curCh=o.curCh; if('msgs'in o)msgs=o.msgs;
       if('pins'in o)pins=o.pins; if('reactions'in o)reactions=o.reactions;
-      if('botCmds'in o)botCmds=o.botCmds;
+      if('botCmds'in o)botCmds=o.botCmds; if('myStatus'in o)myStatus=o.myStatus;
       if('online'in o)online=new Set(o.online); if('moreOlder'in o)moreOlder=o.moreOlder; },
     get(){return{curSv,channels,members,user:user&&user.id,gRole,msgs,pins,botCmds};},
   };
