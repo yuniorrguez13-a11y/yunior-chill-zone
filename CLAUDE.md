@@ -1544,13 +1544,32 @@ and frame uploads that were already there (those were never touched — he thoug
   per-element colour rules; the light presets flip the text dark and set `--cyan` for the handle.
   The same rules paint the swatches in Settings (`.cp-sw i[data-bg="…"]`), so a swatch can never
   drift from what it promises.
-- **"Your image"** (`bg:'image'` + `bg_url`) is the one url in the card, and it is only ever a
-  file in **our own public bucket** — `upload(file,'cardbg')` puts it at `<uid>/cardbg.<ext>`
-  and both `isCardImg()` and the SQL regex accept nothing but
-  `https://heohcnhgclcnmssjklom.supabase.co/storage/v1/object/public/avatars/…` with a strict
-  character set (no quotes, parentheses or spaces, so it can sit inside `url("…")`). The url
-  reaches CSS as the custom property `--uc-img`, under a dark wash so the name stays readable
-  on any photo. A lookalike host (`…supabase.co.evil.example`) is rejected by the anchored regex.
+- **"Your image"** (`bg:'image'` + `bg_url`) is the one url in the card, and it is only ever
+  **exactly `<the card owner's uid>/cardbg.<ext>[?t=digits]` in our own public bucket** —
+  `upload(file,'cardbg')` puts it there, `isCardImg(url, uid)` and the SQL `img_re` accept
+  nothing else, and the trigger passes `new.user_id` so the folder must be the row's own.
+  **Why that exact shape and not "our bucket prefix + a safe charset":** the first cut allowed
+  `.` `/` `%` after the prefix, and the review showed `…/avatars/%2e%2e/%2e%2e/rest/v1/messages?…`
+  passes a prefix check while the browser normalises the dot segments away — every viewer of that
+  card would have fired a GET at our own REST API. Same-host is not same-object. The url reaches
+  CSS as the custom property `--uc-img` (no quotes, parentheses or spaces can survive the regex,
+  so it sits safely inside `url("…")`), under a dark wash so the name stays readable on any
+  photo. A lookalike host (`…supabase.co.evil.example`) fails the anchored regex too.
+- **Link urls follow one rule on both sides** (`isLinkUrl()` and the SQL regex): `https?://`, a
+  plain host of at most 64 characters (letters, digits, dots, hyphens — so no `user@host` and no
+  unicode), an optional port, then no whitespace or quotes, 300 in all; `linkUrlNorm()` trims and
+  lower-cases the scheme first. The first cut used `isUrl()` (`new URL()` accepts `HTTPS://`,
+  spaces, quotes) while the database regex did not, so Save said "saved" and the button quietly
+  vanished on reload — **the client must never accept what the trigger will drop**. The 64-char
+  host cap is also the anti-spoof measure: `youtube.com.<sixty a's>.evil.example` is refused
+  outright, and what does render shows its hostname **from the end** (`hostShown`: `…` + the
+  last 25 characters, because the registrable domain is the tail and a clipped head reads as a
+  lie), with the full url in the `title`. Labels are stripped of control **and invisible**
+  characters (zero-width, joiners, BOM — `ZW_RE`) before the emptiness check, so a button can't
+  be nameless. **Gotcha for anyone editing those regexes: the tool layer turns ` ` in an
+  edit into the real character**, and U+2028 is a JS line terminator — a regex literal containing
+  it breaks the whole page script ("Invalid regular expression: missing /"). Write such lines
+  through a script that emits the backslash escapes, and re-parse `index.html` afterwards.
 - **Fonts** go on the name (`#uc-nm[data-font]`) and, for the legible ones (`CARD_FONTS[id].body`),
   on the bio too. Colorfiction Sketch is the local OFL file; Patrick Hand, Press Start 2P, Fredoka
   and Bungee were added to the Google Fonts link — a family is only fetched when something uses
@@ -1565,7 +1584,20 @@ and frame uploads that were already there (those were never touched — he thoug
   true for the saver, and `applyCard()` paints it only when `roleOf(uid) === 'owner'`; the swatch
   group in Settings is hidden unless `gRole === 'owner'`. An ordinary save that does not change
   the card (`new.card is not distinct from old.card`) skips the clean, so the owner's outline
-  survives the every-load `saveProfile()` upsert.
+  survives the every-load `saveProfile()` upsert. A write with **no JWT claims at all** (the
+  dashboard SQL editor, psql) is treated like `service_role` and not cleaned — that is the path
+  the owner's perks are set by hand through, and the first cut silently stripped the outline there.
+- **Three more things the review caught in the client flow, all fixed and in the harness:**
+  "Preview my card" opens the real card *over* Settings, and the self card's only button used to
+  call `openSettings()` — which rebuilds `cpDraft` from `myCard` — so every pick made before the
+  preview was thrown away by the one button on screen. The self card now has Close, and "Edit my
+  profile" only reopens Settings when it is not already open. Esc closed the *last* open overlay
+  in DOM order (Settings, under the card) — the Escape handler now closes the one with the highest
+  z-index. And the Save handler wrote the new name/handle/bio into state *before* the checks
+  that can refuse the save, so a refused save left them in memory for the heartbeat to persist —
+  it now validates everything (`cpCommit(false)`, `handleFree`) and mutates state only after.
+  `userCard()` also got a `ucGen` guard like `msgGen`: two quick taps used to let the slower
+  fetch paint the first person's background and buttons under the second person's name.
 - **The editor** (`paintCardEditor`, working copy `cpDraft`, committed by `cpCommit()` on Save):
   swatches, the fonts shown on your own name, up to four link rows (icon / label / url), the
   outline group, and **"Preview my card"**, which opens the real card with the unsaved draft

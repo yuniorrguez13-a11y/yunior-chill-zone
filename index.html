@@ -451,7 +451,7 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 .uc-lk:hover{background:var(--active);border-color:var(--border);}
 .uc-lk .ic-svg{flex:none;color:var(--txt2);}
 .uc-lk b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
-.uc-lk small{font-size:10.5px;color:var(--txt3);max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.uc-lk small{font-size:10.5px;color:var(--txt3);flex:none;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* a preset repaints the panel and the text colours together, so everything
    inside the card (tags, buttons, mod tools) adapts through the variables */
 #uc-card[data-bg]{color:var(--txt);--txt:#eceef3;--txt2:#c9cbd6;--txt3:#a0a2b3;--border:rgba(255,255,255,.14);--hover:rgba(255,255,255,.10);--active:rgba(255,255,255,.17);}
@@ -1768,8 +1768,29 @@ const CARD_MAX_LINKS=4;
 /* a picture of your own is only ever a file in our public bucket (that is where
    upload() puts it); the database guard applies the same rule */
 const CARD_IMG_PREFIX='https://heohcnhgclcnmssjklom.supabase.co/storage/v1/object/public/avatars/';
-const isCardImg=u=>typeof u==='string'&&u.length<=300&&u.startsWith(CARD_IMG_PREFIX)&&isUrl(u)&&/^[A-Za-z0-9._~/%?=&+:-]+$/.test(u);
+/* exactly <uuid>/cardbg.<ext>[?t=digits] under the prefix — no dot segments,
+   no other object: "../" or "%2e%2e/" would let a card point every viewer's
+   browser at another path on the same host. With uid given, the folder must
+   be that person's own (the database checks it against the row's user_id). */
+const CARD_IMG_RE=/^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/cardbg\.[a-z0-9]{1,5}(\?t=[0-9]{1,16})?$/;
+const isCardImg=(u,uid)=>{
+  if(typeof u!=='string'||u.length>300||!u.startsWith(CARD_IMG_PREFIX))return false;
+  const m=u.slice(CARD_IMG_PREFIX.length-1).match(CARD_IMG_RE);
+  return !!m&&(!uid||m[1]===String(uid).toLowerCase());
+};
 const cssUrl=u=>`url("${u.replace(/["\\\n\r()]/g,'')}")`;
+/* a link button's url: the same rule as ycz_card_clean() in the database —
+   http(s), a plain host of at most 64 characters (no user@, no unicode), an
+   optional port, no whitespace or quotes, ≤ 300 in all — so nothing Save
+   accepts is later dropped in silence. linkUrlNorm() trims and lower-cases
+   the scheme first. */
+const linkUrlNorm=u=>String(u||'').trim().replace(/^https?:/i,m=>m.toLowerCase());
+const isLinkUrl=u=>typeof u==='string'&&u.length<=300&&/^https?:\/\/[A-Za-z0-9.-]{1,64}(:[0-9]{1,5})?([/?#][^\s<>"']*)?$/.test(u)&&isUrl(u);
+/* invisible characters that trim() leaves alone (zero-width, joiners, BOM) */
+const ZW_RE=/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF]/g;
+/* the hostname beside a button, shown from the END when long: the part that
+   says where you really go is the tail, and a clipped head reads as a lie */
+const hostShown=h=>h.length>26?'…'+h.slice(-25):h;
 function cleanCard(c){
   c=c&&typeof c==='object'&&!Array.isArray(c)?c:{};
   const out={};
@@ -1781,9 +1802,9 @@ function cleanCard(c){
   for(const l of Array.isArray(c.links)?c.links:[]){
     if(links.length>=CARD_MAX_LINKS)break;
     if(!l||typeof l!=='object')continue;
-    const label=String(l.label||'').replace(/[\x00-\x1f\x7f]/g,'').trim().slice(0,24);
-    const url=String(l.url||'').trim().slice(0,300);
-    if(!label||!isUrl(url))continue;
+    const label=String(l.label||'').replace(/[\x00-\x1f\x7f]/g,'').replace(ZW_RE,'').trim().slice(0,24);
+    const url=linkUrlNorm(l.url);
+    if(!label||!isLinkUrl(url))continue;
     links.push({label,url,icon:CARD_ICONS.includes(l.icon)?l.icon:'link'});
   }
   if(links.length)out.links=links;
@@ -1791,17 +1812,17 @@ function cleanCard(c){
 }
 const hostOf=u=>{try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return'';}};
 /* paint a (cleaned) card onto the user-card overlay */
-function applyCard(card,isOwner){
+function applyCard(card,isOwner,uid){
   const el=$('uc-card'),nm=$('uc-nm'),bio=$('uc-bio');
   el.removeAttribute('data-bg');el.removeAttribute('data-outline');nm.removeAttribute('data-font');bio.removeAttribute('data-font');
   el.style.removeProperty('--uc-img');
   card=card||{};
-  if(card.bg==='image'&&isCardImg(card.bg_url)){el.dataset.bg='image';el.style.setProperty('--uc-img',cssUrl(card.bg_url));}
+  if(card.bg==='image'&&isCardImg(card.bg_url,uid)){el.dataset.bg='image';el.style.setProperty('--uc-img',cssUrl(card.bg_url));}
   else if(card.bg&&CARD_BGS.includes(card.bg))el.dataset.bg=card.bg;
   if(card.outline&&isOwner)el.dataset.outline=card.outline;
   if(card.font){nm.dataset.font=card.font;if(CARD_FONTS[card.font].body)bio.dataset.font=card.font;}
   $('uc-links').innerHTML=(card.links||[]).map(l=>
-    `<a class="uc-lk" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow">${icon(l.icon,14)}<b>${esc(l.label)}</b><small>${esc(hostOf(l.url))}</small></a>`).join('');
+    `<a class="uc-lk" href="${esc(l.url)}" title="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow">${icon(l.icon,14)}<b>${esc(l.label)}</b><small>${esc(hostShown(hostOf(l.url)))}</small></a>`).join('');
 }
 /* the editor in Settings works on cpDraft; Save runs cpCommit() */
 function paintCardEditor(){
@@ -1809,7 +1830,7 @@ function paintCardEditor(){
   const sw=(kind,ids,attr)=>['',...ids].map(id=>
     `<button type="button" data-pick="${kind}" data-v="${id}" class="${(d[kind]||'')===id?'on':''}"><i${id?` ${attr}="${id}"`:''}></i>${esc(t(id?'card'+kind[0].toUpperCase()+kind.slice(1)+'_'+id:'cardDefault'))}</button>`).join('');
   /* "Your image" sits first: it shows the uploaded picture (a url that passed isCardImg) or an upload icon */
-  const img=isCardImg(d.bg_url)?d.bg_url:'';
+  const img=isCardImg(d.bg_url,user&&user.id)?d.bg_url:'';
   $('cp-bg').innerHTML=`<button type="button" data-pick="bg" data-v="image" class="${d.bg==='image'&&img?'on':''}" title="${esc(t('cardImgHint'))}"><i data-bg="image"${img?` style='--uc-img:${cssUrl(img)}'`:''}>${img?'':icon('upload',15)}</i>${esc(t('cardBg_image'))}</button>`
     +sw('bg',CARD_BGS,'data-bg');
   $('cp-font').innerHTML=['',...Object.keys(CARD_FONTS)].map(id=>
@@ -1837,7 +1858,7 @@ document.querySelectorAll('#cp-bg,#cp-font,#cp-ol').forEach(box=>box.addEventLis
 $('cp-img-file').onchange=async function(){
   const u=await upload(this.files[0],'cardbg');this.value='';
   if(!u||!cpDraft)return;
-  if(!isCardImg(u)){toast(t('cardImgFail'),'err');return;}
+  if(!isCardImg(u,user.id)){toast(t('cardImgFail'),'err');return;}
   cpDraft.bg='image';cpDraft.bg_url=u;paintCardEditor();
 };
 $('cp-links').addEventListener('input',e=>{
@@ -1855,18 +1876,21 @@ $('cp-add').onclick=()=>{
 };
 /* validate the draft and move it into myCard; a button with a name but a bad
    link is an error, not something to drop quietly */
-function cpCommit(){
+function cpCommit(apply){
   const d=cpDraft||{};
-  const links=(d.links||[]).filter(l=>(l.label||'').trim()||(l.url||'').trim());
+  const links=(d.links||[]).filter(l=>(l.label||'').trim()||(l.url||'').trim())
+    .map(l=>({...l,url:linkUrlNorm(l.url)}));
   for(const l of links){
-    if(!(l.label||'').trim()||!isUrl((l.url||'').trim()))return{ok:false,error:t('cardBadLink')};
+    if(!(l.label||'').trim()||!isLinkUrl(l.url))return{ok:false,error:t('cardBadLink')};
   }
-  myCard=cleanCard({...d,links});
-  return{ok:true};
+  const card=cleanCard({...d,links});
+  if(card.bg==='image'&&!isCardImg(card.bg_url,user&&user.id)){delete card.bg;delete card.bg_url;}   // only a file in my own folder
+  if(apply!==false)myCard=card;
+  return{ok:true,card};
 }
 $('cp-prev').onclick=()=>{
   if(!user||!cpDraft)return;
-  const d=cpDraft,links=(d.links||[]).filter(l=>(l.label||'').trim()&&isUrl((l.url||'').trim()));
+  const d=cpDraft,links=(d.links||[]).map(l=>({...l,url:linkUrlNorm(l.url)})).filter(l=>(l.label||'').trim()&&isLinkUrl(l.url));
   userCard(user.id,cleanCard({...d,links}));
 };
 /* ══════ DENARII (site currency) ══════ */
@@ -2160,14 +2184,16 @@ $('bg-file').onchange=async function(){const u=await upload(this.files[0],'banne
   if(!u)return;bgUrl=u;prev('bg-prev',u);};
 $('bg-x').onclick=()=>{bgUrl='';prev('bg-prev','');};
 $('s-save').onclick=async()=>{
-  const n=$('s-nm').value.trim(),h=slug($('s-hd').value);
+  /* check everything first, change state only once nothing can refuse the
+     save — otherwise a refused save leaves a new name/handle/bio in memory
+     for the heartbeat to persist behind the person's back */
+  const n=$('s-nm').value.trim(),h=slug($('s-hd').value),bio=$('s-bio').value.trim();
+  const cp=cpCommit(false);if(!cp.ok){toast(cp.error,'err');return;}
+  if(h&&h!==myHandle&&!await handleFree(h)){$('hd-msg').innerHTML=`${icon('x',12)} @${esc(h)} ${esc(t('taken'))}`;$('hd-msg').style.color='#ff5f6d';return;}
   if(n)uname=n;
-  myBio=$('s-bio').value.trim();
-  if(h&&h!==myHandle){
-    if(!await handleFree(h)){$('hd-msg').innerHTML=`${icon('x',12)} @${esc(h)} ${esc(t('taken'))}`;$('hd-msg').style.color='#ff5f6d';return;}
-    myHandle=h;
-  }
-  const cp=cpCommit();if(!cp.ok){toast(cp.error,'err');return;}
+  myBio=bio;
+  if(h&&h!==myHandle)myHandle=h;
+  myCard=cp.card;
   await sb.auth.updateUser({data:{username:uname,handle:myHandle,pfp_url:pfpUrl,pfp_frame:pfpFrame,bg_url:bgUrl}});
   await saveProfile(true);
   await sb.from('messages').update({username:uname,pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null}).eq('user_id',user.id);
@@ -4310,7 +4336,11 @@ async function friendState(uid){
 /* cardOverride: the Settings preview passes the unsaved draft; otherwise the
    card is whatever the profile row holds (already cleaned by the database,
    cleaned again here) */
+let ucGen=0;
 async function userCard(uid,cardOverride){
+  /* two taps in a row: the slower fetch must not paint its person over the
+     one opened last (same idea as msgGen in loadMsgs) */
+  const gen=++ucGen;
   open('uc-ov');
   $('uc-nm').textContent='Loading…';$('uc-hd').textContent='';$('uc-tags').innerHTML='';
   $('uc-meta').textContent='';$('uc-acts').innerHTML='';$('uc-av').textContent='?';
@@ -4320,7 +4350,8 @@ async function userCard(uid,cardOverride){
   let p={};
   try{const{data}=await sb.from('user_profiles').select('*').eq('user_id',uid).maybeSingle();p=data||{};}catch(e){}
   const r=await roleOf(uid);
-  applyCard(cardOverride||cleanCard(p.card),r==='owner');
+  if(gen!==ucGen)return;
+  applyCard(cardOverride||cleanCard(p.card),r==='owner',uid);
   const svRole=(members.find(m=>m.user_id===uid)||{}).role;
   $('uc-nm').textContent=p.username||'Unknown user';
   $('uc-nm').classList.toggle('nc',!!NAME_COLORS[p.color_id]);
@@ -4343,8 +4374,16 @@ async function userCard(uid,cardOverride){
     ?`<span class="on-dot st-${ust}"></span>${esc(t(ust==='idle'?'stIdle':ust==='dnd'?'stDnd':'onlineNow'))}`
     :esc(p.updated_at?t('lastSeen')+' '+ago(p.updated_at):'');
   const st=await friendState(uid),acts=$('uc-acts');
+  if(gen!==ucGen)return;
   if(!user){acts.innerHTML='<button class="pri" id="uc-si">Sign in to connect</button>';$('uc-si').onclick=()=>{shut('uc-ov');open('auth-ov');};$('uc-mod').style.display='none';return;}
-  if(st==='self'){acts.innerHTML='<button id="uc-ed">Edit my profile</button>';$('uc-ed').onclick=()=>{shut('uc-ov');openSettings();};$('uc-mod').style.display='none';return;}
+  if(st==='self'){
+    /* during "Preview my card" Settings is still open underneath: going back
+       must not rebuild the editor, or the unsaved picks would be lost */
+    acts.innerHTML=`<button id="uc-ed">Edit my profile</button><button id="uc-cl">${esc(t('close'))}</button>`;
+    $('uc-cl').onclick=()=>shut('uc-ov');
+    $('uc-ed').onclick=()=>{shut('uc-ov');if(!$('set-ov').classList.contains('open'))openSettings();};
+    $('uc-mod').style.display='none';return;
+  }
   acts.innerHTML=(st==='friends'?`<button class="pri" id="uc-dm">${icon('chat',15)} ${t('message')}</button>`
     :st==='sent'?`<button disabled>${t('requestSent')}</button>`
     :st==='incoming'?`<button class="pri" id="uc-ac">${icon('check',15)} ${t('acceptRequest')}</button>`
@@ -4840,8 +4879,11 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if($('lb').classList.contains('open')){$('lb').classList.remove('open');return;}
   if($('frm-ov').classList.contains('open')){$('frm-ov').classList.remove('open');$('frm').src='';return;}
-  const ov=[...document.querySelectorAll('.ov.open')].pop();
-  if(ov){shut(ov.id);return;}
+  /* the topmost open overlay, by z-index (the user card sits above Settings
+     during "Preview my card"), DOM order breaking ties */
+  const ov=[...document.querySelectorAll('.ov.open')].map((el,i)=>({el,i,z:+getComputedStyle(el).zIndex||0}))
+    .sort((a,b)=>a.z-b.z||a.i-b.i).pop();
+  if(ov){shut(ov.el.id);return;}
   if($('emo').classList.contains('on')){$('emo').classList.remove('on');return;}
   closeDrops();
 });
