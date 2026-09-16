@@ -1610,11 +1610,26 @@ and frame uploads that were already there (those were never touched — he thoug
   tab holding an older copy, or a tab whose profile `select` had failed (free-plan 5xx bursts)
   and still held `{}`, would have written `null` over a card saved seconds earlier. Rule: the
   heartbeat updates `updated_at`, nothing a person edits.
-- Tested: `scratchpad/card/behaviour.sql` (6 groups as `apptest` on the local Postgres skeleton:
-  member vs owner, junk ids, oversize, control characters, the image url rules) and
-  `scratchpad/card/card-test.js` (48 checks through the real page with a recording fake: cleaning,
-  hostile rows, the light preset's colours, the editor, the file chooser for "Your image", what
-  Save sends, the preview stacking, Spanish labels, 390 px).
+- **What the visual review measured and what changed:** `#uc-card` had `overflow:hidden`, which
+  overrode `.card`'s `max-height:90dvh; overflow-y:auto` — harmless while a card always fit, but a
+  bio plus four buttons plus the mod tools is 750 px on a 667 px phone and the bottom was simply
+  gone; it is `overflow:hidden auto` now. Sunset, Aurora and Candy put fixed light text over bright
+  bands (handle, tags, hostnames and the Close button measured 1.6–2.9:1), so those three carry a
+  dark wash over their gradient — the same trick as "Your image". On Paper and Cloud a **bought
+  Denarii name colour** is painted raw by `#uc-nm.nc{color:var(--nc)}` and the amber title tag is
+  hard-coded for the dark panel (1.3–1.7:1 on cream), so the two light presets darken the name
+  with `color-mix(in srgb, var(--nc) 55%, #141414)` (plain `var(--txt)` first, for browsers
+  without it) and re-tint `.tag.ttl`. The hostname beside a button uses `--txt2`, not `--txt3`
+  (2.7–2.9:1 at 10.5 px, and it is the one thing on the card that must read). The Ink swatch
+  was a white ring on a white swatch in light theme; its inside is dark now.
+- Tested: `scratchpad/card/behaviour.sql` (8 groups as `apptest` on the local Postgres skeleton:
+  member vs owner, junk ids, oversize, control and invisible characters, the exact image path
+  and folder, dot segments, link hosts, a claims-less write) and `scratchpad/card/card-test.js`
+  (67 checks through the real page with a recording fake: cleaning, hostile rows, the light
+  preset's colours, the editor, the file chooser for "Your image", what Save sends and what the
+  heartbeat must not, the preview stacking and its Edit button, Esc, a refused save, two quick
+  taps, tail-shown hostnames, a card pointing at somebody else's picture, phone scrolling, the
+  washes, the darkened name colour, the Ink swatch, Spanish labels, 390 px).
 
 ## Coding September — the game jam (`jam.html`, Sep 2026)
 

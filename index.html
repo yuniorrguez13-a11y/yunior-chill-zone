@@ -421,7 +421,7 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 .seg .e{display:flex;justify-content:center;margin-bottom:6px;}
 
 /* user card */
-#uc-card{max-width:340px;padding:0;overflow:hidden;}
+#uc-card{max-width:340px;padding:0;overflow:hidden auto;}   /* y scrolls: a bio plus four link buttons outgrow a phone */
 #uc-ban{height:88px;background:linear-gradient(135deg,#20202e,#2c1016);background-size:cover;background-position:center;}
 #uc-avw{position:relative;width:80px;height:80px;margin:-42px 0 0 20px;}
 #uc-av{width:80px;height:80px;border-radius:50%;background:var(--panel);border:5px solid var(--panel);
@@ -451,7 +451,7 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 .uc-lk:hover{background:var(--active);border-color:var(--border);}
 .uc-lk .ic-svg{flex:none;color:var(--txt2);}
 .uc-lk b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
-.uc-lk small{font-size:10.5px;color:var(--txt3);flex:none;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.uc-lk small{font-size:10.5px;color:var(--txt2);flex:none;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}   /* --txt2: the hostname is the one thing that must read, --txt3 measured under 3:1 */
 /* a preset repaints the panel and the text colours together, so everything
    inside the card (tags, buttons, mod tools) adapts through the variables */
 #uc-card[data-bg]{color:var(--txt);--txt:#eceef3;--txt2:#c9cbd6;--txt3:#a0a2b3;--border:rgba(255,255,255,.14);--hover:rgba(255,255,255,.10);--active:rgba(255,255,255,.17);}
@@ -459,14 +459,16 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 #uc-card[data-bg="ocean"],.cp-sw i[data-bg="ocean"]{--panel:#0b1a2e;background:linear-gradient(160deg,#10366a,#0b1a2e 55%,#070d18);}
 #uc-card[data-bg="forest"],.cp-sw i[data-bg="forest"]{--panel:#0c1c14;background:linear-gradient(160deg,#155a32,#0c1c14 55%,#080f0b);}
 #uc-card[data-bg="grape"],.cp-sw i[data-bg="grape"]{--panel:#1a1030;background:linear-gradient(160deg,#52208a,#1a1030 55%,#0d0917);}
-#uc-card[data-bg="sunset"],.cp-sw i[data-bg="sunset"]{--panel:#2a1230;background:linear-gradient(160deg,#ff7a3d 0%,#d9306e 45%,#2a1230 100%);}
-#uc-card[data-bg="aurora"],.cp-sw i[data-bg="aurora"]{--panel:#0c1a24;background:linear-gradient(200deg,#0fd39a 0%,#1c7bd6 35%,#5a2ea6 65%,#0c1a24 100%);}
+/* the three vivid ones carry a dark wash: their bright bands sat right under the
+   name, handle and buttons and light text measured under 3:1 there */
+#uc-card[data-bg="sunset"],.cp-sw i[data-bg="sunset"]{--panel:#3a1a30;background:linear-gradient(rgba(12,8,18,.42),rgba(12,8,18,.64)),linear-gradient(160deg,#ff7a3d 0%,#d9306e 45%,#2a1230 100%);}
+#uc-card[data-bg="aurora"],.cp-sw i[data-bg="aurora"]{--panel:#10202e;background:linear-gradient(rgba(6,10,18,.44),rgba(6,10,18,.64)),linear-gradient(200deg,#0fd39a 0%,#1c7bd6 35%,#5a2ea6 65%,#0c1a24 100%);}
 #uc-card[data-bg="midnight"],.cp-sw i[data-bg="midnight"]{--panel:#07070d;background:radial-gradient(rgba(255,255,255,.55) 1px,transparent 1.6px) 0 0/28px 28px,radial-gradient(rgba(255,255,255,.3) 1px,transparent 1.6px) 14px 9px/40px 40px,#07070d;}
 #uc-card[data-bg="grid"],.cp-sw i[data-bg="grid"]{--panel:#14141c;background:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px) 0 0/22px 22px,linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px) 0 0/22px 22px,#14141c;}
 #uc-card[data-bg="dots"],.cp-sw i[data-bg="dots"]{--panel:#15151e;background:radial-gradient(rgba(255,255,255,.13) 1.4px,transparent 1.9px) 0 0/14px 14px,#15151e;}
 #uc-card[data-bg="stripes"],.cp-sw i[data-bg="stripes"]{--panel:#141420;background:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 8px,transparent 8px 20px),#141420;}
 #uc-card[data-bg="carbon"],.cp-sw i[data-bg="carbon"]{--panel:#131313;background:linear-gradient(27deg,#151519 5px,transparent 5px) 0 5px,linear-gradient(207deg,#151519 5px,transparent 5px) 10px 0,linear-gradient(27deg,#222 5px,transparent 5px) 0 10px,linear-gradient(207deg,#222 5px,transparent 5px) 10px 5px,linear-gradient(90deg,#1b1b1b 10px,transparent 10px),linear-gradient(#1d1d1d 25%,#1a1a1a 25%,#1a1a1a 50%,transparent 50%,transparent 75%,#242424 75%,#242424);background-color:#131313;background-size:20px 20px;}
-#uc-card[data-bg="candy"],.cp-sw i[data-bg="candy"]{--panel:#2a1440;background:linear-gradient(135deg,#ff5fa8 0%,#7b3fe4 50%,#22c1ff 100%);}
+#uc-card[data-bg="candy"],.cp-sw i[data-bg="candy"]{--panel:#3a1a50;background:linear-gradient(rgba(12,8,22,.46),rgba(12,8,22,.64)),linear-gradient(135deg,#ff5fa8 0%,#7b3fe4 50%,#22c1ff 100%);}
 #uc-card[data-bg="gold"],.cp-sw i[data-bg="gold"]{--panel:#1a1508;background:linear-gradient(160deg,#6a5014 0%,#1a1508 45%,#0d0b05 100%);}
 #uc-card[data-bg="paper"],.cp-sw i[data-bg="paper"]{--panel:#f3ead7;--txt:#2a2419;--txt2:#5a5040;--txt3:#8a7f6a;--cyan:#0a7aa6;--border:rgba(0,0,0,.12);--hover:rgba(0,0,0,.06);--active:rgba(0,0,0,.12);background:repeating-linear-gradient(0deg,transparent 0 23px,rgba(0,0,0,.06) 23px 24px),#f3ead7;}
 /* your own picture: --uc-img is set from JS only after the url passed isCardImg() (our bucket, http(s));
@@ -474,6 +476,10 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 #uc-card[data-bg="image"]{--panel:#101018;background:linear-gradient(rgba(8,8,14,.42),rgba(8,8,14,.80)),var(--uc-img,none) center/cover no-repeat,#101018;}
 .cp-sw i[data-bg="image"]{background:var(--uc-img,none) center/cover no-repeat,var(--panel);display:flex;align-items:center;justify-content:center;color:var(--txt3);}
 #uc-card[data-bg="cloud"],.cp-sw i[data-bg="cloud"]{--panel:#f6f9ff;--txt:#141a2a;--txt2:#4a5470;--txt3:#7d869e;--cyan:#0a7aa6;--border:rgba(0,0,0,.10);--hover:rgba(0,0,0,.05);--active:rgba(0,0,0,.10);background:linear-gradient(180deg,#ffffff,#dbe9ff);}
+/* on the two light presets a bought name colour (gold, lime, cyan…) and the amber
+   title tag were drawn for the dark panel and measured 1.3–1.7:1 — darken them */
+#uc-card[data-bg="paper"] #uc-nm.nc,#uc-card[data-bg="cloud"] #uc-nm.nc{color:var(--txt);color:color-mix(in srgb,var(--nc) 55%,#141414);}
+#uc-card[data-bg="paper"] .tag.ttl,#uc-card[data-bg="cloud"] .tag.ttl{color:#6b4300;border-color:rgba(107,67,0,.45);background:rgba(255,176,32,.28);}
 /* name fonts (the family alone on the bio, size tweaks on the name only) */
 #uc-nm[data-font="clean"],#uc-bio[data-font="clean"],.cp-fonts [data-font="clean"]{font-family:'DM Sans',sans-serif;}
 #uc-nm[data-font="sketch"],.cp-fonts [data-font="sketch"]{font-family:'CF Sketch','Syne',sans-serif;font-weight:400;}
@@ -505,6 +511,7 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 .cp-sw button.on{border-color:var(--red);color:var(--txt);background:var(--red-dim);}
 .cp-sw i{display:block;width:100%;height:34px;border-radius:7px;border:1px solid var(--border);background:var(--panel);}
 .cp-sw i[data-outline]{width:calc(100% - 8px);height:28px;margin:3px 0;}
+.cp-sw i[data-outline="ink"]{background:#1a1a24;}   /* a white ring on a white swatch was invisible in light theme */
 .cp-fonts{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
 .cp-fonts button{padding:8px 10px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--txt);font-size:15px;text-align:left;min-width:0;}
 .cp-fonts button span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
