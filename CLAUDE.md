@@ -135,7 +135,8 @@ scoped `.page:not([id])` for exactly this reason.
 ## Database (Supabase, project ref `heohcnhgclcnmssjklom`)
 
 - `user_profiles` — user_id, username, handle (unique, lowercased), pfp_url, pfp_frame,
-  bg_url, updated_at (doubles as "last seen"). **Chat app only.**
+  bg_url, updated_at (doubles as "last seen"), bio, title_id, color_id, `card` (jsonb, the
+  profile-card look — see "The profile card" below). **Chat app only.**
 - `profiles` — id, username (NOT NULL), avatar_url, banner_url, bio, created_at.
   **VideoZone + Qmages only.** See gotcha 1.
 - `user_roles` — site-wide roles (owner/admin/mod). Separate from server roles.
@@ -1515,6 +1516,73 @@ handle and every internal are `undefined`. Keep that gate: this closure holds th
 Not done yet: more Overwork jobs, spectating a full room, a host-side speed check on self-reported positions.
 Performance: Overwork's world is ~1.5k draw calls with outlines; fine on desktop GPUs, heavy under
 swiftshader (the harnesses poll for conditions instead of sleeping fixed times for that reason). Pitty Striker is ~82.
+
+## The profile card (`index.html`, Sep 2026)
+
+The owner, looking at his own card: *"se ve medio vacío la parte de abajo … haz que puedas
+editar el background ese también, los botones que la gente va a ver en tu perfil … el font
+del perfil … que el owner tenga la opción para editar la outline del perfil mismo, y hazme unos
+presets tú"* — and, when the first cut only had presets: *"debes poder subir imágenes para el
+background … editar el background completo con imágenes también"*. So the card someone sees
+when they tap your name (`#uc-card`) is customisable from Settings, under the picture, banner
+and frame uploads that were already there (those were never touched — he thought they had been).
+
+- **One jsonb column, `user_profiles.card`**: `{bg, bg_url?, font, links:[{label,url,icon}],
+  outline?}`. **Every value is a preset id** from `CARD_BGS` / `CARD_FONTS` / `CARD_ICONS` /
+  `CARD_OUTLINES` in `index.html`, mirrored by `ycz_card_presets()` in the database — keep the
+  four lists and the SQL function in step. `ycz_card_clean(jsonb, owner)` rebuilds the whole
+  value from that whitelist in a BEFORE INSERT/UPDATE trigger (`ycz_guard_profile_card`): unknown
+  keys and ids vanish, at most four links, labels stripped of control characters and clipped to
+  24, urls http(s) only (≤ 300), anything over 6 KB is dropped whole. The client runs the same
+  rules again in `cleanCard()` before anything reaches a `data-*` attribute, a style property or
+  an `href`. **The UI is not the boundary; the trigger is** — the Playwright harness feeds hostile
+  rows straight through `userCard()` and asserts nothing paints and nothing runs.
+- **Backgrounds are CSS, not images**: fifteen presets as attribute rules
+  (`#uc-card[data-bg="ember"]`, gradients and repeating-gradient patterns, two light ones —
+  `paper`, `cloud`). A preset sets `--panel` and the `--txt*` / `--hover` / `--border` variables
+  on the card, so the tags, buttons and mod tools inside adapt through the variables instead of
+  per-element colour rules; the light presets flip the text dark and set `--cyan` for the handle.
+  The same rules paint the swatches in Settings (`.cp-sw i[data-bg="…"]`), so a swatch can never
+  drift from what it promises.
+- **"Your image"** (`bg:'image'` + `bg_url`) is the one url in the card, and it is only ever a
+  file in **our own public bucket** — `upload(file,'cardbg')` puts it at `<uid>/cardbg.<ext>`
+  and both `isCardImg()` and the SQL regex accept nothing but
+  `https://heohcnhgclcnmssjklom.supabase.co/storage/v1/object/public/avatars/…` with a strict
+  character set (no quotes, parentheses or spaces, so it can sit inside `url("…")`). The url
+  reaches CSS as the custom property `--uc-img`, under a dark wash so the name stays readable
+  on any photo. A lookalike host (`…supabase.co.evil.example`) is rejected by the anchored regex.
+- **Fonts** go on the name (`#uc-nm[data-font]`) and, for the legible ones (`CARD_FONTS[id].body`),
+  on the bio too. Colorfiction Sketch is the local OFL file; Patrick Hand, Press Start 2P, Fredoka
+  and Bungee were added to the Google Fonts link — a family is only fetched when something uses
+  it, so the page pays nothing until someone picks one. `SoulsideBetrayed-3lazX.ttf` in `fonts/`
+  has no licence text anywhere in the repo and was **not** used.
+- **Link buttons** render as `<a class="uc-lk" target="_blank" rel="noopener noreferrer nofollow">`
+  with a stroke icon from the whitelist (**no brand logos** — the icons are ours, a "video" glyph
+  next to a YouTube link is as far as it goes) and **the hostname printed beside the label**, so a
+  button cannot be dressed up as something it is not. Labels are `esc()`-ed text.
+- **The outline is the site owner's perk**: six looks (`gold`, `neon`, `ember`, `rainbow`, `ink`,
+  `pulse`, the last two animated). The trigger keeps `outline` only when `ycz_site_owner()` is
+  true for the saver, and `applyCard()` paints it only when `roleOf(uid) === 'owner'`; the swatch
+  group in Settings is hidden unless `gRole === 'owner'`. An ordinary save that does not change
+  the card (`new.card is not distinct from old.card`) skips the clean, so the owner's outline
+  survives the every-load `saveProfile()` upsert.
+- **The editor** (`paintCardEditor`, working copy `cpDraft`, committed by `cpCommit()` on Save):
+  swatches, the fonts shown on your own name, up to four link rows (icon / label / url), the
+  outline group, and **"Preview my card"**, which opens the real card with the unsaved draft
+  (`userCard(uid, cardOverride)`; `#uc-ov` got `z-index:210` to sit above the Settings panel).
+  A row with a name but a link that is not `https://…` blocks Save with a sentence rather than
+  being dropped quietly. **`saveProfile(true)` is the Settings save and the only call that sends
+  `card` and `bio`** (retrying without both if the columns are missing). The bootstrap upsert in
+  `loadMe()` and the 4-minute last-seen heartbeat call `saveProfile()` bare and touch neither —
+  the review caught that the first cut sent the in-memory card on every heartbeat, so a second
+  tab holding an older copy, or a tab whose profile `select` had failed (free-plan 5xx bursts)
+  and still held `{}`, would have written `null` over a card saved seconds earlier. Rule: the
+  heartbeat updates `updated_at`, nothing a person edits.
+- Tested: `scratchpad/card/behaviour.sql` (6 groups as `apptest` on the local Postgres skeleton:
+  member vs owner, junk ids, oversize, control characters, the image url rules) and
+  `scratchpad/card/card-test.js` (48 checks through the real page with a recording fake: cleaning,
+  hostile rows, the light preset's colours, the editor, the file chooser for "Your image", what
+  Save sends, the preview stacking, Spanish labels, 390 px).
 
 ## Coding September — the game jam (`jam.html`, Sep 2026)
 

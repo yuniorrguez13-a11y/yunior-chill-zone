@@ -30,7 +30,7 @@
  "url":"https://yuniorschillzone.xyz/",
  "description":"A free community hangout with text and voice chat, games, music and an image board."}
 </script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Patrick+Hand&family=Press+Start+2P&family=Fredoka:wght@600;700&family=Bungee&display=swap" rel="stylesheet">
 <style>
 :root{
   --rail:#08080c; --side:#0e0e15; --main:#12121b; --panel:#171722;
@@ -438,6 +438,83 @@ body.light .rail-item.coin .rail-btn{background:linear-gradient(140deg,#ffe2a6,#
 #uc-acts button:hover:not(:disabled){background:var(--active);color:var(--txt);}
 #uc-acts button.pri{background:var(--red);color:#fff;}
 #uc-acts button:disabled{opacity:.45;cursor:default;}
+#uc-ov{z-index:210;}   /* above Settings, so "Preview my card" can open it on top */
+/* ── profile card customisation ──
+   Every look is a preset id: the card carries data-bg / data-outline, the
+   name carries data-font, and the same attribute rules paint the swatches in
+   Settings. Nothing a person typed reaches a class, a style or an href
+   without cleanCard() here and ycz_card_clean() in the database. */
+@font-face{font-family:'CF Sketch';src:url('fonts/colorfiction-sketch.otf');font-display:swap;}
+#uc-links{display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;}
+.uc-lk{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:9px;background:var(--hover);color:var(--txt);
+  text-decoration:none;font-size:13px;border:1px solid transparent;min-width:0;}
+.uc-lk:hover{background:var(--active);border-color:var(--border);}
+.uc-lk .ic-svg{flex:none;color:var(--txt2);}
+.uc-lk b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+.uc-lk small{font-size:10.5px;color:var(--txt3);max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* a preset repaints the panel and the text colours together, so everything
+   inside the card (tags, buttons, mod tools) adapts through the variables */
+#uc-card[data-bg]{color:var(--txt);--txt:#eceef3;--txt2:#c9cbd6;--txt3:#a0a2b3;--border:rgba(255,255,255,.14);--hover:rgba(255,255,255,.10);--active:rgba(255,255,255,.17);}
+#uc-card[data-bg="ember"],.cp-sw i[data-bg="ember"]{--panel:#1a0d12;background:radial-gradient(120% 90% at 15% 0%,#4a1119 0%,#1a0d12 55%,#0e0c12 100%);}
+#uc-card[data-bg="ocean"],.cp-sw i[data-bg="ocean"]{--panel:#0b1a2e;background:linear-gradient(160deg,#10366a,#0b1a2e 55%,#070d18);}
+#uc-card[data-bg="forest"],.cp-sw i[data-bg="forest"]{--panel:#0c1c14;background:linear-gradient(160deg,#155a32,#0c1c14 55%,#080f0b);}
+#uc-card[data-bg="grape"],.cp-sw i[data-bg="grape"]{--panel:#1a1030;background:linear-gradient(160deg,#52208a,#1a1030 55%,#0d0917);}
+#uc-card[data-bg="sunset"],.cp-sw i[data-bg="sunset"]{--panel:#2a1230;background:linear-gradient(160deg,#ff7a3d 0%,#d9306e 45%,#2a1230 100%);}
+#uc-card[data-bg="aurora"],.cp-sw i[data-bg="aurora"]{--panel:#0c1a24;background:linear-gradient(200deg,#0fd39a 0%,#1c7bd6 35%,#5a2ea6 65%,#0c1a24 100%);}
+#uc-card[data-bg="midnight"],.cp-sw i[data-bg="midnight"]{--panel:#07070d;background:radial-gradient(rgba(255,255,255,.55) 1px,transparent 1.6px) 0 0/28px 28px,radial-gradient(rgba(255,255,255,.3) 1px,transparent 1.6px) 14px 9px/40px 40px,#07070d;}
+#uc-card[data-bg="grid"],.cp-sw i[data-bg="grid"]{--panel:#14141c;background:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px) 0 0/22px 22px,linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px) 0 0/22px 22px,#14141c;}
+#uc-card[data-bg="dots"],.cp-sw i[data-bg="dots"]{--panel:#15151e;background:radial-gradient(rgba(255,255,255,.13) 1.4px,transparent 1.9px) 0 0/14px 14px,#15151e;}
+#uc-card[data-bg="stripes"],.cp-sw i[data-bg="stripes"]{--panel:#141420;background:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 8px,transparent 8px 20px),#141420;}
+#uc-card[data-bg="carbon"],.cp-sw i[data-bg="carbon"]{--panel:#131313;background:linear-gradient(27deg,#151519 5px,transparent 5px) 0 5px,linear-gradient(207deg,#151519 5px,transparent 5px) 10px 0,linear-gradient(27deg,#222 5px,transparent 5px) 0 10px,linear-gradient(207deg,#222 5px,transparent 5px) 10px 5px,linear-gradient(90deg,#1b1b1b 10px,transparent 10px),linear-gradient(#1d1d1d 25%,#1a1a1a 25%,#1a1a1a 50%,transparent 50%,transparent 75%,#242424 75%,#242424);background-color:#131313;background-size:20px 20px;}
+#uc-card[data-bg="candy"],.cp-sw i[data-bg="candy"]{--panel:#2a1440;background:linear-gradient(135deg,#ff5fa8 0%,#7b3fe4 50%,#22c1ff 100%);}
+#uc-card[data-bg="gold"],.cp-sw i[data-bg="gold"]{--panel:#1a1508;background:linear-gradient(160deg,#6a5014 0%,#1a1508 45%,#0d0b05 100%);}
+#uc-card[data-bg="paper"],.cp-sw i[data-bg="paper"]{--panel:#f3ead7;--txt:#2a2419;--txt2:#5a5040;--txt3:#8a7f6a;--cyan:#0a7aa6;--border:rgba(0,0,0,.12);--hover:rgba(0,0,0,.06);--active:rgba(0,0,0,.12);background:repeating-linear-gradient(0deg,transparent 0 23px,rgba(0,0,0,.06) 23px 24px),#f3ead7;}
+/* your own picture: --uc-img is set from JS only after the url passed isCardImg() (our bucket, http(s));
+   a dark wash keeps the text readable on any photo */
+#uc-card[data-bg="image"]{--panel:#101018;background:linear-gradient(rgba(8,8,14,.42),rgba(8,8,14,.80)),var(--uc-img,none) center/cover no-repeat,#101018;}
+.cp-sw i[data-bg="image"]{background:var(--uc-img,none) center/cover no-repeat,var(--panel);display:flex;align-items:center;justify-content:center;color:var(--txt3);}
+#uc-card[data-bg="cloud"],.cp-sw i[data-bg="cloud"]{--panel:#f6f9ff;--txt:#141a2a;--txt2:#4a5470;--txt3:#7d869e;--cyan:#0a7aa6;--border:rgba(0,0,0,.10);--hover:rgba(0,0,0,.05);--active:rgba(0,0,0,.10);background:linear-gradient(180deg,#ffffff,#dbe9ff);}
+/* name fonts (the family alone on the bio, size tweaks on the name only) */
+#uc-nm[data-font="clean"],#uc-bio[data-font="clean"],.cp-fonts [data-font="clean"]{font-family:'DM Sans',sans-serif;}
+#uc-nm[data-font="sketch"],.cp-fonts [data-font="sketch"]{font-family:'CF Sketch','Syne',sans-serif;font-weight:400;}
+#uc-nm[data-font="mono"],#uc-bio[data-font="mono"],.cp-fonts [data-font="mono"]{font-family:'JetBrains Mono',monospace;}
+#uc-nm[data-font="hand"],#uc-bio[data-font="hand"],.cp-fonts [data-font="hand"]{font-family:'Patrick Hand','Syne',cursive;font-weight:400;}
+#uc-nm[data-font="serif"],#uc-bio[data-font="serif"],.cp-fonts [data-font="serif"]{font-family:Georgia,'Times New Roman',serif;}
+#uc-nm[data-font="arcade"],.cp-fonts [data-font="arcade"]{font-family:'Press Start 2P','Syne',monospace;font-weight:400;}
+#uc-nm[data-font="bubble"],#uc-bio[data-font="bubble"],.cp-fonts [data-font="bubble"]{font-family:'Fredoka','Syne',sans-serif;}
+#uc-nm[data-font="display"],.cp-fonts [data-font="display"]{font-family:'Bungee','Syne',sans-serif;font-weight:400;}
+#uc-nm[data-font="sketch"],#uc-nm[data-font="hand"]{font-size:25px;}
+#uc-nm[data-font="mono"]{font-size:18px;}
+#uc-nm[data-font="arcade"]{font-size:13px;line-height:1.7;}
+#uc-nm[data-font="bubble"]{font-size:22px;}
+#uc-nm[data-font="display"]{font-size:18px;}
+/* outlines (site-owner perk; the database strips them from everyone else) */
+#uc-card[data-outline="gold"],.cp-sw i[data-outline="gold"]{border-color:#ffb020;box-shadow:0 0 0 2px #ffb020,0 0 26px rgba(255,176,32,.5);}
+#uc-card[data-outline="neon"],.cp-sw i[data-outline="neon"]{border-color:#00d4ff;box-shadow:0 0 0 2px #00d4ff,0 0 28px rgba(0,212,255,.55);}
+#uc-card[data-outline="ember"],.cp-sw i[data-outline="ember"]{border-color:#e8162a;box-shadow:0 0 0 2px #e8162a,0 0 28px rgba(232,22,42,.6);}
+#uc-card[data-outline="ink"],.cp-sw i[data-outline="ink"]{border-color:#fff;box-shadow:0 0 0 3px #fff;}
+#uc-card[data-outline="rainbow"],.cp-sw i[data-outline="rainbow"]{animation:uc-rainbow 6s linear infinite;}
+#uc-card[data-outline="pulse"],.cp-sw i[data-outline="pulse"]{animation:uc-pulse 1.8s ease-in-out infinite;}
+@keyframes uc-rainbow{0%{box-shadow:0 0 0 2px #ff3b3b,0 0 22px rgba(255,59,59,.5)}17%{box-shadow:0 0 0 2px #ffd23b,0 0 22px rgba(255,210,59,.5)}
+  33%{box-shadow:0 0 0 2px #3bff7a,0 0 22px rgba(59,255,122,.5)}50%{box-shadow:0 0 0 2px #3be0ff,0 0 22px rgba(59,224,255,.5)}
+  67%{box-shadow:0 0 0 2px #5a5aff,0 0 22px rgba(90,90,255,.5)}83%{box-shadow:0 0 0 2px #ff3bd6,0 0 22px rgba(255,59,214,.5)}100%{box-shadow:0 0 0 2px #ff3b3b,0 0 22px rgba(255,59,59,.5)}}
+@keyframes uc-pulse{0%,100%{box-shadow:0 0 0 2px #e8162a,0 0 10px rgba(232,22,42,.3)}50%{box-shadow:0 0 0 3px #ff2438,0 0 34px rgba(255,36,56,.8)}}
+/* the editor in Settings */
+.cp-sw{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.cp-sw button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 4px 7px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--txt3);font-size:10.5px;line-height:1.2;}
+.cp-sw button.on{border-color:var(--red);color:var(--txt);background:var(--red-dim);}
+.cp-sw i{display:block;width:100%;height:34px;border-radius:7px;border:1px solid var(--border);background:var(--panel);}
+.cp-sw i[data-outline]{width:calc(100% - 8px);height:28px;margin:3px 0;}
+.cp-fonts{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.cp-fonts button{padding:8px 10px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--txt);font-size:15px;text-align:left;min-width:0;}
+.cp-fonts button span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cp-fonts button[data-v="arcade"] span{font-size:11px;line-height:1.7;}
+.cp-fonts button.on{border-color:var(--red);background:var(--red-dim);}
+.cp-fonts button small{display:block;font:11px 'DM Sans',sans-serif;color:var(--txt3);margin-top:2px;}
+.cp-lk{display:grid;grid-template-columns:auto 1fr 34px;gap:6px;margin-bottom:8px;align-items:center;}
+.cp-lk .fi{padding:8px 10px;font-size:13.5px;}
+.cp-lk select.fi{width:auto;max-width:120px;}
+.cp-lk .u{grid-column:1/3;}
 
 /* settings panel */
 #set-ov{align-items:stretch;justify-content:flex-end;padding:0;}
@@ -1242,6 +1319,7 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
       <div id="uc-hd">@…</div>
       <div id="uc-tags"></div>
       <div id="uc-bio" style="display:none;"></div>
+      <div id="uc-links"></div>
       <div id="uc-meta"></div>
       <div id="uc-acts"></div>
       <div id="uc-mod" style="display:none;"></div>
@@ -1334,6 +1412,25 @@ body.light .m-acts,body.light #ndrop,body.light .tdrop,body.light #emo,body.ligh
         </div>
       </div>
       <div class="hint" id="up-msg"></div>
+
+      <!-- the profile card: background preset, name font, link buttons, outline (owner) -->
+      <div class="fg" style="margin-top:22px;"><label class="fl" data-i18n="cardTitle">Profile card</label>
+        <div class="hint" data-i18n="cardHint" style="margin:-2px 0 10px;">How your card looks when someone taps your name. Pick a look, a font for your name, and up to four buttons.</div>
+        <button class="upb" id="cp-prev" style="width:100%;"><i data-ic="user" data-ic-size="15"></i> <span data-i18n="cardPreview">Preview my card</span></button>
+      </div>
+      <div class="fg"><label class="fl" data-i18n="cardBg">Card background</label><div class="cp-sw" id="cp-bg"></div>
+        <input type="file" id="cp-img-file" accept="image/*" style="display:none">
+        <div class="hint" data-i18n="cardBgHint">Pick a look, or upload a picture of your own as the whole card.</div>
+      </div>
+      <div class="fg"><label class="fl" data-i18n="cardFont">Name font</label><div class="cp-fonts" id="cp-font"></div></div>
+      <div class="fg"><label class="fl" data-i18n="cardLinks">Buttons on your card</label>
+        <div id="cp-links"></div>
+        <button class="upb" id="cp-add" style="width:100%;"><i data-ic="plus" data-ic-size="14"></i> <span data-i18n="cardAddLink">Add a button</span></button>
+        <div class="hint" data-i18n="cardLinksHint">Up to four links. Everyone can see where each one goes.</div>
+      </div>
+      <div class="fg" id="cp-ol-fg" hidden><label class="fl" data-i18n="cardOutline">Card outline</label><div class="cp-sw" id="cp-ol"></div>
+        <div class="hint" data-i18n="cardOutlineHint">Only the site owner has this one.</div>
+      </div>
       <div class="fg" style="margin-top:20px;">
         <label class="fl" data-i18n="language">Language</label>
         <select class="fi" id="lang-pick"></select>
@@ -1411,6 +1508,7 @@ const APPS=[
 /* ══════ STATE ══════ */
 let user=null,gRole=null;
 let uname='',myHandle='',pfpUrl='',pfpFrame='',bgUrl='';
+let myCard={},cpDraft=null;   /* the profile card (presets + link buttons) and the copy being edited in Settings */
 let servers=[],curSv=null,channels=[],curCh=null;
 let members=[],msgs=[],msgChan=null;
 let dmList=[],unread=JSON.parse(localStorage.getItem('ycz-unread')||'{}');
@@ -1584,7 +1682,8 @@ async function loadMe(){
   try{
     const{data}=await sb.from('user_profiles').select('*').eq('user_id',user.id).maybeSingle();
     if(data){uname=data.username||uname;myHandle=data.handle||myHandle;pfpUrl=data.pfp_url||pfpUrl;
-      pfpFrame=data.pfp_frame||pfpFrame;bgUrl=data.bg_url||bgUrl;myBio=data.bio||'';myTitleId=data.title_id||null;myColorId=data.color_id||null;}
+      pfpFrame=data.pfp_frame||pfpFrame;bgUrl=data.bg_url||bgUrl;myBio=data.bio||'';myTitleId=data.title_id||null;myColorId=data.color_id||null;
+      myCard=cleanCard(data.card);}
   }catch(e){}
   if(!uname)uname=user.email.split('@')[0];
   if(!myHandle)await makeHandle();
@@ -1603,14 +1702,21 @@ async function makeHandle(){
   const base=slug(uname||user.email.split('@')[0])||'user';let h=base;
   for(let i=0;i<6;i++){if(await handleFree(h)){myHandle=h;return;}h=base+Math.floor(1000+Math.random()*9000);}
 }
-async function saveProfile(){
+/* full=true is the Settings save. The bootstrap upsert in loadMe() and the
+   4-minute "last seen" heartbeat call it without, and then it never carries
+   bio or the card: those travel only when the person pressed Save, so a
+   second tab holding an older copy (or a load that failed and left them
+   empty) can never write over what was just saved. */
+async function saveProfile(full){
   if(!user)return;
   const row={user_id:user.id,username:uname,handle:myHandle||null,pfp_url:pfpUrl||null,
     pfp_frame:pfpFrame||null,bg_url:bgUrl||null,updated_at:new Date().toISOString()};
   try{
-    /* bio column may not exist yet (features-update.sql not run) — if the
-       save fails with it, retry without so "last seen" keeps working */
-    const{error}=await sb.from('user_profiles').upsert({...row,bio:myBio||null},{onConflict:'user_id'});
+    if(!full){await sb.from('user_profiles').upsert(row,{onConflict:'user_id'});return;}
+    /* bio / card columns may not exist yet (their migrations not run) — if the
+       save fails with them, retry without so the rest of the profile still lands */
+    const extra={bio:myBio||null,card:Object.keys(myCard||{}).length?myCard:null};
+    const{error}=await sb.from('user_profiles').upsert({...row,...extra},{onConflict:'user_id'});
     if(error)await sb.from('user_profiles').upsert(row,{onConflict:'user_id'});
   }catch(e){}
 }
@@ -1641,8 +1747,128 @@ function openSettings(){
   if(pfpFrame&&isUrl(pfpFrame)){fr.src=pfpFrame;fr.style.display='block';}else fr.style.display='none';
   prev('fr-prev',pfpFrame);prev('bg-prev',bgUrl);
   paintStatusPick();paintSoundBtn();paintPushBtn();paintWalletRow();
+  cpDraft=JSON.parse(JSON.stringify(myCard||{}));if(!Array.isArray(cpDraft.links))cpDraft.links=[];
+  paintCardEditor();
   open('set-ov');
 }
+
+/* ══════ THE PROFILE CARD ══════
+   Presets only: a look is an id from these lists, on both sides. The database
+   (ycz_card_clean) rebuilds whatever the client sends through the same
+   whitelist, so the worst a hand-made row can hold is a preset id we know,
+   a label we escape and an http(s) url. Link buttons show their hostname so
+   nobody can dress a link up as something it is not. The outline is a
+   site-owner perk: the guard strips it from anyone else's row and the card
+   only paints it for the owner. */
+const CARD_BGS=['ember','ocean','forest','grape','sunset','aurora','midnight','grid','dots','stripes','carbon','candy','gold','paper','cloud'];
+const CARD_FONTS={clean:{body:true},sketch:{body:false},mono:{body:true},hand:{body:true},serif:{body:true},arcade:{body:false},bubble:{body:true},display:{body:false}};
+const CARD_ICONS=['link','video','music','gamepad','camera','chat','heart','bolt','home','mail','swords','trophy','piano','image','play','users'];
+const CARD_OUTLINES=['gold','neon','ember','rainbow','ink','pulse'];
+const CARD_MAX_LINKS=4;
+/* a picture of your own is only ever a file in our public bucket (that is where
+   upload() puts it); the database guard applies the same rule */
+const CARD_IMG_PREFIX='https://heohcnhgclcnmssjklom.supabase.co/storage/v1/object/public/avatars/';
+const isCardImg=u=>typeof u==='string'&&u.length<=300&&u.startsWith(CARD_IMG_PREFIX)&&isUrl(u)&&/^[A-Za-z0-9._~/%?=&+:-]+$/.test(u);
+const cssUrl=u=>`url("${u.replace(/["\\\n\r()]/g,'')}")`;
+function cleanCard(c){
+  c=c&&typeof c==='object'&&!Array.isArray(c)?c:{};
+  const out={};
+  if(CARD_BGS.includes(c.bg))out.bg=c.bg;
+  else if(c.bg==='image'&&isCardImg(c.bg_url)){out.bg='image';out.bg_url=c.bg_url;}
+  if(typeof c.font==='string'&&Object.prototype.hasOwnProperty.call(CARD_FONTS,c.font))out.font=c.font;
+  if(CARD_OUTLINES.includes(c.outline))out.outline=c.outline;
+  const links=[];
+  for(const l of Array.isArray(c.links)?c.links:[]){
+    if(links.length>=CARD_MAX_LINKS)break;
+    if(!l||typeof l!=='object')continue;
+    const label=String(l.label||'').replace(/[\x00-\x1f\x7f]/g,'').trim().slice(0,24);
+    const url=String(l.url||'').trim().slice(0,300);
+    if(!label||!isUrl(url))continue;
+    links.push({label,url,icon:CARD_ICONS.includes(l.icon)?l.icon:'link'});
+  }
+  if(links.length)out.links=links;
+  return out;
+}
+const hostOf=u=>{try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return'';}};
+/* paint a (cleaned) card onto the user-card overlay */
+function applyCard(card,isOwner){
+  const el=$('uc-card'),nm=$('uc-nm'),bio=$('uc-bio');
+  el.removeAttribute('data-bg');el.removeAttribute('data-outline');nm.removeAttribute('data-font');bio.removeAttribute('data-font');
+  el.style.removeProperty('--uc-img');
+  card=card||{};
+  if(card.bg==='image'&&isCardImg(card.bg_url)){el.dataset.bg='image';el.style.setProperty('--uc-img',cssUrl(card.bg_url));}
+  else if(card.bg&&CARD_BGS.includes(card.bg))el.dataset.bg=card.bg;
+  if(card.outline&&isOwner)el.dataset.outline=card.outline;
+  if(card.font){nm.dataset.font=card.font;if(CARD_FONTS[card.font].body)bio.dataset.font=card.font;}
+  $('uc-links').innerHTML=(card.links||[]).map(l=>
+    `<a class="uc-lk" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow">${icon(l.icon,14)}<b>${esc(l.label)}</b><small>${esc(hostOf(l.url))}</small></a>`).join('');
+}
+/* the editor in Settings works on cpDraft; Save runs cpCommit() */
+function paintCardEditor(){
+  const d=cpDraft||{links:[]};
+  const sw=(kind,ids,attr)=>['',...ids].map(id=>
+    `<button type="button" data-pick="${kind}" data-v="${id}" class="${(d[kind]||'')===id?'on':''}"><i${id?` ${attr}="${id}"`:''}></i>${esc(t(id?'card'+kind[0].toUpperCase()+kind.slice(1)+'_'+id:'cardDefault'))}</button>`).join('');
+  /* "Your image" sits first: it shows the uploaded picture (a url that passed isCardImg) or an upload icon */
+  const img=isCardImg(d.bg_url)?d.bg_url:'';
+  $('cp-bg').innerHTML=`<button type="button" data-pick="bg" data-v="image" class="${d.bg==='image'&&img?'on':''}" title="${esc(t('cardImgHint'))}"><i data-bg="image"${img?` style='--uc-img:${cssUrl(img)}'`:''}>${img?'':icon('upload',15)}</i>${esc(t('cardBg_image'))}</button>`
+    +sw('bg',CARD_BGS,'data-bg');
+  $('cp-font').innerHTML=['',...Object.keys(CARD_FONTS)].map(id=>
+    `<button type="button" data-pick="font" data-v="${id}" class="${(d.font||'')===id?'on':''}"><span${id?` data-font="${id}"`:''}>${esc(uname||'Aa')}</span><small>${esc(t(id?'cardFont_'+id:'cardDefault'))}</small></button>`).join('');
+  const links=d.links||[];
+  $('cp-links').innerHTML=links.map((l,i)=>`<div class="cp-lk" data-i="${i}">
+    <select class="fi" data-lk="icon">${CARD_ICONS.map(ic=>`<option value="${ic}"${l.icon===ic?' selected':''}>${esc(t('cardIcon_'+ic))}</option>`).join('')}</select>
+    <input type="text" class="fi" data-lk="label" maxlength="24" value="${esc(l.label||'')}" placeholder="${esc(t('cardLinkLabel'))}">
+    <button type="button" class="upx" data-lk="x" title="${esc(t('delete'))}">${icon('x',13)}</button>
+    <input type="url" class="fi u" data-lk="url" maxlength="300" value="${esc(l.url||'')}" placeholder="https://…" autocapitalize="off" autocorrect="off" spellcheck="false"></div>`).join('');
+  $('cp-add').disabled=links.length>=CARD_MAX_LINKS;
+  const own=gRole==='owner';$('cp-ol-fg').hidden=!own;
+  $('cp-ol').innerHTML=own?sw('outline',CARD_OUTLINES,'data-outline'):'';
+}
+document.querySelectorAll('#cp-bg,#cp-font,#cp-ol').forEach(box=>box.addEventListener('click',e=>{
+  const b=e.target.closest('[data-pick]');if(!b||!cpDraft)return;
+  if(b.dataset.pick==='bg'&&b.dataset.v==='image'){
+    /* no picture yet, or tapping the one already chosen: pick a file; otherwise just select it */
+    if(!isCardImg(cpDraft.bg_url)||cpDraft.bg==='image'){$('cp-img-file').click();return;}
+    cpDraft.bg='image';paintCardEditor();return;
+  }
+  if(b.dataset.v)cpDraft[b.dataset.pick]=b.dataset.v;else delete cpDraft[b.dataset.pick];
+  paintCardEditor();
+}));
+$('cp-img-file').onchange=async function(){
+  const u=await upload(this.files[0],'cardbg');this.value='';
+  if(!u||!cpDraft)return;
+  if(!isCardImg(u)){toast(t('cardImgFail'),'err');return;}
+  cpDraft.bg='image';cpDraft.bg_url=u;paintCardEditor();
+};
+$('cp-links').addEventListener('input',e=>{
+  const row=e.target.closest('.cp-lk'),k=e.target.dataset.lk;if(!row||!k||!cpDraft)return;
+  const l=cpDraft.links[+row.dataset.i];if(l)l[k]=e.target.value;
+});
+$('cp-links').addEventListener('click',e=>{
+  const b=e.target.closest('[data-lk="x"]');if(!b||!cpDraft)return;
+  cpDraft.links.splice(+b.closest('.cp-lk').dataset.i,1);paintCardEditor();
+});
+$('cp-add').onclick=()=>{
+  if(!cpDraft||cpDraft.links.length>=CARD_MAX_LINKS)return;
+  cpDraft.links.push({label:'',url:'',icon:'link'});paintCardEditor();
+  const last=$('cp-links').querySelector('.cp-lk:last-child [data-lk="label"]');if(last)last.focus();
+};
+/* validate the draft and move it into myCard; a button with a name but a bad
+   link is an error, not something to drop quietly */
+function cpCommit(){
+  const d=cpDraft||{};
+  const links=(d.links||[]).filter(l=>(l.label||'').trim()||(l.url||'').trim());
+  for(const l of links){
+    if(!(l.label||'').trim()||!isUrl((l.url||'').trim()))return{ok:false,error:t('cardBadLink')};
+  }
+  myCard=cleanCard({...d,links});
+  return{ok:true};
+}
+$('cp-prev').onclick=()=>{
+  if(!user||!cpDraft)return;
+  const d=cpDraft,links=(d.links||[]).filter(l=>(l.label||'').trim()&&isUrl((l.url||'').trim()));
+  userCard(user.id,cleanCard({...d,links}));
+};
 /* ══════ DENARII (site currency) ══════ */
 /* The shop catalog is public and tiny; load it once per session so titles
    and colours can be resolved by id everywhere (member list, user card). */
@@ -1941,8 +2167,9 @@ $('s-save').onclick=async()=>{
     if(!await handleFree(h)){$('hd-msg').innerHTML=`${icon('x',12)} @${esc(h)} ${esc(t('taken'))}`;$('hd-msg').style.color='#ff5f6d';return;}
     myHandle=h;
   }
+  const cp=cpCommit();if(!cp.ok){toast(cp.error,'err');return;}
   await sb.auth.updateUser({data:{username:uname,handle:myHandle,pfp_url:pfpUrl,pfp_frame:pfpFrame,bg_url:bgUrl}});
-  await saveProfile();
+  await saveProfile(true);
   await sb.from('messages').update({username:uname,pfp_url:pfpUrl||null,pfp_frame:pfpFrame||null}).eq('user_id',user.id);
   paintMe();shut('set-ov');toast('Profile saved ✓','ok');loadMsgs();
 };
@@ -4080,15 +4307,20 @@ async function friendState(uid){
     return f.requester_id===user.id?'sent':'incoming';
   }catch(e){return'none';}
 }
-async function userCard(uid){
+/* cardOverride: the Settings preview passes the unsaved draft; otherwise the
+   card is whatever the profile row holds (already cleaned by the database,
+   cleaned again here) */
+async function userCard(uid,cardOverride){
   open('uc-ov');
   $('uc-nm').textContent='Loading…';$('uc-hd').textContent='';$('uc-tags').innerHTML='';
   $('uc-meta').textContent='';$('uc-acts').innerHTML='';$('uc-av').textContent='?';
   $('uc-bio').style.display='none';$('uc-bio').textContent='';
   $('uc-fr').style.display='none';$('uc-ban').style.backgroundImage='';
+  applyCard({},false);
   let p={};
   try{const{data}=await sb.from('user_profiles').select('*').eq('user_id',uid).maybeSingle();p=data||{};}catch(e){}
   const r=await roleOf(uid);
+  applyCard(cardOverride||cleanCard(p.card),r==='owner');
   const svRole=(members.find(m=>m.user_id===uid)||{}).role;
   $('uc-nm').textContent=p.username||'Unknown user';
   $('uc-nm').classList.toggle('nc',!!NAME_COLORS[p.color_id]);
@@ -4671,7 +4903,7 @@ async function applySession(s,force){
     if(servers.length&&!curSv)await goServer(servers[0]);
     else await goHome();
   }else{
-    uname='';myHandle='';pfpUrl='';pfpFrame='';bgUrl='';myBio='';gRole=null;
+    uname='';myHandle='';pfpUrl='';pfpFrame='';bgUrl='';myBio='';myCard={};cpDraft=null;gRole=null;
     WALLET=null;ownedItems=new Set();myTitleId=null;myColorId=null;LEADER=null;
     if(window.YCZDenarii)YCZDenarii.setUser(null);
     shut('tr-ov');
@@ -4736,6 +4968,8 @@ if(['localhost','127.0.0.1','[::1]',''].includes(location.hostname)){
     paintMsgs,appendMsg,repaintRow,msgRow,paintMembers,loadMsgs,loadPins,
     bsParse,bsRender,bsShowTab,bsToText,bsFromRules,bsCheck,openBotScript,commandList,loadBotCmds,runSlash,
     get bsSpec(){return bsSpec;},set bsSpec(v){bsSpec=v;},get acList(){return acList;},
+    cleanCard,applyCard,paintCardEditor,cpCommit,userCard,openSettings,saveProfile,
+    get myCard(){return myCard;},set myCard(v){myCard=v;},get cpDraft(){return cpDraft;},set cpDraft(v){cpDraft=v;},
     set(o){ if('user'in o)user=o.user; if('uname'in o)uname=o.uname;
       if('curSv'in o)curSv=o.curSv; if('channels'in o)channels=o.channels;
       if('members'in o)members=o.members; if('gRole'in o)gRole=o.gRole;
